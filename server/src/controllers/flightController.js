@@ -1,0 +1,530 @@
+const { airportToCountry } = require('../models/airportData');
+const aircraftData = require('../models/aircraftData');
+const airlabsService = require('../services/airlabsService');
+const amadeusService = require('../services/amadeusService');
+
+/**
+ * Search flights with real API (Amadeus) or fallback to mock data
+ */
+exports.searchFlights = async (req, res) => {
+  const { departure, arrival, date, returnDate, aircraftType, aircraftModel, passengers, useMockData } = req.query;
+
+  try {
+    let flights = [];
+    let useRealAPI = process.env.AMADEUS_CLIENT_ID && process.env.AMADEUS_CLIENT_SECRET && useMockData !== 'true';
+
+    if (useRealAPI) {
+      const searchParams = {
+        departure_airport: departure?.toUpperCase() || 'LIS',
+        arrival_airport: arrival?.toUpperCase() || 'NYC',
+        departure_date: date || getNextDate(),
+        passengers: parseInt(passengers) || 1,
+        return_date: returnDate || null
+      };
+
+      try {
+        const amadeusResponse = await amadeusService.searchFlights(searchParams);
+        flights = formatAmadeusFlights(amadeusResponse);
+
+        // Enrich with aircraft data from AirLabs
+        const aircraftIatas = extractAircraftIatas(amadeusResponse);
+        await enrichWithAircraftData(flights, aircraftIatas);
+
+        // Enrich with airline data from AirLabs
+        const airlineIatas = extractAirlineIatas(amadeusResponse);
+        await enrichWithAirlineData(flights, airlineIatas);
+
+        flights = flights.filter(f => f.isValidRoute !== false);
+      } catch (error) {
+        console.error('Amadeus API error, falling back to mock data:', error.message);
+        flights = getMockFlights(departure, arrival);
+      }
+    } else {
+      // Use mock data
+      flights = getMockFlights(departure, arrival);
+    }
+
+    // Apply filters
+    if (aircraftType) {
+      flights = flights.filter(f => {
+        const aircraft = f.aircraft || aircraftData[f.aircraftCode];
+        return aircraft && aircraft.type === aircraftType.toLowerCase();
+      });
+    }
+
+    if (aircraftModel) {
+      flights = flights.filter(f => f.aircraftCode === aircraftModel.toUpperCase());
+    }
+
+    res.json({
+      success: true,
+      count: flights.length,
+      source: useRealAPI ? 'amadeus' : 'mock',
+      data: flights
+    });
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error searching flights',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get filter options including live aircraft data
+ */
+exports.getFilterOptions = async (req, res) => {
+  try {
+    const hasAirlabsKey = process.env.AIRLABS_API_KEY && process.env.AIRLABS_API_KEY !== 'your_airlabs_api_key_here';
+
+    const allCities = [
+      { code: 'LIS', name: 'Lisbon' },
+      { code: 'NYC', name: 'New York' },
+      { code: 'JFK', name: 'New York (JFK)' },
+      { code: 'LON', name: 'London' },
+      { code: 'CDG', name: 'Paris' },
+      { code: 'AMS', name: 'Amsterdam' },
+      { code: 'FRA', name: 'Frankfurt' },
+      // Spanish cities
+      { code: 'MAD', name: 'Madrid' },
+      { code: 'BCN', name: 'Barcelona' },
+      // German cities
+      { code: 'BER', name: 'Berlin' },
+      { code: 'MUC', name: 'Munich' },
+      // Italian (optional) or other countries could be added here
+    ];
+
+    const allAircraftTypes = ['turboprop', 'jet', 'regional', 'wide-body'];
+    
+    let allAircraft = Object.entries(aircraftData).map(([code, data]) => ({
+      code,
+      ...data
+    }));
+
+    // If AirLabs API is configured, fetch live data for popular aircraft
+    if (hasAirlabsKey) {
+      const popularIatas = ['B737', 'A320', 'B777', 'A380', 'CRJ7', 'Q400'];
+      const liveData = await airlabsService.getMultipleAircraft(popularIatas);
+      
+      // Merge live data with mock data
+      allAircraft = allAircraft.map(aircraft => ({
+        ...aircraft,
+        ...liveData[aircraft.code]
+      }));
+    }
+
+    res.json({
+      cities: allCities,
+      aircraftTypes: allAircraftTypes,
+      aircraft: allAircraft,
+      apiStatus: {
+        amadeus: !!(process.env.AMADEUS_CLIENT_ID && process.env.AMADEUS_CLIENT_SECRET),
+        airlabs: hasAirlabsKey
+      }
+    });
+  } catch (error) {
+    console.error('Filter options error:', error);
+    res.json({
+      cities: [
+        { code: 'LIS', name: 'Lisbon' },
+        { code: 'NYC', name: 'New York' },
+        { code: 'LON', name: 'London' },
+        { code: 'LAX', name: 'Los Angeles' }
+      ],
+      aircraftTypes: ['turboprop', 'jet', 'regional', 'wide-body'],
+      aircraft: Object.entries(aircraftData).map(([code, data]) => ({
+        code,
+        ...data
+      })),
+      apiStatus: {
+        amadeus: false,
+        airlabs: false
+      }
+    });
+  }
+};
+
+/**
+ * Build a normalized itinerary object from an Amadeus itinerary + dictionaries
+ */
+function buildItinerary(itinerary, carriers, aircraftDict) {
+  if (!itinerary) return null;
+  const segments = itinerary.segments || [];
+  if (segments.length === 0) return null;
+
+  const first = segments[0];
+  const last = segments[segments.length - 1];
+
+  return {
+    departure: { code: first.departure.iataCode, terminal: first.departure.terminal || null },
+    arrival: { code: last.arrival.iataCode, terminal: last.arrival.terminal || null },
+    departureTime: first.departure.at,
+    arrivalTime: last.arrival.at,
+    duration: amadeusService.parseDuration(itinerary.duration),
+    stops: segments.length - 1,
+    stopAirports: segments.slice(0, -1).map(s => s.arrival.iataCode),
+    aircraftCode: first.aircraft?.code || 'N/A',
+    aircraftName: aircraftDict[first.aircraft?.code] || first.aircraft?.code || 'N/A',
+    airline: carriers[first.carrierCode] || first.carrierCode,
+    airlineIata: first.carrierCode,
+    flightNumber: `${first.carrierCode}${first.number}`,
+    segments: segments.map(s => ({
+      departure: { code: s.departure.iataCode, time: s.departure.at },
+      arrival: { code: s.arrival.iataCode, time: s.arrival.at },
+      airline: carriers[s.carrierCode] || s.carrierCode,
+      airlineIata: s.carrierCode,
+      flightNumber: `${s.carrierCode}${s.number}`,
+      aircraftCode: s.aircraft?.code || 'N/A',
+      duration: amadeusService.parseDuration(s.duration),
+    })),
+  };
+}
+
+/**
+ * Helper: Format Amadeus API response
+ * Amadeus structure: { data: [...offers], dictionaries: { carriers, aircraft, locations } }
+ */
+function formatAmadeusFlights(amadeusResponse) {
+  const offers = amadeusResponse.data || [];
+  const carriers = amadeusResponse.dictionaries?.carriers || {};
+  const aircraftDict = amadeusResponse.dictionaries?.aircraft || {};
+
+  return offers.map((offer, index) => {
+    const outbound = buildItinerary(offer.itineraries?.[0], carriers, aircraftDict);
+    if (!outbound) return null;
+
+    const returnItin = offer.itineraries?.[1]
+      ? buildItinerary(offer.itineraries[1], carriers, aircraftDict)
+      : null;
+
+    return {
+      id: `amadeus_${index}`,
+      departure: outbound.departure,
+      arrival: outbound.arrival,
+      aircraftCode: outbound.aircraftCode,
+      aircraftName: outbound.aircraftName,
+      airline: outbound.airline,
+      airlineIata: outbound.airlineIata,
+      flightNumber: outbound.flightNumber,
+      departureTime: outbound.departureTime,
+      arrivalTime: outbound.arrivalTime,
+      duration: outbound.duration,
+      stops: outbound.stops,
+      stopAirports: outbound.stopAirports,
+      segments: outbound.segments,
+      price: offer.price?.total,
+      currency: offer.price?.currency || 'EUR',
+      isRoundTrip: !!returnItin,
+      returnItinerary: returnItin,
+      source: 'amadeus'
+    };
+  }).filter(Boolean);
+}
+
+/**
+ * Helper: Extract aircraft IATA codes from Amadeus response
+ */
+function extractAircraftIatas(amadeusResponse) {
+  const iatas = new Set();
+  (amadeusResponse.data || []).forEach(offer => {
+    offer.itineraries?.forEach(itin => {
+      itin.segments?.forEach(seg => {
+        if (seg.aircraft?.code) iatas.add(seg.aircraft.code);
+      });
+    });
+  });
+  return Array.from(iatas);
+}
+
+/**
+ * Helper: Extract airline IATA codes from Amadeus response
+ */
+function extractAirlineIatas(amadeusResponse) {
+  const iatas = new Set();
+  (amadeusResponse.data || []).forEach(offer => {
+    offer.itineraries?.forEach(itin => {
+      itin.segments?.forEach(seg => {
+        if (seg.carrierCode) iatas.add(seg.carrierCode);
+        if (seg.operating?.carrierCode) iatas.add(seg.operating.carrierCode);
+      });
+    });
+  });
+  return Array.from(iatas);
+}
+
+/**
+ * Helper: Validate if the route is valid for the airline
+ */
+function validateRoute(departureCode, arrivalCode, airlineCountry) {
+  const depCountry = airportToCountry[departureCode] || 'Unknown';
+  const arrCountry = airportToCountry[arrivalCode] || 'Unknown';
+
+  if (airlineCountry === 'United Kingdom') {
+    return depCountry === 'United Kingdom' || arrCountry === 'United Kingdom';
+  }
+  // Add more validations for other airlines if needed
+  return true;
+}
+
+/**
+ * Helper: Enrich flights with airline data from AirLabs
+ */
+async function enrichWithAirlineData(flights, airlineIatas) {
+  const hasAirlabsKey = process.env.AIRLABS_API_KEY && process.env.AIRLABS_API_KEY !== 'your_airlabs_api_key_here';
+
+  if (!hasAirlabsKey || airlineIatas.length === 0) return;
+
+  try {
+    const liveData = await airlabsService.getMultipleAirlines(airlineIatas);
+    flights.forEach(flight => {
+      // Assuming we add airlineIata to flight object
+      const iata = flight.airlineIata;
+      if (liveData[iata]) {
+        flight.airlineCountry = liveData[iata].country;
+        flight.airlineIcao = liveData[iata].icao;
+        flight.isValidRoute = validateRoute(flight.departure.code, flight.arrival.code, liveData[iata].country);
+      } else {
+        flight.isValidRoute = true; // Default to true if no data
+      }
+    });
+  } catch (error) {
+    console.warn('AirLabs airline enrichment failed:', error.message);
+    flights.forEach(flight => flight.isValidRoute = true);
+  }
+}
+
+/**
+ * Helper: Enrich flights with aircraft data from AirLabs
+ */
+async function enrichWithAircraftData(flights, aircraftIatas) {
+  const hasAirlabsKey = process.env.AIRLABS_API_KEY && process.env.AIRLABS_API_KEY !== 'your_airlabs_api_key_here';
+
+  flights.forEach(flight => {
+    const code = flight.aircraftCode;
+    
+    // First try local aircraft database
+    if (aircraftData[code]) {
+      flight.aircraft = aircraftData[code];
+      return;
+    }
+
+    // Then try to map common aircraft codes to types
+    flight.aircraft = classifyAircraftByCode(code);
+  });
+
+  // If AirLabs is available, try to fetch live data for unknown aircraft
+  if (hasAirlabsKey && aircraftIatas.length > 0) {
+    try {
+      const liveData = await airlabsService.getMultipleAircraft(aircraftIatas);
+      flights.forEach(flight => {
+        if (!aircraftData[flight.aircraftCode] && liveData[flight.aircraftCode]) {
+          flight.aircraft = liveData[flight.aircraftCode];
+        }
+      });
+    } catch (error) {
+      console.warn('AirLabs enrichment failed, using local data:', error.message);
+    }
+  }
+}
+
+/**
+ * Helper: Classify aircraft by code using known mappings
+ */
+function classifyAircraftByCode(code) {
+  if (!code || code === 'N/A' || code === 'null') {
+    return { name: 'Unknown Aircraft', type: 'unknown', capacity: null, range: null, cruiseSpeed: null };
+  }
+
+  const upperCode = code.toUpperCase();
+
+  // Common narrow-body jets (737, 320, 757, 767, etc.)
+  const narrowBodyMap = {
+    '320': { name: 'Airbus A320', type: 'jet', cap: 160, range: 5500, speed: 460 },
+    '321': { name: 'Airbus A321', type: 'jet', cap: 220, range: 5500, speed: 460 },
+    '32A': { name: 'Airbus A320', type: 'jet', cap: 160, range: 5500, speed: 460 },
+    '32B': { name: 'Airbus A320', type: 'jet', cap: 160, range: 5500, speed: 460 },
+    '32N': { name: 'Airbus A320neo', type: 'jet', cap: 160, range: 6300, speed: 460 },
+    '32Q': { name: 'Airbus A320neo', type: 'jet', cap: 160, range: 6300, speed: 460 },
+    '737': { name: 'Boeing 737', type: 'jet', cap: 160, range: 5200, speed: 460 },
+    '738': { name: 'Boeing 737-800', type: 'jet', cap: 189, range: 5200, speed: 460 },
+    '739': { name: 'Boeing 737-900', type: 'jet', cap: 189, range: 5200, speed: 460 },
+    '73J': { name: 'Boeing 737-900ER', type: 'jet', cap: 189, range: 5200, speed: 460 },
+    '73H': { name: 'Boeing 737-800', type: 'jet', cap: 189, range: 5200, speed: 460 },
+    '73G': { name: 'Boeing 737-700', type: 'jet', cap: 149, range: 5000, speed: 460 },
+    '752': { name: 'Boeing 757-200', type: 'jet', cap: 185, range: 7500, speed: 470 },
+    '753': { name: 'Boeing 757-300', type: 'jet', cap: 280, range: 7500, speed: 470 }
+  };
+
+  if (narrowBodyMap[upperCode]) {
+    const data = narrowBodyMap[upperCode];
+    return { name: data.name, type: data.type, capacity: data.cap, range: data.range, cruiseSpeed: data.speed };
+  }
+
+  // Check if it matches any narrow-body pattern
+  const narrowBodyPatterns = ['320', '321', '737', '738', '739', '752', '753'];
+  if (narrowBodyPatterns.some(p => upperCode.includes(p))) {
+    return { name: 'Narrow-body Jet', type: 'jet', capacity: 160, range: 5500, cruiseSpeed: 460 };
+  }
+
+  // Wide-body jets (777, 787, 350, 330, etc.)
+  const wideBodyMap = {
+    '777': { name: 'Boeing 777', type: 'wide-body', cap: 350, range: 7000, speed: 490 },
+    '778': { name: 'Boeing 777-800', type: 'wide-body', cap: 350, range: 7000, speed: 490 },
+    '779': { name: 'Boeing 777-900', type: 'wide-body', cap: 400, range: 7000, speed: 490 },
+    '787': { name: 'Boeing 787 Dreamliner', type: 'wide-body', cap: 250, range: 8000, speed: 490 },
+    '350': { name: 'Airbus A350', type: 'wide-body', cap: 315, range: 8000, speed: 490 },
+    '330': { name: 'Airbus A330', type: 'wide-body', cap: 300, range: 7400, speed: 490 },
+    '340': { name: 'Airbus A340', type: 'wide-body', cap: 300, range: 9000, speed: 490 },
+    '380': { name: 'Airbus A380', type: 'wide-body', cap: 560, range: 8000, speed: 490 },
+    '747': { name: 'Boeing 747', type: 'wide-body', cap: 500, range: 7000, speed: 490 }
+  };
+
+  if (wideBodyMap[upperCode]) {
+    const data = wideBodyMap[upperCode];
+    return { name: data.name, type: data.type, capacity: data.cap, range: data.range, cruiseSpeed: data.speed };
+  }
+
+  // Check if it matches any wide-body pattern
+  const wideBodyPatterns = ['777', '787', '350', '330', '340', '380', '747'];
+  if (wideBodyPatterns.some(p => upperCode.includes(p))) {
+    return { name: 'Wide-body Jet', type: 'wide-body', capacity: 300, range: 7000, cruiseSpeed: 490 };
+  }
+
+  // Regional jets (CRJ, ERJ, DHC, etc.)
+  if (upperCode.match(/^(CRJ|ERJ|E\d|DH\d|Q4)/)) {
+    return { name: 'Regional Jet', type: 'regional', capacity: 70, range: 3500, cruiseSpeed: 450 };
+  }
+
+  // Turboprops (ATR, Q4, DHC, etc.)
+  if (upperCode.match(/^(ATR|Q4|DH\d)/)) {
+    return { name: 'Turboprop', type: 'turboprop', capacity: 50, range: 2000, cruiseSpeed: 300 };
+  }
+
+  // Airline codes - assign based on common fleets (fallback)
+  // Most airlines operate a mix of jets
+  return {
+    name: `Aircraft (${upperCode})`,
+    type: 'jet',  // Default to jet for unknown airline codes
+    capacity: 160,
+    range: 5000,
+    cruiseSpeed: 460
+  };
+}
+
+/**
+ * Helper: Get mock flights for testing
+ */
+function getMockFlights(departure, arrival) {
+  const mockFlights = [
+    {
+      id: 1,
+      departure: { code: 'LIS', city: 'Lisbon' },
+      arrival: { code: 'NYC', city: 'New York' },
+      aircraftCode: 'B737',
+      airline: 'TAP Air Portugal',
+      flightNumber: 'TP123',
+      departureTime: '2026-03-15T10:00:00Z',
+      arrivalTime: '2026-03-15T14:30:00Z',
+      price: 450,
+      currency: 'USD',
+      duration: '7h 30m',
+      source: 'mock'
+    },
+    {
+      id: 2,
+      departure: { code: 'LIS', city: 'Lisbon' },
+      arrival: { code: 'NYC', city: 'New York' },
+      aircraftCode: 'A320',
+      airline: 'United Airlines',
+      departureTime: '2026-03-15T12:00:00Z',
+      arrivalTime: '2026-03-15T16:45:00Z',
+      price: 520,
+      currency: 'USD',
+      duration: '7h 45m',
+      source: 'mock'
+    },
+    {
+      id: 3,
+      departure: { code: 'LIS', city: 'Lisbon' },
+      arrival: { code: 'NYC', city: 'New York' },
+      aircraftCode: '789',
+      airline: 'Delta Air Lines',
+      flightNumber: 'DL201',
+      departureTime: '2026-03-15T14:00:00Z',
+      arrivalTime: '2026-03-15T22:30:00Z',
+      price: 490,
+      currency: 'USD',
+      duration: '8h 30m',
+      source: 'mock'
+    },
+    {
+      id: 4,
+      departure: { code: 'LIS', city: 'Lisbon' },
+      arrival: { code: 'NYC', city: 'New York' },
+      aircraftCode: '333',
+      airline: 'Iberia',
+      flightNumber: 'IB6253',
+      departureTime: '2026-03-16T09:00:00Z',
+      arrivalTime: '2026-03-16T17:45:00Z',
+      price: 410,
+      currency: 'USD',
+      duration: '8h 45m',
+      source: 'mock'
+    },
+    {
+      id: 5,
+      departure: { code: 'MAD', city: 'Madrid' },
+      arrival: { code: 'BCN', city: 'Barcelona' },
+      aircraftCode: 'A320',
+      airline: 'Iberia',
+      departureTime: '2026-04-01T08:00:00Z',
+      arrivalTime: '2026-04-01T09:30:00Z',
+      price: 120,
+      currency: 'EUR',
+      duration: '1h 30m',
+      source: 'mock'
+    },
+    {
+      id: 6,
+      departure: { code: 'BER', city: 'Berlin' },
+      arrival: { code: 'MUC', city: 'Munich' },
+      aircraftCode: 'B737',
+      airline: 'Lufthansa',
+      departureTime: '2026-04-02T10:00:00Z',
+      arrivalTime: '2026-04-02T11:15:00Z',
+      price: 95,
+      currency: 'EUR',
+      duration: '1h 15m',
+      source: 'mock'
+    }
+  ];
+
+  let results = mockFlights;
+
+  if (departure) {
+    results = results.filter(f => f.departure.code === departure.toUpperCase());
+  }
+
+  if (arrival) {
+    results = results.filter(f => f.arrival.code === arrival.toUpperCase());
+  }
+
+  // Enrich with aircraft info
+  results = results.map(flight => ({
+    ...flight,
+    aircraft: aircraftData[flight.aircraftCode] || { name: 'Unknown' }
+  }));
+
+  return results;
+}
+
+/**
+ * Helper: Get next available date (next day)
+ */
+function getNextDate() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toISOString().split('T')[0];
+}

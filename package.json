@@ -1,0 +1,12 @@
+{
+  "name": "flightfinder",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "start": "cd server && node src/index.js",
+    "install:all": "npm install --prefix client && npm install --prefix server"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

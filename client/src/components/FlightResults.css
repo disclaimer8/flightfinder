@@ -1,0 +1,53 @@
+.results-container {
+  margin: 2rem 0;
+}
+
+.flights-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.results-header h2 {
+  color: white;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.source-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.source-badge.source-duffel {
+  background: rgba(76, 175, 80, 0.3);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #4caf50;
+}
+
+.source-badge.source-mock {
+  background: rgba(255, 193, 7, 0.3);
+  border-color: rgba(255, 193, 7, 0.5);
+  color: #ffc107;
+}
+
+@media (max-width: 768px) {
+  .results-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "flight-search-api",
+  "version": "1.0.0",
+  "description": "Flight search API with airplane type filters",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [
+    "flight",
+    "search",
+    "airplane"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "amadeus": "^11.0.0",
+    "axios": "^1.13.6",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

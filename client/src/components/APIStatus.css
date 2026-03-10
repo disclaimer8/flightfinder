@@ -1,0 +1,29 @@
+.api-status {
+  margin-top: 0.5rem;
+}
+
+.status-badges {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.badge.active {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+  border: 1px solid #4caf50;
+}
+
+.badge.inactive {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+  border: 1px solid #f44336;
+}
