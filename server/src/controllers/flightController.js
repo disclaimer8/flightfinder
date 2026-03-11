@@ -7,7 +7,7 @@ const kiwiService = require('../services/kiwiService');
 const cacheService = require('../services/cacheService');
 const openFlights = require('../services/openFlightsService');
 
-const FLIGHT_API = process.env.FLIGHT_API || 'amadeus'; // 'amadeus' | 'duffel' | 'kiwi'
+const FLIGHT_API = process.env.FLIGHT_API || 'amadeus'; // 'amadeus' | 'duffel'
 
 /**
  * Search flights with real API (Amadeus) or fallback to mock data

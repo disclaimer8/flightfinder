@@ -6,7 +6,7 @@ const IS_DEV = import.meta.env.DEV;
 function SearchForm({ onSearch, onExplore, filterOptions }) {
   const [mode, setMode] = useState('search'); // 'search' | 'explore'
   const [tripType, setTripType] = useState('one-way');
-  const [apiProvider, setApiProvider] = useState('amadeus'); // 'amadeus' | 'duffel'
+  const [apiProvider, setApiProvider] = useState('amadeus'); // 'amadeus' | 'duffel' (kiwi closed registration 2024)
   const [filters, setFilters] = useState({
     departure: '',
     arrival: '',
@@ -215,7 +215,7 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
         {IS_DEV && mode === 'search' && (
           <div className="dev-api-toggle">
             <span className="dev-label">⚙️ API:</span>
-            {['amadeus', 'duffel', 'kiwi'].map(provider => (
+            {['amadeus', 'duffel'].map(provider => (
               <button
                 key={provider}
                 type="button"
