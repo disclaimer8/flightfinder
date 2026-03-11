@@ -51,6 +51,18 @@
   color: #c8ffc9;
 }
 
+.source-badge.source-duffel {
+  background: rgba(33, 150, 243, 0.3);
+  border-color: rgba(33, 150, 243, 0.5);
+  color: #b3e5fc;
+}
+
+.source-badge.source-kiwi {
+  background: rgba(255, 152, 0, 0.3);
+  border-color: rgba(255, 152, 0, 0.5);
+  color: #ffe0b2;
+}
+
 .source-badge.source-mock {
   background: rgba(255, 193, 7, 0.3);
   border-color: rgba(255, 193, 7, 0.5);

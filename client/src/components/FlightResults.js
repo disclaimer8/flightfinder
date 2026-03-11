@@ -105,7 +105,7 @@ function FlightResults({ flights, source }) {
             </span>
             {source && (
               <span className={`source-badge source-${source}`}>
-                {source === 'amadeus' ? '🌍 Live Data' : '📋 Demo Data'}
+                {source === 'amadeus' ? '🌍 Amadeus' : source === 'duffel' ? '🌍 Duffel' : source === 'kiwi' ? '🌍 Kiwi' : '📋 Demo'}
               </span>
             )}
           </div>

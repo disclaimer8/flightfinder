@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const amadeusService = require('./services/amadeusService');
 const airlabsService = require('./services/airlabsService');
+const cacheService = require('./services/cacheService');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -93,6 +94,12 @@ app.get('/api/debug/airlabs', async (req, res) => {
     });
   }
 });
+
+// Cache stats (dev only)
+if (process.env.NODE_ENV === 'development') {
+  app.get('/api/debug/cache', (req, res) => res.json(cacheService.stats()));
+  app.delete('/api/debug/cache', (req, res) => { cacheService.flush(); res.json({ ok: true }); });
+}
 
 // Serve React build in production
 if (process.env.NODE_ENV === 'production') {

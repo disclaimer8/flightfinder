@@ -1,14 +1,22 @@
-const { airportToCountry } = require('../models/airportData');
 const aircraftData = require('../models/aircraftData');
 const popularDestinations = require('../models/popularDestinations');
 const airlabsService = require('../services/airlabsService');
 const amadeusService = require('../services/amadeusService');
+const duffelService = require('../services/duffelService');
+const kiwiService = require('../services/kiwiService');
+const cacheService = require('../services/cacheService');
+const openFlights = require('../services/openFlightsService');
+
+const FLIGHT_API = process.env.FLIGHT_API || 'amadeus'; // 'amadeus' | 'duffel' | 'kiwi'
 
 /**
  * Search flights with real API (Amadeus) or fallback to mock data
  */
 exports.searchFlights = async (req, res) => {
-  const { departure, arrival, date, returnDate, aircraftType, aircraftModel, passengers, useMockData } = req.query;
+  const { departure, arrival, date, returnDate, aircraftType, aircraftModel, passengers, useMockData, api } = req.query;
+
+  // Allow per-request API override in development
+  const activeApi = (process.env.NODE_ENV === 'development' && api) ? api : FLIGHT_API;
 
   try {
     let flights = [];
@@ -23,21 +31,37 @@ exports.searchFlights = async (req, res) => {
         return_date: returnDate || null
       };
 
+      const cacheKey = `flights:${activeApi}:${searchParams.departure_airport}:${searchParams.arrival_airport}:${searchParams.departure_date}:${searchParams.passengers}:${searchParams.return_date || ''}`;
+
       try {
-        const amadeusResponse = await amadeusService.searchFlights(searchParams);
-        flights = formatAmadeusFlights(amadeusResponse);
+        const { data: cachedFlights, fromCache } = await cacheService.getOrFetch(cacheKey, async () => {
+          if (activeApi === 'duffel' && process.env.DUFFEL_API_KEY) {
+            console.log('Using Duffel API');
+            const duffelResponse = await duffelService.searchFlights(searchParams);
+            return formatDuffelFlights(duffelResponse);
+          } else if (activeApi === 'kiwi' && process.env.KIWI_API_KEY) {
+            console.log('Using Kiwi API');
+            const kiwiResponse = await kiwiService.searchFlights(searchParams);
+            return formatKiwiFlights(kiwiResponse);
+          } else {
+            console.log(`Using Amadeus API (activeApi=${activeApi})`);
+            const amadeusResponse = await amadeusService.searchFlights(searchParams);
+            const result = formatAmadeusFlights(amadeusResponse);
 
-        // Enrich with aircraft data from AirLabs
-        const aircraftIatas = extractAircraftIatas(amadeusResponse);
-        await enrichWithAircraftData(flights, aircraftIatas);
+            const aircraftIatas = extractAircraftIatas(amadeusResponse);
+            await enrichWithAircraftData(result, aircraftIatas);
 
-        // Enrich with airline data from AirLabs
-        const airlineIatas = extractAirlineIatas(amadeusResponse);
-        await enrichWithAirlineData(flights, airlineIatas);
+            const airlineIatas = extractAirlineIatas(amadeusResponse);
+            await enrichWithAirlineData(result, airlineIatas);
 
-        flights = flights.filter(f => f.isValidRoute !== false);
+            return result.filter(f => f.isValidRoute !== false);
+          }
+        });
+
+        flights = cachedFlights;
+        if (fromCache) console.log(`[cache] Serving ${flights.length} flights from cache`);
       } catch (error) {
-        console.error('Amadeus API error, falling back to mock data:', error.message);
+        console.error(`${activeApi} API error, falling back to mock data:`, error.message);
         flights = getMockFlights(departure, arrival);
       }
     } else {
@@ -60,7 +84,7 @@ exports.searchFlights = async (req, res) => {
     res.json({
       success: true,
       count: flights.length,
-      source: useRealAPI ? 'amadeus' : 'mock',
+      source: useRealAPI ? activeApi : 'mock',
       data: flights
     });
   } catch (error) {
@@ -161,6 +185,13 @@ exports.exploreDestinations = async (req, res) => {
   const depCode = departure.toUpperCase();
   const searchDate = date || getNextDate();
 
+  // Check explore-level cache first (covers full fan-out result)
+  const exploreCacheKey = `explore:${depCode}:${searchDate}:${aircraftType || ''}:${aircraftModel || ''}`;
+  const cachedExplore = cacheService.get(exploreCacheKey);
+  if (cachedExplore) {
+    return res.json({ success: true, count: cachedExplore.length, data: cachedExplore, fromCache: true });
+  }
+
   // Filter out the departure airport itself
   const candidates = popularDestinations.filter(d => d.code !== depCode);
 
@@ -174,13 +205,14 @@ exports.exploreDestinations = async (req, res) => {
 
     const batchResults = await Promise.allSettled(
       batch.map(async (dest) => {
+        const segCacheKey = `flights:amadeus:${depCode}:${dest.code}:${searchDate}:1:`;
         try {
-          const raw = await amadeusService.searchFlights({
+          const { data: raw } = await cacheService.getOrFetch(segCacheKey, () => amadeusService.searchFlights({
             departure_airport: depCode,
             arrival_airport: dest.code,
             departure_date: searchDate,
             passengers: 1,
-          });
+          }));
 
           const flights = formatAmadeusFlights(raw);
           if (!flights.length) return null;
@@ -227,6 +259,7 @@ exports.exploreDestinations = async (req, res) => {
     if (i + BATCH_SIZE < candidates.length) await delay(200);
   }
 
+  cacheService.set(exploreCacheKey, results, cacheService.TTL.explore);
   res.json({ success: true, count: results.length, data: results });
 };
 
@@ -241,9 +274,12 @@ function buildItinerary(itinerary, carriers, aircraftDict) {
   const first = segments[0];
   const last = segments[segments.length - 1];
 
+  const depAirport = openFlights.getAirport(first.departure.iataCode);
+  const arrAirport = openFlights.getAirport(last.arrival.iataCode);
+
   return {
-    departure: { code: first.departure.iataCode, terminal: first.departure.terminal || null },
-    arrival: { code: last.arrival.iataCode, terminal: last.arrival.terminal || null },
+    departure: { code: first.departure.iataCode, terminal: first.departure.terminal || null, city: depAirport?.city || null, country: depAirport?.country || null },
+    arrival:   { code: last.arrival.iataCode,    terminal: last.arrival.terminal    || null, city: arrAirport?.city || null, country: arrAirport?.country || null },
     departureTime: first.departure.at,
     arrivalTime: last.arrival.at,
     duration: amadeusService.parseDuration(itinerary.duration),
@@ -251,13 +287,13 @@ function buildItinerary(itinerary, carriers, aircraftDict) {
     stopAirports: segments.slice(0, -1).map(s => s.arrival.iataCode),
     aircraftCode: first.aircraft?.code || 'N/A',
     aircraftName: aircraftDict[first.aircraft?.code] || first.aircraft?.code || 'N/A',
-    airline: carriers[first.carrierCode] || first.carrierCode,
+    airline: carriers[first.carrierCode] || openFlights.getAirline(first.carrierCode)?.name || first.carrierCode,
     airlineIata: first.carrierCode,
     flightNumber: `${first.carrierCode}${first.number}`,
     segments: segments.map(s => ({
-      departure: { code: s.departure.iataCode, time: s.departure.at },
-      arrival: { code: s.arrival.iataCode, time: s.arrival.at },
-      airline: carriers[s.carrierCode] || s.carrierCode,
+      departure: { code: s.departure.iataCode, time: s.departure.at, city: openFlights.getAirport(s.departure.iataCode)?.city || null },
+      arrival:   { code: s.arrival.iataCode,   time: s.arrival.at,   city: openFlights.getAirport(s.arrival.iataCode)?.city   || null },
+      airline: carriers[s.carrierCode] || openFlights.getAirline(s.carrierCode)?.name || s.carrierCode,
       airlineIata: s.carrierCode,
       flightNumber: `${s.carrierCode}${s.number}`,
       aircraftCode: s.aircraft?.code || 'N/A',
@@ -265,6 +301,162 @@ function buildItinerary(itinerary, carriers, aircraftDict) {
       duration: amadeusService.parseDuration(s.duration),
     })),
   };
+}
+
+/**
+ * Helper: Format Kiwi Tequila API response to normalized shape
+ * Kiwi structure: { data: [...itineraries] }
+ * Each itinerary has route[] segments; return segments have return: 1
+ */
+function formatKiwiFlights(kiwiResponse) {
+  const itineraries = kiwiResponse?.data || [];
+
+  return itineraries.map((itin, index) => {
+    const outboundSegs = (itin.route || []).filter(s => !s.return);
+    const returnSegs   = (itin.route || []).filter(s => s.return === 1);
+
+    if (!outboundSegs.length) return null;
+
+    const buildSlice = (segs, durationSec) => {
+      const first = segs[0];
+      const last  = segs[segs.length - 1];
+      return {
+        departure:     { code: first.flyFrom, terminal: null },
+        arrival:       { code: last.flyTo,    terminal: null },
+        departureTime: first.local_departure,
+        arrivalTime:   last.local_arrival,
+        duration:      kiwiService.parseDuration(durationSec),
+        stops:         segs.length - 1,
+        stopAirports:  segs.slice(0, -1).map(s => s.flyTo),
+        aircraftCode:  first.equipment || 'N/A',
+        aircraftName:  first.equipment || 'N/A',
+        airline:       first.airline,
+        airlineIata:   first.airline,
+        flightNumber:  `${first.airline}${first.flight_no}`,
+        segments: segs.map(s => ({
+          departure:    { code: s.flyFrom, time: s.local_departure },
+          arrival:      { code: s.flyTo,   time: s.local_arrival },
+          airline:      s.airline,
+          airlineIata:  s.airline,
+          flightNumber: `${s.airline}${s.flight_no}`,
+          aircraftCode: s.equipment || 'N/A',
+          aircraftName: s.equipment || 'N/A',
+          duration:     kiwiService.parseDuration(s.duration),
+        })),
+      };
+    };
+
+    const outbound   = buildSlice(outboundSegs, itin.duration?.departure);
+    const returnSlice = returnSegs.length ? buildSlice(returnSegs, itin.duration?.return) : null;
+
+    // Enrich with local aircraft data
+    outbound.aircraft = aircraftData[outbound.aircraftCode] || classifyAircraftByCode(outbound.aircraftCode);
+    outbound.segments.forEach(s => {
+      s.aircraft = aircraftData[s.aircraftCode] || classifyAircraftByCode(s.aircraftCode);
+    });
+
+    return {
+      id:            `kiwi_${index}`,
+      departure:     outbound.departure,
+      arrival:       outbound.arrival,
+      aircraftCode:  outbound.aircraftCode,
+      aircraftName:  outbound.aircraftName,
+      aircraft:      outbound.aircraft,
+      airline:       outbound.airline,
+      airlineIata:   outbound.airlineIata,
+      flightNumber:  outbound.flightNumber,
+      departureTime: outbound.departureTime,
+      arrivalTime:   outbound.arrivalTime,
+      duration:      outbound.duration,
+      stops:         outbound.stops,
+      stopAirports:  outbound.stopAirports,
+      segments:      outbound.segments,
+      price:         String(itin.price),
+      currency:      itin.currency || 'EUR',
+      isRoundTrip:   !!returnSlice,
+      returnItinerary: returnSlice,
+      source:        'kiwi',
+    };
+  }).filter(Boolean);
+}
+
+/**
+ * Helper: Format Duffel API response to normalized shape
+ * Duffel structure: { data: { offers: [...] } }
+ * Each offer has slices[] → segments[]
+ */
+function formatDuffelFlights(duffelResponse) {
+  const offers = duffelResponse?.data?.offers || duffelResponse?.offers || [];
+
+  return offers.map((offer, index) => {
+    const slices = offer.slices || [];
+    if (!slices.length) return null;
+
+    const buildSlice = (slice) => {
+      const segments = slice.segments || [];
+      if (!segments.length) return null;
+      const first = segments[0];
+      const last = segments[segments.length - 1];
+
+      return {
+        departure: { code: first.origin?.iata_code, terminal: first.origin_terminal || null },
+        arrival: { code: last.destination?.iata_code, terminal: last.destination_terminal || null },
+        departureTime: first.departing_at,
+        arrivalTime: last.arriving_at,
+        duration: slice.duration || null,
+        stops: segments.length - 1,
+        stopAirports: segments.slice(0, -1).map(s => s.destination?.iata_code),
+        aircraftCode: first.aircraft?.iata_code || 'N/A',
+        aircraftName: first.aircraft?.name || first.aircraft?.iata_code || 'N/A',
+        airline: first.marketing_carrier?.name || first.operating_carrier?.name || 'Unknown',
+        airlineIata: first.marketing_carrier?.iata_code || '',
+        flightNumber: `${first.marketing_carrier?.iata_code || ''}${first.marketing_carrier_flight_number || ''}`,
+        segments: segments.map(s => ({
+          departure: { code: s.origin?.iata_code, time: s.departing_at },
+          arrival: { code: s.destination?.iata_code, time: s.arriving_at },
+          airline: s.marketing_carrier?.name || s.operating_carrier?.name || 'Unknown',
+          airlineIata: s.marketing_carrier?.iata_code || '',
+          flightNumber: `${s.marketing_carrier?.iata_code || ''}${s.marketing_carrier_flight_number || ''}`,
+          aircraftCode: s.aircraft?.iata_code || 'N/A',
+          aircraftName: s.aircraft?.name || s.aircraft?.iata_code || 'N/A',
+          duration: s.duration || null,
+        })),
+      };
+    };
+
+    const outbound = buildSlice(slices[0]);
+    if (!outbound) return null;
+    const returnSlice = slices[1] ? buildSlice(slices[1]) : null;
+
+    // Enrich with local aircraft data
+    outbound.aircraft = aircraftData[outbound.aircraftCode] || classifyAircraftByCode(outbound.aircraftCode);
+    outbound.segments.forEach(s => {
+      s.aircraft = aircraftData[s.aircraftCode] || classifyAircraftByCode(s.aircraftCode);
+    });
+
+    return {
+      id: `duffel_${index}`,
+      departure: outbound.departure,
+      arrival: outbound.arrival,
+      aircraftCode: outbound.aircraftCode,
+      aircraftName: outbound.aircraftName,
+      aircraft: outbound.aircraft,
+      airline: outbound.airline,
+      airlineIata: outbound.airlineIata,
+      flightNumber: outbound.flightNumber,
+      departureTime: outbound.departureTime,
+      arrivalTime: outbound.arrivalTime,
+      duration: outbound.duration,
+      stops: outbound.stops,
+      stopAirports: outbound.stopAirports,
+      segments: outbound.segments,
+      price: offer.total_amount,
+      currency: offer.total_currency || 'EUR',
+      isRoundTrip: !!returnSlice,
+      returnItinerary: returnSlice,
+      source: 'duffel',
+    };
+  }).filter(Boolean);
 }
 
 /**
@@ -343,13 +535,12 @@ function extractAirlineIatas(amadeusResponse) {
  * Helper: Validate if the route is valid for the airline
  */
 function validateRoute(departureCode, arrivalCode, airlineCountry) {
-  const depCountry = airportToCountry[departureCode] || 'Unknown';
-  const arrCountry = airportToCountry[arrivalCode] || 'Unknown';
+  const depCountry = openFlights.getCountry(departureCode) || 'Unknown';
+  const arrCountry = openFlights.getCountry(arrivalCode) || 'Unknown';
 
   if (airlineCountry === 'United Kingdom') {
     return depCountry === 'United Kingdom' || arrCountry === 'United Kingdom';
   }
-  // Add more validations for other airlines if needed
   return true;
 }
 

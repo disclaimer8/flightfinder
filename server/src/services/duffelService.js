@@ -3,7 +3,7 @@ const axios = require('axios');
 // Duffel API configuration
 const DUFFEL_API_URL = 'https://api.duffel.com';
 const DUFFEL_API_KEY = process.env.DUFFEL_API_KEY;
-const DUFFEL_VERSION = '2021-10-15'; // Using a specific stable API version date
+const DUFFEL_VERSION = 'v2';
 
 if (!DUFFEL_API_KEY) {
   console.warn('⚠️  DUFFEL_API_KEY is not configured. Live searches will fail.');

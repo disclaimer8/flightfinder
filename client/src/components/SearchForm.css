@@ -206,8 +206,51 @@
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .search-form-container {
     padding: 1rem;
   }
+}
+
+/* ── Dev API toggle (only visible in development) ── */
+.dev-api-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #fffbeb;
+  border: 1px dashed #f59e0b;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.dev-label {
+  font-size: 0.75rem;
+  color: #92400e;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dev-api-btn {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  border: 1px solid #d97706;
+  border-radius: 5px;
+  background: transparent;
+  color: #92400e;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.dev-api-btn.active {
+  background: #f59e0b;
+  color: white;
+  border-color: #d97706;
+}
+
+.dev-api-btn:hover:not(.active) {
+  background: #fef3c7;
 }

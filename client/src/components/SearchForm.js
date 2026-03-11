@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import './SearchForm.css';
 
+const IS_DEV = import.meta.env.DEV;
+
 function SearchForm({ onSearch, onExplore, filterOptions }) {
   const [mode, setMode] = useState('search'); // 'search' | 'explore'
   const [tripType, setTripType] = useState('one-way');
+  const [apiProvider, setApiProvider] = useState('amadeus'); // 'amadeus' | 'duffel'
   const [filters, setFilters] = useState({
     departure: '',
     arrival: '',
@@ -46,7 +49,11 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
         aircraftModel: filters.aircraftModel,
       });
     } else {
-      onSearch({ ...filters, returnDate: tripType === 'round-trip' ? filters.returnDate : '' });
+      onSearch({
+        ...filters,
+        returnDate: tripType === 'round-trip' ? filters.returnDate : '',
+        api: IS_DEV ? apiProvider : undefined,
+      });
     }
   };
 
@@ -204,6 +211,22 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
             </select>
           </div>
         </div>
+
+        {IS_DEV && mode === 'search' && (
+          <div className="dev-api-toggle">
+            <span className="dev-label">⚙️ API:</span>
+            {['amadeus', 'duffel', 'kiwi'].map(provider => (
+              <button
+                key={provider}
+                type="button"
+                className={`dev-api-btn ${apiProvider === provider ? 'active' : ''}`}
+                onClick={() => setApiProvider(provider)}
+              >
+                {provider}
+              </button>
+            ))}
+          </div>
+        )}
 
         <button type="submit" className="btn-search" disabled={isSearchDisabled}>
           {mode === 'explore' ? '🌍 Find Destinations' : 'Search Flights'}
