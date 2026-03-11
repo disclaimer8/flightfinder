@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './FlightCard.css';
+import BookingModal from './BookingModal';
 
 function formatTime(isoString) {
   if (!isoString) return '—';
@@ -76,8 +77,24 @@ function ItineraryRow({ itinerary, label }) {
   );
 }
 
+function buildKayakUrl(flight) {
+  const dep = flight.departure?.code;
+  const arr = flight.arrival?.code;
+  const date = flight.departureTime ? flight.departureTime.slice(0, 10) : '';
+  if (!dep || !arr || !date) return null;
+  if (flight.isRoundTrip && flight.returnItinerary?.departureTime) {
+    const ret = flight.returnItinerary.departureTime.slice(0, 10);
+    return `https://www.kayak.com/flights/${dep}-${arr}/${date}/${ret}/1adults`;
+  }
+  return `https://www.kayak.com/flights/${dep}-${arr}/${date}/1adults`;
+}
+
 function FlightCard({ flight }) {
   const { aircraft } = flight;
+  const [showBooking, setShowBooking] = useState(false);
+
+  const isDuffel = flight.source === 'duffel';
+  const kayakUrl = buildKayakUrl(flight);
 
   const outboundItinerary = {
     departure: flight.departure,
@@ -91,6 +108,7 @@ function FlightCard({ flight }) {
   };
 
   return (
+    <>
     <div className="flight-card">
       <div className="flight-header">
         <div className="airline-info">
@@ -141,9 +159,20 @@ function FlightCard({ flight }) {
           </div>
         </div>
 
-        <button className="btn-book">Book</button>
+        {isDuffel ? (
+          <button className="btn-book" onClick={() => setShowBooking(true)}>Book</button>
+        ) : kayakUrl ? (
+          <a className="btn-book" href={kayakUrl} target="_blank" rel="noopener noreferrer">Search</a>
+        ) : (
+          <button className="btn-book" disabled>Book</button>
+        )}
       </div>
     </div>
+
+    {showBooking && (
+      <BookingModal flight={flight} onClose={() => setShowBooking(false)} />
+    )}
+    </>
   );
 }
 

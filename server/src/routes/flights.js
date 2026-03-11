@@ -11,4 +11,7 @@ router.get('/filter-options', flightController.getFilterOptions);
 // GET /api/flights/explore?departure=LIS&date=2026-03-15&aircraftType=wide-body
 router.get('/explore', flightController.exploreDestinations);
 
+// POST /api/flights/book
+router.post('/book', flightController.bookFlight);
+
 module.exports = router;

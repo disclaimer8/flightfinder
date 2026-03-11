@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './SearchForm.css';
+import DatePicker from './DatePicker';
 
 const IS_DEV = import.meta.env.DEV;
 
@@ -136,28 +137,22 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
         </div>
 
         <div className="form-row">
-          <div className="form-group">
-            <label>Departure Date</label>
-            <input
-              type="date"
-              name="date"
-              value={filters.date}
-              onChange={handleChange}
-              min={getTomorrowDate()}
-            />
-          </div>
+          <DatePicker
+            label="Departure Date"
+            value={filters.date}
+            onChange={(v) => setFilters(prev => ({ ...prev, date: v }))}
+            min={getTomorrowDate()}
+            placeholder="Select departure date"
+          />
 
           {mode === 'search' && tripType === 'round-trip' && (
-            <div className="form-group">
-              <label>Return Date</label>
-              <input
-                type="date"
-                name="returnDate"
-                value={filters.returnDate}
-                onChange={handleChange}
-                min={filters.date || getTomorrowDate()}
-              />
-            </div>
+            <DatePicker
+              label="Return Date"
+              value={filters.returnDate}
+              onChange={(v) => setFilters(prev => ({ ...prev, returnDate: v }))}
+              min={filters.date || getTomorrowDate()}
+              placeholder="Select return date"
+            />
           )}
 
           {mode === 'search' && (

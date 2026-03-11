@@ -436,6 +436,8 @@ function formatDuffelFlights(duffelResponse) {
 
     return {
       id: `duffel_${index}`,
+      offerId: offer.id,
+      passengerIds: (offer.passengers || []).map(p => p.id),
       departure: outbound.departure,
       arrival: outbound.arrival,
       aircraftCode: outbound.aircraftCode,
@@ -800,6 +802,57 @@ function getMockFlights(departure, arrival) {
 
   return results;
 }
+
+/**
+ * POST /api/flights/book
+ * Book a Duffel offer and return order confirmation
+ */
+exports.bookFlight = async (req, res) => {
+  const { offerId, passengerIds, passengerInfo, currency = 'EUR', totalAmount } = req.body;
+
+  if (!offerId) return res.status(400).json({ success: false, message: 'offerId is required' });
+  if (!passengerInfo?.length) return res.status(400).json({ success: false, message: 'passengerInfo is required' });
+  if (!process.env.DUFFEL_API_KEY) return res.status(400).json({ success: false, message: 'Duffel API not configured' });
+
+  try {
+    const passengers = (passengerIds || []).map((id, i) => {
+      const p = passengerInfo[i] || passengerInfo[0];
+      return {
+        id,
+        title: p.title || 'mr',
+        given_name: p.firstName,
+        family_name: p.lastName,
+        born_on: p.dateOfBirth,
+        email: p.email,
+        gender: p.gender,
+        phone_number: p.phone || '+10000000000',
+        type: 'adult',
+      };
+    });
+
+    const orderData = {
+      selected_offers: [offerId],
+      passengers,
+      payments: [{ type: 'balance', amount: totalAmount, currency }],
+    };
+
+    const result = await duffelService.createOrder(orderData);
+    const order = result.data;
+
+    res.json({
+      success: true,
+      data: {
+        orderId: order.id,
+        bookingReference: order.booking_reference,
+        status: order.payment_status?.awaiting_payment ? 'awaiting_payment' : 'confirmed',
+        documents: order.documents || [],
+      },
+    });
+  } catch (error) {
+    console.error('Booking error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 /**
  * Helper: Get next available date (next day)

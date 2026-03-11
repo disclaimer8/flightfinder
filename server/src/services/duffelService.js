@@ -87,13 +87,15 @@ exports.getOffers = async (offerRequestId) => {
  */
 exports.createOrder = async (offerData) => {
   try {
-    const response = await duffelClient.post('/orders', {
+    const response = await duffelClient.post('/air/orders', {
       data: offerData
     });
     return response.data;
   } catch (error) {
+    const duffelErrors = error.response?.data?.errors;
+    const detail = duffelErrors ? duffelErrors.map(e => e.message).join('; ') : error.message;
     console.error('Duffel API Error:', error.response?.data || error.message);
-    throw new Error(`Failed to create order: ${error.message}`);
+    throw new Error(detail);
   }
 };
 
