@@ -3,15 +3,21 @@ const Amadeus = require('amadeus');
 const AMADEUS_CLIENT_ID = process.env.AMADEUS_CLIENT_ID;
 const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
 
+let amadeus = null;
+
 if (!AMADEUS_CLIENT_ID || !AMADEUS_CLIENT_SECRET) {
   console.warn('⚠️  AMADEUS_CLIENT_ID or AMADEUS_CLIENT_SECRET is not configured. Live searches will fail.');
+} else {
+  try {
+    amadeus = new Amadeus({
+      clientId: AMADEUS_CLIENT_ID,
+      clientSecret: AMADEUS_CLIENT_SECRET,
+      hostname: process.env.NODE_ENV === 'production' ? 'production' : 'test'
+    });
+  } catch (err) {
+    console.warn('⚠️  Failed to initialize Amadeus client:', err.message);
+  }
 }
-
-const amadeus = new Amadeus({
-  clientId: AMADEUS_CLIENT_ID,
-  clientSecret: AMADEUS_CLIENT_SECRET,
-  hostname: process.env.NODE_ENV === 'production' ? 'production' : 'test'
-});
 
 /**
  * Search for flights using Amadeus Flight Offers Search API
@@ -22,6 +28,7 @@ const amadeus = new Amadeus({
  * @param {number} params.passengers        - Number of adult passengers
  */
 exports.searchFlights = async (params) => {
+  if (!amadeus) throw new Error('Amadeus API is not configured');
   const query = {
     originLocationCode: params.departure_airport,
     destinationLocationCode: params.arrival_airport,
