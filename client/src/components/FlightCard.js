@@ -63,6 +63,11 @@ function ItineraryRow({ itinerary, label }) {
           {(segments || []).map((seg, i) => (
             <span key={i} className="segment-pill">
               {seg.departure.code}→{seg.arrival.code} · {seg.flightNumber} · {seg.duration}
+              {seg.aircraft?.name
+                ? ` · ${seg.aircraft.name}`
+                : seg.aircraftCode && seg.aircraftCode !== 'N/A'
+                  ? ` · ${seg.aircraftCode}`
+                  : ''}
             </span>
           ))}
         </div>

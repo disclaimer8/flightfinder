@@ -10,7 +10,7 @@ if (!AMADEUS_CLIENT_ID || !AMADEUS_CLIENT_SECRET) {
 const amadeus = new Amadeus({
   clientId: AMADEUS_CLIENT_ID,
   clientSecret: AMADEUS_CLIENT_SECRET,
-  hostname: 'test' // Use 'production' when you go live
+  hostname: process.env.NODE_ENV === 'production' ? 'production' : 'test'
 });
 
 /**

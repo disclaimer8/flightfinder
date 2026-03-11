@@ -1,0 +1,274 @@
+.explore-results {
+  margin: 2rem 0;
+}
+
+.explore-empty {
+  text-align: center;
+  color: rgba(255,255,255,0.75);
+  padding: 3rem 1rem;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+/* ── Header ── */
+.explore-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.explore-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.explore-count {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+}
+
+.explore-aircraft-tag {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 20px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.explore-from {
+  color: rgba(255,255,255,0.75);
+  font-size: 0.9rem;
+}
+
+.explore-sort {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* sort-btn is already defined in FlightResults.css — reuse it */
+.explore-sort .sort-btn {
+  padding: 0.35rem 0.85rem;
+  border: 1.5px solid rgba(255,255,255,0.35);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.85);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.explore-sort .sort-btn:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+.explore-sort .sort-btn.active {
+  background: white;
+  color: #667eea;
+  border-color: white;
+  font-weight: 700;
+}
+
+/* ── Grid ── */
+.destination-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+/* ── Card ── */
+.destination-card {
+  background: white;
+  border-radius: 14px;
+  padding: 1.1rem 1.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: box-shadow 0.2s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.destination-card:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+  transform: translateY(-2px);
+}
+
+.destination-card.cheapest {
+  border: 2px solid #667eea;
+}
+
+.cheapest-tag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #667eea;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-bottom-left-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Top row: flag + city + code ── */
+.dest-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.dest-flag {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.dest-name {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.dest-city {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dest-country {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.dest-code {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #bbb;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+/* ── Price ── */
+.dest-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.price-label {
+  font-size: 0.75rem;
+  color: #aaa;
+  order: -1;
+}
+
+.price-amount {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #667eea;
+  line-height: 1;
+}
+
+/* ── Flight info ── */
+.dest-flight {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.dest-times {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.dest-arrow {
+  color: #ccc;
+  font-weight: 400;
+}
+
+.dest-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dest-duration {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* reuse badges from FlightCard */
+.nonstop-badge {
+  font-size: 0.7rem;
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.stops-badge {
+  font-size: 0.7rem;
+  background: #fff3e0;
+  color: #e65100;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+/* ── Footer: airline + aircraft ── */
+.dest-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.dest-airline {
+  font-size: 0.82rem;
+  color: #555;
+  font-weight: 500;
+}
+
+.dest-aircraft {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.dest-aircraft.type-wide-body  { color: #7b1fa2; }
+.dest-aircraft.type-jet        { color: #3d5afe; }
+.dest-aircraft.type-regional   { color: #f57f17; }
+.dest-aircraft.type-turboprop  { color: #2e7d32; }
+
+@media (max-width: 600px) {
+  .destination-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 400px) {
+  .destination-grid {
+    grid-template-columns: 1fr;
+  }
+}

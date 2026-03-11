@@ -1,0 +1,158 @@
+.filters-panel {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  width: 240px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  position: sticky;
+  top: 1rem;
+}
+
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.filters-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #222;
+}
+
+.filters-reset {
+  font-size: 0.78rem;
+  color: #667eea;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+}
+
+.filters-reset:hover {
+  text-decoration: underline;
+}
+
+/* ── Section ── */
+.filter-section {
+  border-top: 1px solid #f0f0f0;
+  padding: 1rem 0 0.5rem;
+}
+
+.filter-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #888;
+  margin: 0 0 0.6rem;
+}
+
+/* ── Checkboxes ── */
+.filter-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #333;
+}
+
+.filter-check input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #667eea;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.check-label {
+  flex: 1;
+}
+
+.check-count {
+  font-size: 0.75rem;
+  color: #bbb;
+  margin-left: auto;
+}
+
+/* ── Price slider ── */
+.price-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.price-slider {
+  width: 100%;
+  accent-color: #667eea;
+  cursor: pointer;
+}
+
+.price-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.price-current {
+  font-weight: 600;
+  color: #667eea;
+}
+
+/* ── Time slots ── */
+.time-slots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.time-slot-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.3rem;
+  border: 1.5px solid #e8e8e8;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  gap: 1px;
+}
+
+.time-slot-btn:hover {
+  border-color: #667eea;
+}
+
+.time-slot-btn.active {
+  border-color: #667eea;
+  background: #f0f2ff;
+}
+
+.ts-icon {
+  font-size: 1rem;
+}
+
+.ts-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.ts-sub {
+  font-size: 0.62rem;
+  color: #aaa;
+}
+
+@media (max-width: 768px) {
+  .filters-panel {
+    width: 100%;
+    position: static;
+  }
+}

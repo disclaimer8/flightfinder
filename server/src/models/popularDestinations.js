@@ -1,0 +1,51 @@
+// Popular global destinations for "Explore" mode
+// Used to fan-out searches when no destination is specified
+module.exports = [
+  // Europe
+  { code: 'LHR', city: 'London',      country: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'CDG', city: 'Paris',        country: 'France',          flag: '🇫🇷' },
+  { code: 'AMS', city: 'Amsterdam',    country: 'Netherlands',     flag: '🇳🇱' },
+  { code: 'FRA', city: 'Frankfurt',    country: 'Germany',         flag: '🇩🇪' },
+  { code: 'MUC', city: 'Munich',       country: 'Germany',         flag: '🇩🇪' },
+  { code: 'MAD', city: 'Madrid',       country: 'Spain',           flag: '🇪🇸' },
+  { code: 'BCN', city: 'Barcelona',    country: 'Spain',           flag: '🇪🇸' },
+  { code: 'FCO', city: 'Rome',         country: 'Italy',           flag: '🇮🇹' },
+  { code: 'MXP', city: 'Milan',        country: 'Italy',           flag: '🇮🇹' },
+  { code: 'ZRH', city: 'Zurich',       country: 'Switzerland',     flag: '🇨🇭' },
+  { code: 'VIE', city: 'Vienna',       country: 'Austria',         flag: '🇦🇹' },
+  { code: 'BRU', city: 'Brussels',     country: 'Belgium',         flag: '🇧🇪' },
+  { code: 'CPH', city: 'Copenhagen',   country: 'Denmark',         flag: '🇩🇰' },
+  { code: 'ARN', city: 'Stockholm',    country: 'Sweden',          flag: '🇸🇪' },
+  { code: 'OSL', city: 'Oslo',         country: 'Norway',          flag: '🇳🇴' },
+  { code: 'HEL', city: 'Helsinki',     country: 'Finland',         flag: '🇫🇮' },
+  { code: 'DUB', city: 'Dublin',       country: 'Ireland',         flag: '🇮🇪' },
+  { code: 'ATH', city: 'Athens',       country: 'Greece',          flag: '🇬🇷' },
+  { code: 'LIS', city: 'Lisbon',       country: 'Portugal',        flag: '🇵🇹' },
+  { code: 'WAW', city: 'Warsaw',       country: 'Poland',          flag: '🇵🇱' },
+  { code: 'PRG', city: 'Prague',       country: 'Czech Republic',  flag: '🇨🇿' },
+  { code: 'BUD', city: 'Budapest',     country: 'Hungary',         flag: '🇭🇺' },
+  { code: 'OPO', city: 'Porto',        country: 'Portugal',        flag: '🇵🇹' },
+  // Middle East & Africa
+  { code: 'IST', city: 'Istanbul',     country: 'Turkey',          flag: '🇹🇷' },
+  { code: 'DXB', city: 'Dubai',        country: 'UAE',             flag: '🇦🇪' },
+  { code: 'DOH', city: 'Doha',         country: 'Qatar',           flag: '🇶🇦' },
+  { code: 'CAI', city: 'Cairo',        country: 'Egypt',           flag: '🇪🇬' },
+  { code: 'CMN', city: 'Casablanca',   country: 'Morocco',         flag: '🇲🇦' },
+  // North America
+  { code: 'JFK', city: 'New York',     country: 'United States',   flag: '🇺🇸' },
+  { code: 'ORD', city: 'Chicago',      country: 'United States',   flag: '🇺🇸' },
+  { code: 'LAX', city: 'Los Angeles',  country: 'United States',   flag: '🇺🇸' },
+  { code: 'MIA', city: 'Miami',        country: 'United States',   flag: '🇺🇸' },
+  { code: 'BOS', city: 'Boston',       country: 'United States',   flag: '🇺🇸' },
+  { code: 'YYZ', city: 'Toronto',      country: 'Canada',          flag: '🇨🇦' },
+  { code: 'MEX', city: 'Mexico City',  country: 'Mexico',          flag: '🇲🇽' },
+  // Asia & Pacific
+  { code: 'SIN', city: 'Singapore',    country: 'Singapore',       flag: '🇸🇬' },
+  { code: 'NRT', city: 'Tokyo',        country: 'Japan',           flag: '🇯🇵' },
+  { code: 'HKG', city: 'Hong Kong',    country: 'Hong Kong',       flag: '🇭🇰' },
+  { code: 'BKK', city: 'Bangkok',      country: 'Thailand',        flag: '🇹🇭' },
+  { code: 'SYD', city: 'Sydney',       country: 'Australia',       flag: '🇦🇺' },
+  // South America
+  { code: 'GRU', city: 'São Paulo',    country: 'Brazil',          flag: '🇧🇷' },
+  { code: 'EZE', city: 'Buenos Aires', country: 'Argentina',       flag: '🇦🇷' },
+];

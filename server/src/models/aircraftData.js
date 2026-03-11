@@ -238,4 +238,32 @@ module.exports = {
   '788': { name: 'Boeing 787-8', manufacturer: 'Boeing', type: 'wide-body', capacity: 248, range: 13621, cruiseSpeed: 956 },
   '789': { name: 'Boeing 787-9', manufacturer: 'Boeing', type: 'wide-body', capacity: 296, range: 14140, cruiseSpeed: 956 },
   '78J': { name: 'Boeing 787-10', manufacturer: 'Boeing', type: 'wide-body', capacity: 336, range: 11910, cruiseSpeed: 956 },
+
+  // Airbus A220 family (formerly Bombardier C Series)
+  '221': { name: 'Airbus A220-100', manufacturer: 'Airbus', type: 'regional', capacity: 135, range: 5920, cruiseSpeed: 871 },
+  '223': { name: 'Airbus A220-300', manufacturer: 'Airbus', type: 'regional', capacity: 160, range: 6300, cruiseSpeed: 871 },
+  'BCS1': { name: 'Airbus A220-100', manufacturer: 'Airbus', type: 'regional', capacity: 135, range: 5920, cruiseSpeed: 871 },
+  'BCS3': { name: 'Airbus A220-300', manufacturer: 'Airbus', type: 'regional', capacity: 160, range: 6300, cruiseSpeed: 871 },
+  'CS1': { name: 'Airbus A220-100', manufacturer: 'Airbus', type: 'regional', capacity: 135, range: 5920, cruiseSpeed: 871 },
+  'CS3': { name: 'Airbus A220-300', manufacturer: 'Airbus', type: 'regional', capacity: 160, range: 6300, cruiseSpeed: 871 },
+
+  // Boeing 737 variants
+  '73J': { name: 'Boeing 737-900ER', manufacturer: 'Boeing', type: 'jet', capacity: 220, range: 5460, cruiseSpeed: 903 },
+  '73C': { name: 'Boeing 737-300', manufacturer: 'Boeing', type: 'jet', capacity: 149, range: 4400, cruiseSpeed: 903 },
+  '73W': { name: 'Boeing 737-700', manufacturer: 'Boeing', type: 'jet', capacity: 149, range: 5000, cruiseSpeed: 903 },
+  '7M7': { name: 'Boeing 737 MAX 7', manufacturer: 'Boeing', type: 'jet', capacity: 172, range: 7130, cruiseSpeed: 903 },
+
+  // Embraer E-jet E2 family
+  'E7W': { name: 'Embraer E175-E2', manufacturer: 'Embraer', type: 'regional', capacity: 80, range: 4260, cruiseSpeed: 870 },
+  'E9W': { name: 'Embraer E190-E2', manufacturer: 'Embraer', type: 'regional', capacity: 114, range: 5278, cruiseSpeed: 870 },
+  'E9X': { name: 'Embraer E195-E2', manufacturer: 'Embraer', type: 'regional', capacity: 146, range: 4206, cruiseSpeed: 870 },
+  'E75L': { name: 'Embraer E175-E2', manufacturer: 'Embraer', type: 'regional', capacity: 80, range: 4260, cruiseSpeed: 870 },
+
+  // Airbus A321 variants
+  '31X': { name: 'Airbus A321XLR', manufacturer: 'Airbus', type: 'jet', capacity: 244, range: 8700, cruiseSpeed: 903 },
+  '32T': { name: 'Airbus A321neo (LR)', manufacturer: 'Airbus', type: 'jet', capacity: 206, range: 7400, cruiseSpeed: 903 },
+
+  // Misc
+  'SU9': { name: 'Sukhoi Superjet 100', manufacturer: 'Sukhoi', type: 'regional', capacity: 98, range: 4578, cruiseSpeed: 830 },
+  'AN4': { name: 'Antonov AN-148', manufacturer: 'Antonov', type: 'regional', capacity: 75, range: 4400, cruiseSpeed: 835 },
 };

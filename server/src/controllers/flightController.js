@@ -1,5 +1,6 @@
 const { airportToCountry } = require('../models/airportData');
 const aircraftData = require('../models/aircraftData');
+const popularDestinations = require('../models/popularDestinations');
 const airlabsService = require('../services/airlabsService');
 const amadeusService = require('../services/amadeusService');
 
@@ -147,6 +148,89 @@ exports.getFilterOptions = async (req, res) => {
 };
 
 /**
+ * Explore destinations reachable on a specific aircraft type/model
+ * GET /api/flights/explore?departure=LIS&date=2026-03-15&aircraftType=wide-body&aircraftModel=789
+ */
+exports.exploreDestinations = async (req, res) => {
+  const { departure, date, aircraftType, aircraftModel } = req.query;
+
+  if (!departure) {
+    return res.status(400).json({ success: false, message: 'departure is required' });
+  }
+
+  const depCode = departure.toUpperCase();
+  const searchDate = date || getNextDate();
+
+  // Filter out the departure airport itself
+  const candidates = popularDestinations.filter(d => d.code !== depCode);
+
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  const results = [];
+  const BATCH_SIZE = 4;
+
+  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+    const batch = candidates.slice(i, i + BATCH_SIZE);
+
+    const batchResults = await Promise.allSettled(
+      batch.map(async (dest) => {
+        try {
+          const raw = await amadeusService.searchFlights({
+            departure_airport: depCode,
+            arrival_airport: dest.code,
+            departure_date: searchDate,
+            passengers: 1,
+          });
+
+          const flights = formatAmadeusFlights(raw);
+          if (!flights.length) return null;
+
+          // Enrich aircraft data
+          await enrichWithAircraftData(flights, []);
+
+          // Filter by aircraft criteria
+          const matching = flights.filter(f => {
+            if (aircraftModel) return f.aircraftCode === aircraftModel.toUpperCase();
+            if (aircraftType) return f.aircraft?.type === aircraftType.toLowerCase();
+            return true;
+          });
+
+          if (!matching.length) return null;
+
+          // Return cheapest matching flight
+          const best = matching.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
+
+          return {
+            destination: dest,
+            price: best.price,
+            currency: best.currency,
+            duration: best.duration,
+            stops: best.stops ?? 0,
+            airline: best.airline,
+            aircraftCode: best.aircraftCode,
+            aircraftName: best.aircraft?.name || best.aircraftCode,
+            aircraftType: best.aircraft?.type || 'jet',
+            departureTime: best.departureTime,
+            arrivalTime: best.arrivalTime,
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    batchResults.forEach(r => {
+      if (r.status === 'fulfilled' && r.value) results.push(r.value);
+    });
+
+    // Small pause between batches to respect API rate limits
+    if (i + BATCH_SIZE < candidates.length) await delay(200);
+  }
+
+  res.json({ success: true, count: results.length, data: results });
+};
+
+/**
  * Build a normalized itinerary object from an Amadeus itinerary + dictionaries
  */
 function buildItinerary(itinerary, carriers, aircraftDict) {
@@ -177,6 +261,7 @@ function buildItinerary(itinerary, carriers, aircraftDict) {
       airlineIata: s.carrierCode,
       flightNumber: `${s.carrierCode}${s.number}`,
       aircraftCode: s.aircraft?.code || 'N/A',
+      aircraftName: aircraftDict[s.aircraft?.code] || s.aircraft?.code || 'N/A',
       duration: amadeusService.parseDuration(s.duration),
     })),
   };
@@ -301,17 +386,19 @@ async function enrichWithAirlineData(flights, airlineIatas) {
 async function enrichWithAircraftData(flights, aircraftIatas) {
   const hasAirlabsKey = process.env.AIRLABS_API_KEY && process.env.AIRLABS_API_KEY !== 'your_airlabs_api_key_here';
 
-  flights.forEach(flight => {
-    const code = flight.aircraftCode;
-    
-    // First try local aircraft database
-    if (aircraftData[code]) {
-      flight.aircraft = aircraftData[code];
-      return;
-    }
+  const resolveAircraft = (code) => aircraftData[code] || classifyAircraftByCode(code);
 
-    // Then try to map common aircraft codes to types
-    flight.aircraft = classifyAircraftByCode(code);
+  flights.forEach(flight => {
+    flight.aircraft = resolveAircraft(flight.aircraftCode);
+
+    // Enrich each segment with aircraft data
+    const enrichSegments = (segments) => {
+      (segments || []).forEach(seg => {
+        seg.aircraft = resolveAircraft(seg.aircraftCode);
+      });
+    };
+    enrichSegments(flight.segments);
+    enrichSegments(flight.returnItinerary?.segments);
   });
 
   // If AirLabs is available, try to fetch live data for unknown aircraft
@@ -319,9 +406,12 @@ async function enrichWithAircraftData(flights, aircraftIatas) {
     try {
       const liveData = await airlabsService.getMultipleAircraft(aircraftIatas);
       flights.forEach(flight => {
-        if (!aircraftData[flight.aircraftCode] && liveData[flight.aircraftCode]) {
-          flight.aircraft = liveData[flight.aircraftCode];
-        }
+        const applyLive = (code, target) => {
+          if (!aircraftData[code] && liveData[code]) target.aircraft = liveData[code];
+        };
+        applyLive(flight.aircraftCode, flight);
+        (flight.segments || []).forEach(seg => applyLive(seg.aircraftCode, seg));
+        (flight.returnItinerary?.segments || []).forEach(seg => applyLive(seg.aircraftCode, seg));
       });
     } catch (error) {
       console.warn('AirLabs enrichment failed, using local data:', error.message);

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './SearchForm.css';
 
-function SearchForm({ onSearch, filterOptions }) {
+function SearchForm({ onSearch, onExplore, filterOptions }) {
+  const [mode, setMode] = useState('search'); // 'search' | 'explore'
   const [tripType, setTripType] = useState('one-way');
   const [filters, setFilters] = useState({
     departure: '',
@@ -37,31 +38,70 @@ function SearchForm({ onSearch, filterOptions }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSearch({ ...filters, returnDate: tripType === 'round-trip' ? filters.returnDate : '' });
+    if (mode === 'explore') {
+      onExplore({
+        departure: filters.departure,
+        date: filters.date,
+        aircraftType: filters.aircraftType,
+        aircraftModel: filters.aircraftModel,
+      });
+    } else {
+      onSearch({ ...filters, returnDate: tripType === 'round-trip' ? filters.returnDate : '' });
+    }
   };
 
   const handleFilterByType = (type) => {
     setFilters(prev => ({ ...prev, aircraftType: type, aircraftModel: '' }));
   };
 
+  const isSearchDisabled = mode === 'search'
+    ? (!filters.departure || !filters.arrival || (tripType === 'round-trip' && !filters.returnDate))
+    : (!filters.departure || (!filters.aircraftType && !filters.aircraftModel));
+
   return (
     <div className="search-form-container">
-      <div className="trip-type-toggle">
+      {/* Mode toggle */}
+      <div className="mode-toggle">
         <button
           type="button"
-          className={`trip-btn ${tripType === 'one-way' ? 'active' : ''}`}
-          onClick={() => handleTripType('one-way')}
+          className={`mode-btn ${mode === 'search' ? 'active' : ''}`}
+          onClick={() => setMode('search')}
         >
-          One Way
+          🔍 Search Route
         </button>
         <button
           type="button"
-          className={`trip-btn ${tripType === 'round-trip' ? 'active' : ''}`}
-          onClick={() => handleTripType('round-trip')}
+          className={`mode-btn ${mode === 'explore' ? 'active' : ''}`}
+          onClick={() => setMode('explore')}
         >
-          Round Trip
+          🌍 Explore Destinations
         </button>
       </div>
+
+      {mode === 'search' && (
+        <div className="trip-type-toggle">
+          <button
+            type="button"
+            className={`trip-btn ${tripType === 'one-way' ? 'active' : ''}`}
+            onClick={() => handleTripType('one-way')}
+          >
+            One Way
+          </button>
+          <button
+            type="button"
+            className={`trip-btn ${tripType === 'round-trip' ? 'active' : ''}`}
+            onClick={() => handleTripType('round-trip')}
+          >
+            Round Trip
+          </button>
+        </div>
+      )}
+
+      {mode === 'explore' && (
+        <p className="explore-hint">
+          Pick a departure city and aircraft — we'll find every destination you can reach on it.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="search-form">
         <div className="form-row">
@@ -75,15 +115,17 @@ function SearchForm({ onSearch, filterOptions }) {
             </select>
           </div>
 
-          <div className="form-group">
-            <label>To</label>
-            <select name="arrival" value={filters.arrival} onChange={handleChange}>
-              <option value="">Select arrival city</option>
-              {filterOptions?.cities.map(city => (
-                <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
-              ))}
-            </select>
-          </div>
+          {mode === 'search' && (
+            <div className="form-group">
+              <label>To</label>
+              <select name="arrival" value={filters.arrival} onChange={handleChange}>
+                <option value="">Select arrival city</option>
+                {filterOptions?.cities.map(city => (
+                  <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="form-row">
@@ -98,7 +140,7 @@ function SearchForm({ onSearch, filterOptions }) {
             />
           </div>
 
-          {tripType === 'round-trip' && (
+          {mode === 'search' && tripType === 'round-trip' && (
             <div className="form-group">
               <label>Return Date</label>
               <input
@@ -111,22 +153,27 @@ function SearchForm({ onSearch, filterOptions }) {
             </div>
           )}
 
-          <div className="form-group">
-            <label>Passengers</label>
-            <input
-              type="number"
-              name="passengers"
-              value={filters.passengers}
-              onChange={handleChange}
-              min="1"
-              max="9"
-            />
-          </div>
+          {mode === 'search' && (
+            <div className="form-group">
+              <label>Passengers</label>
+              <input
+                type="number"
+                name="passengers"
+                value={filters.passengers}
+                onChange={handleChange}
+                min="1"
+                max="9"
+              />
+            </div>
+          )}
         </div>
 
         <div className="form-row">
           <div className="form-group">
-            <label>Aircraft Type</label>
+            <label>
+              Aircraft Type
+              {mode === 'explore' && <span className="field-required"> *</span>}
+            </label>
             <select name="aircraftType" value={filters.aircraftType} onChange={handleChange}>
               <option value="">All types</option>
               {filterOptions?.aircraftTypes.map(type => (
@@ -158,34 +205,28 @@ function SearchForm({ onSearch, filterOptions }) {
           </div>
         </div>
 
-        <button
-          type="submit"
-          className="btn-search"
-          disabled={
-            !filters.departure ||
-            !filters.arrival ||
-            (tripType === 'round-trip' && !filters.returnDate)
-          }
-        >
-          Search Flights
+        <button type="submit" className="btn-search" disabled={isSearchDisabled}>
+          {mode === 'explore' ? '🌍 Find Destinations' : 'Search Flights'}
         </button>
       </form>
 
-      <div className="quick-filters">
-        <p>Filter by type:</p>
-        <div className="filter-buttons">
-          {['turboprop', 'jet', 'regional', 'wide-body'].map(type => (
-            <button
-              key={type}
-              className={`badge ${filters.aircraftType === type ? 'active' : ''}`}
-              onClick={() => handleFilterByType(type)}
-            >
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </button>
-          ))}
-          <button className="badge clear" onClick={() => handleFilterByType('')}>Clear</button>
+      {mode === 'search' && (
+        <div className="quick-filters">
+          <p>Filter by type:</p>
+          <div className="filter-buttons">
+            {['turboprop', 'jet', 'regional', 'wide-body'].map(type => (
+              <button
+                key={type}
+                className={`badge ${filters.aircraftType === type ? 'active' : ''}`}
+                onClick={() => handleFilterByType(type)}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </button>
+            ))}
+            <button className="badge clear" onClick={() => handleFilterByType('')}>Clear</button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
