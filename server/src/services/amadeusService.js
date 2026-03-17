@@ -12,7 +12,7 @@ if (!AMADEUS_CLIENT_ID || !AMADEUS_CLIENT_SECRET) {
     amadeus = new Amadeus({
       clientId: AMADEUS_CLIENT_ID,
       clientSecret: AMADEUS_CLIENT_SECRET,
-      hostname: process.env.NODE_ENV === 'production' ? 'production' : 'test'
+      hostname: process.env.AMADEUS_ENV === 'production' ? 'production' : 'test'
     });
   } catch (err) {
     console.warn('⚠️  Failed to initialize Amadeus client:', err.message);
