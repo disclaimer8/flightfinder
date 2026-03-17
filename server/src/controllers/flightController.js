@@ -23,8 +23,8 @@ exports.searchFlights = async (req, res) => {
   const passengers   = vq.passengers   || parseInt(req.query.passengers, 10) || 1;
   const { useMockData, api } = req.query;
 
-  // Allow per-request API override in development only
-  const activeApi = (process.env.NODE_ENV !== 'production' && api) ? api : FLIGHT_API;
+  // Allow per-request API override unless explicitly locked via LOCK_FLIGHT_API=true
+  const activeApi = (process.env.LOCK_FLIGHT_API !== 'true' && api) ? api : FLIGHT_API;
 
   try {
     let flights = [];
