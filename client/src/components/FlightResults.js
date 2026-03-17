@@ -1,13 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import FlightCard from './FlightCard';
 import FlightFilters from './FlightFilters';
 import './FlightResults.css';
+
+const IS_DEV = import.meta.env.DEV;
 
 const SORT_OPTIONS = [
   { id: 'price_asc',  label: 'Cheapest' },
   { id: 'duration',   label: 'Quickest' },
   { id: 'departure',  label: 'Earliest' },
-  { id: 'price_desc', label: 'Most expensive' },
+  { id: 'arrival',    label: 'Latest dep.' },
 ];
 
 function parseDurationMins(str) {
@@ -71,6 +73,7 @@ function FlightResults({ flights, source }) {
         case 'price_desc': return parseFloat(b.price) - parseFloat(a.price);
         case 'duration':   return parseDurationMins(a.duration) - parseDurationMins(b.duration);
         case 'departure':  return new Date(a.departureTime) - new Date(b.departureTime);
+        case 'arrival':    return new Date(b.departureTime) - new Date(a.departureTime);
         default:           return 0;
       }
     });
@@ -82,7 +85,13 @@ function FlightResults({ flights, source }) {
     return (
       <div className="results-container">
         <div className="no-results">
-          <p>No flights found. Try adjusting your search criteria.</p>
+          <p>No flights found.</p>
+          <ul className="no-results-tips">
+            <li>Check that departure and arrival cities are different</li>
+            <li>Try a different date or nearby dates</li>
+            <li>Remove the aircraft type or model filter</li>
+            <li>Increase the number of passengers</li>
+          </ul>
         </div>
       </div>
     );
@@ -103,18 +112,19 @@ function FlightResults({ flights, source }) {
                 <span className="hidden-count"> · {hiddenCount} filtered out</span>
               )}
             </span>
-            {source && (
+            {IS_DEV && source && (
               <span className={`source-badge source-${source}`}>
-                {source === 'amadeus' ? '🌍 Amadeus' : source === 'duffel' ? '🌍 Duffel' : source === 'kiwi' ? '🌍 Kiwi' : '📋 Demo'}
+                {source === 'amadeus' ? 'Amadeus' : source === 'duffel' ? 'Duffel' : '📋 Demo'}
               </span>
             )}
           </div>
 
-          <div className="sort-bar">
+          <div className="sort-bar" role="group" aria-label="Sort flights by">
             {SORT_OPTIONS.map(opt => (
               <button
                 key={opt.id}
                 className={`sort-btn ${sortBy === opt.id ? 'active' : ''}`}
+                aria-pressed={sortBy === opt.id}
                 onClick={() => setSortBy(opt.id)}
               >
                 {opt.label}

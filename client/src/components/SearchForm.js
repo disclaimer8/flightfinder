@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './SearchForm.css';
 import DatePicker from './DatePicker';
 
 const IS_DEV = import.meta.env.DEV;
 
-function SearchForm({ onSearch, onExplore, filterOptions }) {
+function SearchForm({ onSearch, onExplore, filterOptions, prefillArrival, onPrefillUsed }) {
   const [mode, setMode] = useState('search'); // 'search' | 'explore'
   const [tripType, setTripType] = useState('one-way');
   const [apiProvider, setApiProvider] = useState('amadeus'); // 'amadeus' | 'duffel' (kiwi closed registration 2024)
@@ -21,6 +21,13 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
   useEffect(() => {
     setFilters(prev => ({ ...prev, date: getTomorrowDate() }));
   }, []);
+
+  useEffect(() => {
+    if (!prefillArrival) return;
+    setMode('search');
+    setFilters(prev => ({ ...prev, arrival: prefillArrival }));
+    onPrefillUsed?.();
+  }, [prefillArrival]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getTomorrowDate = () => {
     const d = new Date();
@@ -62,35 +69,58 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
     setFilters(prev => ({ ...prev, aircraftType: type, aircraftModel: '' }));
   };
 
-  const isSearchDisabled = mode === 'search'
-    ? (!filters.departure || !filters.arrival || (tripType === 'round-trip' && !filters.returnDate))
-    : (!filters.departure || (!filters.aircraftType && !filters.aircraftModel));
+  const sameCityError = mode === 'search'
+    && filters.departure
+    && filters.arrival
+    && filters.departure === filters.arrival;
+
+  const isSearchDisabled = sameCityError || (
+    mode === 'search'
+      ? (!filters.departure || !filters.arrival || (tripType === 'round-trip' && !filters.returnDate))
+      : (!filters.departure || (!filters.aircraftType && !filters.aircraftModel))
+  );
+
+  const disabledHint = (() => {
+    if (mode === 'search') {
+      if (sameCityError) return 'Departure and arrival cannot be the same city';
+      if (!filters.departure) return 'Select a departure city';
+      if (!filters.arrival) return 'Select an arrival city';
+      if (tripType === 'round-trip' && !filters.returnDate) return 'Select a return date';
+    } else {
+      if (!filters.departure) return 'Select a departure city';
+      if (!filters.aircraftType && !filters.aircraftModel) return 'Select an aircraft type or model';
+    }
+    return null;
+  })();
 
   return (
     <div className="search-form-container">
       {/* Mode toggle */}
-      <div className="mode-toggle">
+      <div className="mode-toggle" role="group" aria-label="Search mode">
         <button
           type="button"
           className={`mode-btn ${mode === 'search' ? 'active' : ''}`}
+          aria-pressed={mode === 'search'}
           onClick={() => setMode('search')}
         >
-          🔍 Search Route
+          <span aria-hidden="true">🔍</span> Search Route
         </button>
         <button
           type="button"
           className={`mode-btn ${mode === 'explore' ? 'active' : ''}`}
+          aria-pressed={mode === 'explore'}
           onClick={() => setMode('explore')}
         >
-          🌍 Explore Destinations
+          <span aria-hidden="true">🌍</span> Explore Destinations
         </button>
       </div>
 
       {mode === 'search' && (
-        <div className="trip-type-toggle">
+        <div className="trip-type-toggle" role="group" aria-label="Trip type">
           <button
             type="button"
             className={`trip-btn ${tripType === 'one-way' ? 'active' : ''}`}
+            aria-pressed={tripType === 'one-way'}
             onClick={() => handleTripType('one-way')}
           >
             One Way
@@ -98,6 +128,7 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
           <button
             type="button"
             className={`trip-btn ${tripType === 'round-trip' ? 'active' : ''}`}
+            aria-pressed={tripType === 'round-trip'}
             onClick={() => handleTripType('round-trip')}
           >
             Round Trip
@@ -114,8 +145,8 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
       <form onSubmit={handleSubmit} className="search-form">
         <div className="form-row">
           <div className="form-group">
-            <label>From</label>
-            <select name="departure" value={filters.departure} onChange={handleChange}>
+            <label htmlFor="sf-departure">From</label>
+            <select id="sf-departure" name="departure" value={filters.departure} onChange={handleChange}>
               <option value="">Select departure city</option>
               {filterOptions?.cities.map(city => (
                 <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
@@ -125,13 +156,26 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
 
           {mode === 'search' && (
             <div className="form-group">
-              <label>To</label>
-              <select name="arrival" value={filters.arrival} onChange={handleChange}>
+              <label htmlFor="sf-arrival">To</label>
+              <select
+                id="sf-arrival"
+                name="arrival"
+                value={filters.arrival}
+                onChange={handleChange}
+                className={sameCityError ? 'select-error' : ''}
+                aria-describedby={sameCityError ? 'sf-same-city-err' : undefined}
+                aria-invalid={sameCityError || undefined}
+              >
                 <option value="">Select arrival city</option>
                 {filterOptions?.cities.map(city => (
                   <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
                 ))}
               </select>
+              {sameCityError && (
+                <span id="sf-same-city-err" className="field-error" role="alert">
+                  Departure and arrival cannot be the same city
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -140,7 +184,11 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
           <DatePicker
             label="Departure Date"
             value={filters.date}
-            onChange={(v) => setFilters(prev => ({ ...prev, date: v }))}
+            onChange={(v) => setFilters(prev => ({
+              ...prev,
+              date: v,
+              returnDate: prev.returnDate && prev.returnDate <= v ? '' : prev.returnDate,
+            }))}
             min={getTomorrowDate()}
             placeholder="Select departure date"
           />
@@ -157,26 +205,30 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
 
           {mode === 'search' && (
             <div className="form-group">
-              <label>Passengers</label>
+              <label htmlFor="sf-passengers">Passengers</label>
               <input
+                id="sf-passengers"
                 type="number"
                 name="passengers"
                 value={filters.passengers}
                 onChange={handleChange}
                 min="1"
                 max="9"
+                aria-describedby="sf-passengers-hint"
               />
+              <span id="sf-passengers-hint" className="field-hint">1–9</span>
             </div>
           )}
         </div>
 
         <div className="form-row">
           <div className="form-group">
-            <label>
+            <label htmlFor="sf-aircraft-type">
               Aircraft Type
-              {mode === 'explore' && <span className="field-required"> *</span>}
+              {mode === 'explore' && <span className="field-required" aria-hidden="true"> *</span>}
+              {mode === 'explore' && <span className="sr-only"> (required)</span>}
             </label>
-            <select name="aircraftType" value={filters.aircraftType} onChange={handleChange}>
+            <select id="sf-aircraft-type" name="aircraftType" value={filters.aircraftType} onChange={handleChange}>
               <option value="">All types</option>
               {filterOptions?.aircraftTypes.map(type => (
                 <option key={type} value={type}>
@@ -187,12 +239,15 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
           </div>
 
           <div className="form-group">
-            <label>Aircraft Model</label>
+            <label htmlFor="sf-aircraft-model">Aircraft Model</label>
             <select
+              id="sf-aircraft-model"
               name="aircraftModel"
               value={filters.aircraftModel}
               onChange={handleChange}
               disabled={!filters.aircraftType}
+              title={!filters.aircraftType ? 'Select an Aircraft Type first' : undefined}
+              aria-describedby={!filters.aircraftType ? 'sf-model-hint' : undefined}
             >
               <option value="">All models</option>
               {filterOptions?.aircraft
@@ -204,6 +259,9 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
                 ))
               }
             </select>
+            {!filters.aircraftType && (
+              <span id="sf-model-hint" className="field-hint">Select a type above to filter models</span>
+            )}
           </div>
         </div>
 
@@ -223,19 +281,28 @@ function SearchForm({ onSearch, onExplore, filterOptions }) {
           </div>
         )}
 
-        <button type="submit" className="btn-search" disabled={isSearchDisabled}>
+        <button
+          type="submit"
+          className="btn-search"
+          disabled={isSearchDisabled}
+          aria-describedby={isSearchDisabled && disabledHint ? 'sf-submit-hint' : undefined}
+        >
           {mode === 'explore' ? '🌍 Find Destinations' : 'Search Flights'}
         </button>
+        {isSearchDisabled && disabledHint && (
+          <span id="sf-submit-hint" className="submit-hint">{disabledHint}</span>
+        )}
       </form>
 
       {mode === 'search' && (
         <div className="quick-filters">
           <p>Filter by type:</p>
-          <div className="filter-buttons">
+          <div className="filter-buttons" role="group" aria-label="Filter by aircraft type">
             {['turboprop', 'jet', 'regional', 'wide-body'].map(type => (
               <button
                 key={type}
                 className={`badge ${filters.aircraftType === type ? 'active' : ''}`}
+                aria-pressed={filters.aircraftType === type}
                 onClick={() => handleFilterByType(type)}
               >
                 {type.charAt(0).toUpperCase() + type.slice(1)}

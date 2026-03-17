@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './ExploreResults.css';
 
 const TYPE_ICONS = {
@@ -26,7 +26,12 @@ function formatTime(iso) {
   return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
-function ExploreResults({ results, departure, aircraft }) {
+function formatShortDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function ExploreResults({ results, departure, aircraft, onSelect }) {
   const [sortBy, setSortBy] = useState('price');
 
   if (!results || results.length === 0) {
@@ -54,7 +59,7 @@ function ExploreResults({ results, departure, aircraft }) {
           <span className="explore-count">{results.length} destinations</span>
           {aircraft && (
             <span className="explore-aircraft-tag">
-              {TYPE_ICONS[aircraft.type] || '✈️'} {aircraft.name || aircraft.type}
+              <span aria-hidden="true">{TYPE_ICONS[aircraft.type] || '✈️'}</span> {aircraft.name || aircraft.type}
             </span>
           )}
           <span className="explore-from">from <strong>{departure}</strong></span>
@@ -98,6 +103,9 @@ function ExploreResults({ results, departure, aircraft }) {
               </div>
 
               <div className="dest-flight">
+                {departureTime && (
+                  <span className="dest-date">{formatShortDate(departureTime)}</span>
+                )}
                 <div className="dest-times">
                   <span>{formatTime(departureTime)}</span>
                   <span className="dest-arrow">→</span>
@@ -115,9 +123,19 @@ function ExploreResults({ results, departure, aircraft }) {
               <div className="dest-footer">
                 <span className="dest-airline">{airline}</span>
                 <span className={`dest-aircraft type-${aircraftType}`}>
-                  {TYPE_ICONS[aircraftType] || '✈️'} {aircraftName}
+                  <span aria-hidden="true">{TYPE_ICONS[aircraftType] || '✈️'}</span> {aircraftName}
                 </span>
               </div>
+
+              {onSelect && (
+                <button
+                  className="dest-search-btn"
+                  onClick={() => onSelect(destination.code)}
+                  aria-label={`Search flights from ${departure} to ${destination.city}`}
+                >
+                  Search flights →
+                </button>
+              )}
             </div>
           );
         })}

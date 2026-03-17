@@ -3,7 +3,6 @@ const popularDestinations = require('../models/popularDestinations');
 const airlabsService = require('../services/airlabsService');
 const amadeusService = require('../services/amadeusService');
 const duffelService = require('../services/duffelService');
-const kiwiService = require('../services/kiwiService');
 const cacheService = require('../services/cacheService');
 const openFlights = require('../services/openFlightsService');
 
@@ -13,10 +12,19 @@ const FLIGHT_API = process.env.FLIGHT_API || 'amadeus'; // 'amadeus' | 'duffel'
  * Search flights with real API (Amadeus) or fallback to mock data
  */
 exports.searchFlights = async (req, res) => {
-  const { departure, arrival, date, returnDate, aircraftType, aircraftModel, passengers, useMockData, api } = req.query;
+  // Use validated + normalised values set by validate.searchQuery middleware
+  const vq = req.validatedQuery || {};
+  const departure    = vq.departure    || req.query.departure?.toUpperCase();
+  const arrival      = vq.arrival      || req.query.arrival?.toUpperCase();
+  const date         = vq.date         || req.query.date;
+  const returnDate   = vq.returnDate   || req.query.returnDate;
+  const aircraftType = vq.aircraftType || req.query.aircraftType;
+  const aircraftModel = vq.aircraftModel || req.query.aircraftModel;
+  const passengers   = vq.passengers   || parseInt(req.query.passengers, 10) || 1;
+  const { useMockData, api } = req.query;
 
-  // Allow per-request API override in development
-  const activeApi = (process.env.NODE_ENV === 'development' && api) ? api : FLIGHT_API;
+  // Allow per-request API override in development only
+  const activeApi = (process.env.NODE_ENV !== 'production' && api) ? api : FLIGHT_API;
 
   try {
     let flights = [];
@@ -24,14 +32,15 @@ exports.searchFlights = async (req, res) => {
 
     if (useRealAPI) {
       const searchParams = {
-        departure_airport: departure?.toUpperCase() || 'LIS',
-        arrival_airport: arrival?.toUpperCase() || 'NYC',
-        departure_date: date || getNextDate(),
-        passengers: parseInt(passengers) || 1,
-        return_date: returnDate || null
+        departure_airport: departure || 'LIS',
+        arrival_airport:   arrival   || 'NYC',
+        departure_date:    date      || getNextDate(),
+        passengers,
+        return_date: returnDate || null,
       };
 
-      const cacheKey = `flights:${activeApi}:${searchParams.departure_airport}:${searchParams.arrival_airport}:${searchParams.departure_date}:${searchParams.passengers}:${searchParams.return_date || ''}`;
+      // Use pre-sanitised cache key if available, else build from normalised values
+      const cacheKey = `flights:${activeApi}:${vq.sanitisedCacheKey || `${searchParams.departure_airport}:${searchParams.arrival_airport}:${searchParams.departure_date}:${passengers}:${returnDate || ''}`}`;
 
       try {
         const { data: cachedFlights, fromCache } = await cacheService.getOrFetch(cacheKey, async () => {
@@ -39,10 +48,6 @@ exports.searchFlights = async (req, res) => {
             console.log('Using Duffel API');
             const duffelResponse = await duffelService.searchFlights(searchParams);
             return formatDuffelFlights(duffelResponse);
-          } else if (activeApi === 'kiwi' && process.env.KIWI_API_KEY) {
-            console.log('Using Kiwi API');
-            const kiwiResponse = await kiwiService.searchFlights(searchParams);
-            return formatKiwiFlights(kiwiResponse);
           } else {
             console.log(`Using Amadeus API (activeApi=${activeApi})`);
             const amadeusResponse = await amadeusService.searchFlights(searchParams);
@@ -176,17 +181,22 @@ exports.getFilterOptions = async (req, res) => {
  * GET /api/flights/explore?departure=LIS&date=2026-03-15&aircraftType=wide-body&aircraftModel=789
  */
 exports.exploreDestinations = async (req, res) => {
-  const { departure, date, aircraftType, aircraftModel } = req.query;
+  // Use validated + normalised values from validate.exploreQuery middleware
+  const vq = req.validatedQuery || {};
+  const departure    = vq.departure    || req.query.departure?.toUpperCase();
+  const date         = vq.date         || req.query.date;
+  const aircraftType = vq.aircraftType || req.query.aircraftType;
+  const aircraftModel = vq.aircraftModel || req.query.aircraftModel;
 
   if (!departure) {
     return res.status(400).json({ success: false, message: 'departure is required' });
   }
 
-  const depCode = departure.toUpperCase();
+  const depCode    = departure;
   const searchDate = date || getNextDate();
 
-  // Check explore-level cache first (covers full fan-out result)
-  const exploreCacheKey = `explore:${depCode}:${searchDate}:${aircraftType || ''}:${aircraftModel || ''}`;
+  // Use pre-sanitised cache key
+  const exploreCacheKey = `explore:${vq.sanitisedCacheKey || `${depCode}:${searchDate}:${aircraftType || ''}:${aircraftModel || ''}`}`;
   const cachedExplore = cacheService.get(exploreCacheKey);
   if (cachedExplore) {
     return res.json({ success: true, count: cachedExplore.length, data: cachedExplore, fromCache: true });
@@ -301,83 +311,6 @@ function buildItinerary(itinerary, carriers, aircraftDict) {
       duration: amadeusService.parseDuration(s.duration),
     })),
   };
-}
-
-/**
- * Helper: Format Kiwi Tequila API response to normalized shape
- * Kiwi structure: { data: [...itineraries] }
- * Each itinerary has route[] segments; return segments have return: 1
- */
-function formatKiwiFlights(kiwiResponse) {
-  const itineraries = kiwiResponse?.data || [];
-
-  return itineraries.map((itin, index) => {
-    const outboundSegs = (itin.route || []).filter(s => !s.return);
-    const returnSegs   = (itin.route || []).filter(s => s.return === 1);
-
-    if (!outboundSegs.length) return null;
-
-    const buildSlice = (segs, durationSec) => {
-      const first = segs[0];
-      const last  = segs[segs.length - 1];
-      return {
-        departure:     { code: first.flyFrom, terminal: null },
-        arrival:       { code: last.flyTo,    terminal: null },
-        departureTime: first.local_departure,
-        arrivalTime:   last.local_arrival,
-        duration:      kiwiService.parseDuration(durationSec),
-        stops:         segs.length - 1,
-        stopAirports:  segs.slice(0, -1).map(s => s.flyTo),
-        aircraftCode:  first.equipment || 'N/A',
-        aircraftName:  first.equipment || 'N/A',
-        airline:       first.airline,
-        airlineIata:   first.airline,
-        flightNumber:  `${first.airline}${first.flight_no}`,
-        segments: segs.map(s => ({
-          departure:    { code: s.flyFrom, time: s.local_departure },
-          arrival:      { code: s.flyTo,   time: s.local_arrival },
-          airline:      s.airline,
-          airlineIata:  s.airline,
-          flightNumber: `${s.airline}${s.flight_no}`,
-          aircraftCode: s.equipment || 'N/A',
-          aircraftName: s.equipment || 'N/A',
-          duration:     kiwiService.parseDuration(s.duration),
-        })),
-      };
-    };
-
-    const outbound   = buildSlice(outboundSegs, itin.duration?.departure);
-    const returnSlice = returnSegs.length ? buildSlice(returnSegs, itin.duration?.return) : null;
-
-    // Enrich with local aircraft data
-    outbound.aircraft = aircraftData[outbound.aircraftCode] || classifyAircraftByCode(outbound.aircraftCode);
-    outbound.segments.forEach(s => {
-      s.aircraft = aircraftData[s.aircraftCode] || classifyAircraftByCode(s.aircraftCode);
-    });
-
-    return {
-      id:            `kiwi_${index}`,
-      departure:     outbound.departure,
-      arrival:       outbound.arrival,
-      aircraftCode:  outbound.aircraftCode,
-      aircraftName:  outbound.aircraftName,
-      aircraft:      outbound.aircraft,
-      airline:       outbound.airline,
-      airlineIata:   outbound.airlineIata,
-      flightNumber:  outbound.flightNumber,
-      departureTime: outbound.departureTime,
-      arrivalTime:   outbound.arrivalTime,
-      duration:      outbound.duration,
-      stops:         outbound.stops,
-      stopAirports:  outbound.stopAirports,
-      segments:      outbound.segments,
-      price:         String(itin.price),
-      currency:      itin.currency || 'EUR',
-      isRoundTrip:   !!returnSlice,
-      returnItinerary: returnSlice,
-      source:        'kiwi',
-    };
-  }).filter(Boolean);
 }
 
 /**
@@ -808,41 +741,46 @@ function getMockFlights(departure, arrival) {
  * Book a Duffel offer and return order confirmation
  */
 exports.bookFlight = async (req, res) => {
+  // Input is pre-validated by validate.bookBody middleware
   const { offerId, passengerIds, passengerInfo, currency = 'EUR', totalAmount } = req.body;
 
-  if (!offerId) return res.status(400).json({ success: false, message: 'offerId is required' });
-  if (!passengerInfo?.length) return res.status(400).json({ success: false, message: 'passengerInfo is required' });
-  if (!process.env.DUFFEL_API_KEY) return res.status(400).json({ success: false, message: 'Duffel API not configured' });
+  if (!process.env.DUFFEL_API_KEY) {
+    return res.status(503).json({ success: false, message: 'Booking is not available at this time' });
+  }
 
   try {
-    const passengers = (passengerIds || []).map((id, i) => {
+    const passengers = (passengerIds || []).map((pid, i) => {
       const p = passengerInfo[i] || passengerInfo[0];
-      return {
-        id,
-        title: p.title || 'mr',
-        given_name: p.firstName,
-        family_name: p.lastName,
-        born_on: p.dateOfBirth,
-        email: p.email,
-        gender: p.gender,
-        phone_number: p.phone || '+10000000000',
-        type: 'adult',
+      const passenger = {
+        id:           pid,
+        title:        (p.title || 'mr').toLowerCase(),
+        given_name:   p.firstName.trim(),
+        family_name:  p.lastName.trim(),
+        born_on:      p.dateOfBirth,
+        email:        p.email.toLowerCase().trim(),
+        gender:       p.gender,
+        type:         'adult',
       };
+      // Only include phone if provided and non-empty
+      if (p.phone && p.phone.trim().length >= 7) {
+        passenger.phone_number = p.phone.trim();
+      }
+      return passenger;
     });
 
     const orderData = {
       selected_offers: [offerId],
       passengers,
-      payments: [{ type: 'balance', amount: totalAmount, currency }],
+      payments: [{ type: 'balance', amount: String(totalAmount), currency }],
     };
 
     const result = await duffelService.createOrder(orderData);
-    const order = result.data;
+    const order  = result.data;
 
     res.json({
       success: true,
       data: {
-        orderId: order.id,
+        orderId:          order.id,
         bookingReference: order.booking_reference,
         status: order.payment_status?.awaiting_payment ? 'awaiting_payment' : 'confirmed',
         documents: order.documents || [],
@@ -850,7 +788,12 @@ exports.bookFlight = async (req, res) => {
     });
   } catch (error) {
     console.error('Booking error:', error.message);
-    res.status(500).json({ success: false, message: error.message });
+    // Return a safe message — don't forward raw Duffel errors
+    const IS_DEV = process.env.NODE_ENV !== 'production';
+    res.status(500).json({
+      success: false,
+      message: IS_DEV ? error.message : 'Booking failed. Please try again or contact support.',
+    });
   }
 };
 

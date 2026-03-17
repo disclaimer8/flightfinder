@@ -1,115 +1,145 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
 require('dotenv').config();
 
-const amadeusService = require('./services/amadeusService');
-const airlabsService = require('./services/airlabsService');
-const cacheService = require('./services/cacheService');
+const express = require('express');
+const cors    = require('cors');
+const helmet  = require('helmet');
+const rateLimit = require('express-rate-limit');
+const path    = require('path');
 
-const app = express();
+const app  = express();
 const PORT = process.env.PORT || 5000;
+const IS_DEV = process.env.NODE_ENV !== 'production';
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// ─────────────────────────────────────────
+//  Security headers
+// ─────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'same-site' },
+  contentSecurityPolicy: false, // CSP managed by nginx in production
+}));
 
-// Routes
-app.use('/api/flights', require('./routes/flights'));
+// ─────────────────────────────────────────
+//  CORS — restrict to own origin in prod
+// ─────────────────────────────────────────
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : (IS_DEV ? ['http://localhost:3000', 'http://localhost:5173'] : []);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // allow server-to-server (no origin) and allowed origins
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      return cb(null, true);
+    }
+    cb(new Error('Not allowed by CORS'));
+  },
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+}));
+
+// ─────────────────────────────────────────
+//  Body parsing
+// ─────────────────────────────────────────
+app.use(express.json({ limit: '16kb' }));
+
+// ─────────────────────────────────────────
+//  Rate limiting
+// ─────────────────────────────────────────
+// General API limit: 120 req / 15 min per IP
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later.' },
+});
+
+// Tighter limit for expensive search endpoints
+const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Search rate limit exceeded, please wait a moment.' },
+});
+
+app.use('/api', apiLimiter);
+app.use('/api/flights', searchLimiter);
+
+// ─────────────────────────────────────────
+//  Routes
+// ─────────────────────────────────────────
+app.use('/api/flights',  require('./routes/flights'));
 app.use('/api/aircraft', require('./routes/aircraft'));
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'Server is running' });
+// ─────────────────────────────────────────
+//  Health check
+// ─────────────────────────────────────────
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', env: process.env.NODE_ENV || 'development' });
 });
 
-// Debug: test Amadeus integration with safe sample params
-app.get('/api/debug/amadeus', async (req, res) => {
-  if (process.env.NODE_ENV !== 'development') {
-    return res.status(404).json({ ok: false, message: 'Not found' });
-  }
+// ─────────────────────────────────────────
+//  Debug endpoints — development only
+// ─────────────────────────────────────────
+if (IS_DEV) {
+  const cacheService   = require('./services/cacheService');
+  const amadeusService = require('./services/amadeusService');
 
-  try {
+  app.get('/api/debug/cache', (_req, res) => res.json(cacheService.stats()));
+  app.delete('/api/debug/cache', (_req, res) => {
+    cacheService.flush();
+    res.json({ ok: true });
+  });
+
+  app.get('/api/debug/amadeus', async (req, res) => {
     if (!process.env.AMADEUS_CLIENT_ID || !process.env.AMADEUS_CLIENT_SECRET) {
-      return res.status(400).json({
-        ok: false,
-        message: 'AMADEUS_CLIENT_ID or AMADEUS_CLIENT_SECRET is not configured',
-      });
+      return res.status(400).json({ ok: false, message: 'Amadeus credentials not configured' });
     }
-
-    const {
-      departure = 'LIS',
-      arrival = 'JFK',
-      date,
-      passengers = 1,
-    } = req.query;
-
-    const searchParams = {
-      departure_airport: String(departure).toUpperCase(),
-      arrival_airport: String(arrival).toUpperCase(),
-      departure_date: date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      passengers: parseInt(passengers, 10) || 1,
-    };
-
-    const raw = await amadeusService.searchFlights(searchParams);
-    res.json({ ok: true, params: searchParams, raw });
-  } catch (error) {
-    res.status(500).json({
-      ok: false,
-      message: 'Amadeus debug request failed',
-      error: error.message,
-      details: error.description || error.response?.result || null,
-    });
-  }
-});
-
-// Debug: test AirLabs integration for aircraft and airlines
-app.get('/api/debug/airlabs', async (req, res) => {
-  try {
-    if (!process.env.AIRLABS_API_KEY || process.env.AIRLABS_API_KEY === 'your_airlabs_api_key_here') {
-      return res.status(400).json({
-        ok: false,
-        message: 'AIRLABS_API_KEY is not configured',
+    try {
+      const raw = await amadeusService.searchFlights({
+        departure_airport: 'LIS',
+        arrival_airport:   'JFK',
+        departure_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        passengers: 1,
       });
+      res.json({ ok: true, offerCount: raw?.data?.length ?? 0 });
+    } catch (err) {
+      // Never forward raw API errors outside dev
+      res.status(500).json({ ok: false, message: 'Amadeus test failed', hint: err.message });
     }
-
-    const { aircraft = 'B737', airline = 'BA' } = req.query;
-
-    const [aircraftInfo, airlineInfo] = await Promise.all([
-      airlabsService.getAircraftInfo(aircraft),
-      airlabsService.getAirlineInfo(airline),
-    ]);
-
-    res.json({
-      ok: true,
-      params: { aircraft, airline },
-      aircraft: aircraftInfo,
-      airline: airlineInfo,
-    });
-  } catch (error) {
-    res.status(500).json({
-      ok: false,
-      message: 'AirLabs debug request failed',
-      error: error.message,
-    });
-  }
-});
-
-// Cache stats (dev only)
-if (process.env.NODE_ENV === 'development') {
-  app.get('/api/debug/cache', (req, res) => res.json(cacheService.stats()));
-  app.delete('/api/debug/cache', (req, res) => { cacheService.flush(); res.json({ ok: true }); });
+  });
 }
 
-// Serve React build in production
-if (process.env.NODE_ENV === 'production') {
+// ─────────────────────────────────────────
+//  Serve React build in production
+// ─────────────────────────────────────────
+if (!IS_DEV) {
   const clientBuild = path.join(__dirname, '../../client/dist');
-  app.use(express.static(clientBuild));
-  app.get('*', (req, res) => {
+  app.use(express.static(clientBuild, { maxAge: '1d' }));
+  app.get('*', (_req, res) => {
     res.sendFile(path.join(clientBuild, 'index.html'));
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// ─────────────────────────────────────────
+//  Global error handler
+// ─────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  const status = err.status || 500;
+  // Never leak stack traces to client
+  const message = IS_DEV ? err.message : 'Internal server error';
+  res.status(status).json({ success: false, message });
 });
+
+// ─────────────────────────────────────────
+//  Start
+// ─────────────────────────────────────────
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  });
+}
+
+module.exports = app; // export for tests

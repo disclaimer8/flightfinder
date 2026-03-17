@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './BookingModal.css';
 
 const MONTHS = [
@@ -52,22 +52,40 @@ function DateOfBirthPicker({ onChange }) {
   const totalDays = daysInMonth(month, year);
 
   return (
-    <div className="dob-picker">
-      <select className="dob-select" value={day} onChange={handleDay}>
+    <div className="dob-picker" role="group" aria-labelledby="bm-dob-label">
+      <select
+        id="bm-dob-day"
+        className="dob-select"
+        value={day}
+        onChange={handleDay}
+        aria-label="Day of birth"
+      >
         <option value="">Day</option>
         {Array.from({ length: totalDays }, (_, i) => i + 1).map(d => (
           <option key={d} value={d}>{d}</option>
         ))}
       </select>
 
-      <select className="dob-select dob-month" value={month} onChange={handleMonth}>
+      <select
+        id="bm-dob-month"
+        className="dob-select dob-month"
+        value={month}
+        onChange={handleMonth}
+        aria-label="Month of birth"
+      >
         <option value="">Month</option>
         {MONTHS.map((name, i) => (
           <option key={i} value={i + 1}>{name}</option>
         ))}
       </select>
 
-      <select className="dob-select" value={year} onChange={handleYear}>
+      <select
+        id="bm-dob-year"
+        className="dob-select"
+        value={year}
+        onChange={handleYear}
+        aria-label="Year of birth"
+      >
         <option value="">Year</option>
         {years.map(y => (
           <option key={y} value={y}>{y}</option>
@@ -89,6 +107,11 @@ function ConfirmationScreen({ booking, flight, onClose }) {
       <div className="confirm-route">
         {flight.departure.code} → {flight.arrival.code}
         <span className="confirm-date">{formatDate(flight.departureTime)}</span>
+      </div>
+      <div className="confirm-details">
+        <span>{flight.airline}</span>
+        <span>{flight.flightNumber}</span>
+        <span>{formatTime(flight.departureTime)}</span>
       </div>
       <p className="confirm-note">
         A confirmation will be sent to your email. Check spam if you don't see it.
@@ -117,6 +140,15 @@ function validate(form) {
   return e;
 }
 
+// Returns all focusable elements inside a container
+function getFocusable(container) {
+  return Array.from(
+    container.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  );
+}
+
 function BookingModal({ flight, onClose }) {
   const [form, setForm] = useState({
     title: 'mr',
@@ -132,13 +164,38 @@ function BookingModal({ flight, onClose }) {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
 
+  const modalRef = useRef(null);
   const currency = flight.currency || 'EUR';
   const symbol = currency === 'EUR' ? '€' : '$';
+
+  // Focus first element and trap focus inside modal
+  useEffect(() => {
+    const el = modalRef.current;
+    if (!el) return;
+    const focusable = getFocusable(el);
+    if (focusable.length) focusable[0].focus();
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const items = getFocusable(el);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
-    // Clear field error on change
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: undefined }));
   };
 
@@ -182,16 +239,27 @@ function BookingModal({ flight, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="modal-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bm-title"
+        ref={modalRef}
+        onClick={e => e.stopPropagation()}
+      >
+        <button className="modal-close" onClick={onClose} aria-label="Close booking modal">✕</button>
 
         {status === 'success' ? (
           <ConfirmationScreen booking={booking} flight={flight} onClose={onClose} />
         ) : (
           <>
             <div className="modal-header">
-              <h2>Book Flight</h2>
+              <h2 id="bm-title">Book Flight</h2>
               <div className="modal-flight-summary">
                 <span className="modal-route">
                   {flight.departure.code} → {flight.arrival.code}
@@ -199,16 +267,19 @@ function BookingModal({ flight, onClose }) {
                 <span className="modal-meta">
                   {formatDate(flight.departureTime)} · {formatTime(flight.departureTime)}
                 </span>
-                <span className="modal-price">{symbol}{flight.price}</span>
+                <div className="modal-price-block">
+                  <span className="modal-price">{symbol}{flight.price}</span>
+                  <span className="modal-price-note">per person · excl. taxes</span>
+                </div>
               </div>
             </div>
 
-            <form className="booking-form" onSubmit={handleSubmit}>
+            <form className="booking-form" onSubmit={handleSubmit} noValidate>
               {/* Row: Title + First + Last */}
               <div className="form-row form-row-name">
                 <div className="form-group form-group-title">
-                  <label>Title</label>
-                  <select name="title" value={form.title} onChange={handleChange}>
+                  <label htmlFor="bm-title-select">Title</label>
+                  <select id="bm-title-select" name="title" value={form.title} onChange={handleChange}>
                     <option value="mr">Mr</option>
                     <option value="ms">Ms</option>
                     <option value="mrs">Mrs</option>
@@ -217,47 +288,59 @@ function BookingModal({ flight, onClose }) {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>First Name</label>
+                  <label htmlFor="bm-firstName">First Name</label>
                   <input
+                    id="bm-firstName"
                     name="firstName"
                     value={form.firstName}
                     onChange={handleChange}
                     placeholder="John"
+                    autoComplete="given-name"
+                    aria-describedby={errors.firstName ? 'bm-firstName-err' : undefined}
+                    aria-invalid={!!errors.firstName}
                     className={errors.firstName ? 'input-error' : ''}
                   />
-                  {errors.firstName && <span className="field-error">{errors.firstName}</span>}
+                  {errors.firstName && <span id="bm-firstName-err" className="field-error" role="alert">{errors.firstName}</span>}
                 </div>
                 <div className="form-group">
-                  <label>Last Name</label>
+                  <label htmlFor="bm-lastName">Last Name</label>
                   <input
+                    id="bm-lastName"
                     name="lastName"
                     value={form.lastName}
                     onChange={handleChange}
                     placeholder="Smith"
+                    autoComplete="family-name"
+                    aria-describedby={errors.lastName ? 'bm-lastName-err' : undefined}
+                    aria-invalid={!!errors.lastName}
                     className={errors.lastName ? 'input-error' : ''}
                   />
-                  {errors.lastName && <span className="field-error">{errors.lastName}</span>}
+                  {errors.lastName && <span id="bm-lastName-err" className="field-error" role="alert">{errors.lastName}</span>}
                 </div>
               </div>
 
               {/* Email */}
               <div className="form-group">
-                <label>Email</label>
+                <label htmlFor="bm-email">Email</label>
                 <input
+                  id="bm-email"
                   name="email"
                   type="email"
                   value={form.email}
                   onChange={handleChange}
                   placeholder="john@example.com"
+                  autoComplete="email"
+                  aria-describedby={errors.email ? 'bm-email-err' : undefined}
+                  aria-invalid={!!errors.email}
                   className={errors.email ? 'input-error' : ''}
                 />
-                {errors.email && <span className="field-error">{errors.email}</span>}
+                {errors.email && <span id="bm-email-err" className="field-error" role="alert">{errors.email}</span>}
               </div>
 
               {/* Date of Birth + Gender */}
               <div className="form-row">
                 <div className="form-group form-group-dob">
-                  <label>
+                  <label id="bm-dob-label">
                     Date of Birth
                     <span className="field-hint"> · 18+</span>
                   </label>
@@ -268,16 +351,24 @@ function BookingModal({ flight, onClose }) {
                       if (errors.dateOfBirth) setErrors(prev => ({ ...prev, dateOfBirth: undefined }));
                     }}
                   />
-                  {errors.dateOfBirth && <span className="field-error">{errors.dateOfBirth}</span>}
+                  {errors.dateOfBirth && <span id="bm-dob-err" className="field-error" role="alert">{errors.dateOfBirth}</span>}
                 </div>
                 <div className="form-group form-group-gender">
-                  <label>Gender</label>
-                  <div className="gender-toggle">
+                  <span id="bm-gender-label" className="form-label-text">
+                    Gender
+                    <span className="field-hint"> · required by carrier</span>
+                  </span>
+                  <div
+                    className="gender-toggle"
+                    role="group"
+                    aria-labelledby="bm-gender-label"
+                  >
                     {[['M', 'Male'], ['F', 'Female']].map(([val, label]) => (
                       <button
                         key={val}
                         type="button"
                         className={`gender-btn${form.gender === val ? ' active' : ''}`}
+                        aria-pressed={form.gender === val}
                         onClick={() => setForm(prev => ({ ...prev, gender: val }))}
                       >
                         {label}
@@ -289,22 +380,32 @@ function BookingModal({ flight, onClose }) {
 
               {/* Phone */}
               <div className="form-group">
-                <label>Phone <span className="field-hint">(optional)</span></label>
+                <label htmlFor="bm-phone">
+                  Phone <span className="field-hint">(optional)</span>
+                </label>
                 <input
+                  id="bm-phone"
                   name="phone"
                   type="tel"
                   value={form.phone}
                   onChange={handleChange}
                   placeholder="+1 555 000 0000"
+                  autoComplete="tel"
+                  aria-describedby={errors.phone ? 'bm-phone-err' : undefined}
+                  aria-invalid={!!errors.phone}
                   className={errors.phone ? 'input-error' : ''}
                 />
-                {errors.phone && <span className="field-error">{errors.phone}</span>}
+                {errors.phone && <span id="bm-phone-err" className="field-error" role="alert">{errors.phone}</span>}
               </div>
 
-              {submitError && <div className="booking-error">{submitError}</div>}
+              {submitError && <div className="booking-error" role="alert">{submitError}</div>}
 
               <div className="form-footer">
-                <span className="total-label">Total: <strong>{symbol}{flight.price} {currency}</strong></span>
+                <div className="total-block">
+                  <span className="total-label">Total</span>
+                  <span className="total-amount"><strong>{symbol}{flight.price} {currency}</strong></span>
+                  <span className="total-note">excl. taxes &amp; fees · 1 passenger</span>
+                </div>
                 <button
                   type="submit"
                   className="btn-confirm"

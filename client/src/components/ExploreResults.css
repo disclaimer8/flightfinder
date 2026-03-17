@@ -1,12 +1,15 @@
 .explore-results {
-  margin: 2rem 0;
+  margin: 0;
 }
 
 .explore-empty {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
   text-align: center;
-  color: rgba(255,255,255,0.75);
-  padding: 3rem 1rem;
-  font-size: 1rem;
+  color: var(--text-2);
+  padding: 3.5rem 1rem;
+  font-size: 0.95rem;
   line-height: 1.7;
 }
 
@@ -23,106 +26,108 @@
 .explore-summary {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   flex-wrap: wrap;
 }
 
 .explore-count {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: white;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .explore-aircraft-tag {
-  background: rgba(255,255,255,0.2);
-  color: white;
-  border: 1px solid rgba(255,255,255,0.35);
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid rgba(99,102,241,0.2);
   border-radius: 20px;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 500;
+  padding: 0.22rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .explore-from {
-  color: rgba(255,255,255,0.75);
-  font-size: 0.9rem;
+  color: var(--text-2);
+  font-size: 0.88rem;
 }
 
 .explore-sort {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
-/* sort-btn is already defined in FlightResults.css — reuse it */
 .explore-sort .sort-btn {
-  padding: 0.35rem 0.85rem;
-  border: 1.5px solid rgba(255,255,255,0.35);
+  padding: 0.38rem 0.85rem;
+  border: 1.5px solid var(--border);
   border-radius: 20px;
-  background: rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.85);
-  font-size: 0.82rem;
-  font-weight: 500;
+  background: var(--card);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.15s;
   white-space: nowrap;
 }
 
-.explore-sort .sort-btn:hover {
-  background: rgba(255,255,255,0.22);
+.explore-sort .sort-btn:hover:not(.active) {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .explore-sort .sort-btn.active {
-  background: white;
-  color: #667eea;
-  border-color: white;
-  font-weight: 700;
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
 }
 
 /* ── Grid ── */
 .destination-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.85rem;
 }
 
 /* ── Card ── */
 .destination-card {
-  background: white;
-  border-radius: 14px;
-  padding: 1.1rem 1.25rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  background: var(--card);
+  border-radius: var(--r-lg);
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  transition: box-shadow 0.2s, transform 0.15s;
+  gap: 0.7rem;
+  transition: box-shadow 0.18s, transform 0.15s;
   position: relative;
   overflow: hidden;
 }
 
 .destination-card:hover {
-  box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
 
 .destination-card.cheapest {
-  border: 2px solid #667eea;
+  border-color: var(--primary);
+  border-width: 1.5px;
 }
 
 .cheapest-tag {
   position: absolute;
   top: 0;
   right: 0;
-  background: #667eea;
-  color: white;
-  font-size: 0.65rem;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.62rem;
   font-weight: 700;
   padding: 3px 10px;
-  border-bottom-left-radius: 8px;
+  border-bottom-left-radius: var(--r-sm);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
-/* ── Top row: flag + city + code ── */
+/* ── Top ── */
 .dest-top {
   display: flex;
   align-items: flex-start;
@@ -130,7 +135,7 @@
 }
 
 .dest-flag {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -143,23 +148,24 @@
 }
 
 .dest-city {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #222;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 
 .dest-country {
-  font-size: 0.75rem;
-  color: #999;
+  font-size: 0.72rem;
+  color: var(--text-3);
 }
 
 .dest-code {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  color: #bbb;
+  color: var(--text-3);
   align-self: flex-start;
   margin-top: 2px;
 }
@@ -172,41 +178,47 @@
 }
 
 .price-label {
-  font-size: 0.75rem;
-  color: #aaa;
+  font-size: 0.72rem;
+  color: var(--text-3);
   order: -1;
 }
 
 .price-amount {
-  font-size: 1.7rem;
+  font-size: 1.65rem;
   font-weight: 800;
-  color: #667eea;
+  color: var(--primary);
   line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 /* ── Flight info ── */
 .dest-flight {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.28rem;
   padding: 0.5rem 0;
-  border-top: 1px solid #f0f0f0;
-  border-bottom: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.dest-date {
+  font-size: 0.7rem;
+  color: var(--text-3);
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+  display: block;
 }
 
 .dest-times {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #333;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.dest-arrow {
-  color: #ccc;
-  font-weight: 400;
-}
+.dest-arrow { color: var(--border); font-weight: 400; }
 
 .dest-meta {
   display: flex;
@@ -215,30 +227,29 @@
 }
 
 .dest-duration {
-  font-size: 0.8rem;
-  color: #666;
+  font-size: 0.78rem;
+  color: var(--text-2);
 }
 
-/* reuse badges from FlightCard */
 .nonstop-badge {
-  font-size: 0.7rem;
-  background: #e8f5e9;
-  color: #2e7d32;
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-weight: 500;
+  font-size: 0.67rem;
+  background: var(--green-bg);
+  color: var(--green);
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-weight: 600;
 }
 
 .stops-badge {
-  font-size: 0.7rem;
-  background: #fff3e0;
-  color: #e65100;
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-weight: 500;
+  font-size: 0.67rem;
+  background: var(--orange-bg);
+  color: #92400e;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-weight: 600;
 }
 
-/* ── Footer: airline + aircraft ── */
+/* ── Footer ── */
 .dest-footer {
   display: flex;
   flex-direction: column;
@@ -246,29 +257,46 @@
 }
 
 .dest-airline {
-  font-size: 0.82rem;
-  color: #555;
-  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--text-2);
+  font-weight: 600;
 }
 
 .dest-aircraft {
-  font-size: 0.75rem;
-  color: #888;
+  font-size: 0.72rem;
+  color: var(--text-3);
 }
 
-.dest-aircraft.type-wide-body  { color: #7b1fa2; }
-.dest-aircraft.type-jet        { color: #3d5afe; }
-.dest-aircraft.type-regional   { color: #f57f17; }
-.dest-aircraft.type-turboprop  { color: #2e7d32; }
+.dest-aircraft.type-wide-body  { color: #7e22ce; }
+.dest-aircraft.type-jet        { color: #4338ca; }
+.dest-aircraft.type-regional   { color: #92400e; }
+.dest-aircraft.type-turboprop  { color: #065f46; }
+
+/* ── Search flights CTA ── */
+.dest-search-btn {
+  margin-top: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--r);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.dest-search-btn:hover {
+  background: var(--primary);
+  color: #fff;
+}
 
 @media (max-width: 600px) {
-  .destination-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+  .destination-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 400px) {
-  .destination-grid {
-    grid-template-columns: 1fr;
-  }
+  .destination-grid { grid-template-columns: 1fr; }
 }

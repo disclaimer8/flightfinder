@@ -1,4 +1,3 @@
-import React from 'react';
 import './FlightFilters.css';
 
 const TIME_SLOTS = [
@@ -85,7 +84,9 @@ function FlightFilters({ flights, filters, onChange }) {
 
       {/* Price */}
       <div className="filter-section">
-        <h4 className="filter-label">Max price</h4>
+        <h4 className="filter-label">
+          Max price <span className="price-current-inline">{maxPrice} €</span>
+        </h4>
         <div className="price-slider-wrap">
           <input
             type="range"
@@ -94,11 +95,15 @@ function FlightFilters({ flights, filters, onChange }) {
             value={maxPrice}
             step={5}
             className="price-slider"
+            aria-label={`Maximum price: ${maxPrice} €`}
+            aria-valuemin={globalMin}
+            aria-valuemax={globalMax}
+            aria-valuenow={maxPrice}
             onChange={e => onChange({ ...filters, maxPrice: +e.target.value })}
           />
           <div className="price-slider-labels">
-            <span>{globalMin} €</span>
-            <span className="price-current">{maxPrice} €</span>
+            <span className="price-range-min">{globalMin} €</span>
+            <span className="price-range-max">{globalMax} €</span>
           </div>
         </div>
       </div>
@@ -114,9 +119,10 @@ function FlightFilters({ flights, filters, onChange }) {
               <button
                 key={id}
                 className={`time-slot-btn ${filters.timeOfDay.includes(id) ? 'active' : ''}`}
+                aria-pressed={filters.timeOfDay.includes(id)}
                 onClick={() => toggle('timeOfDay', id)}
               >
-                <span className="ts-icon">{icon}</span>
+                <span className="ts-icon" aria-hidden="true">{icon}</span>
                 <span className="ts-label">{label}</span>
                 <span className="ts-sub">{sub}</span>
               </button>

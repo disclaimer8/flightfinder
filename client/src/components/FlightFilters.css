@@ -1,36 +1,39 @@
 .filters-panel {
-  background: white;
-  border-radius: 12px;
+  background: var(--card);
+  border-radius: var(--r-lg);
   padding: 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  width: 240px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  width: 230px;
   flex-shrink: 0;
   align-self: flex-start;
   position: sticky;
-  top: 1rem;
+  top: 1.25rem;
 }
 
 .filters-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .filters-title {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #222;
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .filters-reset {
-  font-size: 0.78rem;
-  color: #667eea;
+  font-size: 0.75rem;
+  color: var(--primary);
   background: none;
   border: none;
   cursor: pointer;
   padding: 0;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .filters-reset:hover {
@@ -39,17 +42,17 @@
 
 /* ── Section ── */
 .filter-section {
-  border-top: 1px solid #f0f0f0;
-  padding: 1rem 0 0.5rem;
+  border-top: 1px solid var(--border-light);
+  padding: 0.9rem 0 0.4rem;
 }
 
 .filter-label {
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #888;
-  margin: 0 0 0.6rem;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin: 0 0 0.55rem;
 }
 
 /* ── Checkboxes ── */
@@ -57,97 +60,120 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.3rem 0;
+  padding: 0.28rem 0;
   cursor: pointer;
-  font-size: 0.88rem;
-  color: #333;
+  font-size: 0.85rem;
+  color: var(--text);
+  border-radius: var(--r-sm);
+  transition: color 0.1s;
+}
+
+.filter-check:hover {
+  color: var(--primary);
 }
 
 .filter-check input[type="checkbox"] {
   width: 15px;
   height: 15px;
-  accent-color: #667eea;
+  accent-color: var(--primary);
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .check-label {
   flex: 1;
+  font-weight: 500;
 }
 
 .check-count {
-  font-size: 0.75rem;
-  color: #bbb;
-  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text-3);
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 0 6px;
+  font-weight: 600;
 }
 
 /* ── Price slider ── */
 .price-slider-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
 .price-slider {
   width: 100%;
-  accent-color: #667eea;
+  accent-color: var(--primary);
   cursor: pointer;
+  height: 4px;
 }
 
 .price-slider-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 0.8rem;
-  color: #888;
+  font-size: 0.78rem;
+  color: var(--text-3);
 }
 
 .price-current {
-  font-weight: 600;
-  color: #667eea;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.price-current-inline {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.82rem;
+  margin-left: 0.35rem;
+}
+
+.price-range-min,
+.price-range-max {
+  color: var(--text-3);
+  font-size: 0.72rem;
 }
 
 /* ── Time slots ── */
 .time-slots {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .time-slot-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.5rem 0.3rem;
-  border: 1.5px solid #e8e8e8;
-  border-radius: 8px;
-  background: white;
+  padding: 0.55rem 0.25rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  background: #fff;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
   gap: 1px;
 }
 
 .time-slot-btn:hover {
-  border-color: #667eea;
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
 .time-slot-btn.active {
-  border-color: #667eea;
-  background: #f0f2ff;
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
-.ts-icon {
-  font-size: 1rem;
-}
+.ts-icon { font-size: 1rem; }
 
 .ts-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #333;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .ts-sub {
-  font-size: 0.62rem;
-  color: #aaa;
+  font-size: 0.6rem;
+  color: var(--text-3);
 }
 
 @media (max-width: 768px) {

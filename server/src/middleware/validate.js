@@ -1,0 +1,190 @@
+'use strict';
+
+/**
+ * Lightweight validation middleware — no external deps.
+ *
+ * Usage:
+ *   router.get('/', validate.searchQuery, controller.searchFlights);
+ */
+
+const IATA_RE      = /^[A-Z]{2,3}$/;
+const DATE_RE      = /^\d{4}-\d{2}-\d{2}$/;
+const AIRCRAFT_MODEL_RE = /^[A-Z0-9]{1,6}$/;
+
+const VALID_AIRCRAFT_TYPES = new Set(['turboprop', 'jet', 'regional', 'wide-body']);
+const VALID_TITLES   = new Set(['mr', 'ms', 'mrs', 'miss', 'dr']);
+const VALID_GENDERS  = new Set(['M', 'F']);
+const VALID_CURRENCIES = new Set(['EUR', 'USD', 'GBP']);
+const EMAIL_RE   = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const DOB_RE     = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Send a 400 with a human-readable message */
+function bad(res, message) {
+  return res.status(400).json({ success: false, message });
+}
+
+/** Sanitise a string used as part of a cache key — strip anything except alphanumeric + hyphen */
+function sanitiseKey(str) {
+  return String(str || '').replace(/[^A-Za-z0-9\-]/g, '').toUpperCase().slice(0, 10);
+}
+
+/**
+ * Validate GET /api/flights  query params
+ */
+function searchQuery(req, res, next) {
+  const { departure, arrival, date, returnDate, passengers, aircraftType, aircraftModel } = req.query;
+
+  if (!departure || !arrival) {
+    return bad(res, 'departure and arrival are required');
+  }
+
+  const dep = departure.toUpperCase().trim();
+  const arr = arrival.toUpperCase().trim();
+
+  if (!IATA_RE.test(dep)) return bad(res, 'departure must be a 2–3 letter IATA code');
+  if (!IATA_RE.test(arr)) return bad(res, 'arrival must be a 2–3 letter IATA code');
+  if (dep === arr)         return bad(res, 'departure and arrival cannot be the same airport');
+
+  if (date) {
+    if (!DATE_RE.test(date)) return bad(res, 'date must be YYYY-MM-DD');
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return bad(res, 'date is not a valid date');
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (d < today) return bad(res, 'date must not be in the past');
+  }
+
+  if (returnDate) {
+    if (!DATE_RE.test(returnDate)) return bad(res, 'returnDate must be YYYY-MM-DD');
+    if (date && returnDate < date) return bad(res, 'returnDate must be on or after departure date');
+  }
+
+  const pax = parseInt(passengers, 10);
+  if (passengers !== undefined && (isNaN(pax) || pax < 1 || pax > 9)) {
+    return bad(res, 'passengers must be between 1 and 9');
+  }
+
+  if (aircraftType && !VALID_AIRCRAFT_TYPES.has(aircraftType.toLowerCase())) {
+    return bad(res, `aircraftType must be one of: ${[...VALID_AIRCRAFT_TYPES].join(', ')}`);
+  }
+
+  if (aircraftModel && !AIRCRAFT_MODEL_RE.test(aircraftModel.toUpperCase())) {
+    return bad(res, 'aircraftModel must be 1–6 alphanumeric characters');
+  }
+
+  // Normalise onto req so controllers get clean values
+  req.validatedQuery = {
+    departure:    dep,
+    arrival:      arr,
+    date:         date || null,
+    returnDate:   returnDate || null,
+    passengers:   pax || 1,
+    aircraftType: aircraftType?.toLowerCase() || null,
+    aircraftModel: aircraftModel?.toUpperCase() || null,
+    sanitisedCacheKey: `${dep}:${arr}:${date || ''}:${pax || 1}:${returnDate || ''}`,
+  };
+
+  next();
+}
+
+/**
+ * Validate GET /api/flights/explore  query params
+ */
+function exploreQuery(req, res, next) {
+  const { departure, date, aircraftType, aircraftModel } = req.query;
+
+  if (!departure) return bad(res, 'departure is required');
+
+  const dep = departure.toUpperCase().trim();
+  if (!IATA_RE.test(dep)) return bad(res, 'departure must be a 2–3 letter IATA code');
+
+  if (date) {
+    if (!DATE_RE.test(date)) return bad(res, 'date must be YYYY-MM-DD');
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return bad(res, 'date is not a valid date');
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (d < today) return bad(res, 'date must not be in the past');
+  }
+
+  if (aircraftType && !VALID_AIRCRAFT_TYPES.has(aircraftType.toLowerCase())) {
+    return bad(res, `aircraftType must be one of: ${[...VALID_AIRCRAFT_TYPES].join(', ')}`);
+  }
+
+  if (aircraftModel && !AIRCRAFT_MODEL_RE.test(aircraftModel.toUpperCase())) {
+    return bad(res, 'aircraftModel must be 1–6 alphanumeric characters');
+  }
+
+  if (!aircraftType && !aircraftModel) {
+    return bad(res, 'Either aircraftType or aircraftModel is required for explore');
+  }
+
+  req.validatedQuery = {
+    departure:    dep,
+    date:         date || null,
+    aircraftType: aircraftType?.toLowerCase() || null,
+    aircraftModel: aircraftModel?.toUpperCase() || null,
+    sanitisedCacheKey: `${dep}:${sanitiseKey(date)}:${sanitiseKey(aircraftType)}:${sanitiseKey(aircraftModel)}`,
+  };
+
+  next();
+}
+
+/**
+ * Validate POST /api/flights/book  body
+ */
+function bookBody(req, res, next) {
+  const { offerId, passengerIds, passengerInfo, currency, totalAmount } = req.body;
+
+  if (!offerId || typeof offerId !== 'string' || offerId.length > 100) {
+    return bad(res, 'offerId is required and must be a string');
+  }
+
+  if (!Array.isArray(passengerInfo) || passengerInfo.length === 0) {
+    return bad(res, 'passengerInfo must be a non-empty array');
+  }
+
+  if (passengerInfo.length > 9) {
+    return bad(res, 'Maximum 9 passengers per booking');
+  }
+
+  for (let i = 0; i < passengerInfo.length; i++) {
+    const p = passengerInfo[i];
+    const idx = `passengerInfo[${i}]`;
+
+    if (!p || typeof p !== 'object') return bad(res, `${idx} must be an object`);
+    if (!p.firstName || !/^[a-zA-ZÀ-ÿ'\- ]{2,50}$/.test(p.firstName.trim())) {
+      return bad(res, `${idx}.firstName is invalid`);
+    }
+    if (!p.lastName || !/^[a-zA-ZÀ-ÿ'\- ]{2,50}$/.test(p.lastName.trim())) {
+      return bad(res, `${idx}.lastName is invalid`);
+    }
+    if (!p.email || !EMAIL_RE.test(p.email)) {
+      return bad(res, `${idx}.email is invalid`);
+    }
+    if (!p.dateOfBirth || !DOB_RE.test(p.dateOfBirth)) {
+      return bad(res, `${idx}.dateOfBirth must be YYYY-MM-DD`);
+    }
+    const age = (Date.now() - new Date(p.dateOfBirth)) / (365.25 * 24 * 3600 * 1000);
+    if (age < 18) return bad(res, `${idx}: passenger must be 18 or older`);
+    if (age > 100) return bad(res, `${idx}.dateOfBirth is not plausible`);
+
+    if (!VALID_TITLES.has((p.title || '').toLowerCase())) {
+      return bad(res, `${idx}.title must be one of: ${[...VALID_TITLES].join(', ')}`);
+    }
+    if (!VALID_GENDERS.has(p.gender)) {
+      return bad(res, `${idx}.gender must be M or F`);
+    }
+  }
+
+  if (currency && !VALID_CURRENCIES.has(currency)) {
+    return bad(res, `currency must be one of: ${[...VALID_CURRENCIES].join(', ')}`);
+  }
+
+  const amount = parseFloat(totalAmount);
+  if (!totalAmount || isNaN(amount) || amount <= 0 || amount > 100000) {
+    return bad(res, 'totalAmount must be a positive number (max 100,000)');
+  }
+
+  next();
+}
+
+module.exports = { searchQuery, exploreQuery, bookBody, sanitiseKey };

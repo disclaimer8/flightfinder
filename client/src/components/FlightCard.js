@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './FlightCard.css';
 import BookingModal from './BookingModal';
 
@@ -33,8 +33,13 @@ function ItineraryRow({ itinerary, label }) {
           <div className="route-path">
             <div className="line" />
             {(stopAirports || []).map(code => (
-              <div key={code} className="stop-dot" title={`Stop: ${code}`}>
-                <span className="stop-code">{code}</span>
+              <div
+                key={code}
+                className="stop-dot"
+                role="img"
+                aria-label={`Stopover: ${code}`}
+              >
+                <span className="stop-code" aria-hidden="true">{code}</span>
               </div>
             ))}
             <div className="line" />
@@ -115,10 +120,14 @@ function FlightCard({ flight }) {
           <h3>{flight.airline}</h3>
           <span className="flight-number">{flight.flightNumber}</span>
         </div>
-        <span className="price">
-          {flight.currency === 'EUR' ? '€' : '$'}{flight.price}
-          {flight.isRoundTrip && <span className="price-note"> RT</span>}
-        </span>
+        <div className="price-block">
+          <span className="price">
+            {flight.currency === 'EUR' ? '€' : '$'}{flight.price}
+          </span>
+          <span className="price-note">
+            {flight.isRoundTrip ? 'round-trip' : 'one-way'} · per person
+          </span>
+        </div>
       </div>
 
       <div className="itineraries">
@@ -160,9 +169,21 @@ function FlightCard({ flight }) {
         </div>
 
         {isDuffel ? (
-          <button className="btn-book" onClick={() => setShowBooking(true)}>Book</button>
+          <button className="btn-book" onClick={() => setShowBooking(true)}>Book now</button>
         ) : kayakUrl ? (
-          <a className="btn-book" href={kayakUrl} target="_blank" rel="noopener noreferrer">Search</a>
+          <a
+            className="btn-book btn-book-external"
+            href={kayakUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Opens Kayak.com in a new tab"
+            aria-label={`Book ${flight.airline} flight on Kayak.com (opens new tab)`}
+          >
+            Book via Kayak
+            <svg aria-hidden="true" focusable="false" className="btn-external-icon" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </a>
         ) : (
           <button className="btn-book" disabled>Book</button>
         )}
