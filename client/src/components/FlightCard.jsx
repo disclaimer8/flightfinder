@@ -1,16 +1,7 @@
 import { useState } from 'react';
+import { formatTime, formatDate } from '../utils/formatters';
 import './FlightCard.css';
 import BookingModal from './BookingModal';
-
-function formatTime(isoString) {
-  if (!isoString) return '—';
-  return new Date(isoString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(isoString) {
-  if (!isoString) return '';
-  return new Date(isoString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
 
 function ItineraryRow({ itinerary, label }) {
   const { departure, arrival, departureTime, arrivalTime, duration, stops, stopAirports, segments } = itinerary;
@@ -58,7 +49,7 @@ function ItineraryRow({ itinerary, label }) {
           <span className="airport-code">{arrival.code}</span>
           <span className="time">
             {formatTime(arrivalTime)}
-            {dateChanged && <sup className="day-offset">+1</sup>}
+            {dateChanged && <sup className="day-offset" aria-label="arrives next day">+1</sup>}
           </span>
           <span className="date">{arrDate}</span>
         </div>
@@ -82,24 +73,26 @@ function ItineraryRow({ itinerary, label }) {
   );
 }
 
-function buildKayakUrl(flight) {
+function buildKayakUrl(flight, passengers) {
   const dep = flight.departure?.code;
   const arr = flight.arrival?.code;
   const date = flight.departureTime ? flight.departureTime.slice(0, 10) : '';
   if (!dep || !arr || !date) return null;
+  const pax = `${passengers || 1}adults`;
   if (flight.isRoundTrip && flight.returnItinerary?.departureTime) {
     const ret = flight.returnItinerary.departureTime.slice(0, 10);
-    return `https://www.kayak.com/flights/${dep}-${arr}/${date}/${ret}/1adults`;
+    return `https://www.kayak.com/flights/${dep}-${arr}/${date}/${ret}/${pax}`;
   }
-  return `https://www.kayak.com/flights/${dep}-${arr}/${date}/1adults`;
+  return `https://www.kayak.com/flights/${dep}-${arr}/${date}/${pax}`;
 }
 
-function FlightCard({ flight }) {
+function FlightCard({ flight, passengers }) {
   const { aircraft } = flight;
   const [showBooking, setShowBooking] = useState(false);
+  const triggerRef = useState(null)[0]; // placeholder — real ref assigned below via inline ref
 
   const isDuffel = flight.source === 'duffel';
-  const kayakUrl = buildKayakUrl(flight);
+  const kayakUrl = buildKayakUrl(flight, passengers);
 
   const outboundItinerary = {
     departure: flight.departure,

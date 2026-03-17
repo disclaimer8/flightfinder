@@ -291,7 +291,7 @@
 
 .dev-label {
   font-size: 0.72rem;
-  color: #92400e;
+  color: var(--amber-text);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -303,7 +303,7 @@
   border: 1px solid #d97706;
   border-radius: var(--r-sm);
   background: transparent;
-  color: #92400e;
+  color: var(--amber-text);
   cursor: pointer;
   font-weight: 600;
   transition: all 0.15s;

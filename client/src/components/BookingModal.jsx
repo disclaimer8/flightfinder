@@ -1,23 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import { formatTime, formatDate } from '../utils/formatters';
+import { MONTHS } from '../utils/constants';
 import './BookingModal.css';
-
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-function formatTime(isoString) {
-  if (!isoString) return '—';
-  return new Date(isoString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(isoString) {
-  if (!isoString) return '';
-  return new Date(isoString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
 function daysInMonth(month, year) {
   if (!month || !year) return 31;
+  // day=0 rolls back to last day of previous month; month is 1-based here
   return new Date(Number(year), Number(month), 0).getDate();
 }
 
@@ -53,39 +42,21 @@ function DateOfBirthPicker({ onChange }) {
 
   return (
     <div className="dob-picker" role="group" aria-labelledby="bm-dob-label">
-      <select
-        id="bm-dob-day"
-        className="dob-select"
-        value={day}
-        onChange={handleDay}
-        aria-label="Day of birth"
-      >
+      <select id="bm-dob-day" className="dob-select" value={day} onChange={handleDay} aria-label="Day of birth">
         <option value="">Day</option>
         {Array.from({ length: totalDays }, (_, i) => i + 1).map(d => (
           <option key={d} value={d}>{d}</option>
         ))}
       </select>
 
-      <select
-        id="bm-dob-month"
-        className="dob-select dob-month"
-        value={month}
-        onChange={handleMonth}
-        aria-label="Month of birth"
-      >
+      <select id="bm-dob-month" className="dob-select dob-month" value={month} onChange={handleMonth} aria-label="Month of birth">
         <option value="">Month</option>
         {MONTHS.map((name, i) => (
           <option key={i} value={i + 1}>{name}</option>
         ))}
       </select>
 
-      <select
-        id="bm-dob-year"
-        className="dob-select"
-        value={year}
-        onChange={handleYear}
-        aria-label="Year of birth"
-      >
+      <select id="bm-dob-year" className="dob-select" value={year} onChange={handleYear} aria-label="Year of birth">
         <option value="">Year</option>
         {years.map(y => (
           <option key={y} value={y}>{y}</option>
@@ -140,7 +111,6 @@ function validate(form) {
   return e;
 }
 
-// Returns all focusable elements inside a container
 function getFocusable(container) {
   return Array.from(
     container.querySelectorAll(
@@ -165,11 +135,15 @@ function BookingModal({ flight, onClose }) {
   const [submitError, setSubmitError] = useState('');
 
   const modalRef = useRef(null);
+  const triggerRef = useRef(document.activeElement); // capture opener for return focus
   const currency = flight.currency || 'EUR';
   const symbol = currency === 'EUR' ? '€' : '$';
 
-  // Focus first element and trap focus inside modal
+  // Lock body scroll, focus first element, trap focus, return focus on close
   useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const el = modalRef.current;
     if (!el) return;
     const focusable = getFocusable(el);
@@ -190,8 +164,15 @@ function BookingModal({ flight, onClose }) {
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+      // Return focus to the element that opened the modal
+      if (triggerRef.current && typeof triggerRef.current.focus === 'function') {
+        triggerRef.current.focus();
+      }
+    };
+  }, [onClose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -211,19 +192,13 @@ function BookingModal({ flight, onClose }) {
     setSubmitError('');
 
     try {
-      const res = await fetch('/api/flights/book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          offerId: flight.offerId,
-          passengerIds: flight.passengerIds || [],
-          passengerInfo: [form],
-          currency,
-          totalAmount: flight.price,
-        }),
+      const { data } = await axios.post('/api/flights/book', {
+        offerId: flight.offerId,
+        passengerIds: flight.passengerIds || [],
+        passengerInfo: [form],
+        currency,
+        totalAmount: flight.price,
       });
-
-      const data = await res.json();
 
       if (data.success) {
         setBooking(data.data);
@@ -242,7 +217,7 @@ function BookingModal({ flight, onClose }) {
     <div
       className="modal-overlay"
       onClick={onClose}
-      role="presentation"
+      role="none"
     >
       <div
         className="modal-box"
@@ -358,11 +333,7 @@ function BookingModal({ flight, onClose }) {
                     Gender
                     <span className="field-hint"> · required by carrier</span>
                   </span>
-                  <div
-                    className="gender-toggle"
-                    role="group"
-                    aria-labelledby="bm-gender-label"
-                  >
+                  <div className="gender-toggle" role="group" aria-labelledby="bm-gender-label">
                     {[['M', 'Male'], ['F', 'Female']].map(([val, label]) => (
                       <button
                         key={val}

@@ -212,7 +212,7 @@
 .stops-badge {
   font-size: 0.68rem;
   background: var(--orange-bg);
-  color: #92400e;
+  color: var(--amber-text);
   padding: 2px 7px;
   border-radius: 20px;
   font-weight: 600;
@@ -271,7 +271,7 @@
 .type-badge.type-jet        { background: #eef2ff; color: #4338ca; }
 .type-badge.type-wide-body  { background: #faf5ff; color: #7e22ce; }
 .type-badge.type-turboprop  { background: var(--green-bg); color: #065f46; }
-.type-badge.type-regional   { background: var(--orange-bg); color: #92400e; }
+.type-badge.type-regional   { background: var(--orange-bg); color: var(--amber-text); }
 
 .specs {
   display: flex;

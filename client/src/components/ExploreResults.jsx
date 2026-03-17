@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { parseDurationMins } from '../utils/flightUtils';
+import { formatTime, formatShortDate } from '../utils/formatters';
 import './ExploreResults.css';
 
 const TYPE_ICONS = {
@@ -13,23 +15,6 @@ const SORT_OPTIONS = [
   { id: 'duration', label: 'Quickest' },
   { id: 'alpha',    label: 'A–Z' },
 ];
-
-function parseDurationMins(str) {
-  if (!str) return Infinity;
-  const h = str.match(/(\d+)h/);
-  const m = str.match(/(\d+)m/);
-  return (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0);
-}
-
-function formatTime(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatShortDate(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
 
 function ExploreResults({ results, departure, aircraft, onSelect }) {
   const [sortBy, setSortBy] = useState('price');
@@ -64,11 +49,12 @@ function ExploreResults({ results, departure, aircraft, onSelect }) {
           )}
           <span className="explore-from">from <strong>{departure}</strong></span>
         </div>
-        <div className="explore-sort">
+        <div className="explore-sort" role="group" aria-label="Sort destinations by">
           {SORT_OPTIONS.map(opt => (
             <button
               key={opt.id}
               className={`sort-btn ${sortBy === opt.id ? 'active' : ''}`}
+              aria-pressed={sortBy === opt.id}
               onClick={() => setSortBy(opt.id)}
             >
               {opt.label}
@@ -78,12 +64,12 @@ function ExploreResults({ results, departure, aircraft, onSelect }) {
       </div>
 
       <div className="destination-grid">
-        {sorted.map((result, i) => {
+        {sorted.map((result) => {
           const { destination, price, currency, duration, stops, airline, aircraftName, aircraftType, departureTime, arrivalTime } = result;
           const isCheapest = parseFloat(price) === cheapest;
 
           return (
-            <div key={i} className={`destination-card ${isCheapest ? 'cheapest' : ''}`}>
+            <div key={destination.code} className={`destination-card ${isCheapest ? 'cheapest' : ''}`}>
               {isCheapest && <span className="cheapest-tag">Best price</span>}
 
               <div className="dest-top">

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { MONTHS } from '../utils/constants';
 import './DatePicker.css';
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const DAYS_FULL  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
@@ -26,6 +26,14 @@ function formatAriaLabel(day) {
   return day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 }
 
+function getFocusable(container) {
+  return Array.from(
+    container.querySelectorAll(
+      'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  );
+}
+
 function DatePicker({ value, onChange, min, placeholder = 'Select date', label }) {
   const [open, setOpen]           = useState(false);
   const [view, setView]           = useState(() => {
@@ -34,8 +42,10 @@ function DatePicker({ value, onChange, min, placeholder = 'Select date', label }
   });
   const [focusedDate, setFocusedDate] = useState(null);
 
-  const wrapRef  = useRef(null);
-  const gridRef  = useRef(null);
+  const wrapRef    = useRef(null);
+  const popupRef   = useRef(null);
+  const gridRef    = useRef(null);
+  const triggerRef = useRef(null);
 
   // Close on outside click
   useEffect(() => {
@@ -46,12 +56,32 @@ function DatePicker({ value, onChange, min, placeholder = 'Select date', label }
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // When popup opens: initialise focusedDate and scroll view to match
+  // When popup opens: initialise focusedDate, scroll view, trap focus
   useEffect(() => {
     if (!open) return;
     const initial = value ? toLocal(value) : new Date();
     setView(new Date(initial.getFullYear(), initial.getMonth(), 1));
     setFocusedDate(initial);
+
+    const popup = popupRef.current;
+    if (!popup) return;
+
+    const trapKeyDown = (e) => {
+      if (e.key === 'Tab') {
+        const items = getFocusable(popup);
+        if (!items.length) return;
+        const first = items[0];
+        const last  = items[items.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      }
+    };
+
+    popup.addEventListener('keydown', trapKeyDown);
+    return () => popup.removeEventListener('keydown', trapKeyDown);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Move DOM focus to the currently focused date cell
@@ -90,6 +120,8 @@ function DatePicker({ value, onChange, min, placeholder = 'Select date', label }
     if (!day || isDisabled(day)) return;
     onChange(toISO(day));
     setOpen(false);
+    // Return focus to trigger
+    if (triggerRef.current) triggerRef.current.focus();
   };
 
   const prevMonth = () => setView(v => new Date(v.getFullYear(), v.getMonth() - 1, 1));
@@ -125,6 +157,7 @@ function DatePicker({ value, onChange, min, placeholder = 'Select date', label }
       case 'Escape':
         e.preventDefault();
         setOpen(false);
+        if (triggerRef.current) triggerRef.current.focus();
         break;
       default: break;
     }
@@ -141,6 +174,7 @@ function DatePicker({ value, onChange, min, placeholder = 'Select date', label }
       {label && <label className="dp-label" htmlFor={triggerId}>{label}</label>}
       <button
         id={triggerId}
+        ref={triggerRef}
         type="button"
         className={`dp-trigger${open ? ' dp-open' : ''}${value ? '' : ' dp-empty'}`}
         onClick={() => setOpen(o => !o)}
@@ -163,6 +197,7 @@ function DatePicker({ value, onChange, min, placeholder = 'Select date', label }
           role="dialog"
           aria-label={`Choose ${label || 'date'}`}
           aria-modal="true"
+          ref={popupRef}
         >
           <div className="dp-header">
             <button

@@ -181,3 +181,37 @@
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border);
 }
+
+/* ─────────────────────────────────────────
+   ERROR BOUNDARY
+───────────────────────────────────────── */
+.error-boundary {
+  background: var(--red-bg);
+  border: 1px solid var(--red);
+  border-radius: var(--r-lg);
+  padding: 2rem;
+  text-align: center;
+  color: var(--red);
+}
+
+.error-boundary-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.error-boundary-retry {
+  padding: 0.45rem 1.2rem;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.error-boundary-retry:hover {
+  opacity: 0.85;
+}

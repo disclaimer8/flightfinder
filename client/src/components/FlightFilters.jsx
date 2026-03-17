@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { getTimeSlot } from '../utils/flightUtils';
 import './FlightFilters.css';
 
 const TIME_SLOTS = [
@@ -7,30 +9,29 @@ const TIME_SLOTS = [
   { id: 'night',     label: 'Night',     sub: '00:00–06:00', icon: '🌙' },
 ];
 
-function getTimeSlot(isoString) {
-  const h = new Date(isoString).getHours();
-  if (h < 6)  return 'night';
-  if (h < 12) return 'morning';
-  if (h < 18) return 'afternoon';
-  return 'evening';
-}
-
 function FlightFilters({ flights, filters, onChange }) {
   if (!flights.length) return null;
 
-  const prices = flights.map(f => parseFloat(f.price)).filter(Boolean);
-  const globalMin = Math.floor(Math.min(...prices));
-  const globalMax = Math.ceil(Math.max(...prices));
+  // Memoize all aggregate calculations — O(n) scans, not free
+  const { prices, globalMin, globalMax, airlines, stopCounts, slotCounts } = useMemo(() => {
+    const prices = flights.map(f => parseFloat(f.price)).filter(Boolean);
+    const globalMin = Math.floor(Math.min(...prices));
+    const globalMax = Math.ceil(Math.max(...prices));
+    const airlines = [...new Set(flights.map(f => f.airline).filter(Boolean))].sort();
 
-  const airlines = [...new Set(flights.map(f => f.airline).filter(Boolean))].sort();
+    const stopCounts = { 0: 0, 1: 0, '2+': 0 };
+    const slotCounts = { morning: 0, afternoon: 0, evening: 0, night: 0 };
+    flights.forEach(f => {
+      const s = f.stops ?? 0;
+      if (s === 0) stopCounts[0]++;
+      else if (s === 1) stopCounts[1]++;
+      else stopCounts['2+']++;
 
-  const stopCounts = { 0: 0, 1: 0, '2+': 0 };
-  flights.forEach(f => {
-    const s = f.stops ?? 0;
-    if (s === 0) stopCounts[0]++;
-    else if (s === 1) stopCounts[1]++;
-    else stopCounts['2+']++;
-  });
+      slotCounts[getTimeSlot(f.departureTime)]++;
+    });
+
+    return { prices, globalMin, globalMax, airlines, stopCounts, slotCounts };
+  }, [flights]);
 
   const toggle = (key, value) => {
     const cur = filters[key];
@@ -66,8 +67,8 @@ function FlightFilters({ flights, filters, onChange }) {
       <div className="filter-section">
         <h4 className="filter-label">Stops</h4>
         {[
-          { val: 0,    label: 'Nonstop', count: stopCounts[0] },
-          { val: 1,    label: '1 stop',  count: stopCounts[1] },
+          { val: 0,    label: 'Nonstop',  count: stopCounts[0] },
+          { val: 1,    label: '1 stop',   count: stopCounts[1] },
           { val: '2+', label: '2+ stops', count: stopCounts['2+'] },
         ].map(({ val, label, count }) => count > 0 && (
           <label key={val} className="filter-check">
@@ -113,7 +114,7 @@ function FlightFilters({ flights, filters, onChange }) {
         <h4 className="filter-label">Departure time</h4>
         <div className="time-slots">
           {TIME_SLOTS.map(({ id, label, sub, icon }) => {
-            const count = flights.filter(f => getTimeSlot(f.departureTime) === id).length;
+            const count = slotCounts[id] ?? 0;
             if (!count) return null;
             return (
               <button
@@ -155,5 +156,4 @@ function FlightFilters({ flights, filters, onChange }) {
   );
 }
 
-export { getTimeSlot };
 export default FlightFilters;

@@ -243,7 +243,7 @@
 .stops-badge {
   font-size: 0.67rem;
   background: var(--orange-bg);
-  color: #92400e;
+  color: var(--amber-text);
   padding: 2px 7px;
   border-radius: 20px;
   font-weight: 600;
@@ -269,7 +269,7 @@
 
 .dest-aircraft.type-wide-body  { color: #7e22ce; }
 .dest-aircraft.type-jet        { color: #4338ca; }
-.dest-aircraft.type-regional   { color: #92400e; }
+.dest-aircraft.type-regional   { color: var(--amber-text); }
 .dest-aircraft.type-turboprop  { color: #065f46; }
 
 /* ── Search flights CTA ── */

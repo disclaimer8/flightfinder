@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useFilterOptions } from '../context/FilterOptionsContext';
 import './SearchForm.css';
 import DatePicker from './DatePicker';
 
 const IS_DEV = import.meta.env.DEV;
 
-function SearchForm({ onSearch, onExplore, filterOptions, prefillArrival, onPrefillUsed }) {
+function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUsed }) {
+  const filterOptions = useFilterOptions();
   const [mode, setMode] = useState('search'); // 'search' | 'explore'
   const [tripType, setTripType] = useState('one-way');
-  const [apiProvider, setApiProvider] = useState('amadeus'); // 'amadeus' | 'duffel' (kiwi closed registration 2024)
+  const [apiProvider, setApiProvider] = useState('amadeus');
   const [filters, setFilters] = useState({
     departure: '',
     arrival: '',
@@ -15,7 +17,7 @@ function SearchForm({ onSearch, onExplore, filterOptions, prefillArrival, onPref
     returnDate: '',
     passengers: '1',
     aircraftType: '',
-    aircraftModel: ''
+    aircraftModel: '',
   });
 
   useEffect(() => {
@@ -49,6 +51,7 @@ function SearchForm({ onSearch, onExplore, filterOptions, prefillArrival, onPref
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (loading) return;
     if (mode === 'explore') {
       onExplore({
         departure: filters.departure,
@@ -74,13 +77,14 @@ function SearchForm({ onSearch, onExplore, filterOptions, prefillArrival, onPref
     && filters.arrival
     && filters.departure === filters.arrival;
 
-  const isSearchDisabled = sameCityError || (
+  const isSearchDisabled = loading || sameCityError || (
     mode === 'search'
       ? (!filters.departure || !filters.arrival || (tripType === 'round-trip' && !filters.returnDate))
       : (!filters.departure || (!filters.aircraftType && !filters.aircraftModel))
   );
 
   const disabledHint = (() => {
+    if (loading) return 'Search in progress…';
     if (mode === 'search') {
       if (sameCityError) return 'Departure and arrival cannot be the same city';
       if (!filters.departure) return 'Select a departure city';
@@ -287,7 +291,11 @@ function SearchForm({ onSearch, onExplore, filterOptions, prefillArrival, onPref
           disabled={isSearchDisabled}
           aria-describedby={isSearchDisabled && disabledHint ? 'sf-submit-hint' : undefined}
         >
-          {mode === 'explore' ? '🌍 Find Destinations' : 'Search Flights'}
+          {loading
+            ? 'Searching…'
+            : mode === 'explore'
+              ? '🌍 Find Destinations'
+              : 'Search Flights'}
         </button>
         {isSearchDisabled && disabledHint && (
           <span id="sf-submit-hint" className="submit-hint">{disabledHint}</span>
@@ -296,8 +304,8 @@ function SearchForm({ onSearch, onExplore, filterOptions, prefillArrival, onPref
 
       {mode === 'search' && (
         <div className="quick-filters">
-          <p>Filter by type:</p>
-          <div className="filter-buttons" role="group" aria-label="Filter by aircraft type">
+          <p id="quick-filter-label">Filter by type:</p>
+          <div className="filter-buttons" role="group" aria-labelledby="quick-filter-label">
             {['turboprop', 'jet', 'regional', 'wide-body'].map(type => (
               <button
                 key={type}

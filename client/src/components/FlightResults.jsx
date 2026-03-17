@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import FlightCard from './FlightCard';
 import FlightFilters from './FlightFilters';
+import { parseDurationMins, getTimeSlot } from '../utils/flightUtils';
 import './FlightResults.css';
 
 const IS_DEV = import.meta.env.DEV;
@@ -12,21 +13,6 @@ const SORT_OPTIONS = [
   { id: 'arrival',    label: 'Latest dep.' },
 ];
 
-function parseDurationMins(str) {
-  if (!str) return Infinity;
-  const h = str.match(/(\d+)h/);
-  const m = str.match(/(\d+)m/);
-  return (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0);
-}
-
-function getTimeSlot(isoString) {
-  const h = new Date(isoString).getHours();
-  if (h < 6)  return 'night';
-  if (h < 12) return 'morning';
-  if (h < 18) return 'afternoon';
-  return 'evening';
-}
-
 const EMPTY_FILTERS = {
   stops: [],
   airlines: [],
@@ -34,16 +20,15 @@ const EMPTY_FILTERS = {
   maxPrice: null,
 };
 
-function FlightResults({ flights, source }) {
+function FlightResults({ flights, source, hasSearched }) {
   const [sortBy, setSortBy] = useState('price_asc');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
 
-  // Reset filters when a new search is performed
-  const [prevFlights, setPrevFlights] = useState(flights);
-  if (flights !== prevFlights) {
-    setPrevFlights(flights);
+  // Reset filters and sort when new search results arrive
+  useEffect(() => {
     setFilters(EMPTY_FILTERS);
-  }
+    setSortBy('price_asc');
+  }, [flights]);
 
   const displayed = useMemo(() => {
     let result = [...flights];
@@ -81,11 +66,14 @@ function FlightResults({ flights, source }) {
     return result;
   }, [flights, sortBy, filters]);
 
+  // Before first search: show nothing
+  if (!hasSearched) return null;
+
   if (flights.length === 0) {
     return (
       <div className="results-container">
         <div className="no-results">
-          <p>No flights found.</p>
+          <p>No flights found for this route.</p>
           <ul className="no-results-tips">
             <li>Check that departure and arrival cities are different</li>
             <li>Try a different date or nearby dates</li>

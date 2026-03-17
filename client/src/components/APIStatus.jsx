@@ -1,4 +1,3 @@
-import React from 'react';
 import './APIStatus.css';
 
 function APIStatus({ status }) {

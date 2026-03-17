@@ -59,7 +59,7 @@
 .source-badge.source-mock {
   background: var(--orange-bg);
   border-color: #fde68a;
-  color: #92400e;
+  color: var(--amber-text);
 }
 
 /* ── Sort bar ── */
