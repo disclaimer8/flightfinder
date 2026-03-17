@@ -66,7 +66,7 @@ exports.searchFlights = async (req, res) => {
         flights = cachedFlights;
         if (fromCache) console.log(`[cache] Serving ${flights.length} flights from cache`);
       } catch (error) {
-        console.error(`${activeApi} API error, falling back to mock data:`, error.message);
+        console.error(`${activeApi} API error, falling back to mock data:`, error.message, JSON.stringify(error?.response?.result || error?.response?.data || error));
         flights = getMockFlights(departure, arrival);
       }
     } else {
