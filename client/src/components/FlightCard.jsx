@@ -89,7 +89,6 @@ function buildKayakUrl(flight, passengers) {
 function FlightCard({ flight, passengers }) {
   const { aircraft } = flight;
   const [showBooking, setShowBooking] = useState(false);
-  const triggerRef = useState(null)[0]; // placeholder — real ref assigned below via inline ref
 
   const isDuffel = flight.source === 'duffel';
   const kayakUrl = buildKayakUrl(flight, passengers);
