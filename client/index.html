@@ -2,10 +2,43 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+
+    <!-- Viewport & theme -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="description" content="Find flights by aircraft type" />
-    <title>FlightFinder - Search Flights by Aircraft Type</title>
+    <meta name="theme-color" content="#1a1a2e" />
+
+    <!-- Primary SEO -->
+    <title>FlightFinder — Search Flights by Aircraft Type | Boeing, Airbus & More</title>
+    <meta name="description" content="Search flights worldwide filtered by aircraft type. Find routes operated by Boeing 737, Airbus A320, turboprops, wide-body jets and more. The only flight search built around the plane, not just the price." />
+    <meta name="keywords" content="search flights by aircraft type, Boeing 737 flights, Airbus A320 routes, turboprop flights, flight search, aircraft type filter, find specific aircraft flights" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://himaxym.com/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://himaxym.com/" />
+    <meta property="og:title" content="FlightFinder — Search Flights by Aircraft Type" />
+    <meta property="og:description" content="The only flight search filtered by aircraft model. Find Boeing 737s, Airbus A320s, turboprops and wide-body jets on routes worldwide." />
+    <meta property="og:image" content="https://himaxym.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="FlightFinder — Search flights by aircraft type" />
+    <meta property="og:site_name" content="FlightFinder" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FlightFinder — Search Flights by Aircraft Type" />
+    <meta name="twitter:description" content="The only flight search filtered by aircraft model. Find Boeing 737s, Airbus A320s, turboprops and wide-body jets on routes worldwide." />
+    <meta name="twitter:image" content="https://himaxym.com/og-image.png" />
+    <meta name="twitter:image:alt" content="FlightFinder — Search flights by aircraft type" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Travelpayouts Drive -->
     <script data-noptimize="1" data-cfasync="false" data-wpfc-render="false">
       (function () {
           var script = document.createElement("script");
@@ -13,6 +46,64 @@
           script.src = 'https://emrldtp.cc/NTA5MTU4.js?t=509158';
           document.head.appendChild(script);
       })();
+    </script>
+
+    <!-- Structured data: WebSite + SearchAction -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://himaxym.com/#website",
+          "url": "https://himaxym.com/",
+          "name": "FlightFinder",
+          "description": "Search flights worldwide filtered by aircraft type — Boeing 737, Airbus A320, turboprops and more.",
+          "inLanguage": "en-US",
+          "publisher": {
+            "@type": "Organization",
+            "@id": "https://himaxym.com/#organization",
+            "name": "FlightFinder",
+            "url": "https://himaxym.com/"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://himaxym.com/?from={departure_airport}&to={arrival_airport}&aircraft={aircraft_type}&date={departure_date}"
+            },
+            "query-input": [
+              "required name=departure_airport",
+              "required name=arrival_airport",
+              "optional name=aircraft_type",
+              "required name=departure_date"
+            ]
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://himaxym.com/#app",
+          "name": "FlightFinder",
+          "url": "https://himaxym.com/",
+          "applicationCategory": "TravelApplication",
+          "operatingSystem": "Web",
+          "description": "Search and filter flights by aircraft type. Find routes operated by specific aircraft models including Boeing 737, Airbus A320 family, turboprops, regional jets and wide-body aircraft.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "Filter flights by aircraft type",
+            "Boeing 737 route search",
+            "Airbus A320 route search",
+            "Turboprop flight search",
+            "Wide-body aircraft routes",
+            "Global flight search"
+          ]
+        }
+      ]
+    }
     </script>
   </head>
   <body>

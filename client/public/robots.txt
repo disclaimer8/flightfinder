@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Block API endpoints from indexing
+Disallow: /api/
+
+# Block build artifacts and source files
+Disallow: /src/
+Disallow: /.vite/
+
+# Sitemap location
+Sitemap: https://himaxym.com/sitemap.xml
