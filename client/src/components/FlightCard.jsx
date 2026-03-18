@@ -73,17 +73,19 @@ function ItineraryRow({ itinerary, label }) {
   );
 }
 
-function buildKayakUrl(flight, passengers) {
+const TP_MARKER = '509158';
+
+function buildBookingUrl(flight, passengers) {
   const dep = flight.departure?.code;
   const arr = flight.arrival?.code;
-  const date = flight.departureTime ? flight.departureTime.slice(0, 10) : '';
+  const date = flight.departureTime ? flight.departureTime.slice(0, 10).replace(/-/g, '') : '';
   if (!dep || !arr || !date) return null;
-  const pax = `${passengers || 1}adults`;
+  const pax = passengers || 1;
   if (flight.isRoundTrip && flight.returnItinerary?.departureTime) {
-    const ret = flight.returnItinerary.departureTime.slice(0, 10);
-    return `https://www.kayak.com/flights/${dep}-${arr}/${date}/${ret}/${pax}`;
+    const ret = flight.returnItinerary.departureTime.slice(0, 10).replace(/-/g, '');
+    return `https://www.aviasales.com/search/${dep}${date}${arr}${ret}${pax}?marker=${TP_MARKER}`;
   }
-  return `https://www.kayak.com/flights/${dep}-${arr}/${date}/${pax}`;
+  return `https://www.aviasales.com/search/${dep}${date}${arr}1?marker=${TP_MARKER}&adults=${pax}`;
 }
 
 function FlightCard({ flight, passengers }) {
@@ -91,7 +93,7 @@ function FlightCard({ flight, passengers }) {
   const [showBooking, setShowBooking] = useState(false);
 
   const isDuffel = flight.source === 'duffel';
-  const kayakUrl = buildKayakUrl(flight, passengers);
+  const bookingUrl = buildBookingUrl(flight, passengers);
 
   const outboundItinerary = {
     departure: flight.departure,
@@ -162,16 +164,16 @@ function FlightCard({ flight, passengers }) {
 
         {isDuffel ? (
           <button className="btn-book" onClick={() => setShowBooking(true)}>Book now</button>
-        ) : kayakUrl ? (
+        ) : bookingUrl ? (
           <a
             className="btn-book btn-book-external"
-            href={kayakUrl}
+            href={bookingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            title="Opens Kayak.com in a new tab"
-            aria-label={`Book ${flight.airline} flight on Kayak.com (opens new tab)`}
+            title="Search on Aviasales"
+            aria-label={`Search ${flight.airline} flight on Aviasales (opens new tab)`}
           >
-            Book via Kayak
+            Find tickets
             <svg aria-hidden="true" focusable="false" className="btn-external-icon" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
