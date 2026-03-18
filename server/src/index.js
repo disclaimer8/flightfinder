@@ -120,7 +120,7 @@ if (IS_DEV) {
 if (!IS_DEV) {
   const clientBuild = path.join(__dirname, '../../client/dist');
   app.use(express.static(clientBuild, { maxAge: '1d' }));
-  app.get('*', (_req, res) => {
+  app.get('*path', (_req, res) => {
     res.sendFile(path.join(clientBuild, 'index.html'));
   });
 }
