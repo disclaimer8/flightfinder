@@ -74,6 +74,12 @@ exports.searchFlights = async (req, res) => {
       flights = getMockFlights(departure, arrival);
     }
 
+    // Safety guard — should always be array, but protect against unexpected cache/API results
+    if (!Array.isArray(flights)) {
+      console.error('[searchFlights] flights is not an array:', typeof flights, JSON.stringify(flights)?.slice(0, 200));
+      flights = [];
+    }
+
     // Apply filters
     if (aircraftType) {
       flights = flights.filter(f => {
