@@ -5,11 +5,15 @@ import ExploreResults from './components/ExploreResults';
 import APIStatus from './components/APIStatus';
 import ErrorBoundary from './components/ErrorBoundary';
 import SkeletonResults from './components/SkeletonResults';
+import AuthModal from './components/AuthModal';
 import { useFlightSearch } from './hooks/useFlightSearch';
 import { FilterOptionsContext } from './context/FilterOptionsContext';
+import { useAuth } from './context/AuthContext';
 import './App.css';
 
 function App() {
+  const { user, logout } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [filterOptions, setFilterOptions] = useState(null);
   const [filterOptionsError, setFilterOptionsError] = useState(false);
   const [apiStatus, setApiStatus] = useState(null);
@@ -56,8 +60,28 @@ function App() {
               <span className="brand-icon" aria-hidden="true">✈</span>
               <span className="brand-name">FlightFinder</span>
             </div>
-            {apiStatus && <APIStatus status={apiStatus} />}
+            <div className="nav-right">
+              {apiStatus && <APIStatus status={apiStatus} />}
+              {user ? (
+                <div className="nav-user">
+                  <span className="nav-user-email" title={user.email}>{user.email}</span>
+                  <button className="nav-btn nav-btn-ghost" onClick={logout}>
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="nav-btn nav-btn-primary"
+                  onClick={() => setAuthModalOpen(true)}
+                >
+                  Sign in
+                </button>
+              )}
+            </div>
           </nav>
+          {authModalOpen && (
+            <AuthModal onClose={() => setAuthModalOpen(false)} />
+          )}
 
           <div className="hero-content">
             <h1 className="hero-title">Find flights by aircraft type</h1>

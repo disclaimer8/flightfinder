@@ -1,0 +1,378 @@
+/* ─────────────────────────────────────────
+   BACKDROP
+───────────────────────────────────────── */
+.auth-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(12, 20, 39, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: auth-backdrop-in 0.18s ease;
+}
+
+@keyframes auth-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─────────────────────────────────────────
+   MODAL CARD
+───────────────────────────────────────── */
+.auth-modal {
+  background: #fff;
+  border-radius: var(--r-xl);
+  width: 100%;
+  max-width: 420px;
+  box-shadow:
+    0 32px 64px rgba(12, 20, 39, 0.32),
+    0 8px 24px rgba(12, 20, 39, 0.16);
+  position: relative;
+  animation: auth-modal-in 0.22s cubic-bezier(0.34, 1.42, 0.64, 1);
+  overflow: hidden;
+}
+
+@keyframes auth-modal-in {
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+
+/* ─────────────────────────────────────────
+   HEADER STRIP  (dark gradient, matches hero)
+───────────────────────────────────────── */
+.auth-modal-header {
+  background: linear-gradient(160deg, #0c1427 0%, #162244 55%, #0e1c3d 100%);
+  padding: 1.5rem 1.75rem 0;
+  position: relative;
+}
+
+.auth-modal-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 15% 80%, rgba(99,102,241,0.22) 0%, transparent 60%),
+    radial-gradient(ellipse at 90% 10%, rgba(79,70,229,0.14) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.auth-modal-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 1.25rem;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-modal-brand-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.auth-modal-brand-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.025em;
+}
+
+/* Close button */
+.auth-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.85);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.auth-modal-close:hover {
+  background: rgba(255,255,255,0.22);
+  color: #fff;
+}
+
+/* ─────────────────────────────────────────
+   TABS
+───────────────────────────────────────── */
+.auth-tabs {
+  display: flex;
+  gap: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255,255,255,0.55);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s;
+  letter-spacing: -0.01em;
+}
+
+.auth-tab.active {
+  color: #fff;
+  border-bottom-color: var(--primary);
+}
+
+.auth-tab:hover:not(.active) {
+  color: rgba(255,255,255,0.8);
+}
+
+/* ─────────────────────────────────────────
+   BODY
+───────────────────────────────────────── */
+.auth-modal-body {
+  padding: 1.75rem;
+}
+
+/* ─────────────────────────────────────────
+   FORM
+───────────────────────────────────────── */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.auth-field label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+}
+
+.auth-input-wrap {
+  position: relative;
+}
+
+.auth-input-wrap input {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  font-size: 0.92rem;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.auth-input-wrap input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+.auth-input-wrap input.input-error {
+  border-color: var(--red);
+  background: var(--red-bg);
+}
+
+.auth-input-wrap input.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.15);
+}
+
+/* Password has right-side toggle button */
+.auth-input-wrap input[type="password"],
+.auth-input-wrap input[data-pw] {
+  padding-right: 2.75rem;
+}
+
+.auth-pw-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+  line-height: 1;
+}
+
+.auth-pw-toggle:hover {
+  color: var(--text-2);
+}
+
+/* Inline field error */
+.auth-field-error {
+  font-size: 0.72rem;
+  color: var(--red);
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Global form error banner */
+.auth-error-banner {
+  background: var(--red-bg);
+  border: 1px solid var(--red);
+  color: var(--red);
+  border-radius: var(--r);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.auth-error-banner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ─────────────────────────────────────────
+   SUBMIT BUTTON
+───────────────────────────────────────── */
+.auth-submit {
+  padding: 0.8rem 1.5rem;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s, opacity 0.15s;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.auth-submit:hover:not(:disabled) {
+  background: var(--primary-dark);
+  box-shadow: 0 4px 14px rgba(99,102,241,0.38);
+  transform: translateY(-1px);
+}
+
+.auth-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Spinner inside button */
+.auth-btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ─────────────────────────────────────────
+   SUCCESS STATE
+───────────────────────────────────────── */
+.auth-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  animation: auth-success-in 0.3s ease;
+}
+
+@keyframes auth-success-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.auth-success-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--green-bg);
+  border: 2px solid var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green);
+}
+
+.auth-success-msg {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ─────────────────────────────────────────
+   FOOTER SWITCH LINK
+───────────────────────────────────────── */
+.auth-switch {
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-3);
+  margin-top: 1rem;
+}
+
+.auth-switch button {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.15s;
+}
+
+.auth-switch button:hover {
+  text-decoration-color: var(--primary);
+}
+
+/* ─────────────────────────────────────────
+   RESPONSIVE
+───────────────────────────────────────── */
+@media (max-width: 480px) {
+  .auth-modal {
+    max-width: 100%;
+    border-radius: var(--r-lg);
+  }
+
+  .auth-modal-body {
+    padding: 1.25rem;
+  }
+}

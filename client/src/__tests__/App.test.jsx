@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import App from '../App';
+import { AuthProvider } from '../context/AuthContext';
 
 const FILTER_OPTIONS = {
   cities: [
@@ -40,17 +41,25 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function renderApp() {
+  return render(
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+}
+
 describe('App', () => {
   it('mounts without crashing', async () => {
     mockFetch(okResponse(FILTER_OPTIONS));
-    render(<App />);
+    renderApp();
     // Hero title is always present
     expect(screen.getByText(/find flights by aircraft type/i)).toBeInTheDocument();
   });
 
   it('shows search form after filter-options load', async () => {
     mockFetch(okResponse(FILTER_OPTIONS));
-    render(<App />);
+    renderApp();
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /search flights/i })).toBeInTheDocument()
     );
@@ -58,9 +67,15 @@ describe('App', () => {
 
   it('shows error banner when filter-options request fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
-    render(<App />);
+    renderApp();
     await waitFor(() =>
       expect(screen.getByText(/failed to load search options/i)).toBeInTheDocument()
     );
+  });
+
+  it('shows Sign in button in nav when logged out', async () => {
+    mockFetch(okResponse(FILTER_OPTIONS));
+    renderApp();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 });
