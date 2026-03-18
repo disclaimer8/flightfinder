@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef } from 'react';
-import axios from 'axios';
 import { buildFlightParams } from '../utils/flightUtils';
 
 export function useFlightSearch(filterOptions) {
@@ -34,16 +33,20 @@ export function useFlightSearch(filterOptions) {
 
     try {
       const params = buildFlightParams(filters);
-      const response = await axios.get(`/api/flights?${params}`, {
-        signal: controller.signal,
-      });
-      setFlights(response.data.data || []);
-      setApiSource(response.data.source);
+      const res = await fetch(`/api/flights?${params}`, { signal: controller.signal });
+      if (!res.ok) {
+        let detail = res.statusText;
+        try { const body = await res.json(); detail = body.error || body.message || detail; } catch (_) {}
+        throw new Error(detail);
+      }
+      const data = await res.json();
+      setFlights(data.data || []);
+      setApiSource(data.source);
       setHasSearched(true);
     } catch (err) {
-      if (axios.isCancel(err) || err.name === 'CanceledError') return;
+      if (err.name === 'AbortError') return;
       console.error('Error searching flights:', err);
-      const detail = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'unknown';
+      const detail = err?.message || 'unknown';
       setError(`Search failed: ${detail}`);
     } finally {
       setLoading(false);
@@ -68,10 +71,14 @@ export function useFlightSearch(filterOptions) {
       if (params.aircraftType)  p.append('aircraftType', params.aircraftType);
       if (params.aircraftModel) p.append('aircraftModel', params.aircraftModel);
 
-      const response = await axios.get(`/api/flights/explore?${p}`, {
-        signal: controller.signal,
-      });
-      setExploreResults(response.data.data || []);
+      const res = await fetch(`/api/flights/explore?${p}`, { signal: controller.signal });
+      if (!res.ok) {
+        let detail = res.statusText;
+        try { const body = await res.json(); detail = body.error || body.message || detail; } catch (_) {}
+        throw new Error(detail);
+      }
+      const data = await res.json();
+      setExploreResults(data.data || []);
 
       const ac = params.aircraftModel
         ? filterOptions?.aircraft?.find(a => a.code === params.aircraftModel)
@@ -81,7 +88,7 @@ export function useFlightSearch(filterOptions) {
 
       setExploreContext({ departure: params.departure, aircraft: ac });
     } catch (err) {
-      if (axios.isCancel(err) || err.name === 'CanceledError') return;
+      if (err.name === 'AbortError') return;
       console.error('Error exploring destinations:', err);
       setError('Explore failed. Please check your connection and try again.');
       setExploreResults([]);

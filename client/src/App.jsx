@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import SearchForm from './components/SearchForm';
 import FlightResults from './components/FlightResults';
 import ExploreResults from './components/ExploreResults';
@@ -31,10 +30,14 @@ function App() {
   } = useFlightSearch(filterOptions);
 
   useEffect(() => {
-    axios.get('/api/flights/filter-options')
+    fetch('/api/flights/filter-options')
       .then(res => {
-        setFilterOptions(res.data);
-        if (res.data.apiStatus) setApiStatus(res.data.apiStatus);
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+      })
+      .then(data => {
+        setFilterOptions(data);
+        if (data.apiStatus) setApiStatus(data.apiStatus);
       })
       .catch(() => setFilterOptionsError(true));
   }, []);

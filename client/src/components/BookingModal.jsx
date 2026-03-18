@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import { formatTime, formatDate } from '../utils/formatters';
 import { MONTHS } from '../utils/constants';
 import './BookingModal.css';
@@ -192,15 +191,21 @@ function BookingModal({ flight, onClose }) {
     setSubmitError('');
 
     try {
-      const { data } = await axios.post('/api/flights/book', {
-        offerId: flight.offerId,
-        passengerIds: flight.passengerIds || [],
-        passengerInfo: [form],
-        currency,
-        totalAmount: flight.price,
+      const res = await fetch('/api/flights/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offerId: flight.offerId,
+          passengerIds: flight.passengerIds || [],
+          passengerInfo: [form],
+          currency,
+          totalAmount: flight.price,
+        }),
       });
 
-      if (data.success) {
+      const data = await res.json();
+
+      if (res.ok && data.success) {
         setBooking(data.data);
         setStatus('success');
       } else {

@@ -1,15 +1,32 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import axios from 'axios';
 import { useFlightSearch } from '../useFlightSearch';
 
-vi.mock('axios');
+function okResponse(data) {
+  return {
+    ok: true,
+    statusText: 'OK',
+    json: () => Promise.resolve(data),
+  };
+}
+
+function errorResponse(statusText = 'Internal Server Error') {
+  return {
+    ok: false,
+    statusText,
+    json: () => Promise.resolve({ error: statusText }),
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('useFlightSearch', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('starts with empty state', () => {
     const { result } = renderHook(() => useFlightSearch(null));
     expect(result.current.flights).toEqual([]);
@@ -20,7 +37,9 @@ describe('useFlightSearch', () => {
 
   it('sets flights and hasSearched on successful search', async () => {
     const mockFlights = [{ id: '1', price: '200', airline: 'AA' }];
-    axios.get.mockResolvedValueOnce({ data: { data: mockFlights, source: 'amadeus' } });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      okResponse({ data: mockFlights, source: 'amadeus' })
+    ));
 
     const { result } = renderHook(() => useFlightSearch(null));
 
@@ -35,7 +54,20 @@ describe('useFlightSearch', () => {
   });
 
   it('sets error on failed search', async () => {
-    axios.get.mockRejectedValueOnce(new Error('Network error'));
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
+
+    const { result } = renderHook(() => useFlightSearch(null));
+
+    await act(async () => {
+      await result.current.handleSearch({ departure: 'JFK', arrival: 'LAX', date: '2024-06-01', passengers: '1' });
+    });
+
+    expect(result.current.error).toMatch(/search failed/i);
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('sets error on non-ok HTTP response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorResponse('Bad Gateway')));
 
     const { result } = renderHook(() => useFlightSearch(null));
 
@@ -48,7 +80,7 @@ describe('useFlightSearch', () => {
   });
 
   it('clearError resets the error state', async () => {
-    axios.get.mockRejectedValueOnce(new Error('fail'));
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('fail')));
 
     const { result } = renderHook(() => useFlightSearch(null));
     await act(async () => {
@@ -64,7 +96,9 @@ describe('useFlightSearch', () => {
 
   it('sets exploreResults on successful explore', async () => {
     const mockDestinations = [{ destination: { code: 'CDG', city: 'Paris', country: 'France', flag: '🇫🇷' }, price: '350' }];
-    axios.get.mockResolvedValueOnce({ data: { data: mockDestinations } });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      okResponse({ data: mockDestinations })
+    ));
 
     const filterOptions = { aircraft: [] };
     const { result } = renderHook(() => useFlightSearch(filterOptions));
