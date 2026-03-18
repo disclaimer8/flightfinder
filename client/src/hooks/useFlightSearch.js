@@ -43,7 +43,8 @@ export function useFlightSearch(filterOptions) {
     } catch (err) {
       if (axios.isCancel(err) || err.name === 'CanceledError') return;
       console.error('Error searching flights:', err);
-      setError('Search failed. Please check your connection and try again.');
+      const detail = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'unknown';
+      setError(`Search failed: ${detail}`);
     } finally {
       setLoading(false);
     }
