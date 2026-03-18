@@ -221,7 +221,7 @@ exports.exploreDestinations = async (req, res) => {
 
     const batchResults = await Promise.allSettled(
       batch.map(async (dest) => {
-        const segCacheKey = `flights:amadeus:${depCode}:${dest.code}:${searchDate}:1:`;
+        const segCacheKey = `raw:amadeus:${depCode}:${dest.code}:${searchDate}:1:`;
         try {
           const { data: raw } = await cacheService.getOrFetch(segCacheKey, () => amadeusService.searchFlights({
             departure_airport: depCode,
