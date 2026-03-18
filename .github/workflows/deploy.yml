@@ -15,6 +15,9 @@ jobs:
           username: root
           key: ${{ secrets.claude }}
           script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            export PATH="$PATH:/usr/local/bin"
             cd ~/flightfinder
             git pull origin main
             cd server && npm install --omit=dev
