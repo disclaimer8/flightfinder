@@ -10,6 +10,7 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
   const [mode, setMode] = useState('search'); // 'search' | 'explore'
   const [tripType, setTripType] = useState('one-way');
   const [apiProvider, setApiProvider] = useState('amadeus');
+  const [pendingAutoSearch, setPendingAutoSearch] = useState(null);
   const [filters, setFilters] = useState({
     departure: '',
     arrival: '',
@@ -32,12 +33,18 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
     setFilters(prev => {
       const next = { ...prev, arrival: code };
       if (auto && next.departure && next.date) {
-        setTimeout(() => onSearch({ ...next, returnDate: '' }), 0);
+        setPendingAutoSearch({ ...next, returnDate: '' });
       }
       return next;
     });
     onPrefillUsed?.();
   }, [prefillArrival]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!pendingAutoSearch) return;
+    setPendingAutoSearch(null);
+    onSearch(pendingAutoSearch);
+  }, [pendingAutoSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getTomorrowDate = () => {
     const d = new Date();
