@@ -10,6 +10,9 @@ const app  = express();
 const PORT = process.env.PORT || 5000;
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
+// Trust nginx reverse proxy (needed for express-rate-limit + X-Forwarded-For)
+app.set('trust proxy', 1);
+
 // ─────────────────────────────────────────
 //  Security headers
 // ─────────────────────────────────────────
