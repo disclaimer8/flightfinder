@@ -40,7 +40,8 @@ function App() {
   }, []);
 
   const handleSelectDestination = (destinationCode) => {
-    setPrefillArrival(destinationCode);
+    setPrefillArrival({ code: destinationCode, autoSearch: true });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (

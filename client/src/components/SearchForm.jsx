@@ -26,8 +26,16 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
 
   useEffect(() => {
     if (!prefillArrival) return;
+    const code = prefillArrival.code ?? prefillArrival;
+    const auto = prefillArrival.autoSearch ?? false;
     setMode('search');
-    setFilters(prev => ({ ...prev, arrival: prefillArrival }));
+    setFilters(prev => {
+      const next = { ...prev, arrival: code };
+      if (auto && next.departure && next.date) {
+        setTimeout(() => onSearch({ ...next, returnDate: '' }), 0);
+      }
+      return next;
+    });
     onPrefillUsed?.();
   }, [prefillArrival]); // eslint-disable-line react-hooks/exhaustive-deps
 
