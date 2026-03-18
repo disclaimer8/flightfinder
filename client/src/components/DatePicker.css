@@ -61,7 +61,17 @@
   border: 1px solid var(--border);
   padding: 1rem;
   min-width: 280px;
+  /* Prevent the calendar from being wider than the viewport */
+  max-width: calc(100vw - 2rem);
   animation: dp-in 0.12s ease;
+}
+
+/* When the trigger is near the right edge, anchor the popup to the right
+   instead of the left so it doesn't overflow off-screen.
+   Apply .dp-popup-right to the .dp-wrap via inline style or a wrapper class. */
+.dp-wrap.dp-align-right .dp-popup {
+  left: auto;
+  right: 0;
 }
 
 @keyframes dp-in {

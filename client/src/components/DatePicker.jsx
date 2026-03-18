@@ -34,7 +34,7 @@ function getFocusable(container) {
   );
 }
 
-function DatePicker({ value, onChange, min, placeholder = 'Select date', label }) {
+function DatePicker({ value, onChange, min, placeholder = 'Select date', label, align = 'left' }) {
   const [open, setOpen]           = useState(false);
   const [view, setView]           = useState(() => {
     const base = value ? toLocal(value) : new Date();
@@ -170,7 +170,7 @@ function DatePicker({ value, onChange, min, placeholder = 'Select date', label }
   const monthLabel = `${MONTHS[view.getMonth()]} ${view.getFullYear()}`;
 
   return (
-    <div className="dp-wrap" ref={wrapRef}>
+    <div className={`dp-wrap${align === 'right' ? ' dp-align-right' : ''}`} ref={wrapRef}>
       {label && <label className="dp-label" htmlFor={triggerId}>{label}</label>}
       <button
         id={triggerId}

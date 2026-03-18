@@ -204,6 +204,7 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
               onChange={(v) => setFilters(prev => ({ ...prev, returnDate: v }))}
               min={filters.date || getTomorrowDate()}
               placeholder="Select return date"
+              align="right"
             />
           )}
 

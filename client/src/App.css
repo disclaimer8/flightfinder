@@ -10,7 +10,10 @@
   background: linear-gradient(160deg, #0c1427 0%, #162244 55%, #0e1c3d 100%);
   padding: 0 1.5rem 3rem;
   position: relative;
-  overflow: hidden;
+  /* Do NOT use overflow: hidden here — it clips the DatePicker calendar popup.
+     The decorative ::before / ::after pseudo-elements use pointer-events: none
+     so they don't need clipping to be safe. */
+  overflow: visible;
 }
 
 .hero::before {

@@ -71,15 +71,17 @@
 .itineraries {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0;
 }
 
 .itinerary-row {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--border-light);
+  /* Prevent any absolutely-positioned descendant from escaping the card */
+  overflow: visible;
 }
 
 .itinerary-row:last-child {
@@ -98,8 +100,10 @@
 .route-line {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  align-items: center;
+  align-items: start;
   gap: 1rem;
+  /* Prevent the middle column shrinking so small the stop dots overlap */
+  min-width: 0;
 }
 
 .endpoint {
@@ -144,7 +148,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.4rem;
+  /* Reserve vertical space so stop-code labels never overlap route-meta */
+  min-width: 0;
 }
 
 .route-path {
@@ -158,13 +164,16 @@
   flex: 1;
   height: 1.5px;
   background: var(--border);
+  /* Align self center so the line sits at the midpoint of the stop-dot row */
+  align-self: flex-start;
+  margin-top: 3px;
 }
 
 .stop-dot {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .stop-dot::before {
@@ -176,16 +185,19 @@
   border: 2px solid #fff;
   box-shadow: 0 0 0 1.5px var(--primary);
   display: block;
+  flex-shrink: 0;
 }
 
 .stop-code {
   font-size: 0.6rem;
   color: var(--primary);
   font-weight: 700;
-  margin-top: 2px;
-  position: absolute;
-  top: 9px;
+  /* In normal document flow so it never overlaps route-meta below */
+  position: static;
+  margin-top: 3px;
   white-space: nowrap;
+  line-height: 1;
+  text-align: center;
 }
 
 .route-meta {
@@ -244,6 +256,8 @@
   align-items: flex-end;
   padding-top: 0.85rem;
   margin-top: 0.25rem;
+  gap: 1rem;
+  border-top: 1px solid var(--border-light);
 }
 
 .aircraft-block {
@@ -349,7 +363,29 @@
 
 @media (max-width: 600px) {
   .airport-code { font-size: 1.2rem; }
+  .price { font-size: 1.3rem; }
   .specs { gap: 0.5rem; }
   .flight-footer { flex-direction: column; align-items: stretch; gap: 0.75rem; }
   .btn-book { justify-content: center; }
+  /* Tighten the route grid gap on small screens to prevent overflow */
+  .route-line { gap: 0.5rem; }
+  .flight-card { padding: 1rem; }
+  .flight-header { flex-wrap: wrap; gap: 0.5rem; }
+}
+
+@media (max-width: 400px) {
+  /* On very small screens stack the route endpoints vertically */
+  .route-line {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  .route-middle {
+    padding: 0.25rem 0;
+    flex-direction: row;
+    justify-content: center;
+    gap: 0.5rem;
+    /* Hide vertical route path on stacked layout */
+  }
+  .route-path { display: none; }
+  .endpoint.end { align-items: flex-start; }
 }
