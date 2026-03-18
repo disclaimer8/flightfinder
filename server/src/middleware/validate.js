@@ -187,4 +187,34 @@ function bookBody(req, res, next) {
   next();
 }
 
-module.exports = { searchQuery, exploreQuery, bookBody, sanitiseKey };
+// Auth body validators — reuses EMAIL_RE declared above
+
+const authBody = {
+  register(req, res, next) {
+    const { email, password } = req.body || {};
+    if (!email || !EMAIL_RE.test(email)) {
+      return res.status(400).json({ success: false, message: 'Valid email is required' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+    if (password.length > 128) {
+      return res.status(400).json({ success: false, message: 'Password too long' });
+    }
+    req.validatedBody = { email: email.toLowerCase().trim(), password };
+    next();
+  },
+  login(req, res, next) {
+    const { email, password } = req.body || {};
+    if (!email || !EMAIL_RE.test(email)) {
+      return res.status(400).json({ success: false, message: 'Valid email is required' });
+    }
+    if (!password) {
+      return res.status(400).json({ success: false, message: 'Password is required' });
+    }
+    req.validatedBody = { email: email.toLowerCase().trim(), password };
+    next();
+  },
+};
+
+module.exports = { searchQuery, exploreQuery, bookBody, sanitiseKey, authBody };

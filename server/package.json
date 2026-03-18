@@ -14,7 +14,10 @@
     "testMatch": [
       "**/__tests__/**/*.test.js"
     ],
-    "clearMocks": true
+    "clearMocks": true,
+    "setupFiles": [
+      "<rootDir>/src/__tests__/setup.js"
+    ]
   },
   "keywords": [
     "flight",
@@ -25,12 +28,16 @@
   "license": "MIT",
   "dependencies": {
     "amadeus": "^11.0.0",
+    "argon2": "^0.44.0",
     "axios": "^1.13.6",
+    "better-sqlite3": "^12.8.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
     "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
     "node-cache": "^5.1.2"
   },
   "devDependencies": {

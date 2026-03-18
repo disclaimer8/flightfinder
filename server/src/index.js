@@ -1,9 +1,14 @@
+// Load .env with override so PM2-cached env vars are replaced,
+// but preserve NODE_ENV if already set (e.g. NODE_ENV=test in Jest).
+const _savedNodeEnv = process.env.NODE_ENV;
 require('dotenv').config({ path: require('path').join(__dirname, '../.env'), override: true });
+if (_savedNodeEnv) process.env.NODE_ENV = _savedNodeEnv;
 
 const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 const path    = require('path');
 
 const app  = express();
@@ -37,13 +42,14 @@ app.use(cors({
     cb(new Error('Not allowed by CORS'));
   },
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // ─────────────────────────────────────────
 //  Body parsing
 // ─────────────────────────────────────────
 app.use(express.json({ limit: '16kb' }));
+app.use(cookieParser());
 
 // ─────────────────────────────────────────
 //  Rate limiting
@@ -72,6 +78,7 @@ app.use('/api/flights', searchLimiter);
 // ─────────────────────────────────────────
 //  Routes
 // ─────────────────────────────────────────
+app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/flights',  require('./routes/flights'));
 app.use('/api/aircraft', require('./routes/aircraft'));
 

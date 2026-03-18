@@ -2,8 +2,7 @@ node_modules/
 client/node_modules/
 server/node_modules/
 client/dist/
-.env
+.envyf
 server/.env
 *.log
 .DS_Store
-.claude/
