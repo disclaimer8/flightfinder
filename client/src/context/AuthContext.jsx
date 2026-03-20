@@ -61,9 +61,9 @@ export function AuthProvider({ children }) {
     if (!res.ok || !data.success) {
       throw new Error(data.message || 'Registration failed');
     }
-    // Auto-login after successful registration
-    return login(email, password);
-  }, [login]);
+    // Don't auto-login — user must verify email first
+    return data;
+  }, []);
 
   const logout = useCallback(async () => {
     try {

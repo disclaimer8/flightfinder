@@ -14,8 +14,21 @@ const authLimiter = rateLimit({
   skip: () => process.env.NODE_ENV === 'test',
 });
 
-router.use(authLimiter);
+const verifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later.' },
+  skip: () => process.env.NODE_ENV === 'test',
+});
 
+// Email verification routes (separate, looser limiter)
+router.get('/verify-email', verifyLimiter, authController.verifyEmail);
+router.post('/resend-verification', verifyLimiter, authController.resendVerification);
+
+// Auth routes
+router.use(authLimiter);
 router.post('/register', validate.authBody.register, authController.register);
 router.post('/login',    validate.authBody.login,    authController.login);
 router.post('/refresh',  authController.refresh);

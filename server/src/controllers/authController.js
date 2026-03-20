@@ -1,5 +1,6 @@
 const db = require('../models/db');
 const authService = require('../services/authService');
+const emailService = require('../services/emailService');
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -24,8 +25,23 @@ exports.register = async (req, res) => {
     return res.status(409).json({ success: false, message: 'Email already registered' });
   }
   const passwordHash = await authService.hashPassword(password);
-  db.createUser(email, passwordHash);
-  res.status(201).json({ success: true, message: 'Account created' });
+  const result = db.createUser(email, passwordHash);
+  const userId = result.lastInsertRowid;
+
+  // Generate and store verification token
+  const { raw, hash, expiresAt } = authService.generateVerificationToken();
+  db.createVerificationToken(userId, hash, expiresAt);
+
+  // Send verification email (non-blocking — log error but don't fail the request)
+  emailService.sendVerificationEmail(email, raw).catch(err => {
+    console.error('[email] Failed to send verification email to', email, '—', err.message);
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Account created. Please check your email to verify your account.',
+    requiresVerification: true,
+  });
 };
 
 exports.login = async (req, res) => {
@@ -38,6 +54,14 @@ exports.login = async (req, res) => {
 
   if (!user || !valid) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+
+  if (!user.email_verified) {
+    return res.status(403).json({
+      success: false,
+      message: 'Please verify your email address before signing in.',
+      code: 'email_not_verified',
+    });
   }
 
   const accessToken = authService.generateAccessToken(user.id, user.email);
@@ -90,4 +114,49 @@ exports.me = (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
   res.json({ success: true, user });
+};
+
+exports.verifyEmail = (req, res) => {
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).json({ success: false, message: 'Verification token required' });
+  }
+
+  const hash = db.hashToken(token);
+  const stored = db.getVerificationToken(hash);
+
+  if (!stored || stored.expires_at < Date.now()) {
+    return res.status(400).json({ success: false, message: 'Invalid or expired verification link' });
+  }
+
+  db.verifyUserEmail(stored.user_id);
+  db.deleteVerificationToken(hash);
+
+  res.json({ success: true, message: 'Email verified! You can now sign in.' });
+};
+
+exports.resendVerification = async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Email required' });
+  }
+
+  const user = db.getUserByEmail(email);
+
+  // Always return success to avoid email enumeration
+  if (!user || user.email_verified) {
+    return res.json({ success: true, message: 'If that email exists and is unverified, a new link has been sent.' });
+  }
+
+  // Invalidate any existing verification tokens for this user
+  db.deleteVerificationTokensByUser(user.id);
+
+  const { raw, hash, expiresAt } = authService.generateVerificationToken();
+  db.createVerificationToken(user.id, hash, expiresAt);
+
+  emailService.sendVerificationEmail(email, raw).catch(err => {
+    console.error('[email] Failed to resend verification email to', email, '—', err.message);
+  });
+
+  res.json({ success: true, message: 'If that email exists and is unverified, a new link has been sent.' });
 };

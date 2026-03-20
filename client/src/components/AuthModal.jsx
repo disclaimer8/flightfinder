@@ -63,6 +63,8 @@ export default function AuthModal({ onClose, initialTab = 'login' }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [resendStatus, setResendStatus] = useState(''); // '' | 'sending' | 'sent'
 
   // Field-level validation (only shown after first submit attempt)
   const [touched, setTouched] = useState({ email: false, password: false });
@@ -123,9 +125,25 @@ export default function AuthModal({ onClose, initialTab = 'login' }) {
     setShowPw(false);
     setError('');
     setTouched({ email: false, password: false });
+    setVerificationSent(false);
+    setResendStatus('');
     // Re-focus email input after tab switch
     setTimeout(() => firstFocusRef.current?.focus(), 50);
   }, []);
+
+  const handleResend = async () => {
+    setResendStatus('sending');
+    try {
+      await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+    } catch {
+      // ignore — server always returns success to prevent enumeration
+    }
+    setResendStatus('sent');
+  };
 
   const emailError = touched.email && !isValidEmail(email) ? 'Enter a valid email address' : '';
   const passwordError = touched.password && password.length < 8
@@ -144,12 +162,17 @@ export default function AuthModal({ onClose, initialTab = 'login' }) {
     try {
       if (tab === 'login') {
         await login(email, password);
+        setSuccess(true);
+        setTimeout(() => onClose(), 1000);
       } else {
-        await register(email, password);
+        const data = await register(email, password);
+        if (data.requiresVerification) {
+          setVerificationSent(true);
+        } else {
+          setSuccess(true);
+          setTimeout(() => onClose(), 1000);
+        }
       }
-      setSuccess(true);
-      // Show success briefly, then close
-      setTimeout(() => onClose(), 1000);
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
     } finally {
@@ -212,7 +235,38 @@ export default function AuthModal({ onClose, initialTab = 'login' }) {
 
         {/* ── Body ── */}
         <div className="auth-modal-body">
-          {success ? (
+          {verificationSent ? (
+            <div className="auth-verify-sent" role="status" aria-live="polite">
+              <div className="auth-success-icon">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  aria-hidden="true">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+              </div>
+              <p className="auth-success-msg">Check your email</p>
+              <p className="auth-verify-desc">
+                We sent a confirmation link to <strong>{email}</strong>.<br />
+                Click it to activate your account.
+              </p>
+              <p className="auth-verify-resend">
+                {resendStatus === 'sent'
+                  ? <span className="auth-verify-resent">Link sent again!</span>
+                  : (
+                    <button
+                      type="button"
+                      className="auth-link-btn"
+                      onClick={handleResend}
+                      disabled={resendStatus === 'sending'}
+                    >
+                      {resendStatus === 'sending' ? 'Sending…' : "Didn't get it? Resend"}
+                    </button>
+                  )
+                }
+              </p>
+            </div>
+          ) : success ? (
             <div className="auth-success" role="status" aria-live="polite">
               <div className="auth-success-icon">
                 <CheckIcon />

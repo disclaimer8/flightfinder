@@ -14,10 +14,14 @@ import './App.css';
 function App() {
   const { user, logout } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState('login');
   const [filterOptions, setFilterOptions] = useState(null);
   const [filterOptionsError, setFilterOptionsError] = useState(false);
   const [apiStatus, setApiStatus] = useState(null);
   const [prefillArrival, setPrefillArrival] = useState(null);
+  // Email verification via URL: ?action=verify&token=...
+  const [verifyState, setVerifyState] = useState(null); // null | 'pending' | 'success' | 'error'
+  const [verifyMessage, setVerifyMessage] = useState('');
 
   const {
     flights,
@@ -32,6 +36,29 @@ function App() {
     handleExplore,
     clearError,
   } = useFlightSearch(filterOptions);
+
+  // Handle email verification link: ?action=verify&token=...
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') !== 'verify') return;
+    const token = params.get('token');
+    if (!token) return;
+
+    setVerifyState('pending');
+    // Clean up URL immediately so user doesn't re-trigger on refresh
+    window.history.replaceState({}, '', '/');
+
+    fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`)
+      .then(res => res.json())
+      .then(data => {
+        setVerifyState(data.success ? 'success' : 'error');
+        setVerifyMessage(data.message || (data.success ? 'Email verified!' : 'Verification failed.'));
+      })
+      .catch(() => {
+        setVerifyState('error');
+        setVerifyMessage('Verification failed. Please try again.');
+      });
+  }, []);
 
   useEffect(() => {
     fetch('/api/flights/filter-options')
@@ -70,17 +97,49 @@ function App() {
                   </button>
                 </div>
               ) : (
-                <button
-                  className="nav-btn nav-btn-primary"
-                  onClick={() => setAuthModalOpen(true)}
-                >
-                  Sign in
-                </button>
+                <>
+                  <button
+                    className="nav-btn nav-btn-ghost"
+                    onClick={() => { setAuthModalTab('login'); setAuthModalOpen(true); }}
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    className="nav-btn nav-btn-primary"
+                    onClick={() => { setAuthModalTab('register'); setAuthModalOpen(true); }}
+                  >
+                    Sign up
+                  </button>
+                </>
               )}
             </div>
           </nav>
           {authModalOpen && (
-            <AuthModal onClose={() => setAuthModalOpen(false)} />
+            <AuthModal onClose={() => setAuthModalOpen(false)} initialTab={authModalTab} />
+          )}
+
+          {verifyState && verifyState !== 'pending' && (
+            <div
+              className={`verify-banner verify-banner--${verifyState}`}
+              role="alert"
+            >
+              <span>{verifyMessage}</span>
+              {verifyState === 'success' && (
+                <button
+                  className="nav-btn nav-btn-primary verify-banner-cta"
+                  onClick={() => { setVerifyState(null); setAuthModalOpen(true); }}
+                >
+                  Sign in
+                </button>
+              )}
+              <button
+                className="error-dismiss"
+                onClick={() => setVerifyState(null)}
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
           )}
 
           <div className="hero-content">

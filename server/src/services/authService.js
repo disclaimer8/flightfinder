@@ -35,6 +35,12 @@ function generateRefreshToken() {
   return { raw, hash, expiresAt: Date.now() + REFRESH_EXPIRY * 1000 };
 }
 
+function generateVerificationToken() {
+  const raw = crypto.randomBytes(32).toString('hex');
+  const hash = crypto.createHash('sha256').update(raw).digest('hex');
+  return { raw, hash, expiresAt: Date.now() + 24 * 60 * 60 * 1000 }; // 24 hours
+}
+
 function verifyAccessToken(token) {
   return jwt.verify(token, JWT_SECRET);
 }
@@ -44,6 +50,7 @@ module.exports = {
   verifyPassword,
   generateAccessToken,
   generateRefreshToken,
+  generateVerificationToken,
   verifyAccessToken,
   JWT_EXPIRY,
   REFRESH_EXPIRY,

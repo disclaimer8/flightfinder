@@ -337,6 +337,59 @@
 }
 
 /* ─────────────────────────────────────────
+   VERIFICATION SENT SCREEN
+───────────────────────────────────────── */
+.auth-verify-sent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  text-align: center;
+  animation: auth-success-in 0.3s ease;
+}
+
+.auth-verify-desc {
+  font-size: 0.875rem;
+  color: var(--text-2);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.auth-verify-resend {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-3);
+}
+
+.auth-verify-resent {
+  color: var(--green);
+  font-weight: 600;
+}
+
+.auth-link-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.15s;
+}
+
+.auth-link-btn:hover:not(:disabled) {
+  text-decoration-color: var(--primary);
+}
+
+.auth-link-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────
    FOOTER SWITCH LINK
 ───────────────────────────────────────── */
 .auth-switch {
