@@ -25,6 +25,5 @@ export function buildFlightParams(filters) {
   if (filters.aircraftType)  params.append('aircraftType',  filters.aircraftType);
   if (filters.aircraftModel) params.append('aircraftModel', filters.aircraftModel);
   if (filters.returnDate)   params.append('returnDate',   filters.returnDate);
-  if (filters.api)          params.append('api',          filters.api);
   return params;
 }

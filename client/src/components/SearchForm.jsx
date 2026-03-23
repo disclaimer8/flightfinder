@@ -3,13 +3,10 @@ import { useFilterOptions } from '../context/FilterOptionsContext';
 import './SearchForm.css';
 import DatePicker from './DatePicker';
 
-const IS_DEV = import.meta.env.DEV;
-
 function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUsed }) {
   const filterOptions = useFilterOptions();
   const [mode, setMode] = useState('search'); // 'search' | 'explore'
   const [tripType, setTripType] = useState('one-way');
-  const [apiProvider, setApiProvider] = useState('amadeus');
   const [pendingAutoSearch, setPendingAutoSearch] = useState(null);
   const [filters, setFilters] = useState({
     departure: '',
@@ -78,7 +75,6 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
       onSearch({
         ...filters,
         returnDate: tripType === 'round-trip' ? filters.returnDate : '',
-        api: IS_DEV ? apiProvider : undefined,
       });
     }
   };
@@ -284,22 +280,6 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
             )}
           </div>
         </div>
-
-        {IS_DEV && mode === 'search' && (
-          <div className="dev-api-toggle">
-            <span className="dev-label">⚙️ API:</span>
-            {['amadeus', 'duffel'].map(provider => (
-              <button
-                key={provider}
-                type="button"
-                className={`dev-api-btn ${apiProvider === provider ? 'active' : ''}`}
-                onClick={() => setApiProvider(provider)}
-              >
-                {provider}
-              </button>
-            ))}
-          </div>
-        )}
 
         <button
           type="submit"
