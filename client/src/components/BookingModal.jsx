@@ -121,7 +121,7 @@ function validate(form) {
     const age = (Date.now() - new Date(form.dateOfBirth)) / (1000 * 60 * 60 * 24 * 365.25);
     if (age < 18) e.dateOfBirth = 'Must be 18 or older for an adult ticket';
   }
-  if (form.phone && !PHONE_RE.test(form.phone)) e.phone = 'Enter a valid phone number';
+  if (!form.phone || !PHONE_RE.test(form.phone)) e.phone = 'Enter a valid phone number (required by carrier)';
   return e;
 }
 
@@ -233,7 +233,8 @@ function BookingModal({ flight, onClose }) {
         }),
       });
 
-      const data = await res.json();
+      let data;
+      try { data = await res.json(); } catch (_) { data = {}; }
 
       if (res.ok && data.success) {
         setBooking(data.data);
@@ -244,7 +245,7 @@ function BookingModal({ flight, onClose }) {
       }
     } catch (err) {
       setStatus('error');
-      setSubmitError('Network error. Please check your connection.');
+      setSubmitError(err?.name === 'AbortError' ? 'Request cancelled.' : 'Connection error. Please try again.');
     }
   };
 
@@ -391,7 +392,7 @@ function BookingModal({ flight, onClose }) {
               {/* Phone */}
               <div className="form-group">
                 <label htmlFor="bm-phone">
-                  Phone <span className="field-hint">(optional)</span>
+                  Phone <span className="field-hint"> · required by carrier</span>
                 </label>
                 <input
                   id="bm-phone"

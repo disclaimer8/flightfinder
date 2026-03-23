@@ -12,6 +12,7 @@ const DATE_RE      = /^\d{4}-\d{2}-\d{2}$/;
 const AIRCRAFT_MODEL_RE = /^[A-Z0-9]{1,6}$/;
 
 const VALID_AIRCRAFT_TYPES = new Set(['turboprop', 'jet', 'regional', 'wide-body']);
+const PHONE_RE       = /^\+?[\d\s\-().]{7,20}$/;
 const VALID_TITLES   = new Set(['mr', 'ms', 'mrs', 'miss', 'dr']);
 const VALID_GENDERS  = new Set(['M', 'F']);
 const VALID_CURRENCIES = new Set(['EUR', 'USD', 'GBP']);
@@ -172,6 +173,9 @@ function bookBody(req, res, next) {
     }
     if (!VALID_GENDERS.has(p.gender)) {
       return bad(res, `${idx}.gender must be M or F`);
+    }
+    if (!p.phone || !PHONE_RE.test(p.phone.trim())) {
+      return bad(res, `${idx}.phone is required by carrier (e.g. +1 555 000 0000)`);
     }
   }
 
