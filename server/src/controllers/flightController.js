@@ -28,7 +28,9 @@ exports.searchFlights = async (req, res) => {
 
   try {
     let flights = [];
-    let useRealAPI = process.env.AMADEUS_CLIENT_ID && process.env.AMADEUS_CLIENT_SECRET && useMockData !== 'true';
+    const hasAmadeus = !!(process.env.AMADEUS_CLIENT_ID && process.env.AMADEUS_CLIENT_SECRET);
+    const hasDuffel  = !!(process.env.DUFFEL_API_KEY);
+    let useRealAPI = (activeApi === 'duffel' ? hasDuffel : hasAmadeus) && useMockData !== 'true';
 
     if (useRealAPI) {
       const searchParams = {
@@ -157,6 +159,8 @@ exports.getFilterOptions = async (req, res) => {
       aircraft: allAircraft,
       apiStatus: {
         amadeus: !!(process.env.AMADEUS_CLIENT_ID && process.env.AMADEUS_CLIENT_SECRET),
+        duffel: !!(process.env.DUFFEL_API_KEY),
+        activeApi: process.env.FLIGHT_API || 'amadeus',
         airlabs: hasAirlabsKey
       }
     });
@@ -221,16 +225,19 @@ exports.exploreDestinations = async (req, res) => {
 
     const batchResults = await Promise.allSettled(
       batch.map(async (dest) => {
-        const segCacheKey = `raw:amadeus:${depCode}:${dest.code}:${searchDate}:1:`;
+        const exploreApi = FLIGHT_API;
+        const segCacheKey = `raw:${exploreApi}:${depCode}:${dest.code}:${searchDate}:1:`;
         try {
-          const { data: raw } = await cacheService.getOrFetch(segCacheKey, () => amadeusService.searchFlights({
-            departure_airport: depCode,
-            arrival_airport: dest.code,
-            departure_date: searchDate,
-            passengers: 1,
-          }));
+          const { data: raw } = await cacheService.getOrFetch(segCacheKey, () => {
+            const params = { departure_airport: depCode, arrival_airport: dest.code, departure_date: searchDate, passengers: 1 };
+            return exploreApi === 'duffel' && process.env.DUFFEL_API_KEY
+              ? duffelService.searchFlights(params)
+              : amadeusService.searchFlights(params);
+          });
 
-          const flights = formatAmadeusFlights(raw);
+          const flights = exploreApi === 'duffel' && process.env.DUFFEL_API_KEY
+            ? formatDuffelFlights(raw)
+            : formatAmadeusFlights(raw);
           if (!flights.length) return null;
 
           // Enrich aircraft data
