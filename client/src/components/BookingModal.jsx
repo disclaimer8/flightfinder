@@ -9,7 +9,7 @@ function daysInMonth(month, year) {
   return new Date(Number(year), Number(month), 0).getDate();
 }
 
-function DateOfBirthPicker({ onChange }) {
+function DateOfBirthPicker({ onChange, onBlur }) {
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
@@ -26,7 +26,16 @@ function DateOfBirthPicker({ onChange }) {
     }
   };
 
-  const handleDay = (e) => { setDay(e.target.value); emit(e.target.value, month, year); };
+  const notifyBlur = (d, m, y) => {
+    if (onBlur) onBlur(d, m, y);
+  };
+
+  const handleDay = (e) => {
+    const val = e.target.value;
+    setDay(val);
+    emit(val, month, year);
+    notifyBlur(val, month, year);
+  };
   const handleMonth = (e) => {
     const newMonth = e.target.value;
     const maxD = daysInMonth(newMonth, year);
@@ -34,8 +43,14 @@ function DateOfBirthPicker({ onChange }) {
     setMonth(newMonth);
     if (clampedDay !== day) setDay(clampedDay);
     emit(clampedDay, newMonth, year);
+    notifyBlur(clampedDay, newMonth, year);
   };
-  const handleYear = (e) => { setYear(e.target.value); emit(day, month, e.target.value); };
+  const handleYear = (e) => {
+    const val = e.target.value;
+    setYear(val);
+    emit(day, month, val);
+    notifyBlur(day, month, val);
+  };
 
   const totalDays = daysInMonth(month, year);
 
@@ -128,6 +143,7 @@ function BookingModal({ flight, onClose }) {
     gender: 'M',
     phone: '',
   });
+  const [touched, setTouched] = useState({});
   const [status, setStatus] = useState('idle');
   const [booking, setBooking] = useState(null);
   const [errors, setErrors] = useState({});
@@ -179,8 +195,22 @@ function BookingModal({ flight, onClose }) {
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: undefined }));
   };
 
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    const fieldErrors = validate({ ...form });
+    setErrors(prev => ({ ...prev, [name]: fieldErrors[name] }));
+  };
+
+  const handleDateOfBirthBlur = () => {
+    setTouched(prev => ({ ...prev, dateOfBirth: true }));
+    const fieldErrors = validate({ ...form });
+    setErrors(prev => ({ ...prev, dateOfBirth: fieldErrors.dateOfBirth }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({ firstName: true, lastName: true, email: true, dateOfBirth: true, phone: true });
     const fieldErrors = validate(form);
     if (Object.keys(fieldErrors).length > 0) {
       setErrors(fieldErrors);
@@ -274,13 +304,14 @@ function BookingModal({ flight, onClose }) {
                     name="firstName"
                     value={form.firstName}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="John"
                     autoComplete="given-name"
-                    aria-describedby={errors.firstName ? 'bm-firstName-err' : undefined}
-                    aria-invalid={!!errors.firstName}
-                    className={errors.firstName ? 'input-error' : ''}
+                    aria-describedby={touched.firstName && errors.firstName ? 'bm-firstName-err' : undefined}
+                    aria-invalid={touched.firstName ? !!errors.firstName : undefined}
+                    className={touched.firstName && errors.firstName ? 'input-error' : ''}
                   />
-                  {errors.firstName && <span id="bm-firstName-err" className="field-error" role="alert">{errors.firstName}</span>}
+                  {touched.firstName && errors.firstName && <span id="bm-firstName-err" className="field-error" role="alert">{errors.firstName}</span>}
                 </div>
                 <div className="form-group">
                   <label htmlFor="bm-lastName">Last Name</label>
@@ -289,13 +320,14 @@ function BookingModal({ flight, onClose }) {
                     name="lastName"
                     value={form.lastName}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="Smith"
                     autoComplete="family-name"
-                    aria-describedby={errors.lastName ? 'bm-lastName-err' : undefined}
-                    aria-invalid={!!errors.lastName}
-                    className={errors.lastName ? 'input-error' : ''}
+                    aria-describedby={touched.lastName && errors.lastName ? 'bm-lastName-err' : undefined}
+                    aria-invalid={touched.lastName ? !!errors.lastName : undefined}
+                    className={touched.lastName && errors.lastName ? 'input-error' : ''}
                   />
-                  {errors.lastName && <span id="bm-lastName-err" className="field-error" role="alert">{errors.lastName}</span>}
+                  {touched.lastName && errors.lastName && <span id="bm-lastName-err" className="field-error" role="alert">{errors.lastName}</span>}
                 </div>
               </div>
 
@@ -308,13 +340,14 @@ function BookingModal({ flight, onClose }) {
                   type="email"
                   value={form.email}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   placeholder="john@example.com"
                   autoComplete="email"
-                  aria-describedby={errors.email ? 'bm-email-err' : undefined}
-                  aria-invalid={!!errors.email}
-                  className={errors.email ? 'input-error' : ''}
+                  aria-describedby={touched.email && errors.email ? 'bm-email-err' : undefined}
+                  aria-invalid={touched.email ? !!errors.email : undefined}
+                  className={touched.email && errors.email ? 'input-error' : ''}
                 />
-                {errors.email && <span id="bm-email-err" className="field-error" role="alert">{errors.email}</span>}
+                {touched.email && errors.email && <span id="bm-email-err" className="field-error" role="alert">{errors.email}</span>}
               </div>
 
               {/* Date of Birth + Gender */}
@@ -330,8 +363,9 @@ function BookingModal({ flight, onClose }) {
                       setForm(prev => ({ ...prev, dateOfBirth: v }));
                       if (errors.dateOfBirth) setErrors(prev => ({ ...prev, dateOfBirth: undefined }));
                     }}
+                    onBlur={handleDateOfBirthBlur}
                   />
-                  {errors.dateOfBirth && <span id="bm-dob-err" className="field-error" role="alert">{errors.dateOfBirth}</span>}
+                  {touched.dateOfBirth && errors.dateOfBirth && <span id="bm-dob-err" className="field-error" role="alert">{errors.dateOfBirth}</span>}
                 </div>
                 <div className="form-group form-group-gender">
                   <span id="bm-gender-label" className="form-label-text">
@@ -365,13 +399,14 @@ function BookingModal({ flight, onClose }) {
                   type="tel"
                   value={form.phone}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   placeholder="+1 555 000 0000"
                   autoComplete="tel"
-                  aria-describedby={errors.phone ? 'bm-phone-err' : undefined}
-                  aria-invalid={!!errors.phone}
-                  className={errors.phone ? 'input-error' : ''}
+                  aria-describedby={touched.phone && errors.phone ? 'bm-phone-err' : undefined}
+                  aria-invalid={touched.phone ? !!errors.phone : undefined}
+                  className={touched.phone && errors.phone ? 'input-error' : ''}
                 />
-                {errors.phone && <span id="bm-phone-err" className="field-error" role="alert">{errors.phone}</span>}
+                {touched.phone && errors.phone && <span id="bm-phone-err" className="field-error" role="alert">{errors.phone}</span>}
               </div>
 
               {submitError && <div className="booking-error" role="alert">{submitError}</div>}
