@@ -802,10 +802,9 @@ exports.bookFlight = async (req, res) => {
   } catch (error) {
     console.error('Booking error:', error.message);
     // Return a safe message — don't forward raw Duffel errors
-    const IS_DEV = process.env.NODE_ENV !== 'production';
     res.status(500).json({
       success: false,
-      message: IS_DEV ? error.message : 'Booking failed. Please try again or contact support.',
+      message: error.message || 'Booking failed. Please try again or contact support.',
     });
   }
 };
