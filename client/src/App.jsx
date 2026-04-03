@@ -32,6 +32,7 @@ function App() {
     error,
     apiSource,
     hasSearched,
+    searchedAirlines,
     handleSearch,
     handleExplore,
     clearError,
@@ -189,7 +190,7 @@ function App() {
 
           {!loading && exploreResults === null && (
             <ErrorBoundary>
-              <FlightResults flights={flights} source={apiSource} hasSearched={hasSearched} />
+              <FlightResults flights={flights} source={apiSource} hasSearched={hasSearched} initialAirlines={searchedAirlines} />
             </ErrorBoundary>
           )}
         </main>

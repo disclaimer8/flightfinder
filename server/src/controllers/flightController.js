@@ -272,9 +272,175 @@ exports.getFilterOptions = async (req, res) => {
       }));
     }
 
+    // All major airlines (name matches what Duffel/Amadeus return as operating_carrier.name)
+    const allAirlines = [
+      { code: 'AA', name: 'American Airlines' },
+      { code: 'AC', name: 'Air Canada' },
+      { code: 'AF', name: 'Air France' },
+      { code: 'AS', name: 'Alaska Airlines' },
+      { code: 'AY', name: 'Finnair' },
+      { code: 'AZ', name: 'ITA Airways' },
+      { code: 'B6', name: 'JetBlue' },
+      { code: 'BA', name: 'British Airways' },
+      { code: 'CM', name: 'Copa Airlines' },
+      { code: 'CX', name: 'Cathay Pacific' },
+      { code: 'DL', name: 'Delta Air Lines' },
+      { code: 'DY', name: 'Norwegian' },
+      { code: 'EI', name: 'Aer Lingus' },
+      { code: 'EK', name: 'Emirates' },
+      { code: 'ET', name: 'Ethiopian Airlines' },
+      { code: 'EW', name: 'Eurowings' },
+      { code: 'EY', name: 'Etihad Airways' },
+      { code: 'F9', name: 'Frontier Airlines' },
+      { code: 'FR', name: 'Ryanair' },
+      { code: 'GA', name: 'Garuda Indonesia' },
+      { code: 'GF', name: 'Gulf Air' },
+      { code: 'G3', name: 'Gol' },
+      { code: 'HV', name: 'Transavia' },
+      { code: 'IB', name: 'Iberia' },
+      { code: 'JL', name: 'Japan Airlines' },
+      { code: 'KE', name: 'Korean Air' },
+      { code: 'KL', name: 'KLM' },
+      { code: 'KQ', name: 'Kenya Airways' },
+      { code: 'LA', name: 'LATAM Airlines' },
+      { code: 'LH', name: 'Lufthansa' },
+      { code: 'LO', name: 'LOT Polish Airlines' },
+      { code: 'LX', name: 'Swiss' },
+      { code: 'MH', name: 'Malaysia Airlines' },
+      { code: 'MK', name: 'Air Mauritius' },
+      { code: 'MS', name: 'EgyptAir' },
+      { code: 'NH', name: 'ANA' },
+      { code: 'NK', name: 'Spirit Airlines' },
+      { code: 'OS', name: 'Austrian Airlines' },
+      { code: 'OZ', name: 'Asiana Airlines' },
+      { code: 'PC', name: 'Pegasus Airlines' },
+      { code: 'QF', name: 'Qantas' },
+      { code: 'QR', name: 'Qatar Airways' },
+      { code: 'RJ', name: 'Royal Jordanian' },
+      { code: 'SK', name: 'SAS' },
+      { code: 'SN', name: 'Brussels Airlines' },
+      { code: 'SQ', name: 'Singapore Airlines' },
+      { code: 'TG', name: 'Thai Airways' },
+      { code: 'TK', name: 'Turkish Airlines' },
+      { code: 'TP', name: 'TAP Air Portugal' },
+      { code: 'U2', name: 'easyJet' },
+      { code: 'UA', name: 'United Airlines' },
+      { code: 'UX', name: 'Air Europa' },
+      { code: 'VS', name: 'Virgin Atlantic' },
+      { code: 'VY', name: 'Vueling' },
+      { code: 'W6', name: 'Wizz Air' },
+      { code: 'WN', name: 'Southwest Airlines' },
+      { code: 'WS', name: 'WestJet' },
+      { code: 'XQ', name: 'SunExpress' },
+    ].sort((a, b) => a.name.localeCompare(b.name));
+
+    // Popular airlines per departure city (top 10 by typical market share)
+    const airlinesByCity = {
+      default: ['Emirates', 'Ryanair', 'easyJet', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Turkish Airlines', 'Qatar Airways', 'Singapore Airlines'],
+      // Portugal
+      LIS: ['TAP Air Portugal', 'Ryanair', 'easyJet', 'Wizz Air', 'Vueling', 'British Airways', 'Lufthansa', 'Iberia', 'Air France', 'KLM'],
+      OPO: ['TAP Air Portugal', 'Ryanair', 'easyJet', 'Vueling', 'Wizz Air', 'British Airways', 'KLM', 'Iberia', 'Air France', 'Lufthansa'],
+      // Spain
+      MAD: ['Iberia', 'Vueling', 'Ryanair', 'easyJet', 'Air Europa', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Wizz Air'],
+      BCN: ['Vueling', 'Ryanair', 'easyJet', 'Iberia', 'Wizz Air', 'British Airways', 'Lufthansa', 'Air France', 'Norwegian', 'KLM'],
+      AGP: ['Ryanair', 'easyJet', 'Vueling', 'British Airways', 'Wizz Air', 'Norwegian', 'Iberia', 'Jet2', 'TUI', 'Air Europa'],
+      // UK
+      LON: ['British Airways', 'easyJet', 'Ryanair', 'Virgin Atlantic', 'Lufthansa', 'Air France', 'KLM', 'Emirates', 'Turkish Airlines', 'Qatar Airways'],
+      LGW: ['easyJet', 'British Airways', 'Ryanair', 'Norwegian', 'Vueling', 'Wizz Air', 'KLM', 'Air France', 'TUI', 'Jet2'],
+      STN: ['Ryanair', 'easyJet', 'Wizz Air', 'Norwegian', 'Vueling', 'British Airways', 'Jet2', 'TUI', 'SunExpress', 'Pegasus Airlines'],
+      MAN: ['easyJet', 'Jet2', 'TUI', 'Ryanair', 'British Airways', 'Wizz Air', 'Norwegian', 'KLM', 'Lufthansa', 'Air France'],
+      EDI: ['easyJet', 'Ryanair', 'British Airways', 'Wizz Air', 'Jet2', 'Norwegian', 'KLM', 'Lufthansa', 'Air France', 'TUI'],
+      // Ireland
+      DUB: ['Ryanair', 'Aer Lingus', 'British Airways', 'easyJet', 'Norwegian', 'KLM', 'Lufthansa', 'Air France', 'Vueling', 'Wizz Air'],
+      // France
+      CDG: ['Air France', 'easyJet', 'British Airways', 'Lufthansa', 'KLM', 'Iberia', 'Emirates', 'Turkish Airlines', 'Qatar Airways', 'Ryanair'],
+      ORY: ['Air France', 'Transavia', 'easyJet', 'Vueling', 'Ryanair', 'Wizz Air', 'Iberia', 'British Airways', 'Norwegian', 'KLM'],
+      NCE: ['easyJet', 'Ryanair', 'Air France', 'Vueling', 'Wizz Air', 'British Airways', 'Transavia', 'Lufthansa', 'Norwegian', 'KLM'],
+      MRS: ['easyJet', 'Ryanair', 'Air France', 'Vueling', 'Transavia', 'Wizz Air', 'British Airways', 'Norwegian', 'Iberia', 'KLM'],
+      LYS: ['easyJet', 'Air France', 'Ryanair', 'Transavia', 'Vueling', 'Wizz Air', 'British Airways', 'Lufthansa', 'Norwegian', 'KLM'],
+      // Netherlands
+      AMS: ['KLM', 'easyJet', 'Ryanair', 'Transavia', 'British Airways', 'Lufthansa', 'Air France', 'Turkish Airlines', 'Emirates', 'Wizz Air'],
+      // Belgium
+      BRU: ['Brussels Airlines', 'Ryanair', 'easyJet', 'Wizz Air', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Norwegian', 'Vueling'],
+      // Germany
+      FRA: ['Lufthansa', 'Eurowings', 'British Airways', 'Air France', 'KLM', 'Emirates', 'Turkish Airlines', 'Ryanair', 'Iberia', 'Singapore Airlines'],
+      BER: ['Ryanair', 'easyJet', 'Eurowings', 'Wizz Air', 'Lufthansa', 'British Airways', 'Norwegian', 'Air France', 'KLM', 'Turkish Airlines'],
+      MUC: ['Lufthansa', 'Eurowings', 'Ryanair', 'British Airways', 'Air France', 'KLM', 'Austrian Airlines', 'Turkish Airlines', 'Emirates', 'Qatar Airways'],
+      HAM: ['Eurowings', 'Lufthansa', 'Ryanair', 'easyJet', 'Wizz Air', 'British Airways', 'KLM', 'Air France', 'Norwegian', 'Turkish Airlines'],
+      DUS: ['Eurowings', 'Lufthansa', 'Ryanair', 'easyJet', 'Wizz Air', 'British Airways', 'KLM', 'Air France', 'Turkish Airlines', 'Norwegian'],
+      // Austria
+      VIE: ['Austrian Airlines', 'Eurowings', 'Ryanair', 'easyJet', 'Wizz Air', 'Lufthansa', 'British Airways', 'Air France', 'KLM', 'Turkish Airlines'],
+      // Switzerland
+      ZUR: ['Swiss', 'Eurowings', 'British Airways', 'Air France', 'Lufthansa', 'KLM', 'Emirates', 'Turkish Airlines', 'Austrian Airlines', 'easyJet'],
+      GVA: ['easyJet', 'Swiss', 'British Airways', 'Air France', 'Iberia', 'Lufthansa', 'Vueling', 'Ryanair', 'Wizz Air', 'KLM'],
+      // Italy
+      FCO: ['Ryanair', 'easyJet', 'ITA Airways', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Wizz Air', 'Vueling', 'Iberia'],
+      MXP: ['easyJet', 'Ryanair', 'Wizz Air', 'ITA Airways', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Norwegian', 'Vueling'],
+      VCE: ['Ryanair', 'easyJet', 'Wizz Air', 'Vueling', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Norwegian', 'Iberia'],
+      NAP: ['Ryanair', 'easyJet', 'Wizz Air', 'Vueling', 'ITA Airways', 'British Airways', 'Lufthansa', 'Air France', 'Norwegian', 'KLM'],
+      // Greece
+      ATH: ['easyJet', 'Ryanair', 'Wizz Air', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Turkish Airlines', 'Emirates', 'Qatar Airways'],
+      // Scandinavia
+      CPH: ['SAS', 'easyJet', 'Ryanair', 'Norwegian', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Wizz Air', 'Turkish Airlines'],
+      ARN: ['SAS', 'Norwegian', 'easyJet', 'Ryanair', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Wizz Air', 'Finnair'],
+      OSL: ['SAS', 'Norwegian', 'easyJet', 'Ryanair', 'British Airways', 'Lufthansa', 'Wizz Air', 'KLM', 'Air France', 'Wideroe'],
+      HEL: ['Finnair', 'SAS', 'Norwegian', 'easyJet', 'British Airways', 'Lufthansa', 'KLM', 'Air France', 'Ryanair', 'Wizz Air'],
+      // Eastern Europe
+      PRG: ['Ryanair', 'easyJet', 'Wizz Air', 'Czech Airlines', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Turkish Airlines', 'Austrian Airlines'],
+      WAW: ['LOT Polish Airlines', 'Ryanair', 'easyJet', 'Wizz Air', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Turkish Airlines', 'Norwegian'],
+      KRK: ['Ryanair', 'Wizz Air', 'easyJet', 'LOT Polish Airlines', 'British Airways', 'Lufthansa', 'Norwegian', 'Air France', 'KLM', 'Eurowings'],
+      BUD: ['Ryanair', 'Wizz Air', 'easyJet', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'LOT Polish Airlines', 'Turkish Airlines', 'Austrian Airlines'],
+      // Balkans
+      BEG: ['Air Serbia', 'Ryanair', 'Wizz Air', 'easyJet', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Turkish Airlines', 'Austrian Airlines'],
+      DBV: ['Ryanair', 'easyJet', 'Wizz Air', 'Croatia Airlines', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Norwegian', 'Vueling'],
+      SPU: ['Ryanair', 'easyJet', 'Wizz Air', 'Croatia Airlines', 'British Airways', 'Vueling', 'Norwegian', 'Lufthansa', 'Air France', 'KLM'],
+      // Turkey
+      IST: ['Turkish Airlines', 'Pegasus Airlines', 'SunExpress', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Emirates', 'Ryanair', 'easyJet'],
+      AYT: ['Turkish Airlines', 'Pegasus Airlines', 'SunExpress', 'Ryanair', 'easyJet', 'Wizz Air', 'British Airways', 'Lufthansa', 'Vueling', 'Norwegian'],
+      // Middle East
+      DXB: ['Emirates', 'flydubai', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Qatar Airways', 'Etihad Airways', 'Turkish Airlines', 'Singapore Airlines'],
+      DOH: ['Qatar Airways', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Emirates', 'Etihad Airways', 'Turkish Airlines', 'Singapore Airlines', 'Royal Jordanian'],
+      // Africa
+      CAI: ['EgyptAir', 'Air Arabia', 'Emirates', 'Qatar Airways', 'Turkish Airlines', 'British Airways', 'Lufthansa', 'Air France', 'EasyJet', 'Ryanair'],
+      CMN: ['Royal Air Maroc', 'Ryanair', 'easyJet', 'Air Arabia Maroc', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Turkish Airlines', 'Vueling'],
+      JNB: ['South African Airways', 'Mango', 'Kulula', 'British Airways', 'Emirates', 'Qatar Airways', 'Lufthansa', 'Air France', 'KLM', 'Ethiopian Airlines'],
+      CPT: ['South African Airways', 'kulula', 'FlySafair', 'British Airways', 'Emirates', 'Qatar Airways', 'Lufthansa', 'Air France', 'KLM', 'Ethiopian Airlines'],
+      // North America
+      JFK: ['American Airlines', 'Delta Air Lines', 'United Airlines', 'British Airways', 'Air France', 'Lufthansa', 'Emirates', 'JetBlue', 'Qatar Airways', 'KLM'],
+      EWR: ['United Airlines', 'American Airlines', 'Delta Air Lines', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Emirates', 'Turkish Airlines', 'JetBlue'],
+      LAX: ['Delta Air Lines', 'United Airlines', 'American Airlines', 'Alaska Airlines', 'British Airways', 'Air France', 'KLM', 'Lufthansa', 'Singapore Airlines', 'Emirates'],
+      SFO: ['United Airlines', 'Delta Air Lines', 'American Airlines', 'Alaska Airlines', 'British Airways', 'Air France', 'KLM', 'Lufthansa', 'Singapore Airlines', 'ANA'],
+      ORD: ['United Airlines', 'American Airlines', 'Delta Air Lines', 'Southwest Airlines', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Turkish Airlines', 'JetBlue'],
+      MIA: ['American Airlines', 'Delta Air Lines', 'United Airlines', 'British Airways', 'LATAM Airlines', 'Copa Airlines', 'Air France', 'Lufthansa', 'Avianca', 'JetBlue'],
+      BOS: ['JetBlue', 'American Airlines', 'Delta Air Lines', 'United Airlines', 'British Airways', 'Air France', 'Lufthansa', 'Iberia', 'Norwegian', 'KLM'],
+      YYZ: ['Air Canada', 'WestJet', 'British Airways', 'American Airlines', 'Delta Air Lines', 'United Airlines', 'Lufthansa', 'Air France', 'KLM', 'Emirates'],
+      // South America
+      GRU: ['LATAM Airlines', 'Gol', 'Azul', 'Air France', 'Lufthansa', 'KLM', 'British Airways', 'American Airlines', 'Delta Air Lines', 'Emirates'],
+      EZE: ['Aerolíneas Argentinas', 'LATAM Airlines', 'Air France', 'Lufthansa', 'British Airways', 'KLM', 'American Airlines', 'Delta Air Lines', 'Emirates', 'Copa Airlines'],
+      BOG: ['Avianca', 'LATAM Airlines', 'Copa Airlines', 'American Airlines', 'Delta Air Lines', 'United Airlines', 'Air France', 'Lufthansa', 'British Airways', 'Iberia'],
+      // Asia
+      SIN: ['Singapore Airlines', 'Scoot', 'Jetstar Asia', 'British Airways', 'Lufthansa', 'Emirates', 'Qantas', 'Cathay Pacific', 'Thai Airways', 'Malaysia Airlines'],
+      BKK: ['Thai Airways', 'AirAsia', 'Bangkok Airways', 'Emirates', 'Qatar Airways', 'Singapore Airlines', 'British Airways', 'Lufthansa', 'Cathay Pacific', 'Korean Air'],
+      KUL: ['Malaysia Airlines', 'AirAsia', 'Malindo Air', 'Singapore Airlines', 'Emirates', 'Qatar Airways', 'British Airways', 'Lufthansa', 'Cathay Pacific', 'Thai Airways'],
+      HKG: ['Cathay Pacific', 'HK Express', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Emirates', 'Singapore Airlines', 'ANA', 'Japan Airlines'],
+      ICN: ['Korean Air', 'Asiana Airlines', 'Jeju Air', 'British Airways', 'Lufthansa', 'Air France', 'Emirates', 'Singapore Airlines', 'ANA', 'Japan Airlines'],
+      NRT: ['ANA', 'Japan Airlines', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Emirates', 'Singapore Airlines', 'Cathay Pacific', 'Korean Air'],
+      HND: ['ANA', 'Japan Airlines', 'British Airways', 'Lufthansa', 'Air France', 'Emirates', 'Singapore Airlines', 'Korean Air', 'Cathay Pacific', 'Delta Air Lines'],
+      PEK: ['Air China', 'China Eastern', 'China Southern', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Emirates', 'Singapore Airlines', 'ANA'],
+      PVG: ['China Eastern', 'China Southern', 'Air China', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Emirates', 'Singapore Airlines', 'Japan Airlines'],
+      DEL: ['Air India', 'IndiGo', 'British Airways', 'Lufthansa', 'Air France', 'KLM', 'Emirates', 'Qatar Airways', 'Etihad Airways', 'Singapore Airlines'],
+      BOM: ['Air India', 'IndiGo', 'British Airways', 'Lufthansa', 'Air France', 'Emirates', 'Qatar Airways', 'Etihad Airways', 'Singapore Airlines', 'KLM'],
+      // Oceania
+      SYD: ['Qantas', 'Virgin Australia', 'Jetstar', 'British Airways', 'Singapore Airlines', 'Cathay Pacific', 'Lufthansa', 'Air France', 'Emirates', 'Etihad Airways'],
+      MEL: ['Qantas', 'Virgin Australia', 'Jetstar', 'British Airways', 'Singapore Airlines', 'Cathay Pacific', 'Lufthansa', 'Air France', 'Emirates', 'Etihad Airways'],
+      AKL: ['Air New Zealand', 'Qantas', 'Jetstar', 'Singapore Airlines', 'Emirates', 'Cathay Pacific', 'British Airways', 'Fiji Airways', 'Korean Air', 'China Airlines'],
+    };
+
     res.json({
       cities: allCities,
       cityGroups,
+      airlines: allAirlines,
+      airlinesByCity,
       aircraftTypes: allAircraftTypes,
       aircraft: allAircraft,
       apiStatus: {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useFilterOptions } from '../context/FilterOptionsContext';
 import './SearchForm.css';
 import DatePicker from './DatePicker';
+import AirlineSelector from './AirlineSelector';
 
 function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUsed }) {
   const filterOptions = useFilterOptions();
@@ -16,6 +17,7 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
     passengers: '1',
     aircraftType: '',
     aircraftModel: '',
+    airlines: [],
   });
 
   useEffect(() => {
@@ -51,7 +53,12 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    // Reset airline selection when departure city changes (popular airlines differ)
+    setFilters(prev => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'departure' ? { airlines: [] } : {}),
+    }));
   };
 
   const handleTripType = (type) => {
@@ -298,6 +305,15 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
             )}
           </div>
         </div>
+
+        {mode === 'search' && (
+          <AirlineSelector
+            departure={filters.departure}
+            filterOptions={filterOptions}
+            selected={filters.airlines}
+            onChange={(airlines) => setFilters(prev => ({ ...prev, airlines }))}
+          />
+        )}
 
         <button
           type="submit"

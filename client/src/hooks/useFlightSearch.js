@@ -10,6 +10,7 @@ export function useFlightSearch(filterOptions) {
   const [error, setError] = useState(null);
   const [apiSource, setApiSource] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchedAirlines, setSearchedAirlines] = useState([]);
 
   // Track in-flight request so we can cancel if user submits again
   const abortControllerRef = useRef(null);
@@ -43,6 +44,7 @@ export function useFlightSearch(filterOptions) {
       setFlights(data.data || []);
       setApiSource(data.source);
       setHasSearched(true);
+      setSearchedAirlines(filters.airlines || []);
     } catch (err) {
       if (err.name === 'AbortError') return;
       console.error('Error searching flights:', err);
@@ -106,6 +108,7 @@ export function useFlightSearch(filterOptions) {
     error,
     apiSource,
     hasSearched,
+    searchedAirlines,
     handleSearch,
     handleExplore,
     clearError: () => setError(null),
