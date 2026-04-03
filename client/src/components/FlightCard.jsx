@@ -92,7 +92,6 @@ function FlightCard({ flight, passengers }) {
   const { aircraft } = flight;
   const [showBooking, setShowBooking] = useState(false);
 
-  const isDuffel = flight.source === 'duffel';
   const bookingUrl = buildBookingUrl(flight, passengers);
 
   const outboundItinerary = {
@@ -162,9 +161,7 @@ function FlightCard({ flight, passengers }) {
           </div>
         </div>
 
-        {isDuffel ? (
-          <button className="btn-book" onClick={() => setShowBooking(true)}>Book now</button>
-        ) : bookingUrl ? (
+        {bookingUrl ? (
           <a
             className="btn-book btn-book-external"
             href={bookingUrl}
@@ -173,7 +170,7 @@ function FlightCard({ flight, passengers }) {
             title="Search on Aviasales"
             aria-label={`Search ${flight.airline} flight on Aviasales (opens new tab)`}
           >
-            Find tickets
+            Book now
             <svg aria-hidden="true" focusable="false" className="btn-external-icon" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
