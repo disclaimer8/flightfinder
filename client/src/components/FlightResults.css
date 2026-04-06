@@ -72,6 +72,7 @@
 
 .sort-btn {
   padding: 0.42rem 1rem;
+  min-height: 44px;
   border: 1.5px solid var(--border);
   border-radius: 20px;
   background: var(--card);
@@ -149,7 +150,7 @@
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .results-layout {
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
   .results-header {

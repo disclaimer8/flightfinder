@@ -44,6 +44,8 @@ export function useFlightSearch(filterOptions) {
       setFlights(data.data || []);
       setApiSource(data.source);
       setHasSearched(true);
+      // Scroll to results so loading skeleton / cards are visible on mobile
+      setTimeout(() => window.scrollTo({ top: window.innerHeight * 0.6, behavior: 'smooth' }), 100);
     } catch (err) {
       if (err.name === 'AbortError') return;
       console.error('Error searching flights:', err);

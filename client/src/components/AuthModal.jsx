@@ -164,7 +164,7 @@ export default function AuthModal({ onClose, initialTab = 'login' }) {
       if (tab === 'login') {
         await login(email, password);
         setSuccess(true);
-        setTimeout(() => onClose(), 1000);
+        setTimeout(() => onClose(), 1500);
       } else {
         const data = await register(email, password);
         if (data.requiresVerification) {

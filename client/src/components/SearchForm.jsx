@@ -158,7 +158,7 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
       )}
 
       <form onSubmit={handleSubmit} className="search-form">
-        <div className="form-row">
+        <div className={`form-row${mode === 'search' ? ' form-row-cities' : ''}`}>
           <div className="form-group">
             <label htmlFor="sf-departure">From</label>
             <select id="sf-departure" name="departure" value={filters.departure} onChange={handleChange}>
@@ -170,28 +170,38 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
           </div>
 
           {mode === 'search' && (
-            <div className="form-group">
-              <label htmlFor="sf-arrival">To</label>
-              <select
-                id="sf-arrival"
-                name="arrival"
-                value={filters.arrival}
-                onChange={handleChange}
-                className={sameCityError ? 'select-error' : ''}
-                aria-describedby={sameCityError ? 'sf-same-city-err' : undefined}
-                aria-invalid={sameCityError || undefined}
+            <>
+              <button
+                type="button"
+                className="btn-swap"
+                aria-label="Swap departure and arrival"
+                onClick={() => setFilters(prev => ({ ...prev, departure: prev.arrival, arrival: prev.departure }))}
               >
-                <option value="">Select arrival city</option>
-                {filterOptions?.cities.map(city => (
-                  <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
-                ))}
-              </select>
-              {sameCityError && (
-                <span id="sf-same-city-err" className="field-error" role="alert">
-                  Departure and arrival cannot be the same city
-                </span>
-              )}
-            </div>
+                ⇄
+              </button>
+              <div className="form-group">
+                <label htmlFor="sf-arrival">To</label>
+                <select
+                  id="sf-arrival"
+                  name="arrival"
+                  value={filters.arrival}
+                  onChange={handleChange}
+                  className={sameCityError ? 'select-error' : ''}
+                  aria-describedby={sameCityError ? 'sf-same-city-err' : undefined}
+                  aria-invalid={sameCityError || undefined}
+                >
+                  <option value="">Select arrival city</option>
+                  {filterOptions?.cities.map(city => (
+                    <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
+                  ))}
+                </select>
+                {sameCityError && (
+                  <span id="sf-same-city-err" className="field-error" role="alert">
+                    Departure and arrival cannot be the same city
+                  </span>
+                )}
+              </div>
+            </>
           )}
         </div>
 
@@ -221,18 +231,24 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
 
           {mode === 'search' && (
             <div className="form-group">
-              <label htmlFor="sf-passengers">Passengers</label>
-              <input
-                id="sf-passengers"
-                type="number"
-                name="passengers"
-                value={filters.passengers}
-                onChange={handleChange}
-                min="1"
-                max="9"
-                aria-describedby="sf-passengers-hint"
-              />
-              <span id="sf-passengers-hint" className="field-hint">1–9</span>
+              <label>Passengers</label>
+              <div className="passenger-stepper">
+                <button
+                  type="button"
+                  className="stepper-btn"
+                  aria-label="Decrease passengers"
+                  onClick={() => setFilters(prev => ({ ...prev, passengers: Math.max(1, (prev.passengers || 1) - 1) }))}
+                  disabled={(filters.passengers || 1) <= 1}
+                >−</button>
+                <span className="stepper-count">{filters.passengers || 1}</span>
+                <button
+                  type="button"
+                  className="stepper-btn"
+                  aria-label="Increase passengers"
+                  onClick={() => setFilters(prev => ({ ...prev, passengers: Math.min(9, (prev.passengers || 1) + 1) }))}
+                  disabled={(filters.passengers || 1) >= 9}
+                >+</button>
+              </div>
             </div>
           )}
         </div>
