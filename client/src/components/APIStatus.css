@@ -16,6 +16,7 @@
   border-radius: 20px;
   border: 1px solid rgba(255,255,255,0.15);
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .badge.active {

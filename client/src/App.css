@@ -78,6 +78,7 @@
   transition: background 0.15s, box-shadow 0.15s, transform 0.1s, opacity 0.15s;
   border: none;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .nav-btn-primary {
