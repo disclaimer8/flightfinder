@@ -400,7 +400,7 @@
 /* ─────────────────────────────────────────
    RESPONSIVE
 ───────────────────────────────────────── */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .search-form-container {
     padding: 1.25rem 1.25rem 1.25rem;
     border-radius: var(--r-lg);
@@ -412,5 +412,9 @@
 
   .btn-search {
     align-self: stretch;
+  }
+
+  .btn-swap {
+    margin: 0 auto;
   }
 }

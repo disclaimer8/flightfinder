@@ -122,6 +122,14 @@
   .nav-user-email {
     display: none;
   }
+  .nav-right {
+    gap: 0.4rem;
+  }
+  .nav-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.78rem;
+    min-height: 40px;
+  }
 }
 
 .brand-icon {
