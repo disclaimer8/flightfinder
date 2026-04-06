@@ -1,0 +1,13 @@
+{
+  "appId": "com.himaxym.flightfinder",
+  "appName": "FlightFinder",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

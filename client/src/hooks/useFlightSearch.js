@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { buildFlightParams } from '../utils/flightUtils';
+import { API_BASE } from '../utils/api';
 
 export function useFlightSearch(filterOptions) {
   const [flights, setFlights] = useState([]);
@@ -33,7 +34,7 @@ export function useFlightSearch(filterOptions) {
 
     try {
       const params = buildFlightParams(filters);
-      const res = await fetch(`/api/flights?${params}`, { signal: controller.signal });
+      const res = await fetch(`${API_BASE}/api/flights?${params}`, { signal: controller.signal });
       if (!res.ok) {
         let detail = res.statusText;
         try { const body = await res.json(); detail = body.error || body.message || detail; } catch (_) {}
@@ -71,7 +72,7 @@ export function useFlightSearch(filterOptions) {
       if (params.aircraftType)  p.append('aircraftType', params.aircraftType);
       if (params.aircraftModel) p.append('aircraftModel', params.aircraftModel);
 
-      const res = await fetch(`/api/flights/explore?${p}`, { signal: controller.signal });
+      const res = await fetch(`${API_BASE}/api/flights/explore?${p}`, { signal: controller.signal });
       if (!res.ok) {
         let detail = res.statusText;
         try { const body = await res.json(); detail = body.error || body.message || detail; } catch (_) {}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE } from '../utils/api';
 import './AuthModal.css';
 
 // Eye / EyeOff icons (inline SVG — no extra dependency needed)
@@ -134,7 +135,7 @@ export default function AuthModal({ onClose, initialTab = 'login' }) {
   const handleResend = async () => {
     setResendStatus('sending');
     try {
-      await fetch('/api/auth/resend-verification', {
+      await fetch(`${API_BASE}/api/auth/resend-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { formatTime, formatDate } from '../utils/formatters';
 import { MONTHS } from '../utils/constants';
+import { API_BASE } from '../utils/api';
 import './BookingModal.css';
 
 function daysInMonth(month, year) {
@@ -221,7 +222,7 @@ function BookingModal({ flight, onClose }) {
     setSubmitError('');
 
     try {
-      const res = await fetch('/api/flights/book', {
+      const res = await fetch(`${API_BASE}/api/flights/book`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -9,6 +9,7 @@ import AuthModal from './components/AuthModal';
 import { useFlightSearch } from './hooks/useFlightSearch';
 import { FilterOptionsContext } from './context/FilterOptionsContext';
 import { useAuth } from './context/AuthContext';
+import { API_BASE } from './utils/api';
 import './App.css';
 
 function App() {
@@ -61,7 +62,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/flights/filter-options')
+    fetch(`${API_BASE}/api/flights/filter-options`)
       .then(res => {
         if (!res.ok) throw new Error(res.statusText);
         return res.json();
