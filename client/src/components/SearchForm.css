@@ -22,7 +22,8 @@
 }
 
 .mode-btn {
-  padding: 0.45rem 1.1rem;
+  padding: 0.6rem 1.1rem;
+  min-height: 44px;
   background: transparent;
   border: none;
   border-radius: calc(var(--r) - 2px);
@@ -58,7 +59,8 @@
 }
 
 .trip-btn {
-  padding: 0.38rem 1rem;
+  padding: 0.55rem 1rem;
+  min-height: 44px;
   background: transparent;
   border: none;
   border-radius: calc(var(--r) - 2px);
@@ -145,9 +147,11 @@
 .form-group select,
 .form-group input {
   padding: 0.65rem 0.85rem;
+  min-height: 44px;
   border: 1.5px solid var(--border);
   border-radius: var(--r);
-  font-size: 0.92rem;
+  /* 16px prevents iOS Safari from auto-zooming into the field on focus */
+  font-size: 1rem;
   color: var(--text);
   background: #fff;
   cursor: pointer;
@@ -189,6 +193,7 @@
 ───────────────────────────────────────── */
 .btn-search {
   padding: 0.8rem 2rem;
+  min-height: 44px;
   background: var(--primary);
   color: #fff;
   border: none;
@@ -241,7 +246,10 @@
 }
 
 .badge {
-  padding: 0.32rem 0.85rem;
+  padding: 0.55rem 0.85rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   border: 1.5px solid var(--border);
   background: #fff;
   border-radius: 20px;

@@ -8,7 +8,9 @@
 ───────────────────────────────────────── */
 .hero {
   background: linear-gradient(160deg, #0c1427 0%, #162244 55%, #0e1c3d 100%);
-  padding: 0 1.5rem 3rem;
+  /* Top padding absorbs the status bar height on notched/dynamic-island devices.
+     env(safe-area-inset-top) is 0 on non-notched devices so this is safe everywhere. */
+  padding: var(--safe-top, 0px) 1.5rem 3rem;
   position: relative;
   /* Do NOT use overflow: hidden here — it clips the DatePicker calendar popup.
      The decorative ::before / ::after pseudo-elements use pointer-events: none
@@ -67,7 +69,8 @@
 }
 
 .nav-btn {
-  padding: 0.45rem 1.1rem;
+  padding: 0.6rem 1.1rem;
+  min-height: 44px;
   border-radius: var(--r);
   font-size: 0.85rem;
   font-weight: 700;
@@ -174,7 +177,8 @@
 .results-section {
   max-width: 1060px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 3rem;
+  /* Bottom padding absorbs the iOS home indicator (34px on iPhone X+) */
+  padding: 2rem 1.5rem calc(3rem + var(--safe-bottom, 0px));
 }
 
 /* ─────────────────────────────────────────

@@ -8,3 +8,4 @@ server/.env
 .DS_Store
 client/android/
 client/ios/
+server/data/

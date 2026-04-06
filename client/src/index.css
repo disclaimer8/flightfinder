@@ -2,6 +2,10 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  /* Remove the 300ms tap delay on all interactive elements */
+  touch-action: manipulation;
+  /* Remove the grey tap flash on Android / iOS */
+  -webkit-tap-highlight-color: transparent;
 }
 
 :root {
@@ -56,11 +60,22 @@
    * md:  768px   — tablets / narrow desktop
    * lg: 1024px   — standard desktop
    */
+
+  /* Safe area insets — populated by the browser/WebView on notched devices.
+     Fall back to 0 on devices without a notch. */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
 }
 
 html, body {
   width: 100%;
   min-height: 100%;
+  /* Smooth momentum scrolling on iOS (WebView and Safari) */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent elastic overscroll from showing a white gap behind the status bar */
+  overscroll-behavior-y: none;
 }
 
 /* ── Accessibility utilities ── */

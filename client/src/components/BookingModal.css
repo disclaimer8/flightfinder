@@ -7,7 +7,11 @@
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal);
-  padding: 1rem;
+  /* Inset the overlay so it never sits under a notch or home indicator */
+  padding: max(1rem, var(--safe-top, 0px))
+           max(1rem, var(--safe-right, 0px))
+           max(1rem, var(--safe-bottom, 0px))
+           max(1rem, var(--safe-left, 0px));
 }
 
 .modal-box {
@@ -31,7 +35,13 @@
   font-size: 0.85rem;
   color: var(--text-2);
   cursor: pointer;
-  padding: 5px 9px;
+  /* Meet 44x44px minimum tap target (HIG + Material) */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--r-sm);
   line-height: 1;
   transition: background 0.15s, color 0.15s;
