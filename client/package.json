@@ -6,6 +6,7 @@
     "@capacitor/android": "^8.3.0",
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
+    "@capacitor/ios": "^8.3.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
@@ -13,6 +14,7 @@
     "start": "vite",
     "build": "vite build",
     "build:android": "vite build --mode android && npx cap sync android",
+    "build:ios": "vite build --mode android && npx cap sync ios",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
