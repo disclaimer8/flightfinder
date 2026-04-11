@@ -282,14 +282,18 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
               aria-describedby={!filters.aircraftType ? 'sf-model-hint' : undefined}
             >
               <option value="">All models</option>
-              {filterOptions?.aircraft
-                ?.filter(a => !filters.aircraftType || a.type === filters.aircraftType)
-                .map(aircraft => (
+              {(() => {
+                const list = filterOptions?.aircraft
+                  ?.filter(a => !filters.aircraftType || a.type === filters.aircraftType) || [];
+                // Deduplicate by name — keep the first (shortest code = most standard)
+                const seen = new Map();
+                list.forEach(a => { if (!seen.has(a.name)) seen.set(a.name, a); });
+                return [...seen.values()].map(aircraft => (
                   <option key={aircraft.code} value={aircraft.code}>
-                    {aircraft.name} ({aircraft.code})
+                    {aircraft.name}
                   </option>
-                ))
-              }
+                ));
+              })()}
             </select>
             {!filters.aircraftType && (
               <span id="sf-model-hint" className="field-hint">Select a type above to filter models</span>

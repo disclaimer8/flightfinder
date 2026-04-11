@@ -1,10 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
+import DatePicker from './DatePicker';
 import './AircraftSearchForm.css';
 
+// Each entry: display label + IATA code used for the search
+// Using explicit IATA codes avoids geocoding ambiguity (e.g. London → Canada)
 const POPULAR_CITIES = [
-  'London', 'Paris', 'Amsterdam', 'Frankfurt', 'Madrid',
-  'Rome', 'Dubai', 'New York', 'Los Angeles', 'Tokyo',
-  'Singapore', 'Istanbul', 'Bangkok', 'Sydney', 'Toronto',
+  { label: 'London',        iata: 'LHR' },
+  { label: 'Paris',         iata: 'CDG' },
+  { label: 'Amsterdam',     iata: 'AMS' },
+  { label: 'Frankfurt',     iata: 'FRA' },
+  { label: 'Madrid',        iata: 'MAD' },
+  { label: 'Rome',          iata: 'FCO' },
+  { label: 'Dubai',         iata: 'DXB' },
+  { label: 'New York',      iata: 'JFK' },
+  { label: 'Los Angeles',   iata: 'LAX' },
+  { label: 'Tokyo',         iata: 'NRT' },
+  { label: 'Singapore',     iata: 'SIN' },
+  { label: 'Istanbul',      iata: 'IST' },
+  { label: 'Bangkok',       iata: 'BKK' },
+  { label: 'Sydney',        iata: 'SYD' },
+  { label: 'Toronto',       iata: 'YYZ' },
 ];
 
 export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
@@ -13,7 +28,9 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
   const [date, setDate]               = useState('');
   const [passengers, setPassengers]   = useState(1);
   const [useCity, setUseCity]         = useState(false);
-  const [city, setCity]               = useState('');
+  // selectedCity: { label, iata } when from chip, or { label, iata: null } when typed
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [cityInput, setCityInput]       = useState('');  // text field value
   const [radius, setRadius]           = useState(200);
   const [cityResults, setCityResults] = useState([]);
   const [cityFocused, setCityFocused] = useState(false);
@@ -32,22 +49,37 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
       .catch(() => {});
   }, []);
 
-  // Autocomplete for free-text input
+  // Autocomplete for free-text input (only when user is typing, not when chip selected)
   useEffect(() => {
-    if (!useCity || city.length < 2) { setCityResults([]); return; }
+    if (!useCity || cityInput.length < 2) { setCityResults([]); return; }
     clearTimeout(cityDebounce.current);
     cityDebounce.current = setTimeout(() => {
-      fetch(`/api/aircraft/airports/search?q=${encodeURIComponent(city)}&limit=6`)
+      fetch(`/api/aircraft/airports/search?q=${encodeURIComponent(cityInput)}&limit=6`)
         .then(r => r.json())
         .then(d => { if (d.success) setCityResults(d.airports || []); })
         .catch(() => {});
     }, 280);
-  }, [city, useCity]);
+  }, [cityInput, useCity]);
 
-  const selectCity = (name) => {
-    setCity(name);
+  // Select from popular chips — use explicit IATA, bypass geocoding
+  const selectChip = (chip) => {
+    setSelectedCity(chip);
+    setCityInput(chip.label);
     setCityResults([]);
-    inputRef.current?.focus();
+  };
+
+  // Select from autocomplete dropdown
+  const selectFromDropdown = (airport) => {
+    const entry = { label: airport.city || airport.name, iata: airport.iata };
+    setSelectedCity(entry);
+    setCityInput(entry.label);
+    setCityResults([]);
+  };
+
+  // User edits the text field — clear chip selection
+  const handleCityInputChange = (e) => {
+    setCityInput(e.target.value);
+    setSelectedCity(null); // typed value, no pinned IATA
   };
 
   const grouped = families.reduce((acc, f) => {
@@ -58,17 +90,22 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!familyName) return;
-    onSearch({
-      familyName,
-      date:       date || null,
-      passengers,
-      city:       useCity ? city  : null,
-      radius:     useCity ? radius : null,
-    });
+    const params = { familyName, date: date || null, passengers };
+    if (useCity && (selectedCity || cityInput.trim())) {
+      if (selectedCity?.iata) {
+        // Known IATA from chip or dropdown — pass directly, skip geocoding text match
+        params.iata = selectedCity.iata;
+        params.radius = radius;
+      } else {
+        // Free text — let geocodingService resolve it
+        params.city = cityInput.trim();
+        params.radius = radius;
+      }
+    }
+    onSearch(params);
   };
 
   const minDate = new Date().toISOString().split('T')[0];
-
   return (
     <form className="ac-search-form" onSubmit={handleSubmit} noValidate>
       {/* Row 1: Aircraft / Date / Passengers */}
@@ -93,27 +130,35 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
         </div>
 
         <div className="ac-search-field">
-          <label className="ac-label" htmlFor="ac-date">Date</label>
-          <input
-            id="ac-date"
-            type="date"
-            className="ac-input"
+          <label className="ac-label">Date</label>
+          <DatePicker
             value={date}
+            onChange={setDate}
             min={minDate}
-            onChange={e => setDate(e.target.value)}
+            placeholder="Select date"
+            label="Date"
           />
         </div>
 
         <div className="ac-search-field ac-search-field--narrow">
-          <label className="ac-label" htmlFor="ac-pax">Passengers</label>
-          <input
-            id="ac-pax"
-            type="number"
-            className="ac-input"
-            value={passengers}
-            min={1} max={9}
-            onChange={e => setPassengers(Math.max(1, Math.min(9, parseInt(e.target.value, 10) || 1)))}
-          />
+          <label className="ac-label">Passengers</label>
+          <div className="ac-stepper">
+            <button
+              type="button"
+              className="ac-stepper-btn"
+              aria-label="Decrease passengers"
+              onClick={() => setPassengers(p => Math.max(1, p - 1))}
+              disabled={passengers <= 1}
+            >−</button>
+            <span className="ac-stepper-count">{passengers}</span>
+            <button
+              type="button"
+              className="ac-stepper-btn"
+              aria-label="Increase passengers"
+              onClick={() => setPassengers(p => Math.min(9, p + 1))}
+              disabled={passengers >= 9}
+            >+</button>
+          </div>
         </div>
       </div>
 
@@ -135,12 +180,12 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
             <div className="ac-popular-chips">
               {POPULAR_CITIES.map(c => (
                 <button
-                  key={c}
+                  key={c.iata}
                   type="button"
-                  className={`ac-chip${city === c ? ' ac-chip--active' : ''}`}
-                  onClick={() => selectCity(c)}
+                  className={`ac-chip${selectedCity?.iata === c.iata ? ' ac-chip--active' : ''}`}
+                  onClick={() => selectChip(c)}
                 >
-                  {c}
+                  {c.label}
                 </button>
               ))}
             </div>
@@ -155,8 +200,8 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
                     type="text"
                     className="ac-input"
                     placeholder="e.g. Munich, Nairobi, BKK…"
-                    value={city}
-                    onChange={e => setCity(e.target.value)}
+                    value={cityInput}
+                    onChange={handleCityInputChange}
                     onFocus={() => setCityFocused(true)}
                     onBlur={() => setTimeout(() => setCityFocused(false), 150)}
                     autoComplete="off"
@@ -167,7 +212,7 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
                         <li
                           key={a.iata}
                           className="ac-dropdown-item"
-                          onMouseDown={() => selectCity(a.city || a.name)}
+                          onMouseDown={() => selectFromDropdown(a)}
                         >
                           <span className="ac-dropdown-iata">{a.iata}</span>
                           <span className="ac-dropdown-name">{a.city || a.name}</span>
@@ -204,7 +249,7 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
           <button
             type="submit"
             className="ac-btn ac-btn-primary"
-            disabled={!familyName || (useCity && !city.trim())}
+            disabled={!familyName || (useCity && !cityInput.trim())}
           >
             Search by aircraft
           </button>
