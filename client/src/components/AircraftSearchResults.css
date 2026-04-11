@@ -1,0 +1,189 @@
+/* AircraftSearchResults */
+.ac-results {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 16px 40px;
+}
+
+/* Progress */
+.ac-progress {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.ac-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ac-progress-label {
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+}
+
+.ac-progress-pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6c8eff;
+}
+
+.ac-progress-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ac-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6c8eff, #a78bfa);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.ac-progress-airports {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+}
+
+/* Error */
+.ac-error {
+  background: rgba(255,80,80,0.1);
+  border: 1px solid rgba(255,80,80,0.3);
+  border-radius: 10px;
+  padding: 14px 18px;
+  color: #ff8080;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* Results header */
+.ac-results-header { margin-bottom: 16px; }
+
+.ac-results-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.ac-results-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.5);
+}
+
+/* Empty state */
+.ac-empty {
+  text-align: center;
+  padding: 48px 16px;
+  color: rgba(255,255,255,0.6);
+}
+
+.ac-empty-icon {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+.ac-empty p { margin: 4px 0; font-size: 15px; }
+.ac-empty-hint { font-size: 13px; opacity: 0.6; }
+
+/* Cards grid */
+.ac-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+/* Individual card */
+.ac-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: background 0.2s, transform 0.15s;
+  animation: ac-card-in 0.25s ease;
+}
+
+@keyframes ac-card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.ac-card:hover {
+  background: rgba(255,255,255,0.09);
+  transform: translateY(-2px);
+}
+
+.ac-card-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ac-card-iata {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.03em;
+}
+
+.ac-card-arrow {
+  color: rgba(255,255,255,0.4);
+  font-size: 14px;
+}
+
+.ac-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ac-card-meta span {
+  background: rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+}
+
+.ac-card-aircraft { color: #a78bfa !important; font-weight: 500; }
+
+.ac-card-times {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.6);
+}
+
+.ac-card-price {
+  margin-top: 4px;
+}
+
+.ac-card-amount {
+  font-size: 20px;
+  font-weight: 800;
+  color: #6c8eff;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .ac-cards { grid-template-columns: 1fr; }
+  .ac-card-iata { font-size: 18px; }
+}

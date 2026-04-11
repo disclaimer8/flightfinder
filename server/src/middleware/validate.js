@@ -221,4 +221,55 @@ const authBody = {
   },
 };
 
-module.exports = { searchQuery, exploreQuery, bookBody, sanitiseKey, authBody };
+/**
+ * Validate GET /api/flights/aircraft-search/stream  query params
+ */
+function aircraftSearchQuery(req, res, next) {
+  const { familyName, city, radius, iata, date, passengers } = req.query;
+
+  if (!familyName || typeof familyName !== 'string' || familyName.trim().length < 3) {
+    return bad(res, 'familyName is required (e.g. "Boeing 737")');
+  }
+
+  // Must have either city or iata as origin
+  if (!city && !iata) {
+    return bad(res, 'city or iata (origin airport) is required');
+  }
+
+  if (iata && !IATA_RE.test(iata.toUpperCase().trim())) {
+    return bad(res, 'iata must be a 2–3 letter airport code');
+  }
+
+  if (radius !== undefined) {
+    const r = parseInt(radius, 10);
+    if (isNaN(r) || r < 10 || r > 2000) {
+      return bad(res, 'radius must be between 10 and 2000 km');
+    }
+  }
+
+  if (date) {
+    if (!DATE_RE.test(date)) return bad(res, 'date must be YYYY-MM-DD');
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return bad(res, 'date is not a valid date');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (d < today) return bad(res, 'date must not be in the past');
+  }
+
+  const pax = parseInt(passengers, 10);
+  if (passengers !== undefined && (isNaN(pax) || pax < 1 || pax > 9)) {
+    return bad(res, 'passengers must be between 1 and 9');
+  }
+
+  req.validatedQuery = {
+    familyName: familyName.trim(),
+    city:       city?.trim() || null,
+    radius:     radius !== undefined ? parseInt(radius, 10) : 200,
+    iata:       iata?.toUpperCase().trim() || null,
+    date:       date || null,
+    passengers: pax || 1,
+  };
+
+  next();
+}
+
+module.exports = { searchQuery, exploreQuery, bookBody, sanitiseKey, authBody, aircraftSearchQuery };

@@ -6,7 +6,10 @@ import APIStatus from './components/APIStatus';
 import ErrorBoundary from './components/ErrorBoundary';
 import SkeletonResults from './components/SkeletonResults';
 import AuthModal from './components/AuthModal';
+import AircraftSearchForm from './components/AircraftSearchForm';
+import AircraftSearchResults from './components/AircraftSearchResults';
 import { useFlightSearch } from './hooks/useFlightSearch';
+import { useAircraftSearch } from './hooks/useAircraftSearch';
 import { FilterOptionsContext } from './context/FilterOptionsContext';
 import { useAuth } from './context/AuthContext';
 import { API_BASE } from './utils/api';
@@ -20,6 +23,8 @@ function App() {
   const [filterOptionsError, setFilterOptionsError] = useState(false);
   const [apiStatus, setApiStatus] = useState(null);
   const [prefillArrival, setPrefillArrival] = useState(null);
+  const [searchMode, setSearchMode] = useState('search'); // 'search' | 'by-aircraft'
+  const [acFamilyName, setAcFamilyName] = useState('');
   // Email verification via URL: ?action=verify&token=...
   const [verifyState, setVerifyState] = useState(null); // null | 'pending' | 'success' | 'error'
   const [verifyMessage, setVerifyMessage] = useState('');
@@ -37,6 +42,21 @@ function App() {
     handleExplore,
     clearError,
   } = useFlightSearch(filterOptions);
+
+  const {
+    results: acResults,
+    progress: acProgress,
+    pct: acPct,
+    status: acStatus,
+    error: acError,
+    search: acSearch,
+    cancel: acCancel,
+  } = useAircraftSearch();
+
+  const handleAircraftSearch = (params) => {
+    setAcFamilyName(params.familyName);
+    acSearch(params);
+  };
 
   // Handle email verification link: ?action=verify&token=...
   useEffect(() => {
@@ -156,42 +176,82 @@ function App() {
 
           {filterOptions && (
             <div className="hero-search">
-              <SearchForm
-                onSearch={handleSearch}
-                onExplore={handleExplore}
-                loading={loading}
-                prefillArrival={prefillArrival}
-                onPrefillUsed={() => setPrefillArrival(null)}
-              />
+              <div className="search-mode-tabs">
+                <button
+                  className={`search-mode-tab${searchMode === 'search' ? ' search-mode-tab--active' : ''}`}
+                  onClick={() => setSearchMode('search')}
+                >
+                  Search flights
+                </button>
+                <button
+                  className={`search-mode-tab${searchMode === 'by-aircraft' ? ' search-mode-tab--active' : ''}`}
+                  onClick={() => setSearchMode('by-aircraft')}
+                >
+                  By aircraft
+                </button>
+              </div>
+
+              {searchMode === 'search' && (
+                <SearchForm
+                  onSearch={handleSearch}
+                  onExplore={handleExplore}
+                  loading={loading}
+                  prefillArrival={prefillArrival}
+                  onPrefillUsed={() => setPrefillArrival(null)}
+                />
+              )}
+
+              {searchMode === 'by-aircraft' && (
+                <AircraftSearchForm
+                  onSearch={handleAircraftSearch}
+                  loading={acStatus === 'searching'}
+                  onCancel={acCancel}
+                />
+              )}
             </div>
           )}
         </section>
 
         <main className="results-section">
-          {error && (
-            <div className="error-banner" role="alert">
-              <span>{error}</span>
-              <button className="error-dismiss" onClick={clearError} aria-label="Dismiss">×</button>
-            </div>
-          )}
-
-          {loading && <SkeletonResults message={loadingMessage} />}
-
-          {!loading && exploreResults !== null && (
+          {searchMode === 'by-aircraft' ? (
             <ErrorBoundary>
-              <ExploreResults
-                results={exploreResults}
-                departure={exploreContext?.departure}
-                aircraft={exploreContext?.aircraft}
-                onSelect={handleSelectDestination}
+              <AircraftSearchResults
+                results={acResults}
+                progress={acProgress}
+                pct={acPct}
+                status={acStatus}
+                error={acError}
+                familyName={acFamilyName}
               />
             </ErrorBoundary>
-          )}
+          ) : (
+            <>
+              {error && (
+                <div className="error-banner" role="alert">
+                  <span>{error}</span>
+                  <button className="error-dismiss" onClick={clearError} aria-label="Dismiss">×</button>
+                </div>
+              )}
 
-          {!loading && exploreResults === null && (
-            <ErrorBoundary>
-              <FlightResults flights={flights} source={apiSource} hasSearched={hasSearched} />
-            </ErrorBoundary>
+              {loading && <SkeletonResults message={loadingMessage} />}
+
+              {!loading && exploreResults !== null && (
+                <ErrorBoundary>
+                  <ExploreResults
+                    results={exploreResults}
+                    departure={exploreContext?.departure}
+                    aircraft={exploreContext?.aircraft}
+                    onSelect={handleSelectDestination}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!loading && exploreResults === null && (
+                <ErrorBoundary>
+                  <FlightResults flights={flights} source={apiSource} hasSearched={hasSearched} />
+                </ErrorBoundary>
+              )}
+            </>
           )}
         </main>
       </div>

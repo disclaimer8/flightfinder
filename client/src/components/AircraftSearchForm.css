@@ -1,0 +1,188 @@
+/* AircraftSearchForm */
+.ac-search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.ac-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.ac-search-row--city {
+  align-items: center;
+  min-height: 44px;
+}
+
+.ac-search-field {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.ac-search-field--wide  { flex: 2 1 220px; }
+.ac-search-field--narrow { flex: 0 1 90px; }
+.ac-search-field--city  { flex: 2 1 200px; }
+.ac-search-field--radius { flex: 2 1 200px; }
+
+.ac-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 4px;
+}
+
+.ac-select,
+.ac-input {
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.ac-select:focus,
+.ac-input:focus {
+  border-color: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.15);
+}
+
+.ac-select option,
+.ac-select optgroup {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+/* Date input calendar icon */
+.ac-input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.6);
+  cursor: pointer;
+}
+
+/* Number input arrows */
+.ac-input[type="number"] {
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.ac-input[type="number"]::-webkit-inner-spin-button,
+.ac-input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+/* Toggle */
+.ac-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  color: rgba(255,255,255,0.85);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.ac-toggle input { accent-color: #6c8eff; }
+
+/* Autocomplete */
+.ac-autocomplete { position: relative; }
+
+.ac-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  list-style: none;
+  margin: 0; padding: 4px 0;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.ac-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ac-dropdown-item:hover { background: rgba(255,255,255,0.08); }
+
+.ac-dropdown-iata {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6c8eff;
+  min-width: 36px;
+}
+.ac-dropdown-name {
+  flex: 1;
+  font-size: 13px;
+  color: #fff;
+}
+.ac-dropdown-country {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+}
+
+/* Radius slider */
+.ac-slider {
+  width: 100%;
+  margin-top: 8px;
+  accent-color: #6c8eff;
+  cursor: pointer;
+}
+
+/* Buttons */
+.ac-search-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.ac-btn {
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.ac-btn:active { transform: scale(0.98); }
+.ac-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ac-btn-primary {
+  background: #6c8eff;
+  color: #fff;
+}
+.ac-btn-primary:hover:not(:disabled) { opacity: 0.88; }
+
+.ac-btn-cancel {
+  background: rgba(255,80,80,0.2);
+  color: #ff8080;
+  border: 1px solid rgba(255,80,80,0.3);
+}
+.ac-btn-cancel:hover { background: rgba(255,80,80,0.3); }
+
+/* Mobile */
+@media (max-width: 600px) {
+  .ac-search-field--narrow { flex: 1 1 80px; }
+  .ac-btn { width: 100%; }
+}

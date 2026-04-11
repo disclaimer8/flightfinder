@@ -180,6 +180,38 @@
   z-index: 2;
 }
 
+/* Search mode tabs */
+.search-mode-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.search-mode-tab {
+  padding: 7px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.65);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.search-mode-tab:hover {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
+.search-mode-tab--active {
+  background: rgba(108,142,255,0.25);
+  border-color: rgba(108,142,255,0.5);
+  color: #fff;
+  font-weight: 600;
+}
+
 /* ─────────────────────────────────────────
    RESULTS SECTION
 ───────────────────────────────────────── */
