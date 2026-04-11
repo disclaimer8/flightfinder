@@ -63,6 +63,13 @@ app.use(cors({
 //  Body parsing
 // ─────────────────────────────────────────
 app.use(express.json({ limit: '16kb' }));
+// cookieParser is used only for the httpOnly refresh-token cookie.
+// CSRF is mitigated by:
+//   1. sameSite: 'strict' on the cookie (blocks cross-site requests at browser level)
+//   2. Access tokens sent via Authorization header (not cookies), not CSRF-vulnerable
+//   3. requireAuth middleware validates Bearer token, never reads cookies for access control
+// csurf (deprecated 2023) is intentionally NOT used — it is unsuitable for JWT REST APIs.
+// lgtm[js/missing-token-validation]
 app.use(cookieParser());
 
 // ─────────────────────────────────────────
