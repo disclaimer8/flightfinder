@@ -36,8 +36,9 @@ exports.getAirports = (_req, res) => {
 };
 
 // ─── GET /api/map/routes?origin=LHR ─────────────────────────────────────────
-// Returns up to ~40 cheapest destinations from an origin via Amadeus
-// Flight Inspiration Search. Used to draw route arcs on the map.
+// Returns direct destinations from an origin airport.
+// Source: OpenFlights routes.dat (all airports, offline).
+// Prices: Amadeus Flight Inspiration Search (best-effort, only major hubs in test env).
 
 exports.getRoutes = async (req, res) => {
   const { origin } = req.query;
@@ -49,25 +50,29 @@ exports.getRoutes = async (req, res) => {
   const cached   = cacheService.get(cacheKey);
   if (cached) return res.json(cached);
 
-  try {
-    const data         = await amadeusService.flightDestinations(code);
-    const destinations = [];
-    const prices       = {};
+  // Primary: OpenFlights routes.dat — works for every airport
+  const destinations = openFlights.getDirectDestinations(code);
 
+  if (!destinations.length) {
+    return res.status(404).json({ error: 'No routes found for this airport code' });
+  }
+
+  // Best-effort: try Amadeus for price overlay (fails silently for most airports in test env)
+  const prices = {};
+  try {
+    const data = await amadeusService.flightDestinations(code);
     for (const d of data) {
-      const dest = d.destination;
-      if (dest && dest !== code) {
-        destinations.push(dest);
-        if (d.price?.total) prices[dest] = parseFloat(d.price.total);
+      if (d.destination && d.price?.total) {
+        prices[d.destination] = parseFloat(d.price.total);
       }
     }
-
-    const result = { origin: code, destinations, prices };
-    cacheService.set(cacheKey, result, 1800); // 30 min
-    res.json(result);
-  } catch (err) {
-    res.status(502).json({ error: 'Failed to fetch routes', detail: err.message });
+  } catch {
+    // Amadeus not configured or origin not in test dataset — routes still shown without prices
   }
+
+  const result = { origin: code, destinations, prices };
+  cacheService.set(cacheKey, result, 3600); // 1 h — route topology rarely changes
+  res.json(result);
 };
 
 // ─── GET /api/map/radius?lat=51.5&lon=-0.1&radius=500 ───────────────────────

@@ -252,8 +252,8 @@ export default function RouteMap() {
       const data = await res.json();
 
       if (!res.ok) {
-        // Graceful message for test-env limitations
-        throw new Error('No routes in Amadeus test data for this airport. Try a major hub: LHR, CDG, MAD, JFK…');
+        const msg = data?.error || 'Failed to fetch routes';
+        throw new Error(msg);
       }
 
       setRoutes(data);

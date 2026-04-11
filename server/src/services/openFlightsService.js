@@ -53,7 +53,29 @@ parseCSV(path.join(__dirname, '../data/airlines.dat')).forEach(f => {
   }
 });
 
-console.log(`[openflights] Loaded ${airportsMap.size} airports, ${airlinesMap.size} airlines`);
+// routes.dat columns:
+// 0:airline 1:airlineId 2:src 3:srcId 4:dst 5:dstId 6:codeshare 7:stops 8:equipment
+// We only keep direct routes (stops=0) between airports with valid 3-letter IATA codes.
+const routesMap = new Map(); // src IATA -> Set<dst IATA>
+try {
+  parseCSV(path.join(__dirname, '../data/routes.dat')).forEach(f => {
+    const src   = f[2];
+    const dst   = f[4];
+    const stops = parseInt(f[7], 10);
+    if (
+      src && src.length === 3 && /^[A-Z]{3}$/.test(src) &&
+      dst && dst.length === 3 && /^[A-Z]{3}$/.test(dst) &&
+      stops === 0
+    ) {
+      if (!routesMap.has(src)) routesMap.set(src, new Set());
+      routesMap.get(src).add(dst);
+    }
+  });
+} catch (e) {
+  console.warn('[openflights] routes.dat not found or could not be parsed:', e.message);
+}
+
+console.log(`[openflights] Loaded ${airportsMap.size} airports, ${airlinesMap.size} airlines, ${routesMap.size} route origins`);
 
 /** Look up an airport by IATA code */
 exports.getAirport = (iata) => airportsMap.get(iata?.toUpperCase()) || null;
@@ -72,3 +94,9 @@ exports.getCountry = (iata) => airportsMap.get(iata?.toUpperCase())?.country || 
 
 /** Get all airports as array (for search UI) */
 exports.getAllAirports = () => Array.from(airportsMap.values());
+
+/** Get direct destination IATA codes from an origin airport */
+exports.getDirectDestinations = (iata) => {
+  const set = routesMap.get(iata?.toUpperCase());
+  return set ? Array.from(set) : [];
+};
