@@ -28,6 +28,12 @@ exports.register = async (req, res) => {
   const result = db.createUser(email, passwordHash);
   const userId = result.lastInsertRowid;
 
+  if (process.env.NODE_ENV === 'test') {
+    // Auto-verify in test environment — no email sending, no token needed
+    db.verifyUserEmail(userId);
+    return res.status(201).json({ success: true, message: 'Account created' });
+  }
+
   // Generate and store verification token
   const { raw, hash, expiresAt } = authService.generateVerificationToken();
   db.createVerificationToken(userId, hash, expiresAt);

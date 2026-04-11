@@ -164,6 +164,7 @@ describe('validate.bookBody', () => {
     dateOfBirth: '1990-01-15',
     title:  'mr',
     gender: 'M',
+    phone:  '+1 555 000 0000',
   };
 
   test('passes with valid body', () => {

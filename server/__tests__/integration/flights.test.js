@@ -134,6 +134,7 @@ describe('POST /api/flights/book — validation', () => {
       dateOfBirth: '1990-05-10',
       title:       'mr',
       gender:      'M',
+      phone:       '+1 555 000 0000',
     }],
     currency:    'EUR',
     totalAmount: '299.00',
