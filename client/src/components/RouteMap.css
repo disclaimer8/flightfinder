@@ -82,6 +82,42 @@
   pointer-events: none;
 }
 
+.rm-hint--highlight {
+  color: #34d399;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* Radius slider */
+.rm-slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(20,20,40,0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 6px 12px 8px;
+}
+
+.rm-slider-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #34d399;
+  white-space: nowrap;
+}
+
+.rm-slider {
+  width: 160px;
+  accent-color: #34d399;
+  cursor: pointer;
+}
+
+@media (max-width: 400px) {
+  .rm-slider { width: 120px; }
+}
+
 /* ── Info panel ────────────────────────────────────────────────────────────── */
 .rm-info {
   position: absolute;
@@ -105,6 +141,12 @@
 
 .rm-info--radius {
   border-color: rgba(52,211,153,0.3);
+}
+
+.rm-info-right {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .rm-info-origin {
