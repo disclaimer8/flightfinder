@@ -201,7 +201,7 @@ function resolveCity(query, radiusKm, maxAirports = 3) {
  * @param {number} [limit=8]
  */
 function searchAirports(query, limit = 8) {
-  if (!query || query.length < 2) return [];
+  if (!query || typeof query !== 'string' || query.length < 2) return [];
   const q = query.trim().toLowerCase();
   const all = openFlights.getAllAirports();
   const results = [];

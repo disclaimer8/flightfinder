@@ -44,11 +44,13 @@ exports.streamAircraftSearch = async (req, res) => {
  * Autocomplete endpoint for city/airport search in the UI.
  */
 exports.searchAirports = (req, res) => {
-  const { q, limit } = req.query;
-  if (!q || q.length < 2) {
+  // Coerce to string — ?q[]=a&q[]=b would otherwise produce an array
+  const raw = req.query.q;
+  const q = Array.isArray(raw) ? raw[0] : raw;
+  if (!q || typeof q !== 'string' || q.length < 2) {
     return res.status(400).json({ success: false, message: 'q must be at least 2 characters' });
   }
-  const lim = Math.min(parseInt(limit, 10) || 8, 20);
+  const lim = Math.min(parseInt(req.query.limit, 10) || 8, 20);
   const results = geocoding.searchAirports(q, lim);
   res.json({ success: true, airports: results });
 };
