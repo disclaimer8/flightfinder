@@ -127,8 +127,14 @@ if (IS_DEV) {
 // ─────────────────────────────────────────
 if (!IS_DEV) {
   const clientBuild = path.join(__dirname, '../../client/dist');
+  const spaFallbackLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 120, // limit each IP to 120 requests per window
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
   app.use(express.static(clientBuild, { maxAge: '1d' }));
-  app.get('*path', (_req, res) => {
+  app.get('*path', spaFallbackLimiter, (_req, res) => {
     res.sendFile(path.join(clientBuild, 'index.html'));
   });
 }
