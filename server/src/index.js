@@ -81,6 +81,7 @@ app.use('/api/flights', searchLimiter);
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/flights',  require('./routes/flights'));
 app.use('/api/aircraft', require('./routes/aircraft'));
+app.use('/api/map',      require('./routes/map'));
 
 // ─────────────────────────────────────────
 //  Health check

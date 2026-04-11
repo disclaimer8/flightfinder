@@ -8,6 +8,7 @@ import SkeletonResults from './components/SkeletonResults';
 import AuthModal from './components/AuthModal';
 import AircraftSearchForm from './components/AircraftSearchForm';
 import AircraftSearchResults from './components/AircraftSearchResults';
+import RouteMap from './components/RouteMap';
 import { useFlightSearch } from './hooks/useFlightSearch';
 import { useAircraftSearch } from './hooks/useAircraftSearch';
 import { FilterOptionsContext } from './context/FilterOptionsContext';
@@ -23,7 +24,7 @@ function App() {
   const [filterOptionsError, setFilterOptionsError] = useState(false);
   const [apiStatus, setApiStatus] = useState(null);
   const [prefillArrival, setPrefillArrival] = useState(null);
-  const [searchMode, setSearchMode] = useState('search'); // 'search' | 'by-aircraft'
+  const [searchMode, setSearchMode] = useState('search'); // 'search' | 'by-aircraft' | 'map'
   const [acFamilyName, setAcFamilyName] = useState('');
   // Email verification via URL: ?action=verify&token=...
   const [verifyState, setVerifyState] = useState(null); // null | 'pending' | 'success' | 'error'
@@ -189,6 +190,12 @@ function App() {
                 >
                   By aircraft
                 </button>
+                <button
+                  className={`search-mode-tab${searchMode === 'map' ? ' search-mode-tab--active' : ''}`}
+                  onClick={() => setSearchMode('map')}
+                >
+                  Route map
+                </button>
               </div>
 
               {searchMode === 'search' && (
@@ -208,12 +215,22 @@ function App() {
                   onCancel={acCancel}
                 />
               )}
+
+              {searchMode === 'map' && (
+                <p className="explore-hint" style={{ marginTop: 0 }}>
+                  Explore global routes — click an airport to see destinations, draw a radius to find nearby airports.
+                </p>
+              )}
             </div>
           )}
         </section>
 
         <main className="results-section">
-          {searchMode === 'by-aircraft' ? (
+          {searchMode === 'map' ? (
+            <ErrorBoundary>
+              <RouteMap />
+            </ErrorBoundary>
+          ) : searchMode === 'by-aircraft' ? (
             <ErrorBoundary>
               <AircraftSearchResults
                 results={acResults}

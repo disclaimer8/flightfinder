@@ -44,6 +44,30 @@ exports.searchFlights = async (params) => {
 };
 
 /**
+ * Flight Inspiration Search — top destinations from an origin (cheap fares).
+ * @param {string} origin - IATA code (e.g. 'MAD')
+ * @param {string|null} departureDate - optional YYYY-MM-DD
+ */
+exports.flightDestinations = async (origin, departureDate) => {
+  if (!amadeus) throw new Error('Amadeus API is not configured');
+  const params = { origin };
+  if (departureDate) params.departureDate = departureDate;
+  const response = await amadeus.shopping.flightDestinations.get(params);
+  return response.data || [];
+};
+
+/**
+ * Flight Cheapest Date Search — find cheapest departure dates for a route.
+ * @param {string} origin - IATA code
+ * @param {string} destination - IATA code
+ */
+exports.flightDates = async (origin, destination) => {
+  if (!amadeus) throw new Error('Amadeus API is not configured');
+  const response = await amadeus.shopping.flightDates.get({ origin, destination });
+  return response.data || [];
+};
+
+/**
  * Parse ISO 8601 duration (e.g. "PT8H30M") to a readable string
  */
 exports.parseDuration = (isoDuration) => {

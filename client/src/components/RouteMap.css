@@ -1,0 +1,171 @@
+/* RouteMap — full-height Leaflet map with controls overlay */
+
+.rm-root {
+  position: relative;
+  width: 100%;
+  height: 70vh;
+  min-height: 420px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0d0d1a;
+}
+
+/* Leaflet map fills the whole root */
+.rm-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Airport canvas overlay — sits on top of tiles, below controls */
+.rm-airport-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 400; /* above tiles, below Leaflet controls */
+}
+
+/* ── Controls bar ──────────────────────────────────────────────────────────── */
+.rm-controls {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: calc(100% - 60px);
+}
+
+.rm-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(20,20,40,0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.rm-btn:hover {
+  background: rgba(40,40,70,0.95);
+  border-color: rgba(255,255,255,0.35);
+}
+
+.rm-btn--active {
+  background: rgba(52,211,153,0.25);
+  border-color: rgba(52,211,153,0.6);
+  color: #34d399;
+}
+
+.rm-btn--ghost {
+  background: rgba(255,80,80,0.15);
+  border-color: rgba(255,80,80,0.35);
+  color: #ff8080;
+}
+.rm-btn--ghost:hover {
+  background: rgba(255,80,80,0.25);
+}
+
+.rm-hint {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  padding: 0 4px;
+  pointer-events: none;
+}
+
+/* ── Info panel ────────────────────────────────────────────────────────────── */
+.rm-info {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: rgba(14,14,30,0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  max-width: 90%;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.rm-info--radius {
+  border-color: rgba(52,211,153,0.3);
+}
+
+.rm-info-origin {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rm-info-iata {
+  font-size: 22px;
+  font-weight: 800;
+  color: #6c8eff;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.rm-info--radius .rm-info-iata {
+  color: #34d399;
+}
+
+.rm-info-city {
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
+}
+
+.rm-info-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  margin: 0;
+}
+
+.rm-info-sub--err { color: #ff8080; }
+
+.rm-info-price {
+  color: rgba(255,255,255,0.65);
+}
+.rm-info-price strong {
+  color: #6c8eff;
+}
+
+/* ── Leaflet overrides ─────────────────────────────────────────────────────── */
+.rm-root .leaflet-control-attribution {
+  background: rgba(0,0,0,0.55) !important;
+  color: rgba(255,255,255,0.4) !important;
+  font-size: 10px;
+}
+.rm-root .leaflet-control-attribution a {
+  color: rgba(255,255,255,0.6) !important;
+}
+.rm-root .leaflet-control-zoom a {
+  background: rgba(20,20,40,0.88) !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.15) !important;
+}
+.rm-root .leaflet-control-zoom a:hover {
+  background: rgba(40,40,70,0.95) !important;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .rm-root { height: 60vh; border-radius: 12px; }
+  .rm-info { bottom: 12px; padding: 10px 14px; }
+  .rm-info-iata { font-size: 18px; }
+}

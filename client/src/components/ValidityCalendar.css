@@ -1,0 +1,204 @@
+/* ValidityCalendar — 12-month price heatmap floating panel */
+
+.vc-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 16px;
+}
+
+.vc-panel {
+  background: #13132a;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 780px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.vc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+
+.vc-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vc-iata {
+  font-size: 24px;
+  font-weight: 800;
+  color: #6c8eff;
+  letter-spacing: 0.04em;
+}
+
+.vc-arrow {
+  font-size: 16px;
+  color: rgba(255,255,255,0.3);
+}
+
+.vc-cities {
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  margin-left: 4px;
+}
+
+.vc-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.6);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.vc-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+/* ── Legend ────────────────────────────────────────────────────────────────── */
+.vc-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.vc-legend-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+
+/* ── Body / scrollable grid ─────────────────────────────────────────────────── */
+.vc-body {
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+  flex: 1;
+}
+
+.vc-msg {
+  text-align: center;
+  color: rgba(255,255,255,0.5);
+  padding: 40px 0;
+  font-size: 14px;
+}
+.vc-msg--err { color: #ff8080; }
+
+/* ── Month grid ─────────────────────────────────────────────────────────────── */
+.vc-months {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.vc-month-name {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 6px;
+}
+
+/* 7-column day grid */
+.vc-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.vc-day-hdr {
+  font-size: 9px;
+  text-align: center;
+  color: rgba(255,255,255,0.3);
+  padding-bottom: 2px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.vc-day {
+  position: relative;
+  border-radius: 4px;
+  padding: 3px 2px;
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  color: rgba(255,255,255,0.75);
+  background: rgba(255,255,255,0.04);
+  cursor: default;
+  min-height: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  transition: background 0.1s;
+}
+
+.vc-day--empty {
+  background: transparent;
+}
+
+/* Price colour classes */
+.vc-day--cheap {
+  background: rgba(52,211,153,0.22);
+  color: #6ee7b7;
+}
+.vc-day--cheap .vc-day-price { color: #6ee7b7; }
+
+.vc-day--mid {
+  background: rgba(251,191,36,0.18);
+  color: #fcd34d;
+}
+.vc-day--mid .vc-day-price { color: #fcd34d; }
+
+.vc-day--expensive {
+  background: rgba(239,68,68,0.18);
+  color: #fca5a5;
+}
+.vc-day--expensive .vc-day-price { color: #fca5a5; }
+
+/* Used as legend dots */
+.vc-legend-dot.vc-day--cheap     { background: rgba(52,211,153,0.5); }
+.vc-legend-dot.vc-day--mid       { background: rgba(251,191,36,0.5); }
+.vc-legend-dot.vc-day--expensive { background: rgba(239,68,68,0.5); }
+
+.vc-day-price {
+  font-size: 8px;
+  font-weight: 700;
+  opacity: 0.9;
+  line-height: 1;
+}
+
+/* Mobile */
+@media (max-width: 500px) {
+  .vc-months { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .vc-iata { font-size: 18px; }
+  .vc-cities { display: none; }
+}
