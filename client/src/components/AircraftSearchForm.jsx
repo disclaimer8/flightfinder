@@ -1,17 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import './AircraftSearchForm.css';
 
-/**
- * AircraftSearchForm
- *
- * Lets the user search flights by aircraft family with an optional
- * city + radius filter.
- *
- * Props:
- *   onSearch(params) — called with { familyName, city, radius, date, passengers }
- *   loading          — bool, disables the button while searching
- *   onCancel()       — called when user clicks Cancel during search
- */
+const POPULAR_CITIES = [
+  'London', 'Paris', 'Amsterdam', 'Frankfurt', 'Madrid',
+  'Rome', 'Dubai', 'New York', 'Los Angeles', 'Tokyo',
+  'Singapore', 'Istanbul', 'Bangkok', 'Sydney', 'Toronto',
+];
+
 export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
   const [families, setFamilies]       = useState([]);
   const [familyName, setFamilyName]   = useState('');
@@ -23,8 +18,8 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
   const [cityResults, setCityResults] = useState([]);
   const [cityFocused, setCityFocused] = useState(false);
   const cityDebounce = useRef(null);
+  const inputRef = useRef(null);
 
-  // Load aircraft families from server
   useEffect(() => {
     fetch('/api/aircraft/families')
       .then(r => r.json())
@@ -37,7 +32,7 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
       .catch(() => {});
   }, []);
 
-  // Autocomplete city input
+  // Autocomplete for free-text input
   useEffect(() => {
     if (!useCity || city.length < 2) { setCityResults([]); return; }
     clearTimeout(cityDebounce.current);
@@ -49,7 +44,12 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
     }, 280);
   }, [city, useCity]);
 
-  // Group families by manufacturer for the select
+  const selectCity = (name) => {
+    setCity(name);
+    setCityResults([]);
+    inputRef.current?.focus();
+  };
+
   const grouped = families.reduce((acc, f) => {
     (acc[f.manufacturer] = acc[f.manufacturer] || []).push(f);
     return acc;
@@ -71,7 +71,7 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
 
   return (
     <form className="ac-search-form" onSubmit={handleSubmit} noValidate>
-      {/* Aircraft family selector */}
+      {/* Row 1: Aircraft / Date / Passengers */}
       <div className="ac-search-row">
         <div className="ac-search-field ac-search-field--wide">
           <label className="ac-label" htmlFor="ac-family">Aircraft</label>
@@ -92,7 +92,6 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
           </select>
         </div>
 
-        {/* Date */}
         <div className="ac-search-field">
           <label className="ac-label" htmlFor="ac-date">Date</label>
           <input
@@ -105,7 +104,6 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
           />
         </div>
 
-        {/* Passengers */}
         <div className="ac-search-field ac-search-field--narrow">
           <label className="ac-label" htmlFor="ac-pax">Passengers</label>
           <input
@@ -113,71 +111,86 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
             type="number"
             className="ac-input"
             value={passengers}
-            min={1}
-            max={9}
+            min={1} max={9}
             onChange={e => setPassengers(Math.max(1, Math.min(9, parseInt(e.target.value, 10) || 1)))}
           />
         </div>
       </div>
 
-      {/* Near-city filter */}
-      <div className="ac-search-row ac-search-row--city">
+      {/* Row 2: Near city toggle */}
+      <div className="ac-city-section">
         <label className="ac-toggle">
           <input
             type="checkbox"
             checked={useCity}
-            onChange={e => setUseCity(e.target.checked)}
+            onChange={e => { setUseCity(e.target.checked); if (!e.target.checked) setCity(''); }}
           />
           <span>Near city</span>
         </label>
 
         {useCity && (
-          <>
-            {/* City autocomplete */}
-            <div className="ac-search-field ac-search-field--city">
-              <div className="ac-autocomplete">
-                <input
-                  type="text"
-                  className="ac-input"
-                  placeholder="City or airport (e.g. London)"
-                  value={city}
-                  onChange={e => setCity(e.target.value)}
-                  onFocus={() => setCityFocused(true)}
-                  onBlur={() => setTimeout(() => setCityFocused(false), 150)}
-                  autoComplete="off"
-                />
-                {cityFocused && cityResults.length > 0 && (
-                  <ul className="ac-dropdown">
-                    {cityResults.map(a => (
-                      <li
-                        key={a.iata}
-                        className="ac-dropdown-item"
-                        onMouseDown={() => { setCity(a.city || a.name); setCityResults([]); }}
-                      >
-                        <span className="ac-dropdown-iata">{a.iata}</span>
-                        <span className="ac-dropdown-name">{a.city || a.name}</span>
-                        <span className="ac-dropdown-country">{a.country}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+          <div className="ac-city-body">
+            {/* Popular cities */}
+            <div className="ac-popular-label">Popular</div>
+            <div className="ac-popular-chips">
+              {POPULAR_CITIES.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`ac-chip${city === c ? ' ac-chip--active' : ''}`}
+                  onClick={() => selectCity(c)}
+                >
+                  {c}
+                </button>
+              ))}
             </div>
 
-            {/* Radius slider */}
-            <div className="ac-search-field ac-search-field--radius">
-              <label className="ac-label">Radius: {radius} km</label>
-              <input
-                type="range"
-                className="ac-slider"
-                min={50}
-                max={1000}
-                step={50}
-                value={radius}
-                onChange={e => setRadius(parseInt(e.target.value, 10))}
-              />
+            {/* Free-text input */}
+            <div className="ac-city-input-row">
+              <div className="ac-search-field ac-search-field--city">
+                <label className="ac-label">Or type any city / airport</label>
+                <div className="ac-autocomplete">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    className="ac-input"
+                    placeholder="e.g. Munich, Nairobi, BKK…"
+                    value={city}
+                    onChange={e => setCity(e.target.value)}
+                    onFocus={() => setCityFocused(true)}
+                    onBlur={() => setTimeout(() => setCityFocused(false), 150)}
+                    autoComplete="off"
+                  />
+                  {cityFocused && cityResults.length > 0 && (
+                    <ul className="ac-dropdown">
+                      {cityResults.map(a => (
+                        <li
+                          key={a.iata}
+                          className="ac-dropdown-item"
+                          onMouseDown={() => selectCity(a.city || a.name)}
+                        >
+                          <span className="ac-dropdown-iata">{a.iata}</span>
+                          <span className="ac-dropdown-name">{a.city || a.name}</span>
+                          <span className="ac-dropdown-country">{a.country}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              <div className="ac-search-field ac-search-field--radius">
+                <label className="ac-label">Radius: {radius} km</label>
+                <input
+                  type="range"
+                  className="ac-slider"
+                  min={50} max={1000} step={50}
+                  value={radius}
+                  onChange={e => setRadius(parseInt(e.target.value, 10))}
+                />
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -188,7 +201,11 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
             Cancel search
           </button>
         ) : (
-          <button type="submit" className="ac-btn ac-btn-primary" disabled={!familyName}>
+          <button
+            type="submit"
+            className="ac-btn ac-btn-primary"
+            disabled={!familyName || (useCity && !city.trim())}
+          >
             Search by aircraft
           </button>
         )}
