@@ -23,7 +23,21 @@ app.set('trust proxy', 1);
 // ─────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'same-site' },
-  contentSecurityPolicy: false, // CSP managed by nginx in production
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:     ["'self'"],
+      scriptSrc:      ["'self'"],               // all JS bundled by Vite, served from /assets/
+      styleSrc:       ["'self'", "'unsafe-inline'"], // Leaflet sets style= attributes on DOM nodes
+      imgSrc:         ["'self'", 'data:', 'https:'], // CartoDB map tiles (loaded as <img> by Leaflet)
+      connectSrc:     ["'self'"],               // all /api/* calls are same-origin
+      fontSrc:        ["'self'", 'data:'],
+      objectSrc:      ["'none'"],
+      baseUri:        ["'self'"],
+      formAction:     ["'self'"],
+      frameAncestors: ["'none'"],               // disallow embedding in iframes
+      upgradeInsecureRequests: [],
+    },
+  },
 }));
 
 // ─────────────────────────────────────────
