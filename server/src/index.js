@@ -9,6 +9,7 @@ const cors    = require('cors');
 const helmet  = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
+const csurf = require('csurf');
 const path    = require('path');
 
 const app  = express();
@@ -50,6 +51,18 @@ app.use(cors({
 // ─────────────────────────────────────────
 app.use(express.json({ limit: '16kb' }));
 app.use(cookieParser());
+
+const csrfProtection = csurf({
+  cookie: {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: !IS_DEV,
+  },
+});
+app.use(csrfProtection);
+app.get('/csrf-token', (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
 
 // ─────────────────────────────────────────
 //  Rate limiting
