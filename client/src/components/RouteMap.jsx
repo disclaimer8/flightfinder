@@ -18,9 +18,9 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 
 // ── Route arc colours by confidence tier ────────────────────────────────────
 const ARC_STYLE = {
-  live:       { color: 'rgba(52,211,153,0.75)',  weight: 1.5, dashArray: null },
-  scheduled:  { color: 'rgba(251,191,36,0.6)',   weight: 1.2, dashArray: null },
-  historical: { color: 'rgba(160,160,160,0.35)', weight: 1.0, dashArray: '4 6' },
+  live:       { color: 'rgba(52,211,153,0.85)',  weight: 2.0, dashArray: null },
+  scheduled:  { color: 'rgba(251,191,36,0.75)',  weight: 1.5, dashArray: null },
+  historical: { color: 'rgba(99,140,200,0.55)',  weight: 1.2, dashArray: null },
 };
 
 // ── Great-circle intermediate points (for geodesic arcs) ────────────────────
@@ -173,8 +173,8 @@ export default function RouteMap() {
 
   const [calendarRoute, setCalendarRoute] = useState(null);
 
-  const [showHistorical, setShowHistorical] = useState(false);
-  const showHistoricalRef = useRef(false);
+  const [showHistorical, setShowHistorical] = useState(true);
+  const showHistoricalRef = useRef(true);
 
   const selectedAirportRef = useRef(null);
 
@@ -297,16 +297,6 @@ export default function RouteMap() {
       setRoutes(data);
       routesRef.current = data;
       highlightedRef.current = new Set(data.destinations);
-
-      // If every route is historical (no live/scheduled data yet),
-      // auto-enable historical view so the user sees something.
-      const hasLiveOrScheduled = data.destinations.some(
-        d => data.confidences?.[d] !== 'historical'
-      );
-      if (!hasLiveOrScheduled && data.destinations.length > 0) {
-        setShowHistorical(true);
-        showHistoricalRef.current = true;
-      }
 
       const map = mapRef.current;
       const L   = (await import('leaflet')).default;
@@ -509,11 +499,11 @@ export default function RouteMap() {
 
         {routes && (
           <button
-            className={`rm-btn${showHistorical ? ' rm-btn--active' : ''}`}
+            className={`rm-btn${!showHistorical ? ' rm-btn--active' : ''}`}
             onClick={() => setShowHistorical(v => !v)}
-            title="Show routes from 2017 historical dataset"
+            title="Toggle historical routes (pre-2017 dataset)"
           >
-            Historical
+            {showHistorical ? 'Hide historical' : 'Show historical'}
           </button>
         )}
       </div>
@@ -539,11 +529,9 @@ export default function RouteMap() {
       {/* Legend */}
       {routes && (
         <div className="rm-legend">
-          <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--live"/>Live</div>
+          {showHistorical && <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--historical"/>Historical</div>}
           <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--scheduled"/>Scheduled</div>
-          {showHistorical && (
-            <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--historical"/>Historical</div>
-          )}
+          <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--live"/>Live</div>
         </div>
       )}
 
