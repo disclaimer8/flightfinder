@@ -6,6 +6,9 @@ on:
 
 permissions:
   contents: read
+env:
+  OPENSKY_USERNAME: ${{ secrets.OPENSKY_USERNAME }}
+  OPENSKY_PASSWORD: ${{ secrets.OPENSKY_PASSWORD }}
 
 jobs:
   deploy:
@@ -17,12 +20,17 @@ jobs:
           host: 178.104.32.46
           username: root
           key: ${{ secrets.claude }}
+          envs: OPENSKY_USERNAME,OPENSKY_PASSWORD
           script: |
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             export PATH="$PATH:/usr/local/bin"
             cd ~/flightfinder
             git pull origin main
+            # Write OpenSky credentials to server .env (idempotent)
+            sed -i '/^OPENSKY_/d' server/.env
+            echo "OPENSKY_USERNAME=${OPENSKY_USERNAME}" >> server/.env
+            echo "OPENSKY_PASSWORD=${OPENSKY_PASSWORD}" >> server/.env
             cd server && npm install --omit=dev
             cd ../client && npm install && npm run build
             cp /root/flightfinder/nginx/himaxym.conf /etc/nginx/sites-enabled/flightfinder
