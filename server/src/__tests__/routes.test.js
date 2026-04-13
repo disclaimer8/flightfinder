@@ -72,3 +72,66 @@ describe('airlabsService.getRoutes', () => {
     expect(axios.get).toHaveBeenCalledTimes(2);
   });
 });
+
+// ── routesService tests ───────────────────────────────────────────────────────
+
+describe('routesService.getRoutes', () => {
+  let routesService;
+  let openSkyService;
+  let airlabsSvc;
+
+  beforeEach(() => {
+    jest.resetModules();
+    jest.mock('../services/openSkyService');
+    jest.mock('../services/airlabsService');
+    routesService  = require('../services/routesService');
+    openSkyService = require('../services/openSkyService');
+    airlabsSvc     = require('../services/airlabsService');
+  });
+
+  it('marks destinations live when OpenSky has them', async () => {
+    openSkyService.getDepartures.mockResolvedValue([
+      { destIata: 'JFK', lastSeen: new Date() },
+    ]);
+    airlabsSvc.getRoutes.mockResolvedValue(new Set(['JFK', 'CDG']));
+
+    const result = await routesService.getRoutes('LHR');
+
+    expect(result.confidences['JFK']).toBe('live');
+    expect(result.confidences['CDG']).toBe('scheduled');
+    expect(result.destinations).toContain('JFK');
+    expect(result.destinations).toContain('CDG');
+  });
+
+  it('marks all destinations scheduled when OpenSky returns empty', async () => {
+    openSkyService.getDepartures.mockResolvedValue([]);
+    airlabsSvc.getRoutes.mockResolvedValue(new Set(['CDG', 'AMS']));
+
+    const result = await routesService.getRoutes('LHR');
+
+    expect(result.confidences['CDG']).toBe('scheduled');
+    expect(result.confidences['AMS']).toBe('scheduled');
+  });
+
+  it('returns empty destinations when both sources empty', async () => {
+    openSkyService.getDepartures.mockResolvedValue([]);
+    airlabsSvc.getRoutes.mockResolvedValue(new Set());
+
+    const result = await routesService.getRoutes('LHR');
+
+    expect(result.destinations).toHaveLength(0);
+    expect(result.origin).toBe('LHR');
+  });
+
+  it('does not include self-loops in destinations', async () => {
+    openSkyService.getDepartures.mockResolvedValue([
+      { destIata: 'LHR', lastSeen: new Date() },
+    ]);
+    airlabsSvc.getRoutes.mockResolvedValue(new Set(['LHR', 'JFK']));
+
+    const result = await routesService.getRoutes('LHR');
+
+    expect(result.destinations).not.toContain('LHR');
+    expect(result.destinations).toContain('JFK');
+  });
+});

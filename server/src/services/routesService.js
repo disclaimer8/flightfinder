@@ -1,18 +1,21 @@
 'use strict';
 
-const openFlights     = require('./openFlightsService');
-const openSkyService  = require('./openSkyService');
-const wikidataService = require('./wikidataService');
+const openFlights    = require('./openFlightsService');
+const openSkyService = require('./openSkyService');
+const airlabsService = require('./airlabsService');
 
 /**
- * Merge routes from all three sources for an origin airport.
- * Each destination gets the highest-confidence tier from any source that knows it.
+ * Merge routes from AirLabs (scheduled) and OpenSky (live ADS-B).
+ *
+ * Confidence tiers:
+ *   live      — seen departing in last 12h via OpenSky
+ *   scheduled — current airline schedule via AirLabs
  *
  * @param {string} iata  3-letter IATA origin
  * @returns {Promise<{
  *   origin: string,
  *   destinations: string[],
- *   confidences: Record<string, 'live'|'scheduled'|'historical'>
+ *   confidences: Record<string, 'live'|'scheduled'>
  * }>}
  */
 exports.getRoutes = async (iata) => {
@@ -20,11 +23,11 @@ exports.getRoutes = async (iata) => {
   const airport = openFlights.getAirport(code);
   const icao    = airport?.icao;
 
-  // ── 1. OpenSky (live ADS-B traffic, last 7 days) ──────────────────────────
+  // ── 1. OpenSky (live ADS-B, last 12h) ──────────────────────────────────────
   let openSkyMap = new Map(); // destIata → lastSeen Date
   if (icao) {
     try {
-      const departures = await openSkyService.getDepartures(icao, 7);
+      const departures = await openSkyService.getDepartures(icao);
       for (const { destIata, lastSeen } of departures) {
         const prev = openSkyMap.get(destIata);
         if (!prev || lastSeen > prev) openSkyMap.set(destIata, lastSeen);
@@ -34,29 +37,21 @@ exports.getRoutes = async (iata) => {
     }
   }
 
-  // ── 2. Wikidata (scheduled routes, weekly refresh) ────────────────────────
-  const wikidataSet = wikidataService.getRoutes(code);
+  // ── 2. AirLabs (scheduled routes, 24h cache) ───────────────────────────────
+  let airlabsSet = new Set();
+  try {
+    airlabsSet = await airlabsService.getRoutes(code);
+  } catch (err) {
+    console.warn(`[routes] AirLabs error for ${code}:`, err.message);
+  }
 
-  // ── 3. OpenFlights routes.dat (historical fallback) ───────────────────────
-  const historicalSet = new Set(openFlights.getDirectDestinations(code));
-
-  // ── Merge: assign highest-confidence tier per destination ─────────────────
-  const allDest = new Set([
-    ...openSkyMap.keys(),
-    ...wikidataSet,
-    ...historicalSet,
-  ]);
+  // ── Merge: live wins over scheduled ────────────────────────────────────────
+  const allDest = new Set([...openSkyMap.keys(), ...airlabsSet]);
 
   const confidences = {};
   for (const dest of allDest) {
     if (dest === code) continue; // skip self-loops
-    if (openSkyMap.has(dest)) {
-      confidences[dest] = 'live';
-    } else if (wikidataSet.has(dest)) {
-      confidences[dest] = 'scheduled';
-    } else {
-      confidences[dest] = 'historical';
-    }
+    confidences[dest] = openSkyMap.has(dest) ? 'live' : 'scheduled';
   }
 
   const destinations = Object.keys(confidences);
