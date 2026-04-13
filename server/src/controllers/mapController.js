@@ -4,6 +4,7 @@ const openFlights    = require('../services/openFlightsService');
 const geocoding      = require('../services/geocodingService');
 const amadeusService = require('../services/amadeusService');
 const cacheService   = require('../services/cacheService');
+const routesService  = require('../services/routesService');
 
 // ─── GET /api/map/airports ───────────────────────────────────────────────────
 // Returns all known airports in compact format to minimise payload.
@@ -50,29 +51,17 @@ exports.getRoutes = async (req, res) => {
   const cached   = cacheService.get(cacheKey);
   if (cached) return res.json(cached);
 
-  // Primary: OpenFlights routes.dat — works for every airport
-  const destinations = openFlights.getDirectDestinations(code);
-
-  if (!destinations.length) {
-    return res.status(404).json({ error: 'No routes found for this airport code' });
-  }
-
-  // Best-effort: try Amadeus for price overlay (fails silently for most airports in test env)
-  const prices = {};
   try {
-    const data = await amadeusService.flightDestinations(code);
-    for (const d of data) {
-      if (d.destination && d.price?.total) {
-        prices[d.destination] = parseFloat(d.price.total);
-      }
+    const result = await routesService.getRoutes(code);
+    if (!result.destinations.length) {
+      return res.status(404).json({ error: 'No routes found for this airport code' });
     }
-  } catch {
-    // Amadeus not configured or origin not in test dataset — routes still shown without prices
+    cacheService.set(cacheKey, result, 3600); // 1 h
+    res.json(result);
+  } catch (err) {
+    console.error('[map] getRoutes error:', err.message);
+    res.status(502).json({ error: 'Failed to fetch routes' });
   }
-
-  const result = { origin: code, destinations, prices };
-  cacheService.set(cacheKey, result, 3600); // 1 h — route topology rarely changes
-  res.json(result);
 };
 
 // ─── GET /api/map/radius?lat=51.5&lon=-0.1&radius=500 ───────────────────────
