@@ -211,3 +211,50 @@
   .rm-info { bottom: 12px; padding: 10px 14px; }
   .rm-info-iata { font-size: 18px; }
 }
+
+/* ── Legend ────────────────────────────────────────────────────────────────── */
+.rm-legend {
+  position: absolute;
+  bottom: 20px;
+  right: 12px;
+  z-index: 1000;
+  background: rgba(14,14,30,0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rm-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+}
+
+.rm-legend-dot {
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.rm-legend-dot--live       { background: rgba(52,211,153,0.9); }
+.rm-legend-dot--scheduled  { background: rgba(251,191,36,0.8); }
+.rm-legend-dot--historical {
+  background: transparent;
+  border-top: 2px dashed rgba(160,160,160,0.7);
+  height: 0;
+  margin-top: 2px;
+}
+
+@media (max-width: 600px) {
+  .rm-legend { bottom: 12px; right: 8px; }
+}

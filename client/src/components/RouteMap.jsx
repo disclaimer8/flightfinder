@@ -16,6 +16,13 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// ── Route arc colours by confidence tier ────────────────────────────────────
+const ARC_STYLE = {
+  live:       { color: 'rgba(52,211,153,0.75)',  weight: 1.5, dashArray: null },
+  scheduled:  { color: 'rgba(251,191,36,0.6)',   weight: 1.2, dashArray: null },
+  historical: { color: 'rgba(160,160,160,0.35)', weight: 1.0, dashArray: '4 6' },
+};
+
 // ── Great-circle intermediate points (for geodesic arcs) ────────────────────
 function geodesicPoints(lat1, lon1, lat2, lon2, steps = 80) {
   const rad = x => x * Math.PI / 180;
@@ -166,9 +173,15 @@ export default function RouteMap() {
 
   const [calendarRoute, setCalendarRoute] = useState(null);
 
+  const [showHistorical, setShowHistorical] = useState(false);
+  const showHistoricalRef = useRef(false);
+
+  const selectedAirportRef = useRef(null);
+
   // Keep refs in sync
   useEffect(() => { radiusModeRef.current = radiusMode; }, [radiusMode]);
   useEffect(() => { radiusKmRef.current   = radiusKm;   }, [radiusKm]);
+  useEffect(() => { showHistoricalRef.current = showHistorical; }, [showHistorical]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -239,6 +252,31 @@ export default function RouteMap() {
     applyRadius(radiusCenterRef.current, radiusKm);
   }, [radiusKm, radiusMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Redraw arcs when showHistorical toggles ───────────────────────────────
+  useEffect(() => {
+    if (!selectedAirportRef.current || !routes) return;
+    const ap = selectedAirportRef.current;
+    clearRouteLines();
+    import('leaflet').then(async ({ default: L }) => {
+      for (const destIata of routes.destinations) {
+        const confidence = routes.confidences?.[destIata] ?? 'historical';
+        if (confidence === 'historical' && !showHistorical) continue;
+        const idx = airportsDataRef.current?.pts.indexOf(destIata);
+        if (idx === -1 || idx == null) continue;
+        const dLat = airportsDataRef.current.crd[idx * 2];
+        const dLon = airportsDataRef.current.crd[idx * 2 + 1];
+        const pts  = geodesicPoints(ap.lat, ap.lon, dLat, dLon);
+        const style = ARC_STYLE[confidence] ?? ARC_STYLE.historical;
+        const line = L.polyline(pts, {
+          color: style.color, weight: style.weight,
+          dashArray: style.dashArray, interactive: false,
+        }).addTo(mapRef.current);
+        routeLinesRef.current.push(line);
+      }
+      redrawCanvas();
+    });
+  }, [showHistorical]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Load routes for a clicked airport ────────────────────────────────────
 
   const loadRoutes = async (ap) => {
@@ -263,14 +301,19 @@ export default function RouteMap() {
       const map = mapRef.current;
       const L   = (await import('leaflet')).default;
       for (const destIata of data.destinations) {
-        const idx  = airportsDataRef.current?.pts.indexOf(destIata);
+        const confidence = data.confidences?.[destIata] ?? 'historical';
+        if (confidence === 'historical' && !showHistoricalRef.current) continue;
+
+        const idx = airportsDataRef.current?.pts.indexOf(destIata);
         if (idx === -1 || idx == null) continue;
         const dLat = airportsDataRef.current.crd[idx * 2];
         const dLon = airportsDataRef.current.crd[idx * 2 + 1];
         const pts  = geodesicPoints(ap.lat, ap.lon, dLat, dLon);
+        const style = ARC_STYLE[confidence] ?? ARC_STYLE.historical;
         const line = L.polyline(pts, {
-          color: 'rgba(108,142,255,0.35)',
-          weight: 1.2,
+          color:       style.color,
+          weight:      style.weight,
+          dashArray:   style.dashArray,
           interactive: false,
         }).addTo(map);
         routeLinesRef.current.push(line);
@@ -350,6 +393,7 @@ export default function RouteMap() {
     setRoutesError(null);
     setSelectedOrigin(ap);
     redrawCanvas();
+    selectedAirportRef.current = ap;
     loadRoutes(ap);
   };
 
@@ -406,12 +450,6 @@ export default function RouteMap() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const priceRange = routes ? (() => {
-    const vals = Object.values(routes.prices).filter(Boolean);
-    if (!vals.length) return null;
-    return { min: Math.min(...vals), max: Math.max(...vals) };
-  })() : null;
-
   return (
     <div className="rm-root">
       <div ref={containerRef} className="rm-map" />
@@ -458,6 +496,16 @@ export default function RouteMap() {
         {radiusMode === 'off' && selectedOrigin && (
           <button className="rm-btn rm-btn--ghost" onClick={clearAll}>Clear</button>
         )}
+
+        {routes && (
+          <button
+            className={`rm-btn${showHistorical ? ' rm-btn--active' : ''}`}
+            onClick={() => setShowHistorical(v => !v)}
+            title="Show routes from 2017 historical dataset"
+          >
+            Historical
+          </button>
+        )}
       </div>
 
       {/* Selected origin info */}
@@ -471,11 +519,21 @@ export default function RouteMap() {
             {routes && !routesLoading && (
               <span className="rm-info-sub">
                 {routes.destinations.length} destinations
-                {priceRange && <> · from <strong>${Math.round(priceRange.min)}</strong></>}
                 {routes.destinations.length > 0 && <> · tap a purple dot for calendar</>}
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Legend */}
+      {routes && (
+        <div className="rm-legend">
+          <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--live"/>Live</div>
+          <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--scheduled"/>Scheduled</div>
+          {showHistorical && (
+            <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--historical"/>Historical</div>
+          )}
         </div>
       )}
 
