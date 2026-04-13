@@ -15,14 +15,17 @@ const path  = require('path');
 
 const OUT_FILE = path.join(__dirname, '../server/src/data/wikidata-routes.json');
 
-// SPARQL: all flight route items with IATA codes on both endpoints
+// SPARQL: all flight route items (Q1248784 = airline route) with IATA codes on both endpoints.
+// P197 = adjacent station (both departure and arrival airports are adjacent stations of a route).
+// P238 = IATA airport code.
 const QUERY = `
 SELECT DISTINCT ?srcIATA ?dstIATA WHERE {
-  ?route wdt:P31 wd:Q42240 .
-  ?route wdt:P1825 ?src .
-  ?route wdt:P1826 ?dst .
-  ?src   wdt:P238  ?srcIATA .
-  ?dst   wdt:P238  ?dstIATA .
+  ?route wdt:P31 wd:Q1248784 ;
+         wdt:P197 ?src ;
+         wdt:P197 ?dst .
+  ?src wdt:P238 ?srcIATA .
+  ?dst wdt:P238 ?dstIATA .
+  FILTER(?src != ?dst)
 }
 `.trim();
 
