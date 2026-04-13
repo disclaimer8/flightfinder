@@ -298,6 +298,16 @@ export default function RouteMap() {
       routesRef.current = data;
       highlightedRef.current = new Set(data.destinations);
 
+      // If every route is historical (no live/scheduled data yet),
+      // auto-enable historical view so the user sees something.
+      const hasLiveOrScheduled = data.destinations.some(
+        d => data.confidences?.[d] !== 'historical'
+      );
+      if (!hasLiveOrScheduled && data.destinations.length > 0) {
+        setShowHistorical(true);
+        showHistoricalRef.current = true;
+      }
+
       const map = mapRef.current;
       const L   = (await import('leaflet')).default;
       for (const destIata of data.destinations) {
