@@ -5,7 +5,11 @@ const openFlights = require('./openFlightsService');
 
 // In-memory cache: icao → { routes: [{destIata, lastSeen}], fetchedAt }
 const _cache = new Map();
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 h — re-fetch twice a day for fresh live data
+
+// OpenSky free authenticated tier allows up to ~12 h lookback for /flights/departure.
+// Anything beyond that returns 403 "cannot access historical flights".
+const MAX_HOURS_BACK = 12;
 
 /** Exposed for tests only */
 exports._clearCache = () => _cache.clear();
@@ -18,10 +22,10 @@ exports._clearCache = () => _cache.clear();
  * Returns [] silently when unauthenticated, rate-limited, or airport unknown.
  *
  * @param {string} icao   4-letter ICAO code of origin airport
- * @param {number} daysBack  1–7
+ * @param {number} hoursBack  1–12 (free authenticated tier limit)
  * @returns {Promise<{destIata: string, lastSeen: Date}[]>}
  */
-exports.getDepartures = async (icao, daysBack = 7) => {
+exports.getDepartures = async (icao, hoursBack = MAX_HOURS_BACK) => {
   if (!icao) return [];
 
   const code = icao.toUpperCase();
@@ -33,7 +37,7 @@ exports.getDepartures = async (icao, daysBack = 7) => {
   }
 
   const endUnix   = Math.floor(Date.now() / 1000);
-  const beginUnix = endUnix - Math.min(daysBack, 7) * 86400;
+  const beginUnix = endUnix - Math.min(hoursBack, MAX_HOURS_BACK) * 3600;
 
   const url = `https://opensky-network.org/api/flights/departure?airport=${code}&begin=${beginUnix}&end=${endUnix}`;
 
