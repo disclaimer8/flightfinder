@@ -1,0 +1,30 @@
+name: Refresh Wikidata Routes
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # Every Monday at 03:00 UTC
+  workflow_dispatch:        # Allow manual trigger from GitHub UI
+
+permissions:
+  contents: write           # Needed to commit updated JSON
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch routes from Wikidata
+        run: node scripts/refresh-wikidata-routes.js
+
+      - name: Commit updated routes if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add server/src/data/wikidata-routes.json
+          git diff --cached --quiet || git commit -m "chore: refresh Wikidata routes [skip ci]"
+          git push
