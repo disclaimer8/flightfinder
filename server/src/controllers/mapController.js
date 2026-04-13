@@ -113,6 +113,11 @@ exports.getFlightDates = async (req, res) => {
     cacheService.set(cacheKey, result, 1800);
     res.json(result);
   } catch (err) {
+    // Amadeus not configured or unavailable — return empty calendar instead of an error
+    // so the UI shows a graceful "no data" state rather than a red error message.
+    if (err.message === 'Amadeus API is not configured' || err.response?.status === 401) {
+      return res.json({ origin: orig, destination: dest, calendar: [] });
+    }
     res.status(502).json({ error: 'Failed to fetch flight dates', detail: err.message });
   }
 };

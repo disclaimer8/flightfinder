@@ -103,7 +103,7 @@ export default function ValidityCalendar({ origin, dest, onClose }) {
           {error   && <p className="vc-msg vc-msg--err">{error}</p>}
 
           {!loading && !error && priceMap.size === 0 && (
-            <p className="vc-msg">No price data available for this route in the test environment.</p>
+            <p className="vc-msg">No price data available for this route.</p>
           )}
 
           {!loading && !error && (
