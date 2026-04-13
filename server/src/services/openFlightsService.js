@@ -22,6 +22,7 @@ function parseCSV(filePath) {
 // airports.dat columns:
 // 0:id 1:name 2:city 3:country 4:iata 5:icao 6:lat 7:lon 8:alt 9:tz 10:dst 11:tzdb 12:type 13:source
 const airportsMap = new Map();
+const icaoMap = new Map(); // ICAO → IATA
 parseCSV(path.join(__dirname, '../data/airports.dat')).forEach(f => {
   const iata = f[4];
   if (iata && iata.length === 3) {
@@ -35,6 +36,9 @@ parseCSV(path.join(__dirname, '../data/airports.dat')).forEach(f => {
       lon: parseFloat(f[7]),
       timezone: f[11],
     });
+    if (f[5] && f[5].length === 4) {
+      icaoMap.set(f[5].toUpperCase(), iata);
+    }
   }
 });
 
@@ -99,4 +103,11 @@ exports.getAllAirports = () => Array.from(airportsMap.values());
 exports.getDirectDestinations = (iata) => {
   const set = routesMap.get(iata?.toUpperCase());
   return set ? Array.from(set) : [];
+};
+
+/** Resolve an ICAO 4-letter code to an IATA 3-letter code */
+exports.getAirportByIcao = (icao) => {
+  if (!icao || icao.length !== 4) return null;
+  const iata = icaoMap.get(icao.toUpperCase());
+  return iata ? airportsMap.get(iata) : null;
 };
