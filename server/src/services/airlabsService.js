@@ -124,6 +124,57 @@ exports.getMultipleAirlines = async (iataCodes) => {
   }
 };
 
+// ── Route cache: iata → Set<arr_iata>, expires after 24h ─────────────────────
+const _routesCache = new Map(); // iata → { dests: Set, fetchedAt: number }
+const ROUTES_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 h
+
+/** Exposed for tests only */
+exports._clearRoutesCache = () => _routesCache.clear();
+
+/**
+ * Fetch all direct destination IATA codes from an origin airport.
+ * Paginates AirLabs /routes (50 results per page, offset param).
+ * Returns empty Set gracefully when key absent or on any error.
+ *
+ * @param {string} iata  3-letter origin IATA
+ * @returns {Promise<Set<string>>}
+ */
+exports.getRoutes = async (iata) => {
+  // Check env dynamically so tests can delete the key at runtime
+  const apiKey = process.env.AIRLABS_API_KEY;
+  if (!apiKey) return new Set();
+
+  const code = iata.toUpperCase();
+  const cached = _routesCache.get(code);
+  if (cached && (Date.now() - cached.fetchedAt) < ROUTES_CACHE_TTL) {
+    return cached.dests;
+  }
+
+  const dests = new Set();
+  let offset = 0;
+  const MAX_PAGES = 20;
+
+  try {
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const response = await airlabsClient.get('/routes', {
+        params: { dep_iata: code, api_key: apiKey, offset },
+      });
+      const rows = response.data?.response ?? [];
+      if (!rows.length) break;
+      for (const row of rows) {
+        if (row.arr_iata && row.arr_iata.length === 3) dests.add(row.arr_iata.toUpperCase());
+      }
+      offset += 50;
+    }
+  } catch (err) {
+    console.warn(`[airlabs] getRoutes failed for ${code}:`, err.message);
+    return dests;
+  }
+
+  _routesCache.set(code, { dests, fetchedAt: Date.now() });
+  return dests;
+};
+
 /**
  * Classify aircraft into a high-level type based on its model/name
  */
