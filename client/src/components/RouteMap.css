@@ -247,8 +247,7 @@
 }
 
 .rm-legend-dot--live       { background: rgba(52,211,153,0.9); }
-.rm-legend-dot--scheduled  { background: rgba(251,191,36,0.8); }
-.rm-legend-dot--historical { background: rgba(99,140,200,0.7); }
+.rm-legend-dot--scheduled  { background: rgba(99,140,200,0.7); }
 
 @media (max-width: 600px) {
   .rm-legend { bottom: 12px; right: 8px; }

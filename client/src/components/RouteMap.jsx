@@ -19,8 +19,7 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 // ── Route arc colours by confidence tier ────────────────────────────────────
 const ARC_STYLE = {
   live:       { color: 'rgba(52,211,153,0.85)',  weight: 2.0, dashArray: null },
-  scheduled:  { color: 'rgba(251,191,36,0.75)',  weight: 1.5, dashArray: null },
-  historical: { color: 'rgba(99,140,200,0.55)',  weight: 1.2, dashArray: null },
+  scheduled:  { color: 'rgba(99,140,200,0.55)',  weight: 1.5, dashArray: null },
 };
 
 // ── Great-circle intermediate points (for geodesic arcs) ────────────────────
@@ -173,15 +172,11 @@ export default function RouteMap() {
 
   const [calendarRoute, setCalendarRoute] = useState(null);
 
-  const [showHistorical, setShowHistorical] = useState(true);
-  const showHistoricalRef = useRef(true);
-
   const selectedAirportRef = useRef(null);
 
   // Keep refs in sync
   useEffect(() => { radiusModeRef.current = radiusMode; }, [radiusMode]);
   useEffect(() => { radiusKmRef.current   = radiusKm;   }, [radiusKm]);
-  useEffect(() => { showHistoricalRef.current = showHistorical; }, [showHistorical]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -252,31 +247,6 @@ export default function RouteMap() {
     applyRadius(radiusCenterRef.current, radiusKm);
   }, [radiusKm, radiusMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Redraw arcs when showHistorical toggles ───────────────────────────────
-  useEffect(() => {
-    if (!selectedAirportRef.current || !routes) return;
-    const ap = selectedAirportRef.current;
-    clearRouteLines();
-    import('leaflet').then(async ({ default: L }) => {
-      for (const destIata of routes.destinations) {
-        const confidence = routes.confidences?.[destIata] ?? 'historical';
-        if (confidence === 'historical' && !showHistorical) continue;
-        const idx = airportsDataRef.current?.pts.indexOf(destIata);
-        if (idx === -1 || idx == null) continue;
-        const dLat = airportsDataRef.current.crd[idx * 2];
-        const dLon = airportsDataRef.current.crd[idx * 2 + 1];
-        const pts  = geodesicPoints(ap.lat, ap.lon, dLat, dLon);
-        const style = ARC_STYLE[confidence] ?? ARC_STYLE.historical;
-        const line = L.polyline(pts, {
-          color: style.color, weight: style.weight,
-          dashArray: style.dashArray, interactive: false,
-        }).addTo(mapRef.current);
-        routeLinesRef.current.push(line);
-      }
-      redrawCanvas();
-    });
-  }, [showHistorical]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Load routes for a clicked airport ────────────────────────────────────
 
   const loadRoutes = async (ap) => {
@@ -301,15 +271,14 @@ export default function RouteMap() {
       const map = mapRef.current;
       const L   = (await import('leaflet')).default;
       for (const destIata of data.destinations) {
-        const confidence = data.confidences?.[destIata] ?? 'historical';
-        if (confidence === 'historical' && !showHistoricalRef.current) continue;
+        const confidence = data.confidences?.[destIata] ?? 'scheduled';
 
         const idx = airportsDataRef.current?.pts.indexOf(destIata);
         if (idx === -1 || idx == null) continue;
         const dLat = airportsDataRef.current.crd[idx * 2];
         const dLon = airportsDataRef.current.crd[idx * 2 + 1];
         const pts  = geodesicPoints(ap.lat, ap.lon, dLat, dLon);
-        const style = ARC_STYLE[confidence] ?? ARC_STYLE.historical;
+        const style = ARC_STYLE[confidence] ?? ARC_STYLE.scheduled;
         const line = L.polyline(pts, {
           color:       style.color,
           weight:      style.weight,
@@ -497,15 +466,6 @@ export default function RouteMap() {
           <button className="rm-btn rm-btn--ghost" onClick={clearAll}>Clear</button>
         )}
 
-        {routes && (
-          <button
-            className={`rm-btn${!showHistorical ? ' rm-btn--active' : ''}`}
-            onClick={() => setShowHistorical(v => !v)}
-            title="Toggle historical routes (pre-2017 dataset)"
-          >
-            {showHistorical ? 'Hide historical' : 'Show historical'}
-          </button>
-        )}
       </div>
 
       {/* Selected origin info */}
@@ -529,7 +489,6 @@ export default function RouteMap() {
       {/* Legend */}
       {routes && (
         <div className="rm-legend">
-          {showHistorical && <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--historical"/>Historical</div>}
           <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--scheduled"/>Scheduled</div>
           <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--live"/>Live</div>
         </div>
