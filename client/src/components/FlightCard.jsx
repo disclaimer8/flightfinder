@@ -80,23 +80,22 @@ function buildBookingUrl(flight, passengers) {
   const arr = flight.arrival?.code;
   if (!dep || !arr || !flight.departureTime) return null;
 
-  const isoDate = (iso) => iso.slice(0, 10); // YYYY-MM-DD
   const pax = passengers || 1;
 
-  const params = new URLSearchParams({
-    origin: dep,
-    destination: arr,
-    depart_date: isoDate(flight.departureTime),
-    adults: pax,
-    marker: TP_MARKER,
-    with_request: 'true',
-  });
+  // Aviasales path format: /search/{ORIGIN}{DDMM}{DEST}[{RETURNDDMM}]{PAX}?marker=...
+  const toDDMM = (iso) => {
+    const d = new Date(iso);
+    return String(d.getUTCDate()).padStart(2, '0') + String(d.getUTCMonth() + 1).padStart(2, '0');
+  };
+
+  const departDDMM = toDDMM(flight.departureTime);
 
   if (flight.isRoundTrip && flight.returnItinerary?.departureTime) {
-    params.set('return_date', isoDate(flight.returnItinerary.departureTime));
+    const returnDDMM = toDDMM(flight.returnItinerary.departureTime);
+    return `https://www.aviasales.com/search/${dep}${departDDMM}${arr}${returnDDMM}${pax}?marker=${TP_MARKER}`;
   }
 
-  return `https://www.aviasales.com/search/?${params.toString()}`;
+  return `https://www.aviasales.com/search/${dep}${departDDMM}${arr}${pax}?marker=${TP_MARKER}`;
 }
 
 function FlightCard({ flight, passengers }) {

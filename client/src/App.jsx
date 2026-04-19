@@ -270,7 +270,7 @@ function App() {
                 </ErrorBoundary>
               )}
             </>
-          )
+          )}
         </main>
       </div>
     </FilterOptionsContext.Provider>
