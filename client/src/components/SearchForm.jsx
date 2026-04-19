@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useFilterOptions } from '../context/FilterOptionsContext';
 import './SearchForm.css';
 import DatePicker from './DatePicker';
+import AirlineSelector from './AirlineSelector';
 
 function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUsed }) {
   const filterOptions = useFilterOptions();
@@ -16,6 +17,7 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
     passengers: '1',
     aircraftType: '',
     aircraftModel: '',
+    airlines: [],
   });
 
   useEffect(() => {
@@ -51,7 +53,12 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    // Reset airline selection when departure city changes (popular airlines differ)
+    setFilters(prev => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'departure' ? { airlines: [] } : {}),
+    }));
   };
 
   const handleTripType = (type) => {
@@ -163,9 +170,18 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
             <label htmlFor="sf-departure">From</label>
             <select id="sf-departure" name="departure" value={filters.departure} onChange={handleChange}>
               <option value="">Select departure city</option>
-              {filterOptions?.cities.map(city => (
-                <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
-              ))}
+              {filterOptions?.cityGroups
+                ? filterOptions.cityGroups.map(group => (
+                    <optgroup key={group.region} label={group.region}>
+                      {group.cities.map(city => (
+                        <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
+                      ))}
+                    </optgroup>
+                  ))
+                : filterOptions?.cities.map(city => (
+                    <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
+                  ))
+              }
             </select>
           </div>
 
@@ -191,9 +207,18 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
                   aria-invalid={sameCityError || undefined}
                 >
                   <option value="">Select arrival city</option>
-                  {filterOptions?.cities.map(city => (
-                    <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
-                  ))}
+                  {filterOptions?.cityGroups
+                    ? filterOptions.cityGroups.map(group => (
+                        <optgroup key={group.region} label={group.region}>
+                          {group.cities.map(city => (
+                            <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
+                          ))}
+                        </optgroup>
+                      ))
+                    : filterOptions?.cities.map(city => (
+                        <option key={city.code} value={city.code}>{city.name} ({city.code})</option>
+                      ))
+                  }
                 </select>
                 {sameCityError && (
                   <span id="sf-same-city-err" className="field-error" role="alert">
@@ -300,6 +325,15 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
             )}
           </div>
         </div>
+
+        {mode === 'search' && (
+          <AirlineSelector
+            departure={filters.departure}
+            filterOptions={filterOptions}
+            selected={filters.airlines}
+            onChange={(airlines) => setFilters(prev => ({ ...prev, airlines }))}
+          />
+        )}
 
         <button
           type="submit"

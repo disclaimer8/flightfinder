@@ -20,15 +20,15 @@ const EMPTY_FILTERS = {
   maxPrice: null,
 };
 
-function FlightResults({ flights, source, hasSearched }) {
+function FlightResults({ flights, source, hasSearched, initialAirlines = [] }) {
   const [sortBy, setSortBy] = useState('price_asc');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
 
-  // Reset filters and sort when new search results arrive
+  // Reset filters and sort when new search results arrive; pre-apply airline selection from form
   useEffect(() => {
-    setFilters(EMPTY_FILTERS);
+    setFilters({ ...EMPTY_FILTERS, airlines: initialAirlines });
     setSortBy('price_asc');
-  }, [flights]);
+  }, [flights]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const displayed = useMemo(() => {
     let result = [...flights];
