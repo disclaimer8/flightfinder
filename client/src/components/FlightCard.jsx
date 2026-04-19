@@ -78,14 +78,18 @@ const TP_MARKER = '509158';
 function buildBookingUrl(flight, passengers) {
   const dep = flight.departure?.code;
   const arr = flight.arrival?.code;
-  const date = flight.departureTime ? flight.departureTime.slice(0, 10).replace(/-/g, '') : '';
-  if (!dep || !arr || !date) return null;
+  if (!dep || !arr || !flight.departureTime) return null;
+
+  // Aviasales search path uses DDMM date format, not YYYYMMDD
+  const toAviasalesDate = (iso) => iso.slice(8, 10) + iso.slice(5, 7);
+  const date = toAviasalesDate(flight.departureTime);
   const pax = passengers || 1;
+
   if (flight.isRoundTrip && flight.returnItinerary?.departureTime) {
-    const ret = flight.returnItinerary.departureTime.slice(0, 10).replace(/-/g, '');
+    const ret = toAviasalesDate(flight.returnItinerary.departureTime);
     return `https://www.aviasales.com/search/${dep}${date}${arr}${ret}${pax}?marker=${TP_MARKER}`;
   }
-  return `https://www.aviasales.com/search/${dep}${date}${arr}1?marker=${TP_MARKER}&adults=${pax}`;
+  return `https://www.aviasales.com/search/${dep}${date}${arr}${pax}?marker=${TP_MARKER}`;
 }
 
 function FlightCard({ flight, passengers }) {
