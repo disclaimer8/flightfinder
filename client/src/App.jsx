@@ -7,6 +7,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import SkeletonResults from './components/SkeletonResults';
 import AuthModal from './components/AuthModal';
 import AircraftSearchForm from './components/AircraftSearchForm';
+import AircraftRouteMap from './components/AircraftRouteMap';
 import RouteMap from './components/RouteMap';
 import { useFlightSearch } from './hooks/useFlightSearch';
 import { FilterOptionsContext } from './context/FilterOptionsContext';
@@ -23,7 +24,7 @@ function App() {
   const [apiStatus, setApiStatus] = useState(null);
   const [prefillArrival, setPrefillArrival] = useState(null);
   const [searchMode, setSearchMode] = useState('search'); // 'search' | 'by-aircraft' | 'map'
-  const [acFamilyName, setAcFamilyName] = useState('');
+  const [acQuery, setAcQuery] = useState(null); // { familyName, origin, date, passengers }
   // Email verification via URL: ?action=verify&token=...
   const [verifyState, setVerifyState] = useState(null); // null | 'pending' | 'success' | 'error'
   const [verifyMessage, setVerifyMessage] = useState('');
@@ -43,17 +44,16 @@ function App() {
     clearError,
   } = useFlightSearch(filterOptions);
 
-  // "By aircraft" is now a thin wrapper over the normal flight search:
-  // FROM + TO + date + familyName + passengers → backend filters
-  // results by the family's ICAO list and returns standard flight cards.
+  // "By aircraft" is a map-as-output flow: user picks family + origin + date
+  // and we render AircraftRouteMap showing every route that family has flown
+  // from that origin in the last 14 days. Clicking a destination on the map
+  // kicks off the actual priced search inside AircraftRouteMap.
   const handleAircraftSearch = (params) => {
-    setAcFamilyName(params.familyName);
-    handleSearch({
-      departure:  params.departure,
-      arrival:    params.arrival,
-      date:       params.date,
-      passengers: params.passengers,
+    setAcQuery({
       familyName: params.familyName,
+      origin:     params.departure,
+      date:       params.date || null,
+      passengers: params.passengers || 1,
     });
   };
 
@@ -178,19 +178,19 @@ function App() {
               <div className="search-mode-tabs">
                 <button
                   className={`search-mode-tab${searchMode === 'search' ? ' search-mode-tab--active' : ''}`}
-                  onClick={() => setSearchMode('search')}
+                  onClick={() => { setSearchMode('search'); setAcQuery(null); }}
                 >
                   Search flights
                 </button>
                 <button
                   className={`search-mode-tab${searchMode === 'by-aircraft' ? ' search-mode-tab--active' : ''}`}
-                  onClick={() => setSearchMode('by-aircraft')}
+                  onClick={() => { setSearchMode('by-aircraft'); setAcQuery(null); }}
                 >
                   By aircraft
                 </button>
                 <button
                   className={`search-mode-tab${searchMode === 'map' ? ' search-mode-tab--active' : ''}`}
-                  onClick={() => setSearchMode('map')}
+                  onClick={() => { setSearchMode('map'); setAcQuery(null); }}
                 >
                   Route map
                 </button>
@@ -206,7 +206,7 @@ function App() {
                 />
               )}
 
-              {searchMode === 'by-aircraft' && (
+              {searchMode === 'by-aircraft' && !acQuery && (
                 <AircraftSearchForm
                   onSearch={handleAircraftSearch}
                   loading={loading}
@@ -227,6 +227,17 @@ function App() {
           {searchMode === 'map' ? (
             <ErrorBoundary>
               <RouteMap />
+            </ErrorBoundary>
+          ) : searchMode === 'by-aircraft' && acQuery ? (
+            <ErrorBoundary>
+              <AircraftRouteMap
+                familyName={acQuery.familyName}
+                family={acQuery.familyName}
+                date={acQuery.date}
+                passengers={acQuery.passengers}
+                originIatas={[acQuery.origin]}
+                onBack={() => setAcQuery(null)}
+              />
             </ErrorBoundary>
           ) : (
             <>

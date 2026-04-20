@@ -77,7 +77,6 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
   const [families, setFamilies]     = useState([]);
   const [familyName, setFamilyName] = useState('');
   const [from, setFrom]             = useState(null); // { label, iata, name }
-  const [to, setTo]                 = useState(null);
   const [date, setDate]             = useState('');
   const [passengers, setPassengers] = useState(1);
 
@@ -98,12 +97,7 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
     return acc;
   }, {});
 
-  const swap = () => {
-    setFrom(to);
-    setTo(from);
-  };
-
-  const canSubmit = Boolean(familyName && from?.iata && to?.iata && date && from.iata !== to.iata);
+  const canSubmit = Boolean(familyName && from?.iata && date);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -111,7 +105,6 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
     onSearch({
       familyName,
       departure: from.iata,
-      arrival:   to.iata,
       date,
       passengers,
     });
@@ -142,27 +135,13 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
         </div>
       </div>
 
-      <div className="ac-search-row ac-search-row--route">
+      <div className="ac-search-row">
         <AirportField
           id="ac-from"
           label="From"
           value={from}
           onChange={setFrom}
           placeholder="City or IATA (e.g. London, LHR)"
-        />
-        <button
-          type="button"
-          className="ac-swap-btn"
-          onClick={swap}
-          aria-label="Swap departure and arrival"
-          disabled={!from && !to}
-        >⇄</button>
-        <AirportField
-          id="ac-to"
-          label="To"
-          value={to}
-          onChange={setTo}
-          placeholder="City or IATA (e.g. Dubai, DXB)"
         />
       </div>
 
