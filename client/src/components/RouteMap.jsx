@@ -86,6 +86,99 @@ function geodesicPoints(lat1, lon1, lat2, lon2, steps = 80) {
   return pts;
 }
 
+// ── Canvas hub-network baseline layer ────────────────────────────────────────
+// Draws faint polylines between every pair of hub airports so the world view
+// is never empty. A single batched beginPath/stroke per alpha bucket keeps
+// 3000 edges × 15 steps (~45k segments) cheap: one draw call per redraw.
+function mountBaselineCanvas(map, airports, edges, refs) {
+  const pane = map.getPanes().overlayPane;
+  const canvas = document.createElement('canvas');
+  canvas.className = 'rm-baseline-canvas';
+
+  // Prepend so Leaflet polylines (selection arcs, added later) and the
+  // airport canvas (appended separately) render ABOVE the baseline.
+  if (pane.firstChild) pane.insertBefore(canvas, pane.firstChild);
+  else pane.appendChild(canvas);
+
+  // Build IATA → index lookup once. pts is an Array of strings.
+  const iataIdx = new Map();
+  for (let i = 0; i < airports.pts.length; i++) {
+    iataIdx.set(airports.pts[i], i);
+  }
+
+  // Pre-resolve edges to [lat1,lon1,lat2,lon2] — skip edges whose endpoints
+  // we can't locate so redraw() can just loop and project.
+  const resolved = [];
+  for (let i = 0; i < edges.length; i++) {
+    const [a, b] = edges[i];
+    const ia = iataIdx.get(a);
+    const ib = iataIdx.get(b);
+    if (ia == null || ib == null) continue;
+    resolved.push([
+      airports.crd[ia * 2], airports.crd[ia * 2 + 1],
+      airports.crd[ib * 2], airports.crd[ib * 2 + 1],
+    ]);
+  }
+
+  const redraw = () => {
+    if (!map || !canvas) return;
+    const size = map.getSize();
+    canvas.width  = size.x;
+    canvas.height = size.y;
+    const tl = map.containerPointToLayerPoint([0, 0]);
+    canvas.style.transform = `translate(${tl.x}px,${tl.y}px)`;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, size.x, size.y);
+    if (!resolved.length) return;
+
+    // Dim further when a selection is active so the bright polylines pop.
+    const dim = refs.selected.current !== null;
+    ctx.strokeStyle = dim ? 'rgba(148,163,184,0.05)' : 'rgba(148,163,184,0.10)';
+    ctx.lineWidth   = 0.8;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+
+    ctx.beginPath();
+    for (let i = 0; i < resolved.length; i++) {
+      const [lat1, lon1, lat2, lon2] = resolved[i];
+      const pts = geodesicPoints(lat1, lon1, lat2, lon2, 15);
+      // Cull edges whose entire arc is outside the viewport — quick AABB
+      // check on projected points. Saves a lot of lineTo when zoomed in.
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      const proj = new Array(pts.length);
+      for (let k = 0; k < pts.length; k++) {
+        const p = map.latLngToContainerPoint(pts[k]);
+        proj[k] = p;
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+      if (maxX < -20 || minX > size.x + 20 || maxY < -20 || minY > size.y + 20) continue;
+
+      ctx.moveTo(proj[0].x, proj[0].y);
+      for (let k = 1; k < proj.length; k++) {
+        ctx.lineTo(proj[k].x, proj[k].y);
+      }
+    }
+    ctx.stroke();
+  };
+
+  map.on('move zoom viewreset resize', redraw);
+  redraw();
+
+  return {
+    canvas,
+    redraw,
+    edgeCount: resolved.length,
+    remove: () => {
+      map.off('move zoom viewreset resize', redraw);
+      canvas.remove();
+    },
+  };
+}
+
 // ── Canvas airport-dot layer ─────────────────────────────────────────────────
 function mountAirportCanvas(map, airports, refs) {
   const pane = map.getPanes().overlayPane;
@@ -193,8 +286,10 @@ export default function RouteMap() {
   const containerRef   = useRef(null);
   const mapRef         = useRef(null);
   const canvasLayerRef = useRef(null);
+  const baselineLayerRef = useRef(null);
 
   const airportsDataRef = useRef(null);
+  const hubEdgesRef     = useRef(null);
 
   const [selectedOrigin, setSelectedOriginState] = useState(null);
   const selectedRef = useRef(null);
@@ -230,6 +325,9 @@ export default function RouteMap() {
   const setSelectedOrigin = (ap) => {
     selectedRef.current = ap?.iata ?? null;
     setSelectedOriginState(ap);
+    // Baseline re-renders with different alpha depending on whether a route
+    // is selected (faint → even fainter when selection active).
+    baselineLayerRef.current?.redraw();
   };
 
   const redrawCanvas = () => canvasLayerRef.current?.redraw();
@@ -457,6 +555,7 @@ export default function RouteMap() {
     let cancelled = false;
     let map = null;
     let layer = null;
+    let baselineLayer = null;
     let clickHandler = null;
 
     (async () => {
@@ -498,6 +597,33 @@ export default function RouteMap() {
       });
       canvasLayerRef.current = layer;
 
+      // Fetch hub-to-hub network baseline. Failure is non-fatal — the map
+      // simply shows up empty like before.
+      try {
+        const hubRes = await fetch('/api/map/hub-network');
+        if (hubRes.ok) {
+          const hubData = await hubRes.json();
+          if (cancelled) {
+            map.remove();
+            if (mapRef.current === map) mapRef.current = null;
+            map = null;
+            return;
+          }
+          const edges = Array.isArray(hubData?.edges) ? hubData.edges : [];
+          hubEdgesRef.current = edges;
+          if (edges.length) {
+            baselineLayer = mountBaselineCanvas(map, airports, edges, {
+              selected: selectedRef,
+            });
+            baselineLayerRef.current = baselineLayer;
+          }
+        } else {
+          console.warn('[RouteMap] hub-network fetch returned', hubRes.status);
+        }
+      } catch (err) {
+        if (!cancelled) console.warn('[RouteMap] hub-network fetch failed', err);
+      }
+
       clickHandler = handleMapClick;
       map.on('click', clickHandler);
     })();
@@ -506,6 +632,7 @@ export default function RouteMap() {
       cancelled = true;
       if (map) {
         if (clickHandler) map.off('click', clickHandler);
+        if (baselineLayer) { baselineLayer.remove(); baselineLayerRef.current = null; }
         if (layer) { layer.remove(); canvasLayerRef.current = null; }
         map.remove();
         if (mapRef.current === map) mapRef.current = null;
@@ -610,6 +737,7 @@ export default function RouteMap() {
           <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--live"/>Live (airborne now)</div>
           <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--scheduled"/>Scheduled today</div>
           <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--observed"/>Seen in last 30d</div>
+          <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--baseline"/>Hub network (faint)</div>
         </div>
       )}
 

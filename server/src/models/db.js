@@ -115,6 +115,17 @@ const stmts = {
     FROM observed_routes
   `),
 
+  // Hubs = airports whose distinct-destination count is >= minDests, capped at hubLimit
+  // (ordered by popularity desc). Used by GET /api/map/hub-network to draw a baseline graph.
+  hubsByDestCount: db.prepare(`
+    SELECT dep_iata AS iata, COUNT(DISTINCT arr_iata) AS n
+    FROM observed_routes
+    GROUP BY dep_iata
+    HAVING n >= ?
+    ORDER BY n DESC
+    LIMIT ?
+  `),
+
   getAircraftByHex: db.prepare('SELECT hex, icao_type, reg FROM aircraft_db WHERE hex = ?'),
   upsertAircraft:   db.prepare(`
     INSERT INTO aircraft_db (hex, icao_type, reg, updated_at)
@@ -171,6 +182,46 @@ module.exports = {
   observedDestinationsFromDep: (depIata, sinceMs) =>
     stmts.observedDestinationsFromDep.all(depIata, sinceMs).map(r => r.arr_iata),
   observedStats: () => stmts.observedStats.get(),
+
+  /**
+   * Build the "hub network" — the backbone of popular inter-hub routes used by the
+   * client RouteMap as a faint baseline graph behind airport dots.
+   *
+   *   1. Hub set  = top `hubLimit` airports by distinct-destination count, with a
+   *                 `minDests` floor. Dynamic: changes as observed_routes grows.
+   *   2. Edges    = all distinct (dep, arr) pairs in observed_routes where BOTH
+   *                 endpoints are in the hub set. Each pair is emitted once in
+   *                 lexicographic order (A<Z). Capped at `edgeLimit`, preferring
+   *                 higher observation counts.
+   *
+   * @returns {{ edges: Array<[string,string]>, hubs: string[] }}
+   */
+  getHubNetwork: ({ hubLimit = 200, minDests = 20, edgeLimit = 3000 } = {}) => {
+    const hubRows = stmts.hubsByDestCount.all(minDests, hubLimit);
+    const hubs = hubRows.map(r => r.iata);
+    if (hubs.length < 2) return { edges: [], hubs };
+
+    // SQLite has a default max of 999 host parameters; 200 hubs × 2 uses = 400, safe.
+    const placeholders = hubs.map(() => '?').join(',');
+    // For each unordered pair (a<b), total observations in EITHER direction.
+    // Using MIN/MAX collapses (A,B) and (B,A) into a single lexicographic pair.
+    const sql = `
+      SELECT
+        CASE WHEN dep_iata < arr_iata THEN dep_iata ELSE arr_iata END AS a,
+        CASE WHEN dep_iata < arr_iata THEN arr_iata ELSE dep_iata END AS b,
+        COUNT(*) AS obs
+      FROM observed_routes
+      WHERE dep_iata IN (${placeholders})
+        AND arr_iata IN (${placeholders})
+        AND dep_iata <> arr_iata
+      GROUP BY a, b
+      ORDER BY obs DESC, a ASC, b ASC
+      LIMIT ?
+    `;
+    const rows = db.prepare(sql).all(...hubs, ...hubs, edgeLimit);
+    const edges = rows.map(r => [r.a, r.b]);
+    return { edges, hubs };
+  },
 
   getAircraftByHex: (hex) => {
     if (!hex) return null;

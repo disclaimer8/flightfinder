@@ -5,6 +5,7 @@ const geocoding      = require('../services/geocodingService');
 const amadeusService = require('../services/amadeusService');
 const cacheService   = require('../services/cacheService');
 const routesService  = require('../services/routesService');
+const db             = require('../models/db');
 
 // ─── GET /api/map/airports ───────────────────────────────────────────────────
 // Returns all known airports in compact format to minimise payload.
@@ -61,6 +62,49 @@ exports.getRoutes = async (req, res) => {
   } catch (err) {
     console.error('[map] getRoutes error:', err.message);
     res.status(502).json({ error: 'Failed to fetch routes' });
+  }
+};
+
+// ─── GET /api/map/hub-network ───────────────────────────────────────────────
+// Returns a global "hub network" — undirected edges between top-200 hubs based on
+// observed_routes. The client RouteMap renders this as a faint backbone behind the
+// airport dots; on airport click the backbone dims and the selected origin's routes
+// draw brightly on top.
+//
+// Shape: { edges: [[depIata, arrIata], ...], count, generatedAt }
+// Cached for 1h under `map:hub-network:v1`; dataset is append-only + bounded.
+
+exports.getHubNetwork = async (_req, res) => {
+  try {
+    const { data } = await cacheService.getOrFetch(
+      'map:hub-network:v1',
+      async () => {
+        const { edges } = db.getHubNetwork({ hubLimit: 200, minDests: 20, edgeLimit: 3000 });
+        // Defensive validation — drop any edge whose endpoints are not 3-letter uppercase
+        // IATAs known to the airports dataset. Guards the client against stray rows.
+        const clean = [];
+        for (const [a, b] of edges) {
+          if (
+            typeof a === 'string' && typeof b === 'string' &&
+            a.length === 3 && b.length === 3 &&
+            a === a.toUpperCase() && b === b.toUpperCase() &&
+            openFlights.isValidAirport(a) && openFlights.isValidAirport(b)
+          ) {
+            clean.push([a, b]);
+          }
+        }
+        return {
+          edges: clean,
+          count: clean.length,
+          generatedAt: new Date().toISOString(),
+        };
+      },
+      3600, // 1 hour
+    );
+    res.json(data);
+  } catch (err) {
+    console.error('[map] getHubNetwork error:', err.message);
+    res.status(500).json({ error: 'Failed to build hub network' });
   }
 };
 

@@ -10,6 +10,9 @@ router.get('/airports',    ctrl.getAirports);
 // GET /api/map/routes          — top destinations from an origin
 router.get('/routes',      ctrl.getRoutes);
 
+// GET /api/map/hub-network     — undirected edges between top-200 hubs (baseline graph)
+router.get('/hub-network', ctrl.getHubNetwork);
+
 // GET /api/map/radius          — airports within drawn radius
 router.get('/radius',      ctrl.getAirportsInRadius);
 

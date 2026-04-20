@@ -26,6 +26,17 @@
   z-index: 400; /* above tiles, below Leaflet controls */
 }
 
+/* Baseline hub-network canvas — renders BEHIND airport dots and selection
+ * arcs. Sits in the same overlayPane but with a lower z-index so Leaflet
+ * polylines (which use SVG inside the overlay pane) draw on top. */
+.rm-baseline-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 200;
+}
+
 /* ── Controls bar ──────────────────────────────────────────────────────────── */
 .rm-controls {
   position: absolute;
@@ -258,6 +269,7 @@
   background: linear-gradient(90deg, rgba(180,130,200,0.45) 50%, transparent 50%);
   background-size: 6px 100%;
 }
+.rm-legend-dot--baseline   { background: rgba(148,163,184,0.15); }
 
 @media (max-width: 600px) {
   .rm-legend { bottom: 12px; right: 8px; }
