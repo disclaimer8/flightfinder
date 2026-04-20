@@ -3,6 +3,45 @@ import 'leaflet/dist/leaflet.css';
 import './RouteMap.css';
 import ValidityCalendar from './ValidityCalendar';
 
+// ── Hub airports for low-zoom rendering ─────────────────────────────────────
+// ~200 busiest/most-connected airports, drawn at zoom < 5 to keep world view
+// readable. Curated from Wikipedia "List of busiest airports by passenger
+// traffic" (top ~120) plus major regional hubs (LATAM, Africa, CIS, SE Asia,
+// Oceania, MENA) where global-top-120 coverage is thin.
+// Source: https://en.wikipedia.org/wiki/List_of_busiest_airports_by_passenger_traffic
+const HUB_IATAS = new Set([
+  // North America (US + CA + MX) — top-volume airports only
+  'ATL','DFW','DEN','ORD','LAX','JFK','LAS','MCO','MIA','CLT','SEA','PHX','EWR',
+  'SFO','IAH','BOS','MSP','FLL','LGA','DTW','PHL','SLC','BWI','DCA','SAN','IAD',
+  'TPA','AUS','BNA','MDW','HNL','PDX','STL','RDU','HOU','OAK',
+  'YYZ','YVR','YUL','YYC',
+  'MEX','CUN','GDL','MTY',
+  // Europe (top ~40 by pax + key regional capitals)
+  'LHR','CDG','AMS','FRA','MAD','IST','BCN','MUC','FCO','LGW','ORY','DUB','ZRH',
+  'CPH','VIE','OSL','ARN','HEL','BRU','LIS','ATH','MXP','PMI','AGP','DUS','BER',
+  'STN','MAN','NCE','BUD','PRG','WAW','OTP','SAW','AYT','ADB',
+  // Russia / CIS (top 5 — most of it gets culled from live routes anyway)
+  'SVO','DME','VKO','LED','ALA','TAS',
+  // Middle East (all-hubs region)
+  'DXB','DOH','AUH','JED','RUH','KWI','BAH','MCT','AMM','TLV','CAI','SHJ',
+  // Africa (regional capitals only)
+  'JNB','CPT','ADD','NBO','LOS','CMN','ALG','TUN','ACC','DKR','DAR','EBB',
+  // Asia – East China + HK + TW + KR + JP
+  'PEK','PKX','PVG','SHA','CAN','CTU','SZX','KMG','XIY','HGH','CKG','NKG','WUH',
+  'HKG','TPE','ICN','GMP','PUS','HND','NRT','KIX','NGO','FUK','CTS','OKA',
+  // Asia – SE + South + Central
+  'SIN','BKK','DMK','KUL','CGK','DPS','MNL','CEB','HAN','SGN','HKT','CNX',
+  'DEL','BOM','BLR','MAA','HYD','CCU','AMD','COK','GOI',
+  'KHI','LHE','ISB','KTM','DAC','CMB','MLE',
+  // Oceania
+  'SYD','MEL','BNE','PER','ADL','AKL','CHC','WLG','NAN','PPT',
+  // Latin America / Caribbean (capitals + top beach gateways)
+  'GRU','GIG','BSB','CNF','POA','FOR','REC','VCP',
+  'EZE','AEP',
+  'SCL','LIM','UIO','BOG','MDE','CCS','PTY','SJO','GUA','SAL',
+  'HAV','SDQ','PUJ','NAS','MBJ','BGI','SJU',
+]);
+
 // ── Haversine great-circle distance (km) ────────────────────────────────────
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -66,6 +105,7 @@ function mountAirportCanvas(map, airports, refs) {
     ctx.clearRect(0, 0, size.x, size.y);
     const zoom = map.getZoom();
     const rDef = zoom >= 9 ? 4 : zoom >= 6 ? 3 : 2;
+    const hubOnly = zoom < 5;
 
     const sel   = refs.selected.current;
     const high  = refs.highlighted.current;
@@ -81,6 +121,12 @@ function mountAirportCanvas(map, airports, refs) {
       const isSel  = iata === sel;
       const isHigh = high.has(iata);
       const isInR  = inRad.has(iata);
+
+      // At low zoom, only render hubs — unless this airport is selected,
+      // highlighted (destination arc), or inside the radius set. Hit-test
+      // still sees every airport so users can click non-hubs to zoom in.
+      if (hubOnly && !isSel && !isHigh && !isInR && !HUB_IATAS.has(iata)) continue;
+
       const r      = isSel ? 7 : isHigh ? 5 : isInR ? 4 : rDef;
 
       ctx.beginPath();
@@ -250,6 +296,31 @@ export default function RouteMap() {
 
   // ── Load routes for a clicked airport ────────────────────────────────────
 
+  // Pan so the origin airport lands in the upper-right quadrant, giving arcs
+  // room to fan out across the rest of the map. Keeps current zoom.
+  const panOriginToTopRight = (ap) => {
+    const map = mapRef.current;
+    if (!map || !ap) return;
+
+    const size = map.getSize();
+    if (!size || size.x === 0 || size.y === 0) return;
+
+    const isMobile = size.x < 600;
+    const targetX  = size.x * (isMobile ? 0.70 : 0.75);
+    const targetY  = size.y * (isMobile ? 0.35 : 0.25);
+
+    // The current center of the map sits at (size/2). To move the origin
+    // to (targetX, targetY) in container coords, shift the center by the
+    // delta between origin's current container point and the target.
+    const originPt = map.latLngToContainerPoint([ap.lat, ap.lon]);
+    const dx = originPt.x - targetX;
+    const dy = originPt.y - targetY;
+    const centerPt = map.latLngToContainerPoint(map.getCenter());
+    const newCenterLatLng = map.containerPointToLatLng([centerPt.x + dx, centerPt.y + dy]);
+
+    map.flyTo(newCenterLatLng, map.getZoom(), { duration: 0.8 });
+  };
+
   const loadRoutes = async (ap) => {
     setRoutesLoading(true);
     setRoutesError(null);
@@ -287,6 +358,13 @@ export default function RouteMap() {
           interactive: false,
         }).addTo(map);
         routeLinesRef.current.push(line);
+      }
+
+      // Pan origin to top-right so destination arcs have room to fan out.
+      // Skip when radius mode is active (don't fight the user) or when there
+      // are no destinations (nothing to reveal).
+      if (radiusModeRef.current === 'off' && data.destinations?.length > 0) {
+        panOriginToTopRight(ap);
       }
     } catch (err) {
       setRoutesError(err.message);
@@ -372,11 +450,22 @@ export default function RouteMap() {
   useEffect(() => {
     if (mapRef.current) return;
 
-    let map;
-    let layer;
+    // StrictMode mounts-unmounts-mounts synchronously in dev. The async IIFE
+    // below awaits imports/fetch before assigning mapRef.current, so the
+    // cleanup closure needs this flag to know whether to tear down work
+    // performed by *this* effect run (not a later one).
+    let cancelled = false;
+    let map = null;
+    let layer = null;
+    let clickHandler = null;
 
     (async () => {
       const L = (await import('leaflet')).default;
+      if (cancelled) return;
+
+      // Second safety: if another effect run already created a map on this
+      // container, bail rather than stacking a second Leaflet instance.
+      if (mapRef.current) return;
 
       map = L.map(containerRef.current, {
         center: [20, 0],
@@ -393,6 +482,13 @@ export default function RouteMap() {
 
       const res      = await fetch('/api/map/airports');
       const airports = await res.json();
+      if (cancelled) {
+        // Effect was torn down while we were awaiting — undo what we created.
+        map.remove();
+        if (mapRef.current === map) mapRef.current = null;
+        map = null;
+        return;
+      }
       airportsDataRef.current = airports;
 
       layer = mountAirportCanvas(map, airports, {
@@ -402,12 +498,19 @@ export default function RouteMap() {
       });
       canvasLayerRef.current = layer;
 
-      map.on('click', handleMapClick);
+      clickHandler = handleMapClick;
+      map.on('click', clickHandler);
     })();
 
     return () => {
-      if (map) { map.off('click', handleMapClick); map.remove(); mapRef.current = null; }
-      if (layer) { layer.remove(); canvasLayerRef.current = null; }
+      cancelled = true;
+      if (map) {
+        if (clickHandler) map.off('click', clickHandler);
+        if (layer) { layer.remove(); canvasLayerRef.current = null; }
+        map.remove();
+        if (mapRef.current === map) mapRef.current = null;
+        map = null;
+      }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
