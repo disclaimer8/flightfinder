@@ -1,3 +1,4 @@
+import './sentry'; // Must run before any other imports so Sentry can instrument fetch/XHR.
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';

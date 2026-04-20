@@ -14,6 +14,8 @@ env:
   TRAVELPAYOUTS_MARKER: ${{ secrets.TRAVELPAYOUTS_MARKER }}
   TRAVELPAYOUTS_TRS: ${{ secrets.TRAVELPAYOUTS_TRS }}
   RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+  VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
 jobs:
   deploy:
@@ -25,7 +27,7 @@ jobs:
           host: 178.104.32.46
           username: root
           key: ${{ secrets.claude }}
-          envs: OPENSKY_USERNAME,OPENSKY_PASSWORD,AIRLABS_API_KEY,TRAVELPAYOUTS_TOKEN,TRAVELPAYOUTS_MARKER,TRAVELPAYOUTS_TRS,RAPIDAPI_KEY
+          envs: OPENSKY_USERNAME,OPENSKY_PASSWORD,AIRLABS_API_KEY,TRAVELPAYOUTS_TOKEN,TRAVELPAYOUTS_MARKER,TRAVELPAYOUTS_TRS,RAPIDAPI_KEY,SENTRY_DSN,VITE_SENTRY_DSN
           script: |
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
@@ -50,8 +52,13 @@ jobs:
             # Write AeroDataBox/RapidAPI key (idempotent)
             sed -i '/^RAPIDAPI_KEY/d' server/.env
             echo "RAPIDAPI_KEY=${RAPIDAPI_KEY}" >> server/.env
+            # Sentry server DSN (idempotent)
+            sed -i '/^SENTRY_DSN/d' server/.env
+            echo "SENTRY_DSN=${SENTRY_DSN}" >> server/.env
             cd server && npm install --omit=dev
-            cd ../client && npm install && npm run build
+            # VITE_SENTRY_DSN is a build-time env — export into client build so
+            # Vite bakes it into the bundle. Client code reads import.meta.env.
+            cd ../client && npm install && VITE_SENTRY_DSN="${VITE_SENTRY_DSN}" npm run build
             cp /root/flightfinder/nginx/himaxym.conf /etc/nginx/sites-enabled/flightfinder
             nginx -t && systemctl reload nginx
             pm2 restart flightfinder --update-env

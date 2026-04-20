@@ -1,9 +1,15 @@
+// Sentry must be required first so OpenTelemetry can auto-instrument
+// http/express when those modules load below. instrument.js also loads
+// .env internally.
+require('./instrument');
+
 // Load .env with override so PM2-cached env vars are replaced,
 // but preserve NODE_ENV if already set (e.g. NODE_ENV=test in Jest).
 const _savedNodeEnv = process.env.NODE_ENV;
 require('dotenv').config({ path: require('path').join(__dirname, '../.env'), override: true });
 if (_savedNodeEnv) process.env.NODE_ENV = _savedNodeEnv;
 
+const Sentry  = require('@sentry/node');
 const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
@@ -33,6 +39,7 @@ app.use(helmet({
         "'self'",
         'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://analytics.google.com', // GA beacons
         'https://emrldtp.cc', 'https://www.travelpayouts.com', 'https://sentry.avs.io', // Travelpayouts Drive fetches
+        'https://*.ingest.de.sentry.io', // Our own Sentry (EU region) error + trace ingest
       ],
       fontSrc:        ["'self'", 'data:', 'https://fonts.gstatic.com'], // TP Drive Google Fonts
       objectSrc:      ["'none'"],
@@ -173,6 +180,14 @@ if (!IS_DEV) {
     res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     res.sendFile(path.join(clientBuild, 'index.html'));
   });
+}
+
+// ─────────────────────────────────────────
+//  Sentry Express error capture — must come BEFORE our handler so Sentry
+//  sees the error but AFTER all routes. No-op if DSN isn't set.
+// ─────────────────────────────────────────
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
 }
 
 // ─────────────────────────────────────────
