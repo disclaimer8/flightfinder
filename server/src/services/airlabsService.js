@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cacheService = require('./cacheService');
+const db = require('../models/db');
 
 const AIRLABS_API_URL = 'https://airlabs.co/api/v9'; // Note: AirLabs often uses /fleets or /aircraft_types for specs
 const AIRLABS_API_KEY = process.env.AIRLABS_API_KEY;
@@ -8,7 +9,7 @@ if (!AIRLABS_API_KEY) {
   console.warn('⚠️  AIRLABS_API_KEY is not configured. Aircraft enrichment will be limited.');
 }
 
-const airlabsClient = axios.create({ baseURL: AIRLABS_API_URL });
+const airlabsClient = axios.create({ baseURL: AIRLABS_API_URL, timeout: 15000 });
 
 /**
  * Long-lived cache lookup with split TTLs: hits live for 30 days, misses for 24h.
@@ -183,6 +184,94 @@ exports.getRoutes = async (iata) => {
 
   _routesCache.set(code, { dests, fetchedAt: Date.now() });
   return dests;
+};
+
+/**
+ * GET /schedules?dep_iata=X — today's scheduled departures from an airport.
+ * Returns a plain array of flight rows (airline, flight_iata, arr_iata, times, status).
+ * On Developer tier this is where we get realistic destination *breadth* (LHR → 161
+ * unique destinations, vs /routes which is curtailed to ~9).
+ *
+ * IMPORTANT: aircraft_icao is NOT populated on this endpoint — enrich separately
+ * via observed_routes (populated from /flights snapshots).
+ *
+ * Cached 12h (schedules are stable for the day). Returns [] on any error.
+ */
+exports.getSchedules = async (iata) => {
+  const code = String(iata || '').toUpperCase();
+  if (!code || code.length !== 3) return [];
+  const apiKey = process.env.AIRLABS_API_KEY;
+  if (!apiKey) return [];
+
+  const cacheKey = `airlabs:schedules:${code}`;
+  const hit = cacheService.get(cacheKey);
+  if (hit !== undefined) return hit;
+
+  try {
+    const res = await airlabsClient.get('/schedules', {
+      params: { dep_iata: code, api_key: apiKey },
+    });
+    const rows = Array.isArray(res.data?.response) ? res.data.response : [];
+    cacheService.set(cacheKey, rows, rows.length ? cacheService.TTL.schedules : cacheService.TTL.negative);
+    return rows;
+  } catch (err) {
+    console.warn(`[airlabs] getSchedules failed for ${code}: ${err?.response?.status ?? err.message}`);
+    cacheService.set(cacheKey, [], cacheService.TTL.negative);
+    return [];
+  }
+};
+
+/**
+ * GET /flights?dep_iata=X — live airborne snapshot. Rows carry aircraft_icao
+ * with 100% coverage on Developer tier, plus reg_number / hex / lat-lng /
+ * speed / airline for each bird currently in the air having departed X.
+ *
+ * Side effect: every non-empty response UPSERTs into `observed_routes`
+ * (dep_iata, arr_iata, aircraft_icao) so that historical aircraft enrichment
+ * for a route accumulates over time without burning extra API budget.
+ *
+ * Cached 10 min to avoid hammering the endpoint on repeated user queries.
+ */
+exports.getLiveFlights = async (iata) => {
+  const code = String(iata || '').toUpperCase();
+  if (!code || code.length !== 3) return [];
+  const apiKey = process.env.AIRLABS_API_KEY;
+  if (!apiKey) return [];
+
+  const cacheKey = `airlabs:flights:${code}`;
+  const hit = cacheService.get(cacheKey);
+  if (hit !== undefined) return hit;
+
+  try {
+    const res = await airlabsClient.get('/flights', {
+      params: { dep_iata: code, api_key: apiKey },
+    });
+    const rows = Array.isArray(res.data?.response) ? res.data.response : [];
+
+    // Persist observations — bounded unique rows per (dep, arr, aircraft).
+    for (const f of rows) {
+      if (f.dep_iata && f.arr_iata && f.aircraft_icao && f.dep_iata.length === 3 && f.arr_iata.length === 3) {
+        try {
+          db.upsertObservedRoute({
+            depIata: f.dep_iata.toUpperCase(),
+            arrIata: f.arr_iata.toUpperCase(),
+            aircraftIcao: f.aircraft_icao.toUpperCase(),
+            airlineIata: f.airline_iata || null,
+          });
+        } catch (e) {
+          // DB write failure is non-critical — never block the response.
+          console.warn('[airlabs] observed_routes upsert failed:', e.message);
+        }
+      }
+    }
+
+    cacheService.set(cacheKey, rows, rows.length ? cacheService.TTL.liveFlights : cacheService.TTL.negative);
+    return rows;
+  } catch (err) {
+    console.warn(`[airlabs] getLiveFlights failed for ${code}: ${err?.response?.status ?? err.message}`);
+    cacheService.set(cacheKey, [], cacheService.TTL.negative);
+    return [];
+  }
 };
 
 /**

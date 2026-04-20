@@ -43,6 +43,24 @@ try {
   // Column already exists — migration already ran
 }
 
+// observed_routes: append-only store of (dep, arr, aircraft_icao) tuples we've
+// actually seen airborne via AirLabs /flights. UNIQUE key means we UPSERT seen_at.
+// Bounded by airports × destinations × aircraft_types ≈ tens of thousands of rows.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS observed_routes (
+    dep_iata       TEXT NOT NULL,
+    arr_iata       TEXT NOT NULL,
+    aircraft_icao  TEXT NOT NULL,
+    airline_iata   TEXT,
+    seen_at        INTEGER NOT NULL,
+    first_seen_at  INTEGER NOT NULL,
+    PRIMARY KEY (dep_iata, arr_iata, aircraft_icao)
+  );
+  CREATE INDEX IF NOT EXISTS idx_observed_dep        ON observed_routes(dep_iata, seen_at);
+  CREATE INDEX IF NOT EXISTS idx_observed_dep_arr    ON observed_routes(dep_iata, arr_iata);
+  CREATE INDEX IF NOT EXISTS idx_observed_aircraft   ON observed_routes(aircraft_icao, seen_at);
+`);
+
 // Prepared statements
 const stmts = {
   getUserByEmail:    db.prepare('SELECT * FROM users WHERE email = ?'),
@@ -58,6 +76,30 @@ const stmts = {
   deleteVerificationToken: db.prepare('DELETE FROM email_verification_tokens WHERE token_hash = ?'),
   deleteVerificationTokensByUser: db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?'),
   deleteExpiredVerificationTokens: db.prepare('DELETE FROM email_verification_tokens WHERE expires_at < ?'),
+
+  upsertObservedRoute: db.prepare(`
+    INSERT INTO observed_routes (dep_iata, arr_iata, aircraft_icao, airline_iata, seen_at, first_seen_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(dep_iata, arr_iata, aircraft_icao) DO UPDATE SET
+      seen_at = excluded.seen_at,
+      airline_iata = COALESCE(excluded.airline_iata, observed_routes.airline_iata)
+  `),
+  observedAircraftByRoute: db.prepare(`
+    SELECT aircraft_icao, seen_at FROM observed_routes
+    WHERE dep_iata = ? AND arr_iata = ? AND seen_at >= ?
+    ORDER BY seen_at DESC
+  `),
+  observedDestinationsFromDep: db.prepare(`
+    SELECT DISTINCT arr_iata FROM observed_routes
+    WHERE dep_iata = ? AND seen_at >= ?
+  `),
+  observedStats: db.prepare(`
+    SELECT COUNT(*) AS total,
+           COUNT(DISTINCT dep_iata) AS airports,
+           COUNT(DISTINCT aircraft_icao) AS aircraft_types,
+           MIN(first_seen_at) AS oldest
+    FROM observed_routes
+  `),
 };
 
 function hashToken(raw) {
@@ -85,5 +127,16 @@ module.exports = {
   deleteVerificationToken: (tokenHash) => stmts.deleteVerificationToken.run(tokenHash),
   deleteVerificationTokensByUser: (userId) => stmts.deleteVerificationTokensByUser.run(userId),
   deleteExpiredVerificationTokens: () => stmts.deleteExpiredVerificationTokens.run(Date.now()),
+
+  upsertObservedRoute: ({ depIata, arrIata, aircraftIcao, airlineIata }) => {
+    const now = Date.now();
+    return stmts.upsertObservedRoute.run(depIata, arrIata, aircraftIcao, airlineIata || null, now, now);
+  },
+  observedAircraftByRoute: (depIata, arrIata, sinceMs) =>
+    stmts.observedAircraftByRoute.all(depIata, arrIata, sinceMs),
+  observedDestinationsFromDep: (depIata, sinceMs) =>
+    stmts.observedDestinationsFromDep.all(depIata, sinceMs).map(r => r.arr_iata),
+  observedStats: () => stmts.observedStats.get(),
+
   hashToken,
 };

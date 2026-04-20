@@ -79,33 +79,61 @@ describe('routesService.getRoutes', () => {
   let routesService;
   let openSkyService;
   let airlabsSvc;
+  let db;
 
   beforeEach(() => {
     jest.resetModules();
     jest.mock('../services/openSkyService');
     jest.mock('../services/airlabsService');
+    jest.mock('../models/db', () => ({
+      observedDestinationsFromDep: jest.fn(() => []),
+      observedAircraftByRoute: jest.fn(() => []),
+      upsertObservedRoute: jest.fn(),
+    }));
     routesService  = require('../services/routesService');
     openSkyService = require('../services/openSkyService');
     airlabsSvc     = require('../services/airlabsService');
+    db             = require('../models/db');
+
+    // Default: no live flights, no historical observations
+    airlabsSvc.getLiveFlights = jest.fn().mockResolvedValue([]);
+    airlabsSvc.getSchedules   = jest.fn().mockResolvedValue([]);
   });
 
-  it('marks destinations live when OpenSky has them', async () => {
-    openSkyService.getDepartures.mockResolvedValue([
-      { destIata: 'JFK', lastSeen: new Date() },
+  it('marks destinations live when present in live airborne snapshot', async () => {
+    openSkyService.getDepartures.mockResolvedValue([]);
+    airlabsSvc.getLiveFlights.mockResolvedValue([
+      { dep_iata: 'LHR', arr_iata: 'JFK', aircraft_icao: 'B77W', airline_iata: 'BA' },
     ]);
-    airlabsSvc.getRoutes.mockResolvedValue(new Set(['JFK', 'CDG']));
+    airlabsSvc.getSchedules.mockResolvedValue([
+      { arr_iata: 'JFK' }, { arr_iata: 'CDG' },
+    ]);
 
     const result = await routesService.getRoutes('LHR');
 
     expect(result.confidences['JFK']).toBe('live');
     expect(result.confidences['CDG']).toBe('scheduled');
+    expect(result.aircraft['JFK']).toContain('B77W');
     expect(result.destinations).toContain('JFK');
     expect(result.destinations).toContain('CDG');
   });
 
-  it('marks all destinations scheduled when OpenSky returns empty', async () => {
+  it('marks destinations live when OpenSky recently saw them', async () => {
+    openSkyService.getDepartures.mockResolvedValue([
+      { destIata: 'JFK', lastSeen: new Date() },
+    ]);
+    airlabsSvc.getSchedules.mockResolvedValue([{ arr_iata: 'JFK' }]);
+
+    const result = await routesService.getRoutes('LHR');
+
+    expect(result.confidences['JFK']).toBe('live');
+  });
+
+  it('marks all destinations scheduled when no live data', async () => {
     openSkyService.getDepartures.mockResolvedValue([]);
-    airlabsSvc.getRoutes.mockResolvedValue(new Set(['CDG', 'AMS']));
+    airlabsSvc.getSchedules.mockResolvedValue([
+      { arr_iata: 'CDG' }, { arr_iata: 'AMS' },
+    ]);
 
     const result = await routesService.getRoutes('LHR');
 
@@ -113,9 +141,8 @@ describe('routesService.getRoutes', () => {
     expect(result.confidences['AMS']).toBe('scheduled');
   });
 
-  it('returns empty destinations when both sources empty', async () => {
+  it('returns empty destinations when all sources empty', async () => {
     openSkyService.getDepartures.mockResolvedValue([]);
-    airlabsSvc.getRoutes.mockResolvedValue(new Set());
 
     const result = await routesService.getRoutes('LHR');
 
@@ -127,11 +154,39 @@ describe('routesService.getRoutes', () => {
     openSkyService.getDepartures.mockResolvedValue([
       { destIata: 'LHR', lastSeen: new Date() },
     ]);
-    airlabsSvc.getRoutes.mockResolvedValue(new Set(['LHR', 'JFK']));
+    airlabsSvc.getSchedules.mockResolvedValue([{ arr_iata: 'LHR' }, { arr_iata: 'JFK' }]);
 
     const result = await routesService.getRoutes('LHR');
 
     expect(result.destinations).not.toContain('LHR');
     expect(result.destinations).toContain('JFK');
+  });
+
+  it('enriches aircraft from observed_routes history when no live data', async () => {
+    openSkyService.getDepartures.mockResolvedValue([]);
+    airlabsSvc.getSchedules.mockResolvedValue([{ arr_iata: 'JFK' }]);
+    db.observedAircraftByRoute.mockReturnValue([
+      { aircraft_icao: 'B789', seen_at: Date.now() - 3600_000 },
+      { aircraft_icao: 'A388', seen_at: Date.now() - 7200_000 },
+    ]);
+
+    const result = await routesService.getRoutes('LHR');
+
+    expect(result.confidences['JFK']).toBe('scheduled');
+    expect(result.aircraft['JFK']).toEqual(expect.arrayContaining(['B789', 'A388']));
+  });
+
+  it('marks a destination observed when only in history, not today schedule/live', async () => {
+    openSkyService.getDepartures.mockResolvedValue([]);
+    db.observedDestinationsFromDep.mockReturnValue(['TLV']);
+    db.observedAircraftByRoute.mockReturnValue([
+      { aircraft_icao: 'B789', seen_at: Date.now() - 2 * 24 * 3600_000 },
+    ]);
+
+    const result = await routesService.getRoutes('LHR');
+
+    expect(result.destinations).toContain('TLV');
+    expect(result.confidences['TLV']).toBe('observed');
+    expect(result.aircraft['TLV']).toContain('B789');
   });
 });

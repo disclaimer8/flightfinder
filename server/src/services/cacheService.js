@@ -9,6 +9,8 @@ const TTL = {
   negative: 24 * 60 * 60,       // 24h — remember "not found" results so we stop hammering the API
   tpPrice: 30 * 60,             // 30 min — Travelpayouts cheap-price lookup
   tpCalendar: 60 * 60,          // 1h — Travelpayouts monthly price calendar
+  schedules: 12 * 60 * 60,      // 12h — AirLabs /schedules per airport (stable for the day)
+  liveFlights: 10 * 60,         // 10 min — AirLabs /flights live airborne snapshot
 };
 
 const cache = new NodeCache({ useClones: false });

@@ -20,6 +20,7 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 const ARC_STYLE = {
   live:       { color: 'rgba(52,211,153,0.85)',  weight: 2.0, dashArray: null },
   scheduled:  { color: 'rgba(99,140,200,0.55)',  weight: 1.5, dashArray: null },
+  observed:   { color: 'rgba(180,130,200,0.40)', weight: 1.2, dashArray: '4 3' },
 };
 
 // ── Great-circle intermediate points (for geodesic arcs) ────────────────────
@@ -477,10 +478,24 @@ export default function RouteMap() {
             {routesLoading && <span className="rm-info-sub">Loading routes…</span>}
             {routesError && <span className="rm-info-sub rm-info-sub--err">{routesError}</span>}
             {routes && !routesLoading && (
-              <span className="rm-info-sub">
-                {routes.destinations.length} destinations
-                {routes.destinations.length > 0 && <> · tap a purple dot for calendar</>}
-              </span>
+              <>
+                <span className="rm-info-sub">
+                  {routes.destinations.length} destinations
+                  {routes.destinations.length > 0 && <> · tap a purple dot for calendar</>}
+                </span>
+                {(() => {
+                  const allAc = new Set();
+                  Object.values(routes.aircraft || {}).forEach(arr => arr.forEach(t => allAc.add(t)));
+                  if (!allAc.size) return null;
+                  const sorted = Array.from(allAc).sort();
+                  return (
+                    <span className="rm-info-sub rm-info-sub--aircraft" title={sorted.join(', ')}>
+                      {allAc.size} aircraft types: {sorted.slice(0, 8).join(' · ')}
+                      {sorted.length > 8 && ` +${sorted.length - 8}`}
+                    </span>
+                  );
+                })()}
+              </>
             )}
           </div>
         </div>
@@ -489,8 +504,9 @@ export default function RouteMap() {
       {/* Legend */}
       {routes && (
         <div className="rm-legend">
-          <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--scheduled"/>Scheduled</div>
-          <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--live"/>Live</div>
+          <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--live"/>Live (airborne now)</div>
+          <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--scheduled"/>Scheduled today</div>
+          <div className="rm-legend-row"><span className="rm-legend-dot rm-legend-dot--observed"/>Seen in last 30d</div>
         </div>
       )}
 

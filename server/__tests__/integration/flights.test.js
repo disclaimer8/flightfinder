@@ -87,11 +87,12 @@ describe('GET /api/flights/explore — validation', () => {
     expect(res.status).toBe(400);
   });
 
-  test('400 when no aircraft criteria provided', async () => {
+  test('200 when no aircraft criteria provided (Travelpayouts fallback path)', async () => {
     const res = await request(app)
       .get(`/api/flights/explore?departure=LIS&date=${TOMORROW}`);
-    expect(res.status).toBe(400);
-    expect(res.body.message).toMatch(/aircraftType or aircraftModel/);
+    // exploreQuery no longer requires aircraft filter; controller falls back
+    // to Travelpayouts for pure price-driven destinations.
+    expect(res.status).toBe(200);
   });
 
   test('200 with departure + aircraftType returns array', async () => {

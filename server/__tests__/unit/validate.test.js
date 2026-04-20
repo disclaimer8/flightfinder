@@ -145,12 +145,13 @@ describe('validate.exploreQuery', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  test('rejects missing both aircraftType and aircraftModel', () => {
-    const { res, next } = run(validate.exploreQuery, {
+  test('accepts missing both aircraftType and aircraftModel (TP fallback path)', () => {
+    const { next } = run(validate.exploreQuery, {
       query: { departure: 'LIS', date: tomorrow },
     });
-    expect(next).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(400);
+    // exploreQuery no longer requires aircraft filter — the controller's
+    // Travelpayouts fallback runs when neither filter is set.
+    expect(next).toHaveBeenCalled();
   });
 });
 
