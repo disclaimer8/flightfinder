@@ -74,6 +74,8 @@ function ItineraryRow({ itinerary, label }) {
 }
 
 const TP_MARKER = '709966';
+const TP_TRS = '509158';
+const TP_PROGRAM = '4114';
 
 function buildBookingUrl(flight, passengers) {
   const dep = flight.departure?.code;
@@ -82,7 +84,6 @@ function buildBookingUrl(flight, passengers) {
 
   const pax = passengers || 1;
 
-  // Aviasales path format: /search/{ORIGIN}{DDMM}{DEST}[{RETURNDDMM}]{PAX}?marker=...
   const toDDMM = (iso) => {
     const d = new Date(iso);
     return String(d.getUTCDate()).padStart(2, '0') + String(d.getUTCMonth() + 1).padStart(2, '0');
@@ -90,12 +91,17 @@ function buildBookingUrl(flight, passengers) {
 
   const departDDMM = toDDMM(flight.departureTime);
 
+  let aviasalesUrl;
   if (flight.isRoundTrip && flight.returnItinerary?.departureTime) {
     const returnDDMM = toDDMM(flight.returnItinerary.departureTime);
-    return `https://www.aviasales.com/search/${dep}${departDDMM}${arr}${returnDDMM}${pax}?marker=${TP_MARKER}`;
+    aviasalesUrl = `https://www.aviasales.com/search/${dep}${departDDMM}${arr}${returnDDMM}${pax}`;
+  } else {
+    aviasalesUrl = `https://www.aviasales.com/search/${dep}${departDDMM}${arr}${pax}`;
   }
 
-  return `https://www.aviasales.com/search/${dep}${departDDMM}${arr}${pax}?marker=${TP_MARKER}`;
+  // tp.media/r redirect is required for click attribution; raw aviasales.com?marker=
+  // does not register clicks in the Travelpayouts dashboard.
+  return `https://tp.media/r?marker=${TP_MARKER}&trs=${TP_TRS}&p=${TP_PROGRAM}&u=${encodeURIComponent(aviasalesUrl)}`;
 }
 
 function FlightCard({ flight, passengers }) {

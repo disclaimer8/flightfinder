@@ -3,6 +3,8 @@ const axios = require('axios');
 const BASE_URL = 'https://api.travelpayouts.com';
 const TOKEN = process.env.TRAVELPAYOUTS_TOKEN;
 const MARKER = process.env.TRAVELPAYOUTS_MARKER || '709966';
+const TRS = process.env.TRAVELPAYOUTS_TRS || '509158';
+const PROGRAM = '4114';
 
 if (!TOKEN) {
   console.warn('⚠️  TRAVELPAYOUTS_TOKEN is not configured. Aviasales fallback disabled.');
@@ -114,8 +116,9 @@ exports.getPricesCalendar = async ({ origin, destination, month, currency }) => 
 };
 
 /**
- * Build an affiliate deep-link URL for Aviasales search, using the configured marker.
- * Format: /search/{ORIGIN}{DDMM}{DEST}[{RETURNDDMM}]{PAX}?marker=...
+ * Build an affiliate deep-link URL for Aviasales search through the tp.media
+ * redirect — required for click attribution in the Travelpayouts dashboard.
+ * Final URL shape: https://tp.media/r?marker=...&trs=...&p=4114&u=<encoded>
  */
 exports.buildDeepLink = ({ origin, destination, date, returnDate, passengers = 1 }) => {
   if (!origin || !destination || !date) return null;
@@ -127,10 +130,14 @@ exports.buildDeepLink = ({ origin, destination, date, returnDate, passengers = 1
   const departDDMM = toDDMM(date);
   if (!departDDMM) return null;
 
-  const base = `https://www.aviasales.com/search/${origin}${departDDMM}${destination}`;
+  let aviasalesUrl = `https://www.aviasales.com/search/${origin}${departDDMM}${destination}`;
   if (returnDate) {
     const ret = toDDMM(returnDate);
-    if (ret) return `${base}${ret}${passengers}?marker=${MARKER}`;
+    if (ret) aviasalesUrl += `${ret}${passengers}`;
+    else aviasalesUrl += `${passengers}`;
+  } else {
+    aviasalesUrl += `${passengers}`;
   }
-  return `${base}${passengers}?marker=${MARKER}`;
+
+  return `https://tp.media/r?marker=${MARKER}&trs=${TRS}&p=${PROGRAM}&u=${encodeURIComponent(aviasalesUrl)}`;
 };
