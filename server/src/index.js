@@ -27,10 +27,14 @@ app.use(helmet({
     directives: {
       defaultSrc:     ["'self'"],
       scriptSrc:      ["'self'", 'https://www.googletagmanager.com', 'https://emrldtp.cc'], // gtag + Travelpayouts Drive loaders
-      styleSrc:       ["'self'", "'unsafe-inline'"], // Leaflet sets style= attributes on DOM nodes
+      styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], // Leaflet inline style= + TP Drive Google Fonts
       imgSrc:         ["'self'", 'data:', 'https:'], // CartoDB map tiles (loaded as <img> by Leaflet)
-      connectSrc:     ["'self'", 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://analytics.google.com', 'https://emrldtp.cc'], // GA beacons + Travelpayouts config fetch
-      fontSrc:        ["'self'", 'data:'],
+      connectSrc:     [
+        "'self'",
+        'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://analytics.google.com', // GA beacons
+        'https://emrldtp.cc', 'https://www.travelpayouts.com', 'https://sentry.avs.io', // Travelpayouts Drive fetches
+      ],
+      fontSrc:        ["'self'", 'data:', 'https://fonts.gstatic.com'], // TP Drive Google Fonts
       objectSrc:      ["'none'"],
       baseUri:        ["'self'"],
       formAction:     ["'self'"],
