@@ -80,7 +80,7 @@ exports.getCheapest = async ({ origin, destination, date, currency }) => {
     cacheService.set(cacheKey, result, cacheService.TTL.tpPrice);
     return result;
   } catch (err) {
-    console.warn(`[travelpayouts] getCheapest ${o}→${d} failed:`, err.message);
+    console.warn('[travelpayouts] getCheapest failed: origin=%s dest=%s err=%s', o, d, err.message);
     cacheService.set(cacheKey, null, cacheService.TTL.negative);
     return null;
   }
@@ -127,7 +127,7 @@ exports.getPricesCalendar = async ({ origin, destination, month, currency }) => 
     cacheService.set(cacheKey, entries, cacheService.TTL.tpCalendar);
     return entries;
   } catch (err) {
-    console.warn(`[travelpayouts] getPricesCalendar ${o}→${d} ${month} failed:`, err.message);
+    console.warn('[travelpayouts] getPricesCalendar failed: origin=%s dest=%s month=%s err=%s', o, d, month, err.message);
     cacheService.set(cacheKey, [], cacheService.TTL.negative);
     return [];
   }
