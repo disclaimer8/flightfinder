@@ -313,4 +313,43 @@ function aircraftSearchQuery(req, res, next) {
   next();
 }
 
-module.exports = { searchQuery, exploreQuery, cheapCalendarQuery, bookBody, sanitiseKey, authBody, aircraftSearchQuery };
+/**
+ * Validate GET /api/flights/scheduled-aircraft  query params
+ * Mirrors searchQuery but tighter: date is required and must be within 180 days.
+ */
+function scheduledAircraftQuery(req, res, next) {
+  const { departure, arrival, date } = req.query;
+
+  if (!departure || !arrival) {
+    return bad(res, 'departure and arrival are required');
+  }
+
+  const dep = departure.toUpperCase().trim();
+  const arr = arrival.toUpperCase().trim();
+
+  if (!IATA_RE.test(dep)) return bad(res, 'departure must be a 2–3 letter IATA code');
+  if (!IATA_RE.test(arr)) return bad(res, 'arrival must be a 2–3 letter IATA code');
+  if (dep === arr)        return bad(res, 'departure and arrival cannot be the same airport');
+
+  if (!date || !DATE_RE.test(date)) return bad(res, 'date is required as YYYY-MM-DD');
+  const d = new Date(`${date}T00:00:00Z`);
+  if (isNaN(d.getTime())) return bad(res, 'date is not a valid date');
+
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+  if (d < today) return bad(res, 'date must not be in the past');
+
+  const maxDate = new Date(today);
+  maxDate.setUTCDate(maxDate.getUTCDate() + 180);
+  if (d > maxDate) return bad(res, 'date must be within the next 180 days');
+
+  req.validatedQuery = {
+    departure: dep,
+    arrival:   arr,
+    date,
+    sanitisedCacheKey: `${dep}:${arr}:${date}`,
+  };
+
+  next();
+}
+
+module.exports = { searchQuery, exploreQuery, cheapCalendarQuery, bookBody, sanitiseKey, authBody, aircraftSearchQuery, scheduledAircraftQuery };

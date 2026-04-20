@@ -6,6 +6,7 @@ const duffelService = require('../services/duffelService');
 const cacheService = require('../services/cacheService');
 const openFlights = require('../services/openFlightsService');
 const travelpayoutsService = require('../services/travelpayoutsService');
+const aerodataboxService = require('../services/aerodataboxService');
 
 const FLIGHT_API = process.env.FLIGHT_API || 'amadeus'; // 'amadeus' | 'duffel'
 
@@ -1181,6 +1182,71 @@ exports.bookFlight = async (req, res) => {
       success: false,
       message: error.message || 'Booking failed. Please try again or contact support.',
     });
+  }
+};
+
+/**
+ * GET /api/flights/scheduled-aircraft?departure=LHR&arrival=JFK&date=2026-05-01
+ *
+ * Pulls future-scheduled departures from AeroDataBox for `departure` on `date`
+ * (split into 2×12h local-time windows to stay within their API cap), filters
+ * down to flights bound for `arrival`, and enriches each row with an ICAO
+ * aircraft type code via the local aircraft_db (hex → type) lookup.
+ */
+exports.getScheduledAircraft = async (req, res) => {
+  const vq = req.validatedQuery || {};
+  const departure = vq.departure;
+  const arrival   = vq.arrival;
+  const date      = vq.date;
+
+  if (!aerodataboxService.isEnabled()) {
+    return res.json({
+      success: true,
+      count: 0,
+      data: [],
+      note: 'AeroDataBox not configured',
+    });
+  }
+
+  // Split the day into two 12-hour local windows (AeroDataBox hard limit).
+  // Times are "local to the airport" per the AeroDataBox contract — passing the
+  // same wall-clock string we got from the user is the correct behaviour.
+  const windows = [
+    [`${date}T00:00`, `${date}T12:00`],
+    [`${date}T12:00`, `${date}T23:59`],
+  ];
+
+  try {
+    const chunks = await Promise.all(
+      windows.map(([from, to]) => aerodataboxService.getAirportDepartures(departure, from, to))
+    );
+    const all = chunks.flat();
+
+    // Filter to flights actually arriving at the requested airport, dedupe by flight number.
+    const seen = new Set();
+    const data = [];
+    for (const f of all) {
+      if (!f || f.arr?.iata !== arrival) continue;
+      const key = `${f.number || ''}:${f.dep?.scheduledUtc || ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      data.push({
+        flightNumber: f.number,
+        airline: f.airline,
+        depTime: f.dep?.scheduledLocal || f.dep?.scheduledUtc,
+        arrTime: f.arr?.scheduledLocal || f.arr?.scheduledUtc,
+        aircraft: {
+          icaoType: f.aircraft?.icaoType || null,
+          reg:      f.aircraft?.reg || null,
+          model:    f.aircraft?.model || null,
+        },
+      });
+    }
+
+    res.json({ success: true, count: data.length, data });
+  } catch (err) {
+    console.error('[scheduled-aircraft] error:', err.message);
+    res.status(500).json({ success: false, message: 'Error fetching scheduled aircraft' });
   }
 };
 

@@ -61,6 +61,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_observed_aircraft   ON observed_routes(aircraft_icao, seen_at);
 `);
 
+// aircraft_db: static hex (ICAO24) -> aircraft metadata map, bootstrapped from an
+// upstream public dataset (Mictronics readsb aircrafts.json, ~500k rows). Used to
+// resolve AeroDataBox `modeS` fields into ICAO type codes (B77W, A320, etc.) since
+// AeroDataBox itself doesn't return modelCode.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS aircraft_db (
+    hex          TEXT PRIMARY KEY,
+    icao_type    TEXT,
+    reg          TEXT,
+    updated_at   INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_aircraft_db_type ON aircraft_db(icao_type);
+`);
+
 // Prepared statements
 const stmts = {
   getUserByEmail:    db.prepare('SELECT * FROM users WHERE email = ?'),
@@ -100,7 +114,27 @@ const stmts = {
            MIN(first_seen_at) AS oldest
     FROM observed_routes
   `),
+
+  getAircraftByHex: db.prepare('SELECT hex, icao_type, reg FROM aircraft_db WHERE hex = ?'),
+  upsertAircraft:   db.prepare(`
+    INSERT INTO aircraft_db (hex, icao_type, reg, updated_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(hex) DO UPDATE SET
+      icao_type  = excluded.icao_type,
+      reg        = excluded.reg,
+      updated_at = excluded.updated_at
+  `),
+  aircraftDbSize:   db.prepare('SELECT COUNT(*) AS n FROM aircraft_db'),
 };
+
+// Bulk insert helper — wraps a transaction around N upsertAircraft calls. Used by the
+// aircraftDbService bootstrap to land ~500k rows in one go (~1s on a laptop).
+const bulkUpsertAircraft = db.transaction((rows) => {
+  const now = Date.now();
+  for (const r of rows) {
+    stmts.upsertAircraft.run(r.hex, r.icaoType || null, r.reg || null, now);
+  }
+});
 
 function hashToken(raw) {
   return crypto.createHash('sha256').update(raw).digest('hex');
@@ -137,6 +171,17 @@ module.exports = {
   observedDestinationsFromDep: (depIata, sinceMs) =>
     stmts.observedDestinationsFromDep.all(depIata, sinceMs).map(r => r.arr_iata),
   observedStats: () => stmts.observedStats.get(),
+
+  getAircraftByHex: (hex) => {
+    if (!hex) return null;
+    return stmts.getAircraftByHex.get(String(hex).toLowerCase()) || null;
+  },
+  upsertAircraft: ({ hex, icaoType, reg }) => {
+    if (!hex) return null;
+    return stmts.upsertAircraft.run(String(hex).toLowerCase(), icaoType || null, reg || null, Date.now());
+  },
+  bulkUpsertAircraft: (rows) => bulkUpsertAircraft(rows),
+  aircraftDbSize: () => stmts.aircraftDbSize.get().n,
 
   hashToken,
 };

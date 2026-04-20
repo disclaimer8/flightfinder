@@ -13,6 +13,7 @@ env:
   TRAVELPAYOUTS_TOKEN: ${{ secrets.TRAVELPAYOUTS_TOKEN }}
   TRAVELPAYOUTS_MARKER: ${{ secrets.TRAVELPAYOUTS_MARKER }}
   TRAVELPAYOUTS_TRS: ${{ secrets.TRAVELPAYOUTS_TRS }}
+  RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
 
 jobs:
   deploy:
@@ -24,7 +25,7 @@ jobs:
           host: 178.104.32.46
           username: root
           key: ${{ secrets.claude }}
-          envs: OPENSKY_USERNAME,OPENSKY_PASSWORD,AIRLABS_API_KEY,TRAVELPAYOUTS_TOKEN,TRAVELPAYOUTS_MARKER,TRAVELPAYOUTS_TRS
+          envs: OPENSKY_USERNAME,OPENSKY_PASSWORD,AIRLABS_API_KEY,TRAVELPAYOUTS_TOKEN,TRAVELPAYOUTS_MARKER,TRAVELPAYOUTS_TRS,RAPIDAPI_KEY
           script: |
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
@@ -46,6 +47,9 @@ jobs:
             # Enable adsb.lol write-through worker (free, ODbL)
             sed -i '/^ADSBLOL_/d' server/.env
             echo "ADSBLOL_ENABLED=1" >> server/.env
+            # Write AeroDataBox/RapidAPI key (idempotent)
+            sed -i '/^RAPIDAPI_KEY/d' server/.env
+            echo "RAPIDAPI_KEY=${RAPIDAPI_KEY}" >> server/.env
             cd server && npm install --omit=dev
             cd ../client && npm install && npm run build
             cp /root/flightfinder/nginx/himaxym.conf /etc/nginx/sites-enabled/flightfinder

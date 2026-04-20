@@ -19,6 +19,9 @@ router.get('/aircraft-search/stream', validate.aircraftSearchQuery, acController
 // GET /api/flights/cheap-calendar?departure=LHR&arrival=JFK&month=2026-05
 router.get('/cheap-calendar', validate.cheapCalendarQuery, controller.getCheapCalendar);
 
+// GET /api/flights/scheduled-aircraft?departure=LHR&arrival=JFK&date=2026-05-01
+router.get('/scheduled-aircraft', validate.scheduledAircraftQuery, controller.getScheduledAircraft);
+
 // POST /api/flights/book
 router.post('/book',         validate.bookBody,     controller.bookFlight);
 

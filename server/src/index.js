@@ -185,6 +185,12 @@ if (require.main === module) {
   const shutdown = () => { try { stopAdsbLolWorker(); } catch { /* noop */ } };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT',  shutdown);
+
+  // Fire-and-forget: populate local aircraft_db (hex → ICAO type) for AeroDataBox
+  // enrichment. First boot downloads ~28MB; subsequent boots are no-ops.
+  require('./services/aircraftDbService')
+    .bootstrap()
+    .catch((err) => console.warn('[aircraftdb] bootstrap failed:', err.message));
 }
 
 module.exports = app; // export for tests
