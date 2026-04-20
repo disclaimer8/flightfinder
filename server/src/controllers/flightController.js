@@ -99,12 +99,13 @@ exports.searchFlights = async (req, res) => {
     }
 
     // Family filter — accepts slug ("a380") or display name ("Airbus A380").
-    // Matches when any of the flight's aircraftCode / family.icaoList codes
-    // intersect the family's icaoList.
+    // Match against fam.family.codes (full Set including IATA-style "320"/"32N"
+    // and ICAO "A320"); Duffel/Amadeus aircraftCode is 3-char IATA, not 4-char ICAO.
     if (familyName) {
       const fam = resolveFamily(familyName);
-      if (fam && Array.isArray(fam.icaoList) && fam.icaoList.length) {
-        const allowed = new Set(fam.icaoList.map(c => String(c).toUpperCase()));
+      const codes = fam?.family?.codes;
+      if (codes && codes.size) {
+        const allowed = new Set([...codes].map(c => String(c).toUpperCase()));
         flights = flights.filter(f => {
           const code = (f.aircraftCode || '').toUpperCase();
           return code && allowed.has(code);
