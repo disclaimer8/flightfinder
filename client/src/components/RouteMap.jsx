@@ -386,7 +386,7 @@ export default function RouteMap() {
       mapRef.current = map;
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© <a href="https://carto.com">CARTO</a>',
+        attribution: '© <a href="https://carto.com">CARTO</a> | Aircraft data: AirLabs + <a href="https://adsb.lol">adsb.lol</a> (ODbL)',
         subdomains: 'abcd',
         maxZoom: 19,
       }).addTo(map);

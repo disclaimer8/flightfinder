@@ -178,6 +178,13 @@ if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });
+
+  // Background poller: adsb.lol observed-routes write-through (opt-in via ADSBLOL_ENABLED=1).
+  const { startAdsbLolWorker } = require('./workers/adsblolWorker');
+  const stopAdsbLolWorker = startAdsbLolWorker();
+  const shutdown = () => { try { stopAdsbLolWorker(); } catch { /* noop */ } };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT',  shutdown);
 }
 
 module.exports = app; // export for tests
