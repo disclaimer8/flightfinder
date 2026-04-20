@@ -45,6 +45,11 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
+    <!-- Google Analytics (G-ZW8Y3YLN7S). Init is in /gtag-init.js because
+         our CSP forbids inline scripts — see server/src/index.js helmet config. -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW8Y3YLN7S"></script>
+    <script src="/gtag-init.js"></script>
+
     <!-- Travelpayouts Drive -->
     <script data-noptimize="1" data-cfasync="false" data-wpfc-render="false">
       (function () {

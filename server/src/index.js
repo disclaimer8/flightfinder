@@ -26,10 +26,10 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:     ["'self'"],
-      scriptSrc:      ["'self'"],               // all JS bundled by Vite, served from /assets/
+      scriptSrc:      ["'self'", 'https://www.googletagmanager.com'], // gtag.js loader
       styleSrc:       ["'self'", "'unsafe-inline'"], // Leaflet sets style= attributes on DOM nodes
       imgSrc:         ["'self'", 'data:', 'https:'], // CartoDB map tiles (loaded as <img> by Leaflet)
-      connectSrc:     ["'self'"],               // all /api/* calls are same-origin
+      connectSrc:     ["'self'", 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://analytics.google.com'], // GA beacons
       fontSrc:        ["'self'", 'data:'],
       objectSrc:      ["'none'"],
       baseUri:        ["'self'"],
