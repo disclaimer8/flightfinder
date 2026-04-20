@@ -1,4 +1,5 @@
 const axios = require('axios');
+const cacheService = require('./cacheService');
 
 const BASE_URL = 'https://api.travelpayouts.com';
 const TOKEN = process.env.TRAVELPAYOUTS_TOKEN;
@@ -38,28 +39,33 @@ exports.isConfigured = () => Boolean(TOKEN);
  */
 exports.getCheapest = async ({ origin, destination, date, currency }) => {
   if (!TOKEN) return null;
+  const o = String(origin || '').toUpperCase();
+  const d = String(destination || '').toUpperCase();
+  const cur = normaliseCurrency(currency);
+  const cacheKey = `tp:cheap:${o}:${d}:${date || '*'}:${cur}`;
+
+  const hit = cacheService.get(cacheKey);
+  if (hit !== undefined) return hit;
+
   try {
     const { data } = await client.get('/v1/prices/cheap', {
-      params: {
-        origin: String(origin || '').toUpperCase(),
-        destination: String(destination || '').toUpperCase(),
-        depart_date: date || undefined,
-        currency: normaliseCurrency(currency),
-      },
+      params: { origin: o, destination: d, depart_date: date || undefined, currency: cur },
     });
 
-    if (!data?.success || !data?.data) return null;
+    if (!data?.success || !data?.data) {
+      cacheService.set(cacheKey, null, cacheService.TTL.negative);
+      return null;
+    }
 
-    const destEntry = data.data[String(destination).toUpperCase()]
-      || Object.values(data.data)[0];
-    if (!destEntry) return null;
-
-    const variants = Object.values(destEntry);
-    if (!variants.length) return null;
+    const destEntry = data.data[d] || Object.values(data.data)[0];
+    const variants = destEntry ? Object.values(destEntry) : [];
+    if (!variants.length) {
+      cacheService.set(cacheKey, null, cacheService.TTL.negative);
+      return null;
+    }
 
     const best = variants.reduce((a, b) => (a.price <= b.price ? a : b));
-
-    return {
+    const result = {
       price: String(best.price),
       currency: (data.currency || currency || 'usd').toUpperCase(),
       airline: best.airline,
@@ -71,8 +77,11 @@ exports.getCheapest = async ({ origin, destination, date, currency }) => {
       expiresAt: best.expires_at || null,
       source: 'travelpayouts',
     };
+    cacheService.set(cacheKey, result, cacheService.TTL.tpPrice);
+    return result;
   } catch (err) {
-    console.warn(`[travelpayouts] getCheapest ${origin}→${destination} failed:`, err.message);
+    console.warn(`[travelpayouts] getCheapest ${o}→${d} failed:`, err.message);
+    cacheService.set(cacheKey, null, cacheService.TTL.negative);
     return null;
   }
 };
@@ -88,19 +97,25 @@ exports.getCheapest = async ({ origin, destination, date, currency }) => {
  */
 exports.getPricesCalendar = async ({ origin, destination, month, currency }) => {
   if (!TOKEN) return [];
+  const o = String(origin || '').toUpperCase();
+  const d = String(destination || '').toUpperCase();
+  const cur = normaliseCurrency(currency);
+  const cacheKey = `tp:cal:${o}:${d}:${month}:${cur}`;
+
+  const hit = cacheService.get(cacheKey);
+  if (hit !== undefined) return hit;
+
   try {
     const { data } = await client.get('/v1/prices/calendar', {
-      params: {
-        origin: String(origin || '').toUpperCase(),
-        destination: String(destination || '').toUpperCase(),
-        depart_date: month,
-        currency: normaliseCurrency(currency),
-      },
+      params: { origin: o, destination: d, depart_date: month, currency: cur },
     });
 
-    if (!data?.success || !data?.data) return [];
+    if (!data?.success || !data?.data) {
+      cacheService.set(cacheKey, [], cacheService.TTL.negative);
+      return [];
+    }
 
-    return Object.entries(data.data).map(([date, entry]) => ({
+    const entries = Object.entries(data.data).map(([date, entry]) => ({
       date,
       price: entry.price,
       airline: entry.airline,
@@ -109,8 +124,11 @@ exports.getPricesCalendar = async ({ origin, destination, month, currency }) => 
       transfers: entry.transfers ?? null,
       currency: (data.currency || currency || 'usd').toUpperCase(),
     }));
+    cacheService.set(cacheKey, entries, cacheService.TTL.tpCalendar);
+    return entries;
   } catch (err) {
-    console.warn(`[travelpayouts] getPricesCalendar ${origin}→${destination} ${month} failed:`, err.message);
+    console.warn(`[travelpayouts] getPricesCalendar ${o}→${d} ${month} failed:`, err.message);
+    cacheService.set(cacheKey, [], cacheService.TTL.negative);
     return [];
   }
 };

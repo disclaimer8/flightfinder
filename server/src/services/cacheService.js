@@ -2,9 +2,13 @@ const NodeCache = require('node-cache');
 
 // TTL values in seconds
 const TTL = {
-  flights: 10 * 60,      // 10 min — flight prices
-  explore: 30 * 60,      // 30 min — explore destinations (expensive fan-out)
-  aircraft: 24 * 60 * 60, // 24h — aircraft/airline data changes rarely
+  flights: 10 * 60,             // 10 min — flight prices
+  explore: 30 * 60,             // 30 min — explore destinations (expensive fan-out)
+  aircraft: 24 * 60 * 60,       // 24h — legacy, kept for callers still using it
+  staticRef: 30 * 24 * 60 * 60, // 30 days — aircraft specs, airline metadata (effectively static)
+  negative: 24 * 60 * 60,       // 24h — remember "not found" results so we stop hammering the API
+  tpPrice: 30 * 60,             // 30 min — Travelpayouts cheap-price lookup
+  tpCalendar: 60 * 60,          // 1h — Travelpayouts monthly price calendar
 };
 
 const cache = new NodeCache({ useClones: false });

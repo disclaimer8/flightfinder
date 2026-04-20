@@ -1,4 +1,5 @@
 const axios = require('axios');
+const cacheService = require('./cacheService');
 
 const AIRLABS_API_URL = 'https://airlabs.co/api/v9'; // Note: AirLabs often uses /fleets or /aircraft_types for specs
 const AIRLABS_API_KEY = process.env.AIRLABS_API_KEY;
@@ -10,37 +11,48 @@ if (!AIRLABS_API_KEY) {
 const airlabsClient = axios.create({ baseURL: AIRLABS_API_URL });
 
 /**
+ * Long-lived cache lookup with split TTLs: hits live for 30 days, misses for 24h.
+ * Keeps us from burning the tight AirLabs rate limit on static reference data.
+ */
+async function cachedLookup(key, fetchFn) {
+  const cached = cacheService.get(key);
+  if (cached !== undefined) return cached;
+  const value = await fetchFn();
+  const ttl = value ? cacheService.TTL.staticRef : cacheService.TTL.negative;
+  cacheService.set(key, value ?? null, ttl);
+  return value ?? null;
+}
+
+/**
  * Get detailed aircraft information by IATA code
  * @param {string} iata - Aircraft IATA code (e.g., B737, A320)
  */
 exports.getAircraftInfo = async (iata) => {
-  try {
-    const response = await airlabsClient.get('/aircraft_types', {
-      params: {
-        iata_code: iata.toUpperCase(),
-        api_key: AIRLABS_API_KEY
-      }
-    });
-
-    if (response.data.response && response.data.response.length > 0) {
-      const aircraft = response.data.response[0];
+  const code = String(iata || '').toUpperCase();
+  if (!code) return null;
+  return cachedLookup(`airlabs:aircraft:${code}`, async () => {
+    try {
+      const response = await airlabsClient.get('/aircraft_types', {
+        params: { iata_code: code, api_key: AIRLABS_API_KEY },
+      });
+      const aircraft = response.data?.response?.[0];
+      if (!aircraft) return null;
       return {
         iata: aircraft.iata_code,
         icao: aircraft.icao_code,
         name: aircraft.model_name || aircraft.name,
         manufacturer: aircraft.manufacturer,
-      type: classifyAircraftType(aircraft.model_name || ''),
+        type: classifyAircraftType(aircraft.model_name || ''),
         capacity: aircraft.capacity || null,
         range: aircraft.range || null,
         cruiseSpeed: aircraft.cruise_speed || null,
-        categories: []
+        categories: [],
       };
+    } catch (error) {
+      console.error('AirLabs API Error:', error.message);
+      return null;
     }
-    return null;
-  } catch (error) {
-    console.error('AirLabs API Error:', error.message);
-    return null;
-  }
+  });
 };
 
 /**
@@ -74,28 +86,26 @@ exports.getMultipleAircraft = async (iataCodes) => {
  * @param {string} iata - Airline IATA code
  */
 exports.getAirlineInfo = async (iata) => {
-  try {
-    const response = await airlabsClient.get('/airlines', {
-      params: {
-        iata_code: iata.toUpperCase(),
-        api_key: AIRLABS_API_KEY
-      }
-    });
-
-    if (response.data.response && response.data.response.length > 0) {
-      const airline = response.data.response[0];
+  const code = String(iata || '').toUpperCase();
+  if (!code) return null;
+  return cachedLookup(`airlabs:airline:${code}`, async () => {
+    try {
+      const response = await airlabsClient.get('/airlines', {
+        params: { iata_code: code, api_key: AIRLABS_API_KEY },
+      });
+      const airline = response.data?.response?.[0];
+      if (!airline) return null;
       return {
         iata: airline.iata_code,
         icao: airline.icao_code,
         name: airline.name,
-        country: airline.country_name
+        country: airline.country_name,
       };
+    } catch (error) {
+      console.error('AirLabs API Error:', error.message);
+      return null;
     }
-    return null;
-  } catch (error) {
-    console.error('AirLabs API Error:', error.message);
-    return null;
-  }
+  });
 };
 
 /**
