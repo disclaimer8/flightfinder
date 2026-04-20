@@ -155,8 +155,18 @@ if (!IS_DEV) {
     standardHeaders: true,
     legacyHeaders: false,
   });
-  app.use(express.static(clientBuild, { maxAge: '1d' }));
+  app.use(express.static(clientBuild, {
+    etag: false,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  }));
   app.get('*path', spaFallbackLimiter, (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     res.sendFile(path.join(clientBuild, 'index.html'));
   });
 }
