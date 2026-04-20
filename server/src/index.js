@@ -159,6 +159,7 @@ if (IS_DEV) {
 //  Serve React build in production
 // ─────────────────────────────────────────
 if (!IS_DEV) {
+  const fs = require('fs');
   const clientBuild = path.join(__dirname, '../../client/dist');
   const spaFallbackLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
@@ -166,8 +167,13 @@ if (!IS_DEV) {
     standardHeaders: true,
     legacyHeaders: false,
   });
+  // Disable static's automatic index.html so that GET '/' falls through to our
+  // SPA handler below, which injects a canonical tag and noindex for query-
+  // parameter variants (SearchAction URLs like ?from=LHR&to=JFK would otherwise
+  // register as duplicate-content URLs in Google's index).
   app.use(express.static(clientBuild, {
     etag: false,
+    index: false,
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('index.html')) {
         res.setHeader('Cache-Control', 'no-cache, must-revalidate');
@@ -176,10 +182,43 @@ if (!IS_DEV) {
       }
     },
   }));
-  app.get('*path', spaFallbackLimiter, (_req, res) => {
+
+  // Cache index.html in memory — deploy rebuilds the file and pm2 restarts the
+  // process, so a single read per boot is safe and avoids per-request fs calls.
+  const indexHtmlPath = path.join(clientBuild, 'index.html');
+  let indexHtmlCached = null;
+  const readIndexHtml = () => {
+    if (indexHtmlCached == null) indexHtmlCached = fs.readFileSync(indexHtmlPath, 'utf8');
+    return indexHtmlCached;
+  };
+
+  const spaFallback = (req, res) => {
+    let html = readIndexHtml();
+    const q = req.query || {};
+    // Any query-string variant of the root URL should canonicalise back to '/'.
+    // The SearchAction in our JSON-LD declares ?from=&to=&aircraft=&date= as a
+    // valid entry point, so these are legitimate URLs — but we don't want N
+    // copies of them competing for rank.
+    if (Object.keys(q).length > 0) {
+      html = html.replace(
+        /<link rel="canonical" href="[^"]*"\s*\/?>/i,
+        '<link rel="canonical" href="https://himaxym.com/" />'
+      );
+    }
+    // Email verification link (/ ?action=verify&token=…) should never be indexed.
+    if (q.action === 'verify') {
+      html = html.replace(
+        /<meta name="robots" content="[^"]*"\s*\/?>/i,
+        '<meta name="robots" content="noindex, nofollow" />'
+      );
+    }
     res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-    res.sendFile(path.join(clientBuild, 'index.html'));
-  });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  };
+
+  app.get('/',      spaFallbackLimiter, spaFallback);
+  app.get('*path',  spaFallbackLimiter, spaFallback);
 }
 
 // ─────────────────────────────────────────
