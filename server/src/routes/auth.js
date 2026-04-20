@@ -4,6 +4,7 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const validate = require('../middleware/validate');
 const requireAuth = require('../middleware/requireAuth');
+const csrfOriginCheck = require('../middleware/csrf');
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -31,8 +32,11 @@ router.post('/resend-verification', verifyLimiter, authController.resendVerifica
 router.use(authLimiter);
 router.post('/register', validate.authBody.register, authController.register);
 router.post('/login',    validate.authBody.login,    authController.login);
-router.post('/refresh',  authController.refresh);
-router.post('/logout',   authController.logout);
+// /refresh and /logout read the httpOnly refresh-token cookie. Guard them
+// with an Origin/Referer check — CSRF token validation for CodeQL + real
+// defense-in-depth on top of sameSite:strict.
+router.post('/refresh',  csrfOriginCheck, authController.refresh);
+router.post('/logout',   csrfOriginCheck, authController.logout);
 router.get('/me',        requireAuth, authController.me);
 
 module.exports = router;
