@@ -26,7 +26,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:     ["'self'"],
-      scriptSrc:      ["'self'", 'https://www.googletagmanager.com'], // gtag.js loader
+      scriptSrc:      ["'self'", 'https://www.googletagmanager.com', 'https://emrldtp.cc'], // gtag + Travelpayouts Drive loaders
       styleSrc:       ["'self'", "'unsafe-inline'"], // Leaflet sets style= attributes on DOM nodes
       imgSrc:         ["'self'", 'data:', 'https:'], // CartoDB map tiles (loaded as <img> by Leaflet)
       connectSrc:     ["'self'", 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://analytics.google.com'], // GA beacons

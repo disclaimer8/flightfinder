@@ -50,15 +50,10 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW8Y3YLN7S"></script>
     <script src="/gtag-init.js"></script>
 
-    <!-- Travelpayouts Drive -->
-    <script data-noptimize="1" data-cfasync="false" data-wpfc-render="false">
-      (function () {
-          var script = document.createElement("script");
-          script.async = 1;
-          script.src = 'https://emrldtp.cc/NTA5MTU4.js?t=509158';
-          document.head.appendChild(script);
-      })();
-    </script>
+    <!-- Travelpayouts Drive loader. Init is in /tp-drive-init.js because
+         our CSP forbids inline scripts — see server/src/index.js helmet config. -->
+    <script data-noptimize="1" data-cfasync="false" data-wpfc-render="false"
+            src="/tp-drive-init.js"></script>
 
     <!-- Structured data: WebSite + SearchAction -->
     <script type="application/ld+json">
