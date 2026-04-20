@@ -7,12 +7,14 @@
 
 const csrfOriginCheck = require('../middleware/csrf');
 
-function makeReq({ method = 'POST', origin, referer } = {}) {
+function makeReq({ method = 'POST', origin, referer, host, protocol } = {}) {
   const headers = {};
   if (origin)  headers.origin  = origin;
   if (referer) headers.referer = referer;
+  if (host)    headers.host    = host;
   return {
     method,
+    protocol: protocol || 'https',
     get(name) { return headers[name.toLowerCase()]; },
   };
 }
@@ -90,6 +92,31 @@ describe('csrfOriginCheck middleware', () => {
     const res  = makeRes();
     csrfOriginCheck(makeReq({}), res, next);
     expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts same-origin POST even when ALLOWED_ORIGINS is empty', () => {
+    process.env.ALLOWED_ORIGINS = '';
+    const next = jest.fn();
+    const res  = makeRes();
+    csrfOriginCheck(
+      makeReq({ origin: 'https://himaxym.com', host: 'himaxym.com', protocol: 'https' }),
+      res,
+      next,
+    );
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects cross-origin POST when ALLOWED_ORIGINS is empty (same-origin only)', () => {
+    process.env.ALLOWED_ORIGINS = '';
+    const next = jest.fn();
+    const res  = makeRes();
+    csrfOriginCheck(
+      makeReq({ origin: 'https://evil.example', host: 'himaxym.com', protocol: 'https' }),
+      res,
+      next,
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(403);
   });
 
   it('is a no-op in NODE_ENV=test (unit test suite relies on this)', () => {

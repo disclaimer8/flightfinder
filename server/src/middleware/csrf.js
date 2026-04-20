@@ -47,10 +47,23 @@ module.exports = function csrfOriginCheck(req, res, next) {
 
   let originHost;
   try { originHost = new URL(header).origin; } catch { originHost = null; }
-
-  const allowed = loadAllowedOrigins();
-  if (!originHost || !allowed.has(originHost)) {
+  if (!originHost) {
     return res.status(403).json({ success: false, message: 'CSRF origin check failed' });
   }
-  next();
+
+  const allowed = loadAllowedOrigins();
+  if (allowed.has(originHost)) return next();
+
+  // Same-origin fallback: if ALLOWED_ORIGINS isn't configured to include us,
+  // treat a request whose Origin matches this server's own host as trusted.
+  // The Host header is sent by every browser and reflects the server we're
+  // actually serving, so Origin === "<proto>://<host>" is genuinely same-site.
+  const hostHeader = req.get('host');
+  if (hostHeader) {
+    const proto = req.protocol || (req.secure ? 'https' : 'http');
+    const selfOrigin = `${proto}://${hostHeader}`;
+    if (selfOrigin === originHost) return next();
+  }
+
+  return res.status(403).json({ success: false, message: 'CSRF origin check failed' });
 };
