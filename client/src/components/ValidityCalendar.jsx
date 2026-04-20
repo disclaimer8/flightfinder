@@ -45,13 +45,41 @@ export default function ValidityCalendar({ origin, dest, onClose }) {
     setError(null);
     setCalendar(null);
 
-    fetch(`/api/map/flight-dates?origin=${origin.iata}&destination=${dest.iata}`)
+    const baseFetch = fetch(`/api/map/flight-dates?origin=${origin.iata}&destination=${dest.iata}`)
       .then(r => r.json())
       .then(data => {
         if (data.error) throw new Error(data.error);
-        setCalendar(data.calendar || []);
+        return data.calendar || [];
+      });
+
+    // Forward-looking: fetch cheap-calendar for current + next 3 months
+    const now = new Date();
+    const monthsToFetch = Array.from({ length: 4 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    });
+
+    const cheapFetches = monthsToFetch.map(month =>
+      fetch(`/api/flights/cheap-calendar?departure=${origin.iata}&arrival=${dest.iata}&month=${month}`)
+        .then(r => r.ok ? r.json() : { entries: [] })
+        .then(d => Array.isArray(d.entries) ? d.entries : [])
+        .catch(() => [])
+    );
+
+    Promise.all([baseFetch.catch(err => { setError(err.message); return []; }), ...cheapFetches])
+      .then(([base, ...cheapMonths]) => {
+        // Build map: prefer cheap-calendar prices over base for same date
+        const merged = new Map();
+        for (const e of base) {
+          if (e?.date && e.price != null) merged.set(e.date, e.price);
+        }
+        for (const monthEntries of cheapMonths) {
+          for (const e of monthEntries) {
+            if (e?.date && e.price != null) merged.set(e.date, e.price);
+          }
+        }
+        setCalendar(Array.from(merged, ([date, price]) => ({ date, price })));
       })
-      .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, [origin.iata, dest.iata]);
 

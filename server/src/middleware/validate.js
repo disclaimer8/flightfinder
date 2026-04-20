@@ -114,16 +114,57 @@ function exploreQuery(req, res, next) {
     return bad(res, 'aircraftModel must be 1–6 alphanumeric characters');
   }
 
-  if (!aircraftType && !aircraftModel) {
-    return bad(res, 'Either aircraftType or aircraftModel is required for explore');
-  }
-
   req.validatedQuery = {
     departure:    dep,
     date:         date || null,
     aircraftType: aircraftType?.toLowerCase() || null,
     aircraftModel: aircraftModel?.toUpperCase() || null,
     sanitisedCacheKey: `${dep}:${sanitiseKey(date)}:${sanitiseKey(aircraftType)}:${sanitiseKey(aircraftModel)}`,
+  };
+
+  next();
+}
+
+/**
+ * Validate GET /api/flights/cheap-calendar  query params
+ */
+function cheapCalendarQuery(req, res, next) {
+  const { departure, arrival, month, currency } = req.query;
+
+  if (!departure || !arrival) {
+    return bad(res, 'departure and arrival are required');
+  }
+
+  const dep = departure.toUpperCase().trim();
+  const arr = arrival.toUpperCase().trim();
+
+  if (!IATA_RE.test(dep)) return bad(res, 'departure must be a 2–3 letter IATA code');
+  if (!IATA_RE.test(arr)) return bad(res, 'arrival must be a 2–3 letter IATA code');
+  if (dep === arr)         return bad(res, 'departure and arrival cannot be the same airport');
+
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+    return bad(res, 'month must be YYYY-MM');
+  }
+
+  const [y, m] = month.split('-').map(Number);
+  if (m < 1 || m > 12) return bad(res, 'month is not a valid calendar month');
+
+  const now = new Date();
+  const monthStart = new Date(y, m - 1, 1);
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  if (monthStart < currentMonthStart) return bad(res, 'month must be the current month or later');
+
+  const cur = (currency || 'usd').toLowerCase();
+  if (cur !== 'usd' && cur !== 'eur') {
+    return bad(res, 'currency must be usd or eur');
+  }
+
+  req.validatedQuery = {
+    departure: dep,
+    arrival:   arr,
+    month,
+    currency:  cur,
+    sanitisedCacheKey: `${dep}:${arr}:${month}:${cur}`,
   };
 
   next();
@@ -272,4 +313,4 @@ function aircraftSearchQuery(req, res, next) {
   next();
 }
 
-module.exports = { searchQuery, exploreQuery, bookBody, sanitiseKey, authBody, aircraftSearchQuery };
+module.exports = { searchQuery, exploreQuery, cheapCalendarQuery, bookBody, sanitiseKey, authBody, aircraftSearchQuery };

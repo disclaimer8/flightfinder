@@ -605,6 +605,63 @@ exports.exploreDestinations = async (req, res) => {
 };
 
 /**
+ * Cheapest prices per day for a given route + month, via Travelpayouts.
+ * GET /api/flights/cheap-calendar?departure=LHR&arrival=JFK&month=2026-05&currency=usd
+ */
+exports.getCheapCalendar = async (req, res) => {
+  const vq = req.validatedQuery || {};
+  const origin      = vq.departure;
+  const destination = vq.arrival;
+  const month       = vq.month;
+  const currency    = vq.currency || 'usd';
+
+  const empty = {
+    origin,
+    destination,
+    month,
+    currency,
+    source: 'travelpayouts',
+    entries: [],
+  };
+
+  if (!travelpayoutsService.isConfigured()) {
+    return res.json(empty);
+  }
+
+  const cacheKey = `cheap-cal:${vq.sanitisedCacheKey || `${origin}:${destination}:${month}:${currency}`}`;
+
+  try {
+    const { data: entries } = await cacheService.getOrFetch(
+      cacheKey,
+      async () => {
+        const calendar = await travelpayoutsService.getPricesCalendar({
+          origin,
+          destination,
+          month,
+          currency,
+        });
+        return (calendar || [])
+          .filter(e => e && e.date && typeof e.price === 'number')
+          .map(e => ({ date: e.date, price: e.price }));
+      },
+      3600
+    );
+
+    res.json({
+      origin,
+      destination,
+      month,
+      currency,
+      source: 'travelpayouts',
+      entries: Array.isArray(entries) ? entries : [],
+    });
+  } catch (err) {
+    console.error('[cheap-calendar] failed:', err.message);
+    res.json(empty);
+  }
+};
+
+/**
  * Build a normalized itinerary object from an Amadeus itinerary + dictionaries
  */
 function buildItinerary(itinerary, carriers, aircraftDict) {
