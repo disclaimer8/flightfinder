@@ -5,6 +5,7 @@ const amadeusService = require('../services/amadeusService');
 const duffelService = require('../services/duffelService');
 const cacheService = require('../services/cacheService');
 const openFlights = require('../services/openFlightsService');
+const travelpayoutsService = require('../services/travelpayoutsService');
 
 const FLIGHT_API = process.env.FLIGHT_API || 'amadeus'; // 'amadeus' | 'duffel'
 
@@ -513,6 +514,7 @@ exports.exploreDestinations = async (req, res) => {
       batch.map(async (dest) => {
         const exploreApi = FLIGHT_API;
         const segCacheKey = `raw:${exploreApi}:${depCode}:${dest.code}:${searchDate}:1:`;
+        let primaryFailed = false;
         try {
           const { data: raw } = await cacheService.getOrFetch(segCacheKey, () => {
             const params = { departure_airport: depCode, arrival_airport: dest.code, departure_date: searchDate, passengers: 1 };
@@ -524,39 +526,69 @@ exports.exploreDestinations = async (req, res) => {
           const flights = exploreApi === 'duffel' && process.env.DUFFEL_API_KEY
             ? formatDuffelFlights(raw)
             : formatAmadeusFlights(raw);
-          if (!flights.length) return null;
 
-          // Enrich aircraft data
-          await enrichWithAircraftData(flights, []);
+          if (flights.length) {
+            // Enrich aircraft data
+            await enrichWithAircraftData(flights, []);
 
-          // Filter by aircraft criteria
-          const matching = flights.filter(f => {
-            if (aircraftModel) return f.aircraftCode === aircraftModel.toUpperCase();
-            if (aircraftType) return f.aircraft?.type === aircraftType.toLowerCase();
-            return true;
-          });
+            // Filter by aircraft criteria
+            const matching = flights.filter(f => {
+              if (aircraftModel) return f.aircraftCode === aircraftModel.toUpperCase();
+              if (aircraftType) return f.aircraft?.type === aircraftType.toLowerCase();
+              return true;
+            });
 
-          if (!matching.length) return null;
-
-          // Return cheapest matching flight
-          const best = matching.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
-
-          return {
-            destination: dest,
-            price: best.price,
-            currency: best.currency,
-            duration: best.duration,
-            stops: best.stops ?? 0,
-            airline: best.airline,
-            aircraftCode: best.aircraftCode,
-            aircraftName: best.aircraft?.name || best.aircraftCode,
-            aircraftType: best.aircraft?.type || 'jet',
-            departureTime: best.departureTime,
-            arrivalTime: best.arrivalTime,
-          };
-        } catch {
-          return null;
+            if (matching.length) {
+              const best = matching.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
+              return {
+                destination: dest,
+                price: best.price,
+                currency: best.currency,
+                duration: best.duration,
+                stops: best.stops ?? 0,
+                airline: best.airline,
+                aircraftCode: best.aircraftCode,
+                aircraftName: best.aircraft?.name || best.aircraftCode,
+                aircraftType: best.aircraft?.type || 'jet',
+                departureTime: best.departureTime,
+                arrivalTime: best.arrivalTime,
+                source: exploreApi,
+              };
+            }
+          }
+        } catch (err) {
+          primaryFailed = true;
+          console.warn(`[explore] ${depCode}→${dest.code} primary (${exploreApi}) failed:`, err.message);
         }
+
+        // Aircraft filters can't be satisfied by price-only feeds, skip fallback in that case.
+        if (aircraftType || aircraftModel) return null;
+
+        // Fallback: Travelpayouts cheap-prices feed. Far lower rate-limit, works when
+        // Duffel/Amadeus throttles or returns empty sets for unpopular routes.
+        if (!travelpayoutsService.isConfigured()) return null;
+        const tp = await travelpayoutsService.getCheapest({
+          origin: depCode,
+          destination: dest.code,
+          date: searchDate,
+          currency: 'usd',
+        });
+        if (!tp) return null;
+
+        return {
+          destination: dest,
+          price: tp.price,
+          currency: tp.currency,
+          duration: tp.durationMinutes ? `${Math.floor(tp.durationMinutes / 60)}h ${tp.durationMinutes % 60}m` : null,
+          stops: tp.stops ?? 0,
+          airline: tp.airline,
+          aircraftCode: null,
+          aircraftName: null,
+          aircraftType: 'jet',
+          departureTime: tp.departureTime,
+          arrivalTime: null,
+          source: primaryFailed ? 'travelpayouts-fallback' : 'travelpayouts',
+        };
       })
     );
 

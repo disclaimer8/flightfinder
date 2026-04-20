@@ -73,7 +73,7 @@ function ItineraryRow({ itinerary, label }) {
   );
 }
 
-const TP_MARKER = '509158';
+const TP_MARKER = '709966';
 
 function buildBookingUrl(flight, passengers) {
   const dep = flight.departure?.code;
