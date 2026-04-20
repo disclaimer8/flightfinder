@@ -355,7 +355,7 @@ function scheduledAircraftQuery(req, res, next) {
 /**
  * Validate GET /api/aircraft/routes  query params
  *   family       required slug, e.g. "a380"
- *   origins      required CSV of 1..10 IATA codes
+ *   origins      optional CSV of 0..10 IATA codes; empty = global map
  *   windowDays   optional, default 14, max 90
  */
 function aircraftRoutesQuery(req, res, next) {
@@ -367,18 +367,20 @@ function aircraftRoutesQuery(req, res, next) {
     return bad(res, 'family is required');
   }
 
-  if (!origins || typeof origins !== 'string') {
-    return bad(res, 'origins is required (CSV of IATA codes)');
+  // origins is optional — omitted/empty means "worldwide" global map for the family.
+  let originsUpper = [];
+  if (origins !== undefined && origins !== '' && origins !== null) {
+    if (typeof origins !== 'string') {
+      return bad(res, 'origins must be a CSV string of IATA codes');
+    }
+    const list = origins.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+    if (list.length > 10) return bad(res, 'origins must contain at most 10 IATA codes');
+    for (const o of list) {
+      if (!IATA_RE.test(o)) return bad(res, `origin "${o}" is not a valid IATA code`);
+    }
+    const seen = new Set();
+    originsUpper = list.filter(o => (seen.has(o) ? false : (seen.add(o), true)));
   }
-  const list = origins.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
-  if (list.length === 0) return bad(res, 'origins must contain at least one IATA code');
-  if (list.length > 10)  return bad(res, 'origins must contain at most 10 IATA codes');
-  for (const o of list) {
-    if (!IATA_RE.test(o)) return bad(res, `origin "${o}" is not a valid IATA code`);
-  }
-  // De-dupe while preserving first occurrence.
-  const seen = new Set();
-  const originsUpper = list.filter(o => (seen.has(o) ? false : (seen.add(o), true)));
 
   let wd = 14;
   if (windowDays !== undefined) {

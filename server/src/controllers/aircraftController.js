@@ -51,20 +51,24 @@ exports.getAircraftRoutes = async (req, res) => {
   if (!fam) return res.status(400).json({ success: false, message: 'unknown aircraft family' });
   const slug = slugify(fam.name);
 
+  const globalMode = !requested || requested.length === 0;
+
   // Resolve requested IATAs to airports; drop unknown silently.
   const origins = [];
-  for (const iata of requested) {
-    const ap = openFlights.getAirport(iata);
-    if (ap && ap.lat != null && ap.lon != null) {
-      origins.push({ iata: ap.iata, lat: ap.lat, lon: ap.lon, name: ap.name });
+  if (!globalMode) {
+    for (const iata of requested) {
+      const ap = openFlights.getAirport(iata);
+      if (ap && ap.lat != null && ap.lon != null) {
+        origins.push({ iata: ap.iata, lat: ap.lat, lon: ap.lon, name: ap.name });
+      }
     }
-  }
-  if (origins.length === 0) {
-    return res.status(400).json({ success: false, message: 'no valid origins' });
+    if (origins.length === 0) {
+      return res.status(400).json({ success: false, message: 'no valid origins' });
+    }
   }
 
   const originIatas = origins.map(o => o.iata);
-  const cacheKey = `aircraft-routes:v2:${slug}:${[...originIatas].sort().join(',')}:${windowDays}`;
+  const cacheKey = `aircraft-routes:v2:${slug}:${[...originIatas].sort().join(',')}:${windowDays}${globalMode ? ':GLOBAL' : ''}`;
 
   try {
     const { data } = await cacheService.getOrFetch(cacheKey, async () => {
@@ -97,8 +101,27 @@ exports.getAircraftRoutes = async (req, res) => {
       }
       const airports = [...airportsMap.values()];
 
+      // In global mode, synthesise origins[] from the top unique `dep` airports
+      // that appeared in the results, ranked by total route count. This gives
+      // the client a stable palette assignment without asking the user.
+      let outOrigins = origins.map(o => ({ iata: o.iata, lat: o.lat, lon: o.lon, name: o.name }));
+      if (globalMode && routes.length > 0) {
+        const depCounts = new Map();
+        for (const r of routes) {
+          depCounts.set(r.dep, (depCounts.get(r.dep) || 0) + r.count);
+        }
+        const topDeps = [...depCounts.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([iata]) => iata);
+        outOrigins = topDeps
+          .map(iata => airportsMap.get(iata))
+          .filter(Boolean)
+          .map(a => ({ iata: a.iata, lat: a.lat, lon: a.lon, name: a.name }));
+      }
+
       let suggestions = [];
-      if (routes.length === 0) {
+      if (!globalMode && routes.length === 0) {
         // Find up to 5 nearby airports (within 1000 km of any origin) that DO
         // have routes for this family in the same window.
         const seen  = new Set(originIatas);
@@ -132,10 +155,11 @@ exports.getAircraftRoutes = async (req, res) => {
         familyName:  fam.family.label || fam.name,
         icaoTypes:   fam.icaoList.slice().sort(),
         windowDays,
-        origins:     origins.map(o => ({ iata: o.iata, lat: o.lat, lon: o.lon, name: o.name })),
+        origins:     outOrigins,
         airports,
         routes,
         suggestions,
+        global:      globalMode,
       };
     }, 1800);
 

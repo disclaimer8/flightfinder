@@ -120,6 +120,41 @@ describe('GET /api/aircraft/routes — error branches', () => {
   });
 });
 
+describe('GET /api/aircraft/routes — global (worldwide) mode', () => {
+  it('returns all A380 routes worldwide when origins is omitted', async () => {
+    const res = await request(app).get('/api/aircraft/routes?family=a380');
+    expect(res.status).toBe(200);
+    expect(res.body.global).toBe(true);
+
+    const deps = new Set(res.body.routes.map(r => r.dep));
+    // Seeded A380 deps are PRG, VIE, FRA — all should appear in worldwide view.
+    expect(deps.has('PRG')).toBe(true);
+    expect(deps.has('VIE')).toBe(true);
+    expect(deps.has('FRA')).toBe(true);
+
+    // origins[] is synthesised from top deps — should be non-empty with lat/lon.
+    expect(Array.isArray(res.body.origins)).toBe(true);
+    expect(res.body.origins.length).toBeGreaterThan(0);
+    for (const o of res.body.origins) {
+      expect(o).toMatchObject({
+        iata: expect.stringMatching(/^[A-Z]{3}$/),
+        lat:  expect.any(Number),
+        lon:  expect.any(Number),
+      });
+    }
+
+    // Suggestions are not computed in global mode.
+    expect(res.body.suggestions).toEqual([]);
+  });
+
+  it('accepts explicit empty origins= as global mode', async () => {
+    const res = await request(app).get('/api/aircraft/routes?family=a380&origins=');
+    expect(res.status).toBe(200);
+    expect(res.body.global).toBe(true);
+    expect(res.body.routes.length).toBeGreaterThan(0);
+  });
+});
+
 describe('GET /api/aircraft/routes — suggestions branch', () => {
   it('populates suggestions when routes is empty and a nearby airport has data', async () => {
     // LUX (Luxembourg) has no A380 data itself but FRA (≈175 km away) does.

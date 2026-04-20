@@ -97,13 +97,8 @@ function App() {
       console.warn('[App] origin resolution failed:', err);
     }
 
-    if (!originIatas.length) {
-      // No origins resolved — fall back to the classic streaming results view.
-      setAcView('form');
-      acSearch(params);
-      return;
-    }
-
+    // No origins resolved (or user didn't pick any) → global worldwide map
+    // for the family. Backend /api/aircraft/routes now accepts empty origins.
     setAcMapProps({
       familyName: params.familyName,
       family: params.familyName, // backend currently keys off familyName

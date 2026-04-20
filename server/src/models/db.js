@@ -234,9 +234,12 @@ module.exports = {
    * @param {number}   args.cutoffMs  unix ms — exclude rows older than this
    */
   getAircraftRoutes: ({ icaoList, origins, cutoffMs }) => {
-    if (!icaoList?.length || !origins?.length) return [];
+    if (!icaoList?.length) return [];
     const acPh = icaoList.map(() => '?').join(',');
-    const orPh = origins.map(() => '?').join(',');
+    const hasOrigins = Array.isArray(origins) && origins.length > 0;
+    const originClause = hasOrigins
+      ? `AND dep_iata IN (${origins.map(() => '?').join(',')})`
+      : '';
     const sql = `
       SELECT dep_iata AS dep,
              arr_iata AS arr,
@@ -245,13 +248,16 @@ module.exports = {
              MAX(seen_at) AS lastSeen
       FROM observed_routes
       WHERE aircraft_icao IN (${acPh})
-        AND dep_iata      IN (${orPh})
+        ${originClause}
         AND seen_at       >= ?
       GROUP BY dep_iata, arr_iata
       ORDER BY count DESC, dep ASC, arr ASC
       LIMIT 500
     `;
-    return db.prepare(sql).all(...icaoList, ...origins, cutoffMs);
+    const params = hasOrigins
+      ? [...icaoList, ...origins, cutoffMs]
+      : [...icaoList, cutoffMs];
+    return db.prepare(sql).all(...params);
   },
 
   /**

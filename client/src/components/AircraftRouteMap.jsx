@@ -72,7 +72,7 @@ export default function AircraftRouteMap({
     const origins = (originIatas || []).filter(Boolean).join(',');
     const qs = new URLSearchParams();
     qs.set('family', family || familyName || '');
-    qs.set('origins', origins);
+    if (origins) qs.set('origins', origins); // omit for global (worldwide) mode
     qs.set('windowDays', '14');
     if (refreshTick) qs.set('_', String(Date.now()));
 
