@@ -117,6 +117,45 @@ function normaliseFlight(f) {
   };
 }
 
+// Airport-window endpoint uses a different schema: each item has a single
+// `movement` block describing the OTHER endpoint. With direction=Departure,
+// `movement` is the arrival; the queried airport is the departure (implicit).
+function normaliseMovement(f, queriedIata, direction) {
+  const m = f?.movement || {};
+  const otherIata = m.airport?.iata || null;
+  const isDeparture = direction === 'Departure';
+  const depIata = isDeparture ? queriedIata : otherIata;
+  const arrIata = isDeparture ? otherIata : queriedIata;
+  const depTime = isDeparture ? {} : (m.scheduledTime || {});
+  const arrTime = isDeparture ? (m.scheduledTime || {}) : {};
+  const depTerm  = isDeparture ? null : (m.terminal || null);
+  const arrTerm  = isDeparture ? (m.terminal || null) : null;
+  return {
+    number: typeof f?.number === 'string' ? f.number.replace(/\s+/g, '') : null,
+    airline: {
+      iata: f?.airline?.iata || null,
+      icao: f?.airline?.icao || null,
+      name: f?.airline?.name || null,
+    },
+    dep: {
+      iata: depIata,
+      scheduledUtc: depTime.utc || null,
+      scheduledLocal: depTime.local || null,
+      terminal: depTerm,
+    },
+    arr: {
+      iata: arrIata,
+      scheduledUtc: arrTime.utc || null,
+      scheduledLocal: arrTime.local || null,
+      terminal: arrTerm,
+    },
+    aircraft: enrichAircraft(f?.aircraft, depIata, arrIata),
+    status: f?.status || null,
+    codeshareStatus: f?.codeshareStatus || null,
+    isCargo: !!f?.isCargo,
+  };
+}
+
 // ── Public endpoints ───────────────────────────────────────────────────────
 
 /**
@@ -191,7 +230,7 @@ exports.getAirportDepartures = async (iata, fromLocal, toLocal) => {
           }
         );
         const list = Array.isArray(res.data?.departures) ? res.data.departures : [];
-        return list.map(normaliseFlight);
+        return list.map((f) => normaliseMovement(f, code, 'Departure'));
       });
     } catch (err) {
       const status = err?.response?.status;
@@ -210,5 +249,6 @@ exports.getAirportDepartures = async (iata, fromLocal, toLocal) => {
 // ── Internals exposed for tests ────────────────────────────────────────────
 exports._enrichAircraft = enrichAircraft;
 exports._normaliseFlight = normaliseFlight;
+exports._normaliseMovement = normaliseMovement;
 exports._resetThrottleForTests = () => { _lastCall = 0; _chain = Promise.resolve(); };
 exports._MIN_INTERVAL_MS = MIN_INTERVAL_MS;

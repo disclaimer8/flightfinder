@@ -217,21 +217,21 @@ describe('aerodataboxService.getAirportDepartures', () => {
       .mockReturnValueOnce({ icaoType: 'B77W', reg: 'G-STBA' })
       .mockReturnValueOnce(null);
 
+    // Real AeroDataBox airport-window schema: each row has a single `movement`
+    // block describing the OTHER endpoint (arrival, because direction=Departure).
     axios.get.mockResolvedValueOnce({
       data: {
         departures: [
           {
             number: 'BA 117',
             airline: { iata: 'BA' },
-            departure: { airport: { iata: 'LHR' }, scheduledTime: { utc: '2026-05-01T08:00Z' } },
-            arrival:   { airport: { iata: 'JFK' }, scheduledTime: { utc: '2026-05-01T15:00Z' } },
+            movement: { airport: { iata: 'JFK' }, scheduledTime: { utc: '2026-05-01T15:00Z' } },
             aircraft: { reg: 'G-STBA', modeS: '4007F2' },
           },
           {
             number: 'VS 3',
             airline: { iata: 'VS' },
-            departure: { airport: { iata: 'LHR' }, scheduledTime: { utc: '2026-05-01T09:00Z' } },
-            arrival:   { airport: { iata: 'JFK' }, scheduledTime: { utc: '2026-05-01T16:30Z' } },
+            movement: { airport: { iata: 'JFK' }, scheduledTime: { utc: '2026-05-01T16:30Z' } },
             aircraft: { model: 'Airbus A350' }, // no hex → null icaoType
           },
         ],
@@ -240,7 +240,11 @@ describe('aerodataboxService.getAirportDepartures', () => {
 
     const out = await aerodataboxService.getAirportDepartures('LHR', '2026-05-01T00:00', '2026-05-01T12:00');
     expect(out).toHaveLength(2);
+    expect(out[0].dep.iata).toBe('LHR');
+    expect(out[0].arr.iata).toBe('JFK');
     expect(out[0].aircraft.icaoType).toBe('B77W');
+    expect(out[1].dep.iata).toBe('LHR');
+    expect(out[1].arr.iata).toBe('JFK');
     expect(out[1].aircraft.icaoType).toBeNull();
     expect(out[1].aircraft.model).toBe('Airbus A350');
 
