@@ -33,6 +33,14 @@ FlightFinder is a full-stack web application that lets you search for flights be
 - Results show the cheapest matching fare per destination, including duration, stops, airline, and departure time
 - Clicking a destination pre-fills the search form and triggers a full flight search automatically
 
+### By Aircraft (Map)
+
+- Pick an aircraft family (Boeing 747, Airbus A380, A340 family, …) and either an exact origin (e.g. `LHR`) or a city with a 50–2000 km radius
+- Results render as a world map of every route that family has actually been observed flying from those airports in the last 14 days — one geodesic arc per leg, origin-coloured
+- Click an arc or destination dot to open a side panel and pull real, priced flights for that specific leg via the existing flight-search stream
+- When nothing matches, the server returns up to 5 nearby hubs that do operate the family — clickable chips swap the origin set without leaving the map
+- Backed by the [`/api/aircraft/routes`](docs/api/aircraft-routes.md) endpoint, which reads from a local `observed_routes` table populated by adsb.lol ADS-B observations and AirLabs schedules. Architecture walkthrough in [docs/architecture/phase3-by-aircraft-map.md](docs/architecture/phase3-by-aircraft-map.md).
+
 ### Auth
 
 - Email and password registration and login
