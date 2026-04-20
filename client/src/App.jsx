@@ -7,11 +7,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import SkeletonResults from './components/SkeletonResults';
 import AuthModal from './components/AuthModal';
 import AircraftSearchForm from './components/AircraftSearchForm';
-import AircraftSearchResults from './components/AircraftSearchResults';
-import AircraftRouteMap from './components/AircraftRouteMap';
 import RouteMap from './components/RouteMap';
 import { useFlightSearch } from './hooks/useFlightSearch';
-import { useAircraftSearch } from './hooks/useAircraftSearch';
 import { FilterOptionsContext } from './context/FilterOptionsContext';
 import { useAuth } from './context/AuthContext';
 import { API_BASE } from './utils/api';
@@ -27,9 +24,6 @@ function App() {
   const [prefillArrival, setPrefillArrival] = useState(null);
   const [searchMode, setSearchMode] = useState('search'); // 'search' | 'by-aircraft' | 'map'
   const [acFamilyName, setAcFamilyName] = useState('');
-  // Phase 3 — "by aircraft" has two sub-views: 'form' → 'map'
-  const [acView, setAcView] = useState('form'); // 'form' | 'map'
-  const [acMapProps, setAcMapProps] = useState(null); // { familyName, date, passengers, originIatas }
   // Email verification via URL: ?action=verify&token=...
   const [verifyState, setVerifyState] = useState(null); // null | 'pending' | 'success' | 'error'
   const [verifyMessage, setVerifyMessage] = useState('');
@@ -49,76 +43,19 @@ function App() {
     clearError,
   } = useFlightSearch(filterOptions);
 
-  const {
-    results: acResults,
-    progress: acProgress,
-    pct: acPct,
-    status: acStatus,
-    error: acError,
-    search: acSearch,
-    cancel: acCancel,
-  } = useAircraftSearch();
-
-  const handleAircraftSearch = async (params) => {
+  // "By aircraft" is now a thin wrapper over the normal flight search:
+  // FROM + TO + date + familyName + passengers → backend filters
+  // results by the family's ICAO list and returns standard flight cards.
+  const handleAircraftSearch = (params) => {
     setAcFamilyName(params.familyName);
-
-    // Phase 3: resolve origins to a concrete IATA set and switch to map view.
-    // The form emits either { iata, radius? } OR { city, radius } OR neither.
-    let originIatas = [];
-    try {
-      if (params.iata && params.radius) {
-        // Exact origin + radius → fan out via /api/map/radius.
-        const airportRes = await fetch(`/api/aircraft/airports/search?q=${encodeURIComponent(params.iata)}&limit=1`);
-        const airportJson = await airportRes.json();
-        const anchor = airportJson?.airports?.[0];
-        if (anchor?.lat != null && anchor?.lon != null) {
-          const near = await fetch(`/api/map/radius?lat=${anchor.lat}&lon=${anchor.lon}&radius=${params.radius}`)
-            .then(r => r.json())
-            .catch(() => null);
-          originIatas = (near?.airports || []).map(a => a.iata).filter(Boolean);
-        }
-        if (!originIatas.length) originIatas = [params.iata];
-      } else if (params.iata) {
-        originIatas = [params.iata];
-      } else if (params.city && params.radius) {
-        // Free-text city — resolve to airport coords, then fan out.
-        const searchRes = await fetch(`/api/aircraft/airports/search?q=${encodeURIComponent(params.city)}&limit=1`);
-        const searchJson = await searchRes.json();
-        const anchor = searchJson?.airports?.[0];
-        if (anchor?.lat != null && anchor?.lon != null) {
-          const near = await fetch(`/api/map/radius?lat=${anchor.lat}&lon=${anchor.lon}&radius=${params.radius}`)
-            .then(r => r.json())
-            .catch(() => null);
-          originIatas = (near?.airports || []).map(a => a.iata).filter(Boolean);
-          if (!originIatas.length && anchor.iata) originIatas = [anchor.iata];
-        }
-      }
-    } catch (err) {
-      console.warn('[App] origin resolution failed:', err);
-    }
-
-    // No origins resolved (or user didn't pick any) → global worldwide map
-    // for the family. Backend /api/aircraft/routes now accepts empty origins.
-    setAcMapProps({
-      familyName: params.familyName,
-      family: params.familyName, // backend currently keys off familyName
-      date: params.date,
+    handleSearch({
+      departure:  params.departure,
+      arrival:    params.arrival,
+      date:       params.date,
       passengers: params.passengers,
-      originIatas,
+      familyName: params.familyName,
     });
-    setAcView('map');
   };
-
-  // Empty-state "Try this hub" chip dispatches a window event — swap origins.
-  useEffect(() => {
-    const handler = (e) => {
-      const iata = e.detail?.iata;
-      if (!iata || !acMapProps) return;
-      setAcMapProps({ ...acMapProps, originIatas: [iata] });
-    };
-    window.addEventListener('arm-swap-origin', handler);
-    return () => window.removeEventListener('arm-swap-origin', handler);
-  }, [acMapProps]);
 
   // Handle email verification link: ?action=verify&token=...
   useEffect(() => {
@@ -269,18 +206,12 @@ function App() {
                 />
               )}
 
-              {searchMode === 'by-aircraft' && acView === 'form' && (
+              {searchMode === 'by-aircraft' && (
                 <AircraftSearchForm
                   onSearch={handleAircraftSearch}
-                  loading={acStatus === 'searching'}
-                  onCancel={acCancel}
+                  loading={loading}
+                  onCancel={clearError}
                 />
-              )}
-
-              {searchMode === 'by-aircraft' && acView === 'map' && acMapProps && (
-                <p className="explore-hint" style={{ marginTop: 0 }}>
-                  Showing recent <strong>{acMapProps.familyName}</strong> routes from {acMapProps.originIatas.length} airport{acMapProps.originIatas.length === 1 ? '' : 's'}.
-                </p>
               )}
 
               {searchMode === 'map' && (
@@ -297,28 +228,6 @@ function App() {
             <ErrorBoundary>
               <RouteMap />
             </ErrorBoundary>
-          ) : searchMode === 'by-aircraft' ? (
-            <ErrorBoundary>
-              {acView === 'map' && acMapProps ? (
-                <AircraftRouteMap
-                  familyName={acMapProps.familyName}
-                  family={acMapProps.family}
-                  date={acMapProps.date}
-                  passengers={acMapProps.passengers}
-                  originIatas={acMapProps.originIatas}
-                  onBack={() => { setAcView('form'); setAcMapProps(null); }}
-                />
-              ) : (
-                <AircraftSearchResults
-                  results={acResults}
-                  progress={acProgress}
-                  pct={acPct}
-                  status={acStatus}
-                  error={acError}
-                  familyName={acFamilyName}
-                />
-              )}
-            </ErrorBoundary>
           ) : (
             <>
               {error && (
@@ -330,7 +239,7 @@ function App() {
 
               {loading && <SkeletonResults message={loadingMessage} />}
 
-              {!loading && exploreResults !== null && (
+              {!loading && searchMode === 'search' && exploreResults !== null && (
                 <ErrorBoundary>
                   <ExploreResults
                     results={exploreResults}
@@ -341,7 +250,7 @@ function App() {
                 </ErrorBoundary>
               )}
 
-              {!loading && exploreResults === null && (
+              {!loading && (searchMode !== 'search' || exploreResults === null) && (
                 <ErrorBoundary>
                   <FlightResults flights={flights} source={apiSource} hasSearched={hasSearched} initialAirlines={searchedAirlines} />
                 </ErrorBoundary>

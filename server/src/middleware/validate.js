@@ -33,7 +33,7 @@ function sanitiseKey(str) {
  * Validate GET /api/flights  query params
  */
 function searchQuery(req, res, next) {
-  const { departure, arrival, date, returnDate, passengers, aircraftType, aircraftModel } = req.query;
+  const { departure, arrival, date, returnDate, passengers, aircraftType, aircraftModel, familyName } = req.query;
 
   if (!departure || !arrival) {
     return bad(res, 'departure and arrival are required');
@@ -72,6 +72,12 @@ function searchQuery(req, res, next) {
     return bad(res, 'aircraftModel must be 1–6 alphanumeric characters');
   }
 
+  if (familyName !== undefined && familyName !== '') {
+    if (typeof familyName !== 'string' || familyName.trim().length < 2 || familyName.length > 60) {
+      return bad(res, 'familyName must be a 2–60 char string');
+    }
+  }
+
   // Normalise onto req so controllers get clean values
   req.validatedQuery = {
     departure:    dep,
@@ -81,6 +87,7 @@ function searchQuery(req, res, next) {
     passengers:   pax || 1,
     aircraftType: aircraftType?.toLowerCase() || null,
     aircraftModel: aircraftModel?.toUpperCase() || null,
+    familyName:   (familyName && familyName.trim()) || null,
     sanitisedCacheKey: `${dep}:${arr}:${date || ''}:${pax || 1}:${returnDate || ''}`,
   };
 

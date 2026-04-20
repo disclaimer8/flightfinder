@@ -7,6 +7,7 @@ const cacheService = require('../services/cacheService');
 const openFlights = require('../services/openFlightsService');
 const travelpayoutsService = require('../services/travelpayoutsService');
 const aerodataboxService = require('../services/aerodataboxService');
+const { resolveFamily } = require('../models/aircraftFamilies');
 
 const FLIGHT_API = process.env.FLIGHT_API || 'amadeus'; // 'amadeus' | 'duffel'
 
@@ -22,6 +23,7 @@ exports.searchFlights = async (req, res) => {
   const returnDate   = vq.returnDate   || req.query.returnDate;
   const aircraftType = vq.aircraftType || req.query.aircraftType;
   const aircraftModel = vq.aircraftModel || req.query.aircraftModel;
+  const familyName   = vq.familyName   || req.query.familyName;
   const passengers   = vq.passengers   || parseInt(req.query.passengers, 10) || 1;
   const { useMockData, api } = req.query;
 
@@ -94,6 +96,22 @@ exports.searchFlights = async (req, res) => {
 
     if (aircraftModel) {
       flights = flights.filter(f => f.aircraftCode === aircraftModel.toUpperCase());
+    }
+
+    // Family filter — accepts slug ("a380") or display name ("Airbus A380").
+    // Matches when any of the flight's aircraftCode / family.icaoList codes
+    // intersect the family's icaoList.
+    if (familyName) {
+      const fam = resolveFamily(familyName);
+      if (fam && Array.isArray(fam.icaoList) && fam.icaoList.length) {
+        const allowed = new Set(fam.icaoList.map(c => String(c).toUpperCase()));
+        flights = flights.filter(f => {
+          const code = (f.aircraftCode || '').toUpperCase();
+          return code && allowed.has(code);
+        });
+      } else {
+        flights = [];
+      }
     }
 
     res.json({
