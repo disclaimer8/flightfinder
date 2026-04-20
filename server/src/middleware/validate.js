@@ -352,4 +352,46 @@ function scheduledAircraftQuery(req, res, next) {
   next();
 }
 
-module.exports = { searchQuery, exploreQuery, cheapCalendarQuery, bookBody, sanitiseKey, authBody, aircraftSearchQuery, scheduledAircraftQuery };
+/**
+ * Validate GET /api/aircraft/routes  query params
+ *   family       required slug, e.g. "a380"
+ *   origins      required CSV of 1..10 IATA codes
+ *   windowDays   optional, default 14, max 90
+ */
+function aircraftRoutesQuery(req, res, next) {
+  const { family, origins, windowDays } = req.query;
+
+  // family accepts either a slug ("a340", "a320-family") or a display name
+  // ("Airbus A340", "Airbus A320 family"). Controller normalises via resolveFamily().
+  if (!family || typeof family !== 'string' || family.trim().length < 2 || family.length > 64) {
+    return bad(res, 'family is required');
+  }
+
+  if (!origins || typeof origins !== 'string') {
+    return bad(res, 'origins is required (CSV of IATA codes)');
+  }
+  const list = origins.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  if (list.length === 0) return bad(res, 'origins must contain at least one IATA code');
+  if (list.length > 10)  return bad(res, 'origins must contain at most 10 IATA codes');
+  for (const o of list) {
+    if (!IATA_RE.test(o)) return bad(res, `origin "${o}" is not a valid IATA code`);
+  }
+  // De-dupe while preserving first occurrence.
+  const seen = new Set();
+  const originsUpper = list.filter(o => (seen.has(o) ? false : (seen.add(o), true)));
+
+  let wd = 14;
+  if (windowDays !== undefined) {
+    wd = parseInt(windowDays, 10);
+    if (isNaN(wd) || wd < 1 || wd > 90) return bad(res, 'windowDays must be between 1 and 90');
+  }
+
+  req.validatedQuery = {
+    family:     family.trim(),
+    origins:    originsUpper,
+    windowDays: wd,
+  };
+  next();
+}
+
+module.exports = { searchQuery, exploreQuery, cheapCalendarQuery, bookBody, sanitiseKey, authBody, aircraftSearchQuery, scheduledAircraftQuery, aircraftRoutesQuery };

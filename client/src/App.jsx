@@ -8,6 +8,7 @@ import SkeletonResults from './components/SkeletonResults';
 import AuthModal from './components/AuthModal';
 import AircraftSearchForm from './components/AircraftSearchForm';
 import AircraftSearchResults from './components/AircraftSearchResults';
+import AircraftRouteMap from './components/AircraftRouteMap';
 import RouteMap from './components/RouteMap';
 import { useFlightSearch } from './hooks/useFlightSearch';
 import { useAircraftSearch } from './hooks/useAircraftSearch';
@@ -26,6 +27,9 @@ function App() {
   const [prefillArrival, setPrefillArrival] = useState(null);
   const [searchMode, setSearchMode] = useState('search'); // 'search' | 'by-aircraft' | 'map'
   const [acFamilyName, setAcFamilyName] = useState('');
+  // Phase 3 — "by aircraft" has two sub-views: 'form' → 'map'
+  const [acView, setAcView] = useState('form'); // 'form' | 'map'
+  const [acMapProps, setAcMapProps] = useState(null); // { familyName, date, passengers, originIatas }
   // Email verification via URL: ?action=verify&token=...
   const [verifyState, setVerifyState] = useState(null); // null | 'pending' | 'success' | 'error'
   const [verifyMessage, setVerifyMessage] = useState('');
@@ -55,10 +59,71 @@ function App() {
     cancel: acCancel,
   } = useAircraftSearch();
 
-  const handleAircraftSearch = (params) => {
+  const handleAircraftSearch = async (params) => {
     setAcFamilyName(params.familyName);
-    acSearch(params);
+
+    // Phase 3: resolve origins to a concrete IATA set and switch to map view.
+    // The form emits either { iata, radius? } OR { city, radius } OR neither.
+    let originIatas = [];
+    try {
+      if (params.iata && params.radius) {
+        // Exact origin + radius → fan out via /api/map/radius.
+        const airportRes = await fetch(`/api/aircraft/airports/search?q=${encodeURIComponent(params.iata)}&limit=1`);
+        const airportJson = await airportRes.json();
+        const anchor = airportJson?.airports?.[0];
+        if (anchor?.lat != null && anchor?.lon != null) {
+          const near = await fetch(`/api/map/radius?lat=${anchor.lat}&lon=${anchor.lon}&radius=${params.radius}`)
+            .then(r => r.json())
+            .catch(() => null);
+          originIatas = (near?.airports || []).map(a => a.iata).filter(Boolean);
+        }
+        if (!originIatas.length) originIatas = [params.iata];
+      } else if (params.iata) {
+        originIatas = [params.iata];
+      } else if (params.city && params.radius) {
+        // Free-text city — resolve to airport coords, then fan out.
+        const searchRes = await fetch(`/api/aircraft/airports/search?q=${encodeURIComponent(params.city)}&limit=1`);
+        const searchJson = await searchRes.json();
+        const anchor = searchJson?.airports?.[0];
+        if (anchor?.lat != null && anchor?.lon != null) {
+          const near = await fetch(`/api/map/radius?lat=${anchor.lat}&lon=${anchor.lon}&radius=${params.radius}`)
+            .then(r => r.json())
+            .catch(() => null);
+          originIatas = (near?.airports || []).map(a => a.iata).filter(Boolean);
+          if (!originIatas.length && anchor.iata) originIatas = [anchor.iata];
+        }
+      }
+    } catch (err) {
+      console.warn('[App] origin resolution failed:', err);
+    }
+
+    if (!originIatas.length) {
+      // No origins resolved — fall back to the classic streaming results view.
+      setAcView('form');
+      acSearch(params);
+      return;
+    }
+
+    setAcMapProps({
+      familyName: params.familyName,
+      family: params.familyName, // backend currently keys off familyName
+      date: params.date,
+      passengers: params.passengers,
+      originIatas,
+    });
+    setAcView('map');
   };
+
+  // Empty-state "Try this hub" chip dispatches a window event — swap origins.
+  useEffect(() => {
+    const handler = (e) => {
+      const iata = e.detail?.iata;
+      if (!iata || !acMapProps) return;
+      setAcMapProps({ ...acMapProps, originIatas: [iata] });
+    };
+    window.addEventListener('arm-swap-origin', handler);
+    return () => window.removeEventListener('arm-swap-origin', handler);
+  }, [acMapProps]);
 
   // Handle email verification link: ?action=verify&token=...
   useEffect(() => {
@@ -209,12 +274,18 @@ function App() {
                 />
               )}
 
-              {searchMode === 'by-aircraft' && (
+              {searchMode === 'by-aircraft' && acView === 'form' && (
                 <AircraftSearchForm
                   onSearch={handleAircraftSearch}
                   loading={acStatus === 'searching'}
                   onCancel={acCancel}
                 />
+              )}
+
+              {searchMode === 'by-aircraft' && acView === 'map' && acMapProps && (
+                <p className="explore-hint" style={{ marginTop: 0 }}>
+                  Showing recent <strong>{acMapProps.familyName}</strong> routes from {acMapProps.originIatas.length} airport{acMapProps.originIatas.length === 1 ? '' : 's'}.
+                </p>
               )}
 
               {searchMode === 'map' && (
@@ -233,14 +304,25 @@ function App() {
             </ErrorBoundary>
           ) : searchMode === 'by-aircraft' ? (
             <ErrorBoundary>
-              <AircraftSearchResults
-                results={acResults}
-                progress={acProgress}
-                pct={acPct}
-                status={acStatus}
-                error={acError}
-                familyName={acFamilyName}
-              />
+              {acView === 'map' && acMapProps ? (
+                <AircraftRouteMap
+                  familyName={acMapProps.familyName}
+                  family={acMapProps.family}
+                  date={acMapProps.date}
+                  passengers={acMapProps.passengers}
+                  originIatas={acMapProps.originIatas}
+                  onBack={() => { setAcView('form'); setAcMapProps(null); }}
+                />
+              ) : (
+                <AircraftSearchResults
+                  results={acResults}
+                  progress={acProgress}
+                  pct={acPct}
+                  status={acStatus}
+                  error={acError}
+                  familyName={acFamilyName}
+                />
+              )}
             </ErrorBoundary>
           ) : (
             <>

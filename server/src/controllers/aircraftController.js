@@ -1,4 +1,9 @@
 const aircraftData = require('../models/aircraftData');
+const { resolveFamily, slugify } = require('../models/aircraftFamilies');
+const openFlights  = require('../services/openFlightsService');
+const geocoding    = require('../services/geocodingService');
+const cacheService = require('../services/cacheService');
+const db           = require('../models/db');
 
 exports.getAllAircraft = (req, res) => {
   const aircraft = Object.entries(aircraftData).map(([code, data]) => ({
@@ -31,6 +36,114 @@ exports.getAircraftByCode = (req, res) => {
       ...aircraft
     }
   });
+};
+
+/**
+ * GET /api/aircraft/routes?family=<slug>&origins=PRG,VIE&windowDays=14
+ * Backs the "map-as-output" by-aircraft search — returns observed routes for
+ * the chosen family from the chosen origins within a rolling window.
+ * See project spec; route is registered before /:iataCode catchall.
+ */
+exports.getAircraftRoutes = async (req, res) => {
+  const { family: famInput, origins: requested, windowDays } = req.validatedQuery;
+
+  const fam = resolveFamily(famInput);
+  if (!fam) return res.status(400).json({ success: false, message: 'unknown aircraft family' });
+  const slug = slugify(fam.name);
+
+  // Resolve requested IATAs to airports; drop unknown silently.
+  const origins = [];
+  for (const iata of requested) {
+    const ap = openFlights.getAirport(iata);
+    if (ap && ap.lat != null && ap.lon != null) {
+      origins.push({ iata: ap.iata, lat: ap.lat, lon: ap.lon, name: ap.name });
+    }
+  }
+  if (origins.length === 0) {
+    return res.status(400).json({ success: false, message: 'no valid origins' });
+  }
+
+  const originIatas = origins.map(o => o.iata);
+  const cacheKey = `aircraft-routes:v2:${slug}:${[...originIatas].sort().join(',')}:${windowDays}`;
+
+  try {
+    const { data } = await cacheService.getOrFetch(cacheKey, async () => {
+      const cutoffMs = Date.now() - windowDays * 24 * 60 * 60 * 1000;
+      const rows = db.getAircraftRoutes({ icaoList: fam.icaoList, origins: originIatas, cutoffMs });
+
+      const routes = rows.map(r => ({
+        dep:       r.dep,
+        arr:       r.arr,
+        icaoTypes: (r.icaoTypes || '').split(',').filter(Boolean).sort(),
+        count:     r.count,
+        lastSeen:  new Date(r.lastSeen).toISOString(),
+      }));
+
+      // Build a dictionary of every airport referenced by routes[] so the
+      // client can render dots without a second /api/map/airports roundtrip.
+      // Include origins even if they have no routes (for the origin dots).
+      const airportsMap = new Map();
+      for (const o of origins) {
+        airportsMap.set(o.iata, { iata: o.iata, lat: o.lat, lon: o.lon, name: o.name });
+      }
+      for (const r of routes) {
+        for (const iata of [r.dep, r.arr]) {
+          if (airportsMap.has(iata)) continue;
+          const ap = openFlights.getAirport(iata);
+          if (ap && ap.lat != null && ap.lon != null) {
+            airportsMap.set(iata, { iata: ap.iata, lat: ap.lat, lon: ap.lon, name: ap.name });
+          }
+        }
+      }
+      const airports = [...airportsMap.values()];
+
+      let suggestions = [];
+      if (routes.length === 0) {
+        // Find up to 5 nearby airports (within 1000 km of any origin) that DO
+        // have routes for this family in the same window.
+        const seen  = new Set(originIatas);
+        const cand  = [];
+        for (const o of origins) {
+          const nearby = geocoding.nearbyAirports(o.lat, o.lon, 1000, 30);
+          for (const n of nearby) {
+            if (seen.has(n.iata)) continue;
+            seen.add(n.iata);
+            const routeCount = db.countFamilyRoutesFromOrigin({
+              icaoList: fam.icaoList, origin: n.iata, cutoffMs,
+            });
+            if (routeCount > 0) {
+              cand.push({
+                iata:       n.iata,
+                name:       n.name,
+                distanceKm: n.distanceKm,
+                routeCount,
+              });
+            }
+            if (cand.length >= 25) break; // bound work for cold caches
+          }
+          if (cand.length >= 25) break;
+        }
+        cand.sort((a, b) => b.routeCount - a.routeCount || a.distanceKm - b.distanceKm);
+        suggestions = cand.slice(0, 5);
+      }
+
+      return {
+        family:      slug,
+        familyName:  fam.family.label || fam.name,
+        icaoTypes:   fam.icaoList.slice().sort(),
+        windowDays,
+        origins:     origins.map(o => ({ iata: o.iata, lat: o.lat, lon: o.lon, name: o.name })),
+        airports,
+        routes,
+        suggestions,
+      };
+    }, 1800);
+
+    res.json(data);
+  } catch (err) {
+    console.error('[aircraft] getAircraftRoutes error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch aircraft routes' });
+  }
 };
 
 exports.getAircraftByType = (req, res) => {

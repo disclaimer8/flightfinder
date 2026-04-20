@@ -51,6 +51,13 @@ const families = {
   },
 
   // ── Airbus ────────────────────────────────────────────────────────────────
+  'Airbus A340': {
+    label: 'Airbus A340 (all variants)',
+    manufacturer: 'Airbus',
+    type: 'wide-body',
+    maxRange: 13700,
+    codes: new Set(['340','342','343','345','346','A340','A342','A343','A345','A346']),
+  },
   'Airbus A220': {
     label: 'Airbus A220 (C Series)',
     manufacturer: 'Airbus',
@@ -91,21 +98,21 @@ const families = {
     manufacturer: 'Airbus',
     type: 'wide-body',
     maxRange: 15090,
-    codes: new Set(['330','332','333','33E','338','339']),
+    codes: new Set(['330','332','333','33E','338','339','A330','A332','A333','A338','A339']),
   },
   'Airbus A350': {
     label: 'Airbus A350',
     manufacturer: 'Airbus',
     type: 'wide-body',
     maxRange: 16100,
-    codes: new Set(['A350','350','351','359']),
+    codes: new Set(['A350','350','351','359','A359','A35K']),
   },
   'Airbus A380': {
     label: 'Airbus A380',
     manufacturer: 'Airbus',
     type: 'wide-body',
     maxRange: 15200,
-    codes: new Set(['A380','380','388']),
+    codes: new Set(['A380','380','388','A388']),
   },
 
   // ── Embraer ───────────────────────────────────────────────────────────────
@@ -154,6 +161,44 @@ const families = {
 const familyNames = Object.keys(families);
 
 /**
+ * Derive a URL-safe slug from a family name.
+ *   'Airbus A380'          → 'a380'
+ *   'Boeing 747'           → 'b747'
+ *   'Airbus A320 family'   → 'a320-family'
+ *   'Embraer E170/E175'    → 'e170-e175'
+ *   'Bombardier Dash 8'    → 'dash-8'
+ */
+function slugify(name) {
+  return name
+    .toLowerCase()
+    .replace(/^(boeing|airbus|embraer|bombardier|atr)\s+/i, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Pre-compute slug → family name lookup (families are static at module load).
+const slugToName = {};
+for (const name of familyNames) {
+  slugToName[slugify(name)] = name;
+}
+
+/**
+ * Resolve a slug back to a family record plus its name and ICAO-only code list
+ * (the 4-letter ICAO type designators that show up in observed_routes.aircraft_icao).
+ * Returns null if the slug is unknown.
+ */
+function getFamilyBySlug(slug) {
+  if (!slug || typeof slug !== 'string') return null;
+  const name = slugToName[slug.toLowerCase()];
+  if (!name) return null;
+  const fam = families[name];
+  // observed_routes.aircraft_icao stores ICAO type designators (4 chars, e.g. B738, A320).
+  // Families include both IATA-ish (320, 32N) and ICAO (A320, B738) codes; keep only ICAO.
+  const icaoList = [...fam.codes].filter(c => /^[A-Z][A-Z0-9]{3}$/.test(c));
+  return { name, family: fam, icaoList };
+}
+
+/**
  * Get all Amadeus aircraft codes for a given family name.
  * Returns null if family not found.
  * @param {string} familyName
@@ -179,6 +224,7 @@ function getFamilyRange(familyName) {
 function getFamilyList() {
   return familyNames.map(name => ({
     name,
+    slug: slugify(name),
     label: families[name].label,
     manufacturer: families[name].manufacturer,
     type: families[name].type,
@@ -186,4 +232,18 @@ function getFamilyList() {
   }));
 }
 
-module.exports = { families, familyNames, getFamilyCodes, getFamilyRange, getFamilyList };
+/**
+ * Resolve an arbitrary user input (slug or display name) to the family record.
+ * Accepts "a340", "A340", "Airbus A340", "Airbus A340 family".
+ */
+function resolveFamily(input) {
+  if (!input || typeof input !== 'string') return null;
+  const trimmed = input.trim();
+  // First try direct slug lookup.
+  const direct = getFamilyBySlug(trimmed);
+  if (direct) return direct;
+  // Otherwise try slugifying the input (handles display names).
+  return getFamilyBySlug(slugify(trimmed));
+}
+
+module.exports = { families, familyNames, getFamilyCodes, getFamilyRange, getFamilyList, getFamilyBySlug, resolveFamily, slugify };

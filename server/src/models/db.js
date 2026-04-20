@@ -223,6 +223,56 @@ module.exports = {
     return { edges, hubs };
   },
 
+  /**
+   * Aggregate observed_routes rows for a family + origin set within a time window.
+   * Returns rows of { dep, arr, icaoTypes (CSV string), count, lastSeen (ms) }.
+   * Frontend contract is defined in controllers/aircraftController.getAircraftRoutes.
+   *
+   * @param {object} args
+   * @param {string[]} args.icaoList  ICAO type codes (e.g. ['A343','A346'])
+   * @param {string[]} args.origins   origin IATA codes, already upper-cased
+   * @param {number}   args.cutoffMs  unix ms — exclude rows older than this
+   */
+  getAircraftRoutes: ({ icaoList, origins, cutoffMs }) => {
+    if (!icaoList?.length || !origins?.length) return [];
+    const acPh = icaoList.map(() => '?').join(',');
+    const orPh = origins.map(() => '?').join(',');
+    const sql = `
+      SELECT dep_iata AS dep,
+             arr_iata AS arr,
+             GROUP_CONCAT(DISTINCT aircraft_icao) AS icaoTypes,
+             COUNT(*) AS count,
+             MAX(seen_at) AS lastSeen
+      FROM observed_routes
+      WHERE aircraft_icao IN (${acPh})
+        AND dep_iata      IN (${orPh})
+        AND seen_at       >= ?
+      GROUP BY dep_iata, arr_iata
+      ORDER BY count DESC, dep ASC, arr ASC
+      LIMIT 500
+    `;
+    return db.prepare(sql).all(...icaoList, ...origins, cutoffMs);
+  },
+
+  /**
+   * Quick existence check — does ANY observed row exist for this family
+   * where dep_iata = ? within the window? Used by the /aircraft/routes
+   * suggestions branch to score nearby airports cheaply.
+   */
+  countFamilyRoutesFromOrigin: ({ icaoList, origin, cutoffMs }) => {
+    if (!icaoList?.length) return 0;
+    const acPh = icaoList.map(() => '?').join(',');
+    const sql = `
+      SELECT COUNT(DISTINCT arr_iata) AS n
+      FROM observed_routes
+      WHERE aircraft_icao IN (${acPh})
+        AND dep_iata = ?
+        AND seen_at >= ?
+    `;
+    const row = db.prepare(sql).get(...icaoList, origin, cutoffMs);
+    return row?.n || 0;
+  },
+
   getAircraftByHex: (hex) => {
     if (!hex) return null;
     return stmts.getAircraftByHex.get(String(hex).toLowerCase()) || null;
