@@ -559,7 +559,7 @@ exports.exploreDestinations = async (req, res) => {
           }
         } catch (err) {
           primaryFailed = true;
-          console.warn(`[explore] ${depCode}→${dest.code} primary (${exploreApi}) failed:`, err.message);
+          console.warn('[explore] primary failed: dep=%s dest=%s api=%s err=%s', depCode, dest.code, exploreApi, err.message);
         }
 
         // Aircraft filters can't be satisfied by price-only feeds, skip fallback in that case.
