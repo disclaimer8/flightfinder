@@ -6,6 +6,19 @@ import AircraftSearchResults from './AircraftSearchResults';
 import './RouteMap.css';
 import './AircraftRouteMap.css';
 
+// localStorage key for the list/map view preference. Read on mount, written on change.
+const VIEW_STORAGE_KEY = 'flightfinder.aircraftView';
+
+function readInitialView() {
+  if (typeof window === 'undefined') return 'list';
+  try {
+    const v = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    return v === 'map' ? 'map' : 'list';
+  } catch {
+    return 'list';
+  }
+}
+
 /**
  * AircraftRouteMap — Phase 3 "map as output" view for by-aircraft search.
  *
@@ -37,6 +50,15 @@ export default function AircraftRouteMap({
   const [error, setError]       = useState(null);
   const [refreshTick, setRefreshTick] = useState(0);
 
+  // View mode — 'list' (bookable cards) vs 'map' (Leaflet route map).
+  // Default = 'list' so users see actionable flights first; map is opt-in.
+  // Persisted in localStorage so the choice sticks across sessions.
+  const [view, setView] = useState(readInitialView);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try { window.localStorage.setItem(VIEW_STORAGE_KEY, view); } catch { /* ignore quota */ }
+  }, [view]);
+
   // Cascade fallback state:
   //  - fallbackLevel: 1 = original scoped fetch, 2 = auto-retried global,
   //                    3 = give up on routes and show flight cards.
@@ -53,10 +75,13 @@ export default function AircraftRouteMap({
     typeof window !== 'undefined' && window.innerWidth < 600
   );
 
-  // Level-3 SSE fallback — card-list view when neither scoped nor global
-  // fetch yielded any observed routes.
-  const level3Search = useAircraftSearch();
-  const level3KickedRef = useRef(false);
+  // SSE flight search — used both for:
+  //   (a) list-view default (user picked the cards tab), and
+  //   (b) Level-3 fallback from map-view when no observed routes exist.
+  // `cardsKickedRef` guards against re-kicking the same stream when the user
+  // toggles map → list → map for the same (family, origin, date) tuple.
+  const cardsSearch = useAircraftSearch();
+  const cardsKickedRef = useRef(false);
 
   // Refs that the canvas redraw callbacks read from each frame.
   const dataRef           = useRef(null);
@@ -81,12 +106,14 @@ export default function AircraftRouteMap({
   useEffect(() => {
     setFallbackLevel(1);
     setFallbackTriedGlobal(false);
-    level3KickedRef.current = false;
+    cardsKickedRef.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [family, familyName, (originIatas || []).join(','), refreshTick]);
+  }, [family, familyName, (originIatas || []).join(','), refreshTick, date]);
 
   // ── Fetch backend route data ──────────────────────────────────────────────
   useEffect(() => {
+    // List view never fetches route data — it only uses the SSE search hook.
+    if (view !== 'map') return;
     // Level 3 doesn't hit /api/aircraft/routes — it uses the SSE search hook.
     if (fallbackLevel >= 3) return;
 
@@ -195,7 +222,7 @@ export default function AircraftRouteMap({
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [family, familyName, (originIatas || []).join(','), refreshTick, fallbackLevel]);
+  }, [family, familyName, (originIatas || []).join(','), refreshTick, fallbackLevel, view]);
 
   // ── Cascade fallback: escalate to Level 2 (global) or Level 3 (cards) ─────
   // Triggered whenever a fetch just finished with zero observed routes. We
@@ -207,6 +234,7 @@ export default function AircraftRouteMap({
   // `data` to null whenever we bump the level — the !data check above then
   // suppresses re-entry until the new fetch lands.
   useEffect(() => {
+    if (view !== 'map') return;
     if (loading || error || !data) return;
     const hasRoutes   = (data.routes || []).length > 0;
     if (hasRoutes) return;
@@ -228,16 +256,22 @@ export default function AircraftRouteMap({
       setData(null);
       setFallbackLevel(3);
     }
-  }, [loading, error, data, fallbackLevel, fallbackTriedGlobal, originIatas]);
+  }, [view, loading, error, data, fallbackLevel, fallbackTriedGlobal, originIatas]);
 
-  // Kick the SSE flight search exactly once when we enter Level 3.
+  // Kick the SSE flight search exactly once per (family, origin, date) tuple.
+  // Fires when either:
+  //   - the user is in list view (cards are the default surface), OR
+  //   - the map-view cascade escalated to Level 3 (no observed routes).
+  // `cardsKickedRef` prevents re-kick on map↔list toggles within the same
+  // search inputs; it's reset when inputs change (see the reset effect above).
   useEffect(() => {
-    if (fallbackLevel !== 3) return;
-    if (level3KickedRef.current) return;
-    level3KickedRef.current = true;
+    const shouldKick = view === 'list' || fallbackLevel === 3;
+    if (!shouldKick) return;
+    if (cardsKickedRef.current) return;
+    cardsKickedRef.current = true;
 
     const firstOrigin = (originIatas || []).filter(Boolean)[0];
-    level3Search.search({
+    cardsSearch.search({
       familyName,
       iata: firstOrigin || undefined,
       date: date || null,
@@ -246,11 +280,11 @@ export default function AircraftRouteMap({
     // Hook cleans up its own EventSource; we cancel it when this component
     // unmounts via the effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fallbackLevel]);
+  }, [view, fallbackLevel]);
 
   // Cancel any in-flight SSE stream on unmount / input change.
   useEffect(() => {
-    return () => { level3Search.cancel(); };
+    return () => { cardsSearch.cancel(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -269,7 +303,14 @@ export default function AircraftRouteMap({
   }, []);
 
   // ── Leaflet init ─────────────────────────────────────────────────────────
+  // Gated on view === 'map'. In list view we skip this entirely, so Leaflet's
+  // ~150KB runtime never gets loaded and the map DOM never gets instantiated.
+  // When the user toggles to map, this effect fires and sets things up; when
+  // they toggle back to list, the cleanup below tears the map down so we
+  // don't hold onto a detached canvas stack.
   useEffect(() => {
+    if (view !== 'map') return;
+    if (!containerRef.current) return;
     if (mapRef.current) return;
     let cancelled = false;
     let map = null;
@@ -281,6 +322,7 @@ export default function AircraftRouteMap({
       const L = (await import('leaflet')).default;
       if (cancelled) return;
       if (mapRef.current) return;
+      if (!containerRef.current) return;
 
       map = L.map(containerRef.current, {
         center: [30, 10],
@@ -348,7 +390,7 @@ export default function AircraftRouteMap({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [view]);
 
   // Redraw when the filter changes (so arcs dim / brighten).
   useEffect(() => {
@@ -374,6 +416,65 @@ export default function AircraftRouteMap({
   const originCounts = new Map();
   routes.forEach(r => originCounts.set(r.dep, (originCounts.get(r.dep) || 0) + 1));
 
+  // Reusable view toggle — two buttons (List | Map) with aria-pressed semantics.
+  // Rendered inside both the list-view header and the map-view badge so the
+  // control stays in the same visual slot across modes.
+  const renderViewToggle = () => (
+    <div className="arm-view-toggle" role="group" aria-label="View mode">
+      <button
+        type="button"
+        className={`arm-view-btn${view === 'list' ? ' arm-view-btn--active' : ''}`}
+        aria-pressed={view === 'list'}
+        onClick={() => setView('list')}
+      >
+        List
+      </button>
+      <button
+        type="button"
+        className={`arm-view-btn${view === 'map' ? ' arm-view-btn--active' : ''}`}
+        aria-pressed={view === 'map'}
+        onClick={() => setView('map')}
+      >
+        Map
+      </button>
+    </div>
+  );
+
+  // ── List view (default) ──────────────────────────────────────────────────
+  // Never renders the Leaflet container — SSE cards only. Toggle sits next to
+  // the back button in the header bar.
+  if (view === 'list') {
+    return (
+      <div className="arm-root arm-root--cards">
+        <div className="arm-badge arm-badge--cards">
+          <button
+            className="arm-back"
+            onClick={onBack}
+            aria-label="Back to search"
+            title="Back to search"
+          >
+            ←
+          </button>
+          <div className="arm-badge-body">
+            <span className="arm-badge-label">Bookable flights</span>
+            {familyName && <span className="arm-badge-family">{familyName}</span>}
+          </div>
+          {renderViewToggle()}
+        </div>
+        <div className="arm-cards-wrap">
+          <AircraftSearchResults
+            results={cardsSearch.results}
+            progress={cardsSearch.progress}
+            pct={cardsSearch.pct}
+            status={cardsSearch.status}
+            error={cardsSearch.error}
+            familyName={familyName}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // Level 3 — no observed routes at all, even globally. Show the flight-card
   // view instead of the (now empty) map.
   if (fallbackLevel === 3) {
@@ -392,6 +493,7 @@ export default function AircraftRouteMap({
             <span className="arm-badge-label">Bookable flights</span>
             {familyName && <span className="arm-badge-family">{familyName}</span>}
           </div>
+          {renderViewToggle()}
         </div>
         <div className="arm-fallback-banner arm-fallback-banner--level3">
           No observed routes data for {familyName || 'this aircraft'} yet —
@@ -399,11 +501,11 @@ export default function AircraftRouteMap({
         </div>
         <div className="arm-cards-wrap">
           <AircraftSearchResults
-            results={level3Search.results}
-            progress={level3Search.progress}
-            pct={level3Search.pct}
-            status={level3Search.status}
-            error={level3Search.error}
+            results={cardsSearch.results}
+            progress={cardsSearch.progress}
+            pct={cardsSearch.pct}
+            status={cardsSearch.status}
+            error={cardsSearch.error}
             familyName={familyName}
           />
         </div>
@@ -442,6 +544,7 @@ export default function AircraftRouteMap({
         >
           ↻
         </button>
+        {renderViewToggle()}
       </div>
 
       {/* Level-2 banner: global-mode retry after scoped origins came back empty */}
