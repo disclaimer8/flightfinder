@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatTime, formatDate } from '../utils/formatters';
+import { buildBookingUrl, emitAffiliateClick } from '../utils/booking';
 import './FlightCard.css';
 import BookingModal from './BookingModal';
 
@@ -71,37 +72,6 @@ function ItineraryRow({ itinerary, label }) {
       )}
     </div>
   );
-}
-
-const TP_MARKER = '709966';
-const TP_TRS = '509158';
-const TP_PROGRAM = '4114';
-
-function buildBookingUrl(flight, passengers) {
-  const dep = flight.departure?.code;
-  const arr = flight.arrival?.code;
-  if (!dep || !arr || !flight.departureTime) return null;
-
-  const pax = passengers || 1;
-
-  const toDDMM = (iso) => {
-    const d = new Date(iso);
-    return String(d.getUTCDate()).padStart(2, '0') + String(d.getUTCMonth() + 1).padStart(2, '0');
-  };
-
-  const departDDMM = toDDMM(flight.departureTime);
-
-  let aviasalesUrl;
-  if (flight.isRoundTrip && flight.returnItinerary?.departureTime) {
-    const returnDDMM = toDDMM(flight.returnItinerary.departureTime);
-    aviasalesUrl = `https://www.aviasales.com/search/${dep}${departDDMM}${arr}${returnDDMM}${pax}`;
-  } else {
-    aviasalesUrl = `https://www.aviasales.com/search/${dep}${departDDMM}${arr}${pax}`;
-  }
-
-  // tp.media/r redirect is required for click attribution; raw aviasales.com?marker=
-  // does not register clicks in the Travelpayouts dashboard.
-  return `https://tp.media/r?marker=${TP_MARKER}&trs=${TP_TRS}&p=${TP_PROGRAM}&u=${encodeURIComponent(aviasalesUrl)}`;
 }
 
 function FlightCard({ flight, passengers }) {
@@ -182,9 +152,18 @@ function FlightCard({ flight, passengers }) {
             className="btn-book btn-book-external"
             href={bookingUrl}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="noopener noreferrer sponsored"
             title="Search on Aviasales"
             aria-label={`Search ${flight.airline} flight on Aviasales (opens new tab)`}
+            onClick={() => emitAffiliateClick('main-search', {
+              origin: flight.departure?.code,
+              destination: flight.arrival?.code,
+              airline: flight.airline,
+              price: flight.price,
+              currency: flight.currency,
+              departureTime: flight.departureTime,
+              isRoundTrip: !!flight.isRoundTrip,
+            })}
           >
             Search on Aviasales
             <svg aria-hidden="true" focusable="false" className="btn-external-icon" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
