@@ -107,7 +107,35 @@ function App() {
         <section className="hero">
           <nav className="nav">
             <div className="nav-brand">
-              <span className="brand-icon" aria-hidden="true">✈</span>
+              {/*
+                Inline brand mark — geometry mirrors /public/logo.svg. Inlined
+                (not <img>) so it renders without an extra HTTP request and
+                scales with font-size. aria-hidden because the wordmark that
+                follows is the accessible name.
+              */}
+              <svg
+                className="brand-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 512 512"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <defs>
+                  <linearGradient id="ff-brand-bg" x1="86" y1="21" x2="426" y2="491" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#3B8BFF" />
+                    <stop offset="100%" stopColor="#0A42B5" />
+                  </linearGradient>
+                </defs>
+                <circle cx="256" cy="256" r="240" fill="url(#ff-brand-bg)" />
+                <circle cx="256" cy="256" r="222" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="6" />
+                <g transform="translate(256,256) rotate(35) scale(2.0) translate(-100,-99)" fill="white">
+                  <ellipse cx="100" cy="99" rx="9" ry="88" />
+                  <path d="M91 76 C80 80, 42 94, 10 114 C7 118, 8 123, 12 124 C17 122, 42 106, 91 100 Z" />
+                  <path d="M109 76 C120 80, 158 94, 190 114 C193 118, 192 123, 188 124 C183 122, 158 106, 109 100 Z" />
+                  <path d="M91 160 C78 165, 60 175, 58 181 C57 184, 60 186, 63 185 C68 183, 80 177, 91 170 Z" />
+                  <path d="M109 160 C122 165, 140 175, 142 181 C143 184, 140 186, 137 185 C132 183, 120 177, 109 170 Z" />
+                </g>
+              </svg>
               <span className="brand-name">FlightFinder</span>
             </div>
             <div className="nav-right">

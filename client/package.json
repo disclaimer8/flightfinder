@@ -34,6 +34,8 @@
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/ui": "^4.1.4",
     "jsdom": "^29.0.2",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5",
     "vite": "^8.0.9",
     "vitest": "^4.1.4"
   }
