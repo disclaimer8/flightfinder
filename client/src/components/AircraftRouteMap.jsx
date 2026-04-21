@@ -200,6 +200,12 @@ export default function AircraftRouteMap({
   // ── Cascade fallback: escalate to Level 2 (global) or Level 3 (cards) ─────
   // Triggered whenever a fetch just finished with zero observed routes. We
   // avoid looping by gating on fallbackTriedGlobal and fallbackLevel.
+  //
+  // Race note: on a level change the fetch effect calls setLoading(true)
+  // asynchronously, so this effect can re-fire in the same render cycle with
+  // the old `loading=false` and stale `data`. Guard against that by clearing
+  // `data` to null whenever we bump the level — the !data check above then
+  // suppresses re-entry until the new fetch lands.
   useEffect(() => {
     if (loading || error || !data) return;
     const hasRoutes   = (data.routes || []).length > 0;
@@ -210,6 +216,8 @@ export default function AircraftRouteMap({
     // Level 1 → Level 2: we had specific origins, try worldwide once.
     if (fallbackLevel === 1 && hadOrigins && !fallbackTriedGlobal) {
       setFallbackTriedGlobal(true);
+      setData(null);
+      setLoading(true);
       setFallbackLevel(2);
       return;
     }
@@ -217,6 +225,7 @@ export default function AircraftRouteMap({
     // Level 1 with no origins (user already searched globally) → jump to 3.
     // Level 2 returned empty too → escalate to card-list view.
     if ((fallbackLevel === 1 && !hadOrigins) || fallbackLevel === 2) {
+      setData(null);
       setFallbackLevel(3);
     }
   }, [loading, error, data, fallbackLevel, fallbackTriedGlobal, originIatas]);
