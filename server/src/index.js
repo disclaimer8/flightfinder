@@ -207,9 +207,15 @@ if (!IS_DEV) {
     // ?utm=… and SearchAction links would create duplicate-content copies
     // for every landing page.
     if (Object.keys(q).length > 0) {
+      // HTML-escape the canonical URL even though meta.canonical is derived
+      // from a whitelist (known slugs / validated IATA pairs) and cannot
+      // currently carry user input — static analyzers (CodeQL js/reflected-xss)
+      // follow req.path all the way here and can't prove the runtime
+      // whitelist, and this defends against any future kind/resolver that
+      // forgets to sanitize.
       html = html.replace(
         /<link rel="canonical" href="[^"]*"\s*\/?>/i,
-        `<link rel="canonical" href="${meta.canonical}" />`
+        `<link rel="canonical" href="${seoMeta.esc(meta.canonical)}" />`
       );
     }
     // Email verification link (/ ?action=verify&token=…) should never be indexed.

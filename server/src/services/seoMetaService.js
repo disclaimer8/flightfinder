@@ -335,4 +335,4 @@ function inject(html, meta) {
   return out;
 }
 
-module.exports = { resolve, inject, structuredData };
+module.exports = { resolve, inject, structuredData, esc };
