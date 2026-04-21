@@ -2,7 +2,19 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
 import SkeletonResults from './SkeletonResults';
+import { ROUTE_COPY } from '../content/landingCopy';
 import './AircraftLandingPage.css';
+
+// Replace {from.city}, {from.iata}, {to.city}, {to.iata} placeholders
+// with the resolved airport values. Kept inline because this is the only
+// call site.
+function interpolate(tpl, from, to) {
+  return tpl
+    .replace(/\{from\.city\}/g, from.city)
+    .replace(/\{from\.iata\}/g, from.iata)
+    .replace(/\{to\.city\}/g, to.city)
+    .replace(/\{to\.iata\}/g, to.iata);
+}
 
 // /routes/:pair where :pair is "lhr-jfk" (IATA, lowercase). We resolve
 // city names via the same /api/aircraft/airports/search endpoint the
@@ -97,6 +109,11 @@ export default function RouteLandingPage() {
         </div>
       </header>
 
+      <section className="landing-prose">
+        <h2>Booking tips for {from.city} &rarr; {to.city}</h2>
+        <p>{interpolate(ROUTE_COPY.tipsBlurb, from, to)}</p>
+      </section>
+
       {aircraft.length > 0 && (
         <section className="landing-top-routes">
           <h2>Aircraft flying {from.iata} &rarr; {to.iata}</h2>
@@ -110,6 +127,18 @@ export default function RouteLandingPage() {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {Array.isArray(ROUTE_COPY.faq) && ROUTE_COPY.faq.length > 0 && (
+        <section className="landing-faq">
+          <h2>Frequently asked questions about {from.iata} &rarr; {to.iata}</h2>
+          {ROUTE_COPY.faq.map((qa, i) => (
+            <details key={i} className="landing-faq-item" open={i === 0}>
+              <summary>{interpolate(qa.q, from, to)}</summary>
+              <p>{interpolate(qa.a, from, to)}</p>
+            </details>
+          ))}
         </section>
       )}
 

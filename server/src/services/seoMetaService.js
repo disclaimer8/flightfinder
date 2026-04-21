@@ -22,6 +22,7 @@
  */
 const { getFamilyBySlug, getFamilyList } = require('../models/aircraftFamilies');
 const openFlightsService = require('./openFlightsService');
+const { AIRCRAFT_FAQ, ROUTE_FAQ, interpolate } = require('../content/landingFaq');
 
 const BASE = 'https://himaxym.com';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
@@ -167,6 +168,20 @@ function structuredData(meta) {
         { '@type': 'ListItem', position: 3, name: meta.aircraftLabel, item: meta.canonical },
       ],
     });
+    // FAQPage mirrors the visible FAQ block on the landing page — must
+    // stay in sync with client/src/content/landingCopy.js so Google
+    // doesn't flag it.
+    const faq = AIRCRAFT_FAQ[meta.slug];
+    if (Array.isArray(faq) && faq.length > 0) {
+      graph.push({
+        '@type': 'FAQPage',
+        mainEntity: faq.map((qa) => ({
+          '@type': 'Question',
+          name: qa.q,
+          acceptedAnswer: { '@type': 'Answer', text: qa.a },
+        })),
+      });
+    }
   } else if (meta.kind === 'route') {
     graph.push({
       '@type': 'BreadcrumbList',
@@ -181,6 +196,24 @@ function structuredData(meta) {
         },
       ],
     });
+    // Route FAQ is templated — substitute city/IATA values. Only emit
+    // the schema when we have real city names (if getAirport returned
+    // null we'd be echoing IATA codes and the FAQ reads awkwardly).
+    const from = { city: meta.fromName, iata: meta.fromIata };
+    const to   = { city: meta.toName,   iata: meta.toIata };
+    if (Array.isArray(ROUTE_FAQ) && ROUTE_FAQ.length > 0) {
+      graph.push({
+        '@type': 'FAQPage',
+        mainEntity: ROUTE_FAQ.map((qa) => ({
+          '@type': 'Question',
+          name: interpolate(qa.q, from, to),
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: interpolate(qa.a, from, to),
+          },
+        })),
+      });
+    }
   } else if (meta.kind === 'home') {
     graph.push({
       '@type': 'FAQPage',
