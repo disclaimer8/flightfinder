@@ -38,6 +38,7 @@ export function useAircraftSearch() {
     if (params.radius)     qs.set('radius',      String(params.radius));
     if (params.date)       qs.set('date',        params.date);
     if (params.passengers) qs.set('passengers',  String(params.passengers));
+    if (params.nonStop)    qs.set('nonStop',     '1');
 
     const url = `/api/flights/aircraft-search/stream?${qs.toString()}`;
     const es = new EventSource(url);

@@ -39,6 +39,7 @@ export default function AircraftRouteMap({
   date,
   passengers,
   originIatas,
+  directOnly = false,
   onBack,
 }) {
   const containerRef  = useRef(null);
@@ -109,7 +110,7 @@ export default function AircraftRouteMap({
     setFallbackTriedGlobal(false);
     cardsKickedRef.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [family, familyName, (originIatas || []).join(','), refreshTick, date]);
+  }, [family, familyName, (originIatas || []).join(','), refreshTick, date, directOnly]);
 
   // ── Fetch backend route data ──────────────────────────────────────────────
   useEffect(() => {
@@ -277,6 +278,7 @@ export default function AircraftRouteMap({
       iata: firstOrigin || undefined,
       date: date || null,
       passengers: passengers || 1,
+      nonStop: directOnly,
     });
     // Hook cleans up its own EventSource; we cancel it when this component
     // unmounts via the effect below.
@@ -777,6 +779,7 @@ export default function AircraftRouteMap({
           familyName={familyName}
           date={date}
           passengers={passengers}
+          directOnly={directOnly}
           isMobile={isMobile}
           onClose={() => setPanel(null)}
         />
@@ -1007,7 +1010,7 @@ function mountDotsCanvas(map, destsRef, originByIataRef, originColorRef, filtere
 }
 
 // ── Destination panel: runs the existing SSE search for this one origin ──
-function DestinationPanel({ panel, familyName, date, passengers, isMobile, onClose }) {
+function DestinationPanel({ panel, familyName, date, passengers, directOnly, isMobile, onClose }) {
   const { results, progress, pct, status, error, search, cancel } = useAircraftSearch();
 
   useEffect(() => {
@@ -1016,6 +1019,7 @@ function DestinationPanel({ panel, familyName, date, passengers, isMobile, onClo
       iata: panel.dep,
       date: date || null,
       passengers: passengers || 1,
+      nonStop: directOnly,
       // Radius omitted on purpose — we already know the exact origin.
     });
     return () => cancel();

@@ -278,7 +278,8 @@ const authBody = {
  * Validate GET /api/flights/aircraft-search/stream  query params
  */
 function aircraftSearchQuery(req, res, next) {
-  const { familyName, city, radius, iata, date, passengers } = req.query;
+  const { familyName, city, radius, iata, date, passengers, nonStop } = req.query;
+  const directOnly = nonStop === '1' || nonStop === 'true';
 
   if (!familyName || typeof familyName !== 'string' || familyName.trim().length < 3) {
     return bad(res, 'familyName is required (e.g. "Boeing 737")');
@@ -320,6 +321,7 @@ function aircraftSearchQuery(req, res, next) {
     iata:       iata?.toUpperCase().trim() || null,
     date:       date || null,
     passengers: pax || 1,
+    nonStop:    directOnly,
   };
 
   next();

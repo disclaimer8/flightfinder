@@ -57,6 +57,7 @@ function App() {
       origin:     params.departure,
       date:       params.date || null,
       passengers: params.passengers || 1,
+      directOnly: Boolean(params.directOnly),
     });
   };
 
@@ -270,6 +271,7 @@ function App() {
                   date={acQuery.date}
                   passengers={acQuery.passengers}
                   originIatas={[acQuery.origin]}
+                  directOnly={acQuery.directOnly}
                   onBack={() => setAcQuery(null)}
                 />
               </Suspense>

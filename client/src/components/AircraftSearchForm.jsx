@@ -79,6 +79,7 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
   const [from, setFrom]             = useState(null); // { label, iata, name }
   const [date, setDate]             = useState('');
   const [passengers, setPassengers] = useState(1);
+  const [directOnly, setDirectOnly] = useState(false);
 
   useEffect(() => {
     fetch('/api/aircraft/families')
@@ -107,6 +108,7 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
       departure: from.iata,
       date,
       passengers,
+      directOnly,
     });
   };
 
@@ -179,6 +181,15 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
           </div>
         </div>
       </div>
+
+      <label className="direct-only-toggle">
+        <input
+          type="checkbox"
+          checked={directOnly}
+          onChange={(e) => setDirectOnly(e.target.checked)}
+        />
+        <span>Only direct flights</span>
+      </label>
 
       <div className="ac-search-actions">
         {loading ? (

@@ -10,7 +10,7 @@ const geocoding = require('../services/geocodingService');
  * Expects validated query on req.validatedQuery (set by validate.aircraftSearchQuery).
  */
 exports.streamAircraftSearch = async (req, res) => {
-  const { familyName, city, radius, iata, date, passengers } = req.validatedQuery;
+  const { familyName, city, radius, iata, date, passengers, nonStop } = req.validatedQuery;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -24,7 +24,7 @@ exports.streamAircraftSearch = async (req, res) => {
   };
 
   try {
-    const gen = searchByAircraftFamily({ familyName, city, radius, iata, date, passengers });
+    const gen = searchByAircraftFamily({ familyName, city, radius, iata, date, passengers, nonStop });
 
     for await (const { event, data } of gen) {
       if (res.destroyed) break; // client closed connection

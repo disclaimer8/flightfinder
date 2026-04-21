@@ -208,7 +208,7 @@ function extractBestFlightDuffel(raw, familyCodes, origin, dest) {
  * @param {{ familyName: string, city?: string, radius?: number, iata?: string, date: string, passengers?: number }} params
  */
 async function* searchByAircraftFamily(params) {
-  const { familyName, city, radius, iata, date, passengers = 1 } = params;
+  const { familyName, city, radius, iata, date, passengers = 1, nonStop = false } = params;
 
   // 1. Resolve family codes
   const familyCodes = getFamilyCodes(familyName);
@@ -269,10 +269,11 @@ async function* searchByAircraftFamily(params) {
           arrival_airport:   dest.code,
           departure_date:    date,
           passengers,
+          nonStop,
         };
 
         if (useDuffel) {
-          const duffelKey = `raw:duffel:${origin.iata}:${dest.code}:${date}:${passengers}:`;
+          const duffelKey = `raw:duffel:${origin.iata}:${dest.code}:${date}:${passengers}:${nonStop ? '1' : '0'}:`;
           try {
             const { data: raw } = await cacheService.getOrFetch(duffelKey, () =>
               duffelService.searchFlights(searchParams)
@@ -286,7 +287,7 @@ async function* searchByAircraftFamily(params) {
           }
         }
 
-        const amadeusKey = `raw:amadeus:${origin.iata}:${dest.code}:${date}:${passengers}:`;
+        const amadeusKey = `raw:amadeus:${origin.iata}:${dest.code}:${date}:${passengers}:${nonStop ? '1' : '0'}:`;
         try {
           const { data: raw } = await cacheService.getOrFetch(amadeusKey, () =>
             amadeusService.searchFlights(searchParams)

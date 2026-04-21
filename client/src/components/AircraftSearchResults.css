@@ -238,8 +238,105 @@
   flex-shrink: 0;
 }
 
+/* Results toolbar — title + sort selector on one row */
+.ac-results-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.ac-results-toolbar .ac-results-header { margin-bottom: 0; }
+
+.ac-sort-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.55);
+  white-space: nowrap;
+}
+
+.ac-sort-select {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 7px 28px 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a0a0c8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.ac-sort-select:hover { background-color: rgba(255,255,255,0.09); }
+.ac-sort-select:focus-visible {
+  border-color: #6c8eff;
+  box-shadow: 0 0 0 3px rgba(108,142,255,0.25);
+}
+
+/* Dropdown options should match the dark theme where the UA allows it. */
+.ac-sort-select option { background: #1a1a2e; color: #fff; }
+
+/* Pager */
+.ac-pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.ac-pager-btn {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.ac-pager-btn:hover:not(:disabled) {
+  background: rgba(108,142,255,0.14);
+  border-color: rgba(108,142,255,0.45);
+  transform: translateY(-1px);
+}
+
+.ac-pager-btn:focus-visible {
+  outline: 2px solid #6c8eff;
+  outline-offset: 2px;
+}
+
+.ac-pager-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ac-pager-label {
+  font-size: 14px;
+  color: rgba(255,255,255,0.55);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Mobile */
 @media (max-width: 480px) {
   .ac-cards { grid-template-columns: 1fr; }
   .ac-card-iata { font-size: 18px; }
+  .ac-results-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
