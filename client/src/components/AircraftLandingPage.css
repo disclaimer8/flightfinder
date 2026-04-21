@@ -1,0 +1,112 @@
+.landing {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.landing-breadcrumb {
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+  color: #94a3b8;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.landing-breadcrumb a {
+  color: #93c5fd;
+  text-decoration: none;
+}
+.landing-breadcrumb a:hover { text-decoration: underline; }
+
+.landing-header {
+  margin-bottom: 40px;
+}
+.landing-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.landing-h1 {
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0 0 16px;
+  letter-spacing: -0.5px;
+}
+.landing-sub {
+  font-size: 18px;
+  color: #cbd5e1;
+  line-height: 1.55;
+  max-width: 780px;
+  margin: 0 0 24px;
+}
+.landing-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.landing-cta {
+  background: linear-gradient(135deg, #38bdf8, #a855f7);
+  color: #0c1427;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 14px 24px;
+  border-radius: 10px;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.landing-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(56,189,248,0.25); }
+
+.landing-map { margin-bottom: 48px; }
+.landing-map h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+.landing-map-hint { color: #94a3b8; font-size: 15px; margin: 0 0 16px; }
+.landing-map-frame {
+  background: #0f1a36;
+  border: 1px solid #1e2d52;
+  border-radius: 12px;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.landing-siblings h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 16px;
+}
+.landing-siblings-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.landing-siblings-list a {
+  color: #e2e8f0;
+  text-decoration: none;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  font-size: 14px;
+  display: block;
+}
+.landing-siblings-list a:hover {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.landing--not-found { text-align: center; padding: 80px 20px; }
+.landing--not-found h1 { font-size: 32px; margin-bottom: 12px; }
+.landing--not-found code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; }

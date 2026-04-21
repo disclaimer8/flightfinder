@@ -115,6 +115,7 @@ app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/flights',  require('./routes/flights'));
 app.use('/api/aircraft', require('./routes/aircraft'));
 app.use('/api/map',      require('./routes/map'));
+app.use('/',             require('./routes/seo'));            // /sitemap.xml
 
 // ─────────────────────────────────────────
 //  Health check
@@ -192,17 +193,23 @@ if (!IS_DEV) {
     return indexHtmlCached;
   };
 
+  // Per-route SEO metadata injector — rewrites <title>, <meta description>,
+  // canonical, OG/Twitter cards, and the static H1/subtitle fallback so each
+  // known URL (/, /by-aircraft, /map, /aircraft/:slug, /routes/:from-:to) is
+  // indexable with correct content even without JS rendering.
+  const seoMeta = require('./services/seoMetaService');
+
   const spaFallback = (req, res) => {
-    let html = readIndexHtml();
+    const meta = seoMeta.resolve(req.path);
+    let html = seoMeta.inject(readIndexHtml(), meta);
     const q = req.query || {};
-    // Any query-string variant of the root URL should canonicalise back to '/'.
-    // The SearchAction in our JSON-LD declares ?from=&to=&aircraft=&date= as a
-    // valid entry point, so these are legitimate URLs — but we don't want N
-    // copies of them competing for rank.
+    // Query-string variants collapse to the route's canonical — otherwise
+    // ?utm=… and SearchAction links would create duplicate-content copies
+    // for every landing page.
     if (Object.keys(q).length > 0) {
       html = html.replace(
         /<link rel="canonical" href="[^"]*"\s*\/?>/i,
-        '<link rel="canonical" href="https://himaxym.com/" />'
+        `<link rel="canonical" href="${meta.canonical}" />`
       );
     }
     // Email verification link (/ ?action=verify&token=…) should never be indexed.

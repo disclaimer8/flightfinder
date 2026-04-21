@@ -1,8 +1,11 @@
 import './sentry'; // Must run before any other imports so Sentry can instrument fetch/XHR.
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
+import AircraftLandingPage from './components/AircraftLandingPage';
+import RouteLandingPage from './components/RouteLandingPage';
 import { AuthProvider } from './context/AuthContext';
 import './index.css';
 
@@ -11,7 +14,13 @@ root.render(
   <React.StrictMode>
     <ErrorBoundary>
       <AuthProvider>
-        <App />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/aircraft/:slug" element={<AircraftLandingPage />} />
+            <Route path="/routes/:pair" element={<RouteLandingPage />} />
+            <Route path="*" element={<App />} />
+          </Routes>
+        </BrowserRouter>
       </AuthProvider>
     </ErrorBoundary>
   </React.StrictMode>

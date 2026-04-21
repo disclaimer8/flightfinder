@@ -161,14 +161,25 @@ const families = {
 const familyNames = Object.keys(families);
 
 /**
- * Derive a URL-safe slug from a family name.
- *   'Airbus A380'          → 'a380'
- *   'Boeing 747'           → 'b747'
- *   'Airbus A320 family'   → 'a320-family'
- *   'Embraer E170/E175'    → 'e170-e175'
- *   'Bombardier Dash 8'    → 'dash-8'
+ * Derive a URL-safe slug from a family name. Keeps the manufacturer prefix so
+ * URLs like /aircraft/boeing-737 match what users actually search for — that
+ * keyword alignment matters a lot more for SEO than a tighter URL.
+ *   'Airbus A380'          → 'airbus-a380'
+ *   'Boeing 747'           → 'boeing-747'
+ *   'Airbus A320 family'   → 'airbus-a320-family'
+ *   'Embraer E170/E175'    → 'embraer-e170-e175'
+ *   'Bombardier Dash 8'    → 'bombardier-dash-8'
  */
 function slugify(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Legacy short slug — previously exposed by the API ('737', 'a340'). Kept as
+// an alias so any old link, saved search, or webarchive URL still resolves.
+function legacySlug(name) {
   return name
     .toLowerCase()
     .replace(/^(boeing|airbus|embraer|bombardier|atr)\s+/i, '')
@@ -177,9 +188,13 @@ function slugify(name) {
 }
 
 // Pre-compute slug → family name lookup (families are static at module load).
+// Register both the canonical (manufacturer-prefixed) slug AND the legacy
+// short slug — getFamilyBySlug accepts either.
 const slugToName = {};
 for (const name of familyNames) {
   slugToName[slugify(name)] = name;
+  const legacy = legacySlug(name);
+  if (!slugToName[legacy]) slugToName[legacy] = name;
 }
 
 /**
