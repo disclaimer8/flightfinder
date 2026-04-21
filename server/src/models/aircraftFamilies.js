@@ -181,21 +181,43 @@ const familyNames = Object.keys(families);
  *   'Embraer E170/E175'    → 'embraer-e170-e175'
  *   'Bombardier Dash 8'    → 'bombardier-dash-8'
  */
+// Linear slugifier — single pass, no regex. CodeQL js/polynomial-redos
+// flags /[^a-z0-9]+/g on user-reachable input (resolveFamily takes an
+// untrusted query string), and these helpers are on that path. The char
+// scan is also faster for typical inputs.
+function slugifyChars(input) {
+  let out = '';
+  let prevDash = true; // leading non-alnum runs are collapsed away
+  for (let i = 0; i < input.length; i++) {
+    const c = input.charCodeAt(i);
+    const isAlnum =
+      (c >= 97 && c <= 122) || // a-z
+      (c >= 48 && c <=  57);   // 0-9
+    if (isAlnum) {
+      out += input[i];
+      prevDash = false;
+    } else if (!prevDash) {
+      out += '-';
+      prevDash = true;
+    }
+  }
+  if (prevDash && out.length > 0) out = out.slice(0, -1);
+  return out;
+}
+
 function slugify(name) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  return slugifyChars(String(name).toLowerCase());
 }
 
 // Legacy short slug — previously exposed by the API ('737', 'a340'). Kept as
 // an alias so any old link, saved search, or webarchive URL still resolves.
+const LEGACY_PREFIXES = ['boeing ', 'airbus ', 'embraer ', 'bombardier ', 'atr '];
 function legacySlug(name) {
-  return name
-    .toLowerCase()
-    .replace(/^(boeing|airbus|embraer|bombardier|atr)\s+/i, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  let lower = String(name).toLowerCase();
+  for (const p of LEGACY_PREFIXES) {
+    if (lower.startsWith(p)) { lower = lower.slice(p.length); break; }
+  }
+  return slugifyChars(lower);
 }
 
 // Pre-compute slug → family name lookup (families are static at module load).
