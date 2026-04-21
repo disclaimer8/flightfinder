@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import 'leaflet/dist/leaflet.css';
 import { geodesicPoints, ORIGIN_PALETTE } from './mapArcHelpers';
 import { useAircraftSearch } from '../hooks/useAircraftSearch';
+import AircraftSearchResults from './AircraftSearchResults';
 import './RouteMap.css';
 import './AircraftRouteMap.css';
 
@@ -36,6 +37,13 @@ export default function AircraftRouteMap({
   const [error, setError]       = useState(null);
   const [refreshTick, setRefreshTick] = useState(0);
 
+  // Cascade fallback state:
+  //  - fallbackLevel: 1 = original scoped fetch, 2 = auto-retried global,
+  //                    3 = give up on routes and show flight cards.
+  //  - fallbackTriedGlobal: guard so the Level-2 effect only fires once.
+  const [fallbackLevel, setFallbackLevel]             = useState(1);
+  const [fallbackTriedGlobal, setFallbackTriedGlobal] = useState(false);
+
   // UI state
   const [filteredOrigin, setFilteredOrigin] = useState(null); // IATA or null
   const [panel, setPanel]                   = useState(null); // { dep, arr, depName, arrName } or null
@@ -44,6 +52,11 @@ export default function AircraftRouteMap({
   const [isMobile, setIsMobile]             = useState(
     typeof window !== 'undefined' && window.innerWidth < 600
   );
+
+  // Level-3 SSE fallback — card-list view when neither scoped nor global
+  // fetch yielded any observed routes.
+  const level3Search = useAircraftSearch();
+  const level3KickedRef = useRef(false);
 
   // Refs that the canvas redraw callbacks read from each frame.
   const dataRef           = useRef(null);
@@ -63,13 +76,29 @@ export default function AircraftRouteMap({
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // Reset cascade state whenever the user re-runs a search with new inputs.
+  // (A manual refresh also counts — it should re-check the scoped view first.)
+  useEffect(() => {
+    setFallbackLevel(1);
+    setFallbackTriedGlobal(false);
+    level3KickedRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [family, familyName, (originIatas || []).join(','), refreshTick]);
+
   // ── Fetch backend route data ──────────────────────────────────────────────
   useEffect(() => {
+    // Level 3 doesn't hit /api/aircraft/routes — it uses the SSE search hook.
+    if (fallbackLevel >= 3) return;
+
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    const origins = (originIatas || []).filter(Boolean).join(',');
+    // At level 2 we intentionally drop the origins filter for a worldwide view.
+    const useGlobal = fallbackLevel === 2;
+    const origins = useGlobal
+      ? ''
+      : (originIatas || []).filter(Boolean).join(',');
     const qs = new URLSearchParams();
     qs.set('family', family || familyName || '');
     if (origins) qs.set('origins', origins); // omit for global (worldwide) mode
@@ -166,7 +195,55 @@ export default function AircraftRouteMap({
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [family, familyName, (originIatas || []).join(','), refreshTick]);
+  }, [family, familyName, (originIatas || []).join(','), refreshTick, fallbackLevel]);
+
+  // ── Cascade fallback: escalate to Level 2 (global) or Level 3 (cards) ─────
+  // Triggered whenever a fetch just finished with zero observed routes. We
+  // avoid looping by gating on fallbackTriedGlobal and fallbackLevel.
+  useEffect(() => {
+    if (loading || error || !data) return;
+    const hasRoutes   = (data.routes || []).length > 0;
+    if (hasRoutes) return;
+
+    const hadOrigins = (originIatas || []).filter(Boolean).length > 0;
+
+    // Level 1 → Level 2: we had specific origins, try worldwide once.
+    if (fallbackLevel === 1 && hadOrigins && !fallbackTriedGlobal) {
+      setFallbackTriedGlobal(true);
+      setFallbackLevel(2);
+      return;
+    }
+
+    // Level 1 with no origins (user already searched globally) → jump to 3.
+    // Level 2 returned empty too → escalate to card-list view.
+    if ((fallbackLevel === 1 && !hadOrigins) || fallbackLevel === 2) {
+      setFallbackLevel(3);
+    }
+  }, [loading, error, data, fallbackLevel, fallbackTriedGlobal, originIatas]);
+
+  // Kick the SSE flight search exactly once when we enter Level 3.
+  useEffect(() => {
+    if (fallbackLevel !== 3) return;
+    if (level3KickedRef.current) return;
+    level3KickedRef.current = true;
+
+    const firstOrigin = (originIatas || []).filter(Boolean)[0];
+    level3Search.search({
+      familyName,
+      iata: firstOrigin || undefined,
+      date: date || null,
+      passengers: passengers || 1,
+    });
+    // Hook cleans up its own EventSource; we cancel it when this component
+    // unmounts via the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fallbackLevel]);
+
+  // Cancel any in-flight SSE stream on unmount / input change.
+  useEffect(() => {
+    return () => { level3Search.cancel(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fit the map to show all origins and destinations with a comfortable pad.
   const fitToRoutes = useCallback((json) => {
@@ -281,10 +358,49 @@ export default function AircraftRouteMap({
   const routes = data?.routes || [];
   const originList = data?.origins || [];
   const suggestions = data?.suggestions || [];
+  const requestedOrigins = (originIatas || []).filter(Boolean);
+  const requestedLabel = requestedOrigins.join(', ');
 
   // Per-origin route counts for the legend.
   const originCounts = new Map();
   routes.forEach(r => originCounts.set(r.dep, (originCounts.get(r.dep) || 0) + 1));
+
+  // Level 3 — no observed routes at all, even globally. Show the flight-card
+  // view instead of the (now empty) map.
+  if (fallbackLevel === 3) {
+    return (
+      <div className="arm-root arm-root--cards">
+        <div className="arm-badge arm-badge--cards">
+          <button
+            className="arm-back"
+            onClick={onBack}
+            aria-label="Back to search"
+            title="Back to search"
+          >
+            ←
+          </button>
+          <div className="arm-badge-body">
+            <span className="arm-badge-label">Bookable flights</span>
+            {familyName && <span className="arm-badge-family">{familyName}</span>}
+          </div>
+        </div>
+        <div className="arm-fallback-banner arm-fallback-banner--level3">
+          No observed routes data for {familyName || 'this aircraft'} yet —
+          showing bookable flights instead.
+        </div>
+        <div className="arm-cards-wrap">
+          <AircraftSearchResults
+            results={level3Search.results}
+            progress={level3Search.progress}
+            pct={level3Search.pct}
+            status={level3Search.status}
+            error={level3Search.error}
+            familyName={familyName}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="arm-root">
@@ -318,6 +434,35 @@ export default function AircraftRouteMap({
           ↻
         </button>
       </div>
+
+      {/* Level-2 banner: global-mode retry after scoped origins came back empty */}
+      {fallbackLevel === 2 && !loading && !error && routes.length > 0 && (
+        <div className="arm-fallback-banner arm-fallback-banner--level2">
+          <span className="arm-fallback-banner-text">
+            No {familyName || 'flights'} observed from {requestedLabel || 'those airports'} in
+            the last 14 days — showing all {familyName || 'matching'} routes worldwide instead.
+          </span>
+          {suggestions.length > 0 && (
+            <div className="arm-fallback-suggestions">
+              <span className="arm-fallback-suggestions-label">Try a nearby hub:</span>
+              {suggestions.map(s => (
+                <button
+                  key={s.iata}
+                  className="arm-fallback-suggestion"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('arm-swap-origin', {
+                      detail: { iata: s.iata },
+                    }));
+                  }}
+                  title={`${s.name} · ${s.distanceKm} km · ${s.routeCount} routes`}
+                >
+                  {s.iata}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Top-right legend (desktop) OR toggle + bottom sheet (mobile) */}
       {!isMobile && originList.length > 0 && (
@@ -462,8 +607,12 @@ export default function AircraftRouteMap({
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && !error && routes.length === 0 && (
+      {/* Empty state — only if the cascade has fully resolved at level 2
+          with zero routes globally (we'll almost always escalate to Level 3
+          in that case, but keep this as a safety net while that transition
+          is in flight or if the SSE hook is unavailable). Suppress during
+          the Level-1 → Level-2 handoff so there's no empty-state flash. */}
+      {!loading && !error && routes.length === 0 && fallbackLevel === 2 && (
         <div className="arm-empty">
           <span className="arm-empty-icon">✈</span>
           <h3 className="arm-empty-title">

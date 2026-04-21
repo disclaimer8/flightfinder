@@ -12,7 +12,8 @@ const families = {
     manufacturer: 'Boeing',
     type: 'jet',
     maxRange: 6570, // MAX 9 — use widest range in family
-    codes: new Set(['B737','B738','B739','737','738','739','73H','73G','73J','73C','73W','7M7','7M8','7M9']),
+    // ICAO: B737/B738/B739 (classic/NG), B38M/B39M (MAX 8/9). IATA: 737/738/739/73x/7Mx.
+    codes: new Set(['B737','B738','B739','B38M','B39M','737','738','739','73H','73G','73J','73C','73W','7M7','7M8','7M9']),
   },
   'Boeing 757': {
     label: 'Boeing 757',
@@ -33,14 +34,16 @@ const families = {
     manufacturer: 'Boeing',
     type: 'wide-body',
     maxRange: 13649,
-    codes: new Set(['B777','772','773','77W','779']),
+    // ICAO: B772/B773/B77W/B77L/B778/B779. IATA: 777/772/773/77W/779.
+    codes: new Set(['B777','B772','B773','B77W','B77L','B778','B779','772','773','77W','779']),
   },
   'Boeing 787': {
     label: 'Boeing 787 Dreamliner',
     manufacturer: 'Boeing',
     type: 'wide-body',
     maxRange: 14140,
-    codes: new Set(['B788','787','788','789','78J']),
+    // ICAO: B788/B789/B78X (−8/−9/−10). IATA: 787/788/789/78J/78X.
+    codes: new Set(['B788','B789','B78X','787','788','789','78J','78X']),
   },
   'Boeing 747': {
     label: 'Boeing 747',
@@ -70,28 +73,36 @@ const families = {
     manufacturer: 'Airbus',
     type: 'jet',
     maxRange: 6300,
-    codes: new Set(['A319','319','31A']),
+    // ICAO: A319 (ceo), A19N (neo). IATA: 319/31A.
+    codes: new Set(['A319','A19N','319','31A']),
   },
   'Airbus A320': {
     label: 'Airbus A320 (all variants)',
     manufacturer: 'Airbus',
     type: 'jet',
     maxRange: 6300,
-    codes: new Set(['A320','320','32A','32B','32N','32Q']),
+    // ICAO: A320 (ceo), A20N (neo). IATA: 320/32A/32B/32N/32Q.
+    codes: new Set(['A320','A20N','320','32A','32B','32N','32Q']),
   },
   'Airbus A321': {
     label: 'Airbus A321 (all variants)',
     manufacturer: 'Airbus',
     type: 'jet',
     maxRange: 8700,
-    codes: new Set(['A321','321','32S','32T','31X']),
+    // ICAO: A321 (ceo), A21N (neo). IATA: 321/32S/32T/31X.
+    codes: new Set(['A321','A21N','321','32S','32T','31X']),
   },
   'Airbus A320 family': {
     label: 'Airbus A320 family (A319/A320/A321)',
     manufacturer: 'Airbus',
     type: 'jet',
     maxRange: 8700,
-    codes: new Set(['A319','A320','A321','319','320','321','31A','32A','32B','32N','32Q','32S','32T','31X']),
+    // Full ceo + neo ICAO coverage plus legacy IATA-ish codes.
+    codes: new Set([
+      'A319','A320','A321',
+      'A19N','A20N','A21N',
+      '319','320','321','31A','32A','32B','32N','32Q','32S','32T','31X',
+    ]),
   },
   'Airbus A330': {
     label: 'Airbus A330 (all variants)',
