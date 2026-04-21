@@ -23,7 +23,6 @@ export default function AircraftFlightCard({ flight, passengers, source }) {
       origin: f.origin,
       destination: f.destination,
       departureTime: f.departureTime,
-      airline: f.airline, // IATA in by-aircraft SSE shape → narrows Aviasales to this carrier
     },
     passengers
   );
@@ -77,7 +76,7 @@ export default function AircraftFlightCard({ flight, passengers, source }) {
         <span className="ac-card-amount">{f.currency} {f.price}</span>
         {bookingUrl ? (
           <span className="ac-card-cta">
-            Search on Aviasales
+            Find this route on Aviasales
             <svg aria-hidden="true" focusable="false" className="ac-card-cta-icon" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -86,6 +85,11 @@ export default function AircraftFlightCard({ flight, passengers, source }) {
           <span className="ac-card-cta ac-card-cta--disabled">Booking unavailable</span>
         )}
       </div>
+      {bookingUrl && (
+        <div className="ac-card-cta-hint">
+          Aviasales shows all flights on this route — pick the matching one.
+        </div>
+      )}
     </>
   );
 
@@ -100,7 +104,8 @@ export default function AircraftFlightCard({ flight, passengers, source }) {
       target="_blank"
       rel="noopener noreferrer sponsored"
       onClick={onClick}
-      aria-label={`Search ${f.airline || ''} ${f.origin} to ${f.destination} on Aviasales (opens new tab)`}
+      title="Opens Aviasales results for this route — select your flight there"
+      aria-label={`Find ${f.origin} to ${f.destination} on Aviasales — select your flight there (opens new tab)`}
     >
       {body}
     </a>

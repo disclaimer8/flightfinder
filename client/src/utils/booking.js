@@ -25,13 +25,15 @@ function toDDMM(iso) {
  *                         isRoundTrip, returnItinerary: {departureTime} }
  *   - AircraftFlightCard shape: { origin, destination, departureTime }
  *
- * Optional narrowing filters (appended as Aviasales query params to get the
- * user as close as possible to the specific flight they clicked — Aviasales
- * offer IDs are ephemeral so a true per-offer deep-link isn't available):
- *   - airline: IATA carrier code (e.g. "BA") → `?only_airlines=BA`
- *
  * Returns null when any required field is missing — callers should fall
  * back to a non-clickable card with a muted "Booking unavailable" label.
+ *
+ * NOTE: Aviasales affiliate URLs accept only route + date + passengers —
+ * there is no supported query param to narrow by airline, time, or flight
+ * number. A true per-offer deep-link requires the Travelpayouts Flight
+ * Search API server flow (POST /v1/flight_searches → poll results → use
+ * terms[gate].url). Until we wire that up, clicking a card lands the user
+ * on the route results page and they pick the matching flight themselves.
  */
 export function buildBookingUrl(flight, passengers) {
   const dep = flight.departure?.code || flight.origin;
@@ -47,14 +49,6 @@ export function buildBookingUrl(flight, passengers) {
     aviasalesUrl = `https://www.aviasales.com/search/${dep}${departDDMM}${arr}${returnDDMM}${pax}`;
   } else {
     aviasalesUrl = `https://www.aviasales.com/search/${dep}${departDDMM}${arr}${pax}`;
-  }
-
-  // Narrow the Aviasales results page to the specific airline when known.
-  // Accepts IATA codes only — 2 uppercase letters/digits. Names like
-  // "British Airways" from the main-search shape are silently ignored.
-  const iata = typeof flight.airline === 'string' ? flight.airline.trim() : '';
-  if (/^[A-Z0-9]{2}$/.test(iata)) {
-    aviasalesUrl += `?only_airlines=${iata}`;
   }
 
   return `https://tp.media/r?marker=${TP_MARKER}&trs=${TP_TRS}&p=${TP_PROGRAM}&u=${encodeURIComponent(aviasalesUrl)}`;

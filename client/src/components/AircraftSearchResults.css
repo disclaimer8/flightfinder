@@ -238,6 +238,13 @@
   flex-shrink: 0;
 }
 
+.ac-card-cta-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.5);
+}
+
 /* Results toolbar — title + sort selector on one row */
 .ac-results-toolbar {
   display: flex;

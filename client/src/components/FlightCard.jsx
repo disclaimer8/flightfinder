@@ -153,8 +153,8 @@ function FlightCard({ flight, passengers }) {
             href={bookingUrl}
             target="_blank"
             rel="noopener noreferrer sponsored"
-            title="Search on Aviasales"
-            aria-label={`Search ${flight.airline} flight on Aviasales (opens new tab)`}
+            title="Opens Aviasales results for this route — select your flight there"
+            aria-label={`Find ${flight.departure?.code} to ${flight.arrival?.code} on Aviasales — select your flight there (opens new tab)`}
             onClick={() => emitAffiliateClick('main-search', {
               origin: flight.departure?.code,
               destination: flight.arrival?.code,
@@ -165,7 +165,7 @@ function FlightCard({ flight, passengers }) {
               isRoundTrip: !!flight.isRoundTrip,
             })}
           >
-            Search on Aviasales
+            Find this route on Aviasales
             <svg aria-hidden="true" focusable="false" className="btn-external-icon" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
