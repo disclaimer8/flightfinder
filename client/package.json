@@ -15,6 +15,7 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
+    "postbuild": "node scripts/optimize-images.mjs",
     "build:android": "vite build --mode android && npx cap sync android",
     "build:ios": "vite build --mode ios && npx cap sync ios",
     "preview": "vite preview",

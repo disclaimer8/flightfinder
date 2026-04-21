@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import SearchForm from './components/SearchForm';
 import FlightResults from './components/FlightResults';
 import ExploreResults from './components/ExploreResults';
@@ -7,8 +7,11 @@ import ErrorBoundary from './components/ErrorBoundary';
 import SkeletonResults from './components/SkeletonResults';
 import AuthModal from './components/AuthModal';
 import AircraftSearchForm from './components/AircraftSearchForm';
-import AircraftRouteMap from './components/AircraftRouteMap';
-import RouteMap from './components/RouteMap';
+// Map components pull Leaflet (~150KB gz) + their own code. Lazy-load them
+// so the home page ships without the map runtime — users who never click
+// "Route map" or "By aircraft" never download it.
+const AircraftRouteMap = lazy(() => import('./components/AircraftRouteMap'));
+const RouteMap         = lazy(() => import('./components/RouteMap'));
 import { useFlightSearch } from './hooks/useFlightSearch';
 import { FilterOptionsContext } from './context/FilterOptionsContext';
 import { useAuth } from './context/AuthContext';
@@ -226,18 +229,22 @@ function App() {
         <main className="results-section">
           {searchMode === 'map' ? (
             <ErrorBoundary>
-              <RouteMap />
+              <Suspense fallback={<SkeletonResults message="Loading map…" />}>
+                <RouteMap />
+              </Suspense>
             </ErrorBoundary>
           ) : searchMode === 'by-aircraft' && acQuery ? (
             <ErrorBoundary>
-              <AircraftRouteMap
-                familyName={acQuery.familyName}
-                family={acQuery.familyName}
-                date={acQuery.date}
-                passengers={acQuery.passengers}
-                originIatas={[acQuery.origin]}
-                onBack={() => setAcQuery(null)}
-              />
+              <Suspense fallback={<SkeletonResults message="Loading map…" />}>
+                <AircraftRouteMap
+                  familyName={acQuery.familyName}
+                  family={acQuery.familyName}
+                  date={acQuery.date}
+                  passengers={acQuery.passengers}
+                  originIatas={[acQuery.origin]}
+                  onBack={() => setAcQuery(null)}
+                />
+              </Suspense>
             </ErrorBoundary>
           ) : (
             <>
