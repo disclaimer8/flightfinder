@@ -6,6 +6,63 @@ import './FlightResults.css';
 
 const IS_DEV = import.meta.env.DEV;
 
+// "5h 30m" → "PT5H30M"; accepts "2h", "45m", "2h 5m", "0m". Returns null
+// if the input is not a recognisable duration so JSON-LD can omit the
+// estimatedFlightDuration field rather than emit an invalid ISO string.
+function durationToIso(s) {
+  if (typeof s !== 'string') return null;
+  const m = /^(?:(\d+)h)?\s*(?:(\d+)m)?$/.exec(s.trim());
+  if (!m || (!m[1] && !m[2])) return null;
+  const h = parseInt(m[1] || '0', 10);
+  const mm = parseInt(m[2] || '0', 10);
+  return `PT${h}H${mm}M`;
+}
+
+// Build schema.org Flight + Offer JSON-LD for the top N displayed flights.
+// Per Google's guidelines, only emit fields we can fill reliably; omit
+// rather than stub otherwise the rich result may get flagged.
+function buildFlightJsonLd(flights, max = 10) {
+  const list = flights.slice(0, max).map((f, i) => {
+    const node = {
+      '@type': 'Flight',
+      position: i + 1,
+      flightNumber: f.flightNumber || undefined,
+      airline: f.airline ? { '@type': 'Airline', name: f.airline } : undefined,
+      departureAirport: f.departure?.code
+        ? { '@type': 'Airport', iataCode: f.departure.code }
+        : undefined,
+      arrivalAirport: f.arrival?.code
+        ? { '@type': 'Airport', iataCode: f.arrival.code }
+        : undefined,
+      departureTime: f.departureTime || undefined,
+      arrivalTime: f.arrivalTime || undefined,
+      estimatedFlightDuration: durationToIso(f.duration) || undefined,
+      aircraft: f.aircraft?.name || f.aircraftName || f.aircraftCode || undefined,
+    };
+    if (f.price != null) {
+      node.offers = {
+        '@type': 'Offer',
+        price: String(f.price),
+        priceCurrency: f.currency || 'USD',
+        availability: 'https://schema.org/InStock',
+      };
+    }
+    // Drop undefined keys so the emitted JSON is clean.
+    for (const k of Object.keys(node)) if (node[k] === undefined) delete node[k];
+    return node;
+  });
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    numberOfItems: list.length,
+    itemListElement: list.map((flight, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      item: flight,
+    })),
+  };
+}
+
 const SORT_OPTIONS = [
   { id: 'price_asc',  label: 'Cheapest' },
   { id: 'duration',   label: 'Quickest' },
@@ -86,9 +143,17 @@ function FlightResults({ flights, source, hasSearched, initialAirlines = [] }) {
   }
 
   const hiddenCount = flights.length - displayed.length;
+  const jsonLd = useMemo(() => buildFlightJsonLd(displayed, 10), [displayed]);
 
   return (
     <div className="results-container">
+      {jsonLd.numberOfItems > 0 && (
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       <div className="results-layout">
         <FlightFilters flights={flights} filters={filters} onChange={setFilters} />
 
