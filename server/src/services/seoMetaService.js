@@ -36,6 +36,8 @@ const HOME = {
   canonical: `${BASE}/`,
   h1: 'Find flights by aircraft type',
   subtitle: 'Search routes worldwide, filtered by aircraft model — Boeing 737, Airbus A320, turboprops, wide-body jets and more.',
+  ogType: 'website',
+  kind: 'home',
 };
 
 const BY_AIRCRAFT = {
@@ -44,6 +46,8 @@ const BY_AIRCRAFT = {
   canonical: `${BASE}/by-aircraft`,
   h1: 'Search flights by aircraft',
   subtitle: 'Pick an aircraft model — Boeing 787, Airbus A350, A380, A320, Boeing 737 and more — and we show you every route it flies worldwide.',
+  ogType: 'website',
+  kind: 'by-aircraft',
 };
 
 const MAP = {
@@ -52,6 +56,8 @@ const MAP = {
   canonical: `${BASE}/map`,
   h1: 'Global flight route map',
   subtitle: 'Click any airport to see where you can fly from there, or draw a radius to find every airport within a region.',
+  ogType: 'website',
+  kind: 'map',
 };
 
 // Slugs we know about — any /aircraft/:other falls through to 404-style
@@ -72,6 +78,11 @@ function aircraftMeta(slug) {
     h1: `${label} — flights, routes and airlines`,
     subtitle: `Every city pair operated by the ${label} worldwide. Pick a route to book the next available flight on this aircraft.`,
     robots: 'index, follow',
+    ogType: 'article',
+    kind: 'aircraft',
+    slug,
+    aircraftLabel: label,
+    aircraftManufacturer: manufacturer,
   };
 }
 
@@ -92,6 +103,13 @@ function routeMeta(pair) {
     h1: `${fromName} to ${toName} flights`,
     subtitle: `Direct and connecting flights from ${fromName} (${fromIata}) to ${toName} (${toIata}). Compare airlines, aircraft, and fares.`,
     robots: 'index, follow',
+    ogType: 'article',
+    kind: 'route',
+    pair,
+    fromIata,
+    toIata,
+    fromName,
+    toName,
   };
 }
 
@@ -99,6 +117,7 @@ function notFoundMeta() {
   return {
     ...HOME,
     robots: 'noindex, follow',
+    kind: 'not-found',
   };
 }
 
@@ -122,15 +141,98 @@ function resolve(pathname) {
 }
 
 /**
+ * Build per-route structured data (schema.org, JSON-LD). The base
+ * index.html already ships a WebSite + SoftwareApplication graph; this
+ * returns an ADDITIONAL graph that gets injected right before </head>:
+ *
+ *   - BreadcrumbList — on /aircraft/:slug and /routes/:pair
+ *   - FAQPage       — on home (Q&A content is also visible in the static
+ *                     fallback, so this satisfies Google's requirement
+ *                     that FAQ schema mirrors visible content)
+ *
+ * Returns null when there's no extra graph to inject (e.g. /by-aircraft,
+ * /map, not-found), letting the caller skip the script tag entirely.
+ */
+function structuredData(meta) {
+  const graph = [];
+  if (meta.kind === 'aircraft') {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: 'By aircraft', item: `${BASE}/by-aircraft` },
+        { '@type': 'ListItem', position: 3, name: meta.aircraftLabel, item: meta.canonical },
+      ],
+    });
+  } else if (meta.kind === 'route') {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: 'Routes', item: `${BASE}/` },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: `${meta.fromName} to ${meta.toName}`,
+          item: meta.canonical,
+        },
+      ],
+    });
+  } else if (meta.kind === 'home') {
+    graph.push({
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'How do I search flights by aircraft type on FlightFinder?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Pick an aircraft model — Boeing 737, Airbus A320, A380, Boeing 787 Dreamliner and more — enter your origin airport, and FlightFinder shows every route that plane flies from there with live fares.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'Which aircraft types can I filter by?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'We support Boeing 737/747/757/767/777/787, the full Airbus A220/A319/A320/A321/A330/A340/A350/A380 family, Embraer E170/E175/E190/E195, Bombardier CRJ and Dash 8, and the ATR 42/72 turboprops.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'Is FlightFinder free to use?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Yes. FlightFinder is free. We surface live fares and route data from multiple providers; when you book, you are redirected to the airline or partner that owns the inventory.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'Where does the route data come from?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Live schedules come from Amadeus, AeroDataBox and Travelpayouts. Observed routes (which aircraft actually flew a given city pair) are crowdsourced from adsb.lol ADS-B data under the Open Database License.',
+          },
+        },
+      ],
+    });
+  }
+  if (graph.length === 0) return null;
+  return { '@context': 'https://schema.org', '@graph': graph };
+}
+
+/**
  * Apply resolved metadata to the raw index.html string. Returns a new
  * string; input is not mutated. Replaces:
  *   - <title>…</title>
  *   - <meta name="description" …>
  *   - <link rel="canonical" …>
- *   - <meta property="og:url|og:title|og:description" …>
+ *   - <meta property="og:url|og:title|og:description|og:type" …>
  *   - <meta name="twitter:title|twitter:description" …>
  *   - (optionally) <meta name="robots" …>
  *   - <h1> and <p class="hero-subtitle"> inside the static #root fallback
+ *   - Adds a <script type="application/ld+json"> with per-route graph
+ *     (BreadcrumbList / FAQPage) right before </head>.
  */
 function inject(html, meta) {
   let out = html;
@@ -155,6 +257,12 @@ function inject(html, meta) {
     /<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i,
     `<meta property="og:description" content="${esc(meta.description)}" />`
   );
+  if (meta.ogType) {
+    out = out.replace(
+      /<meta\s+property="og:type"\s+content="[^"]*"\s*\/?>/i,
+      `<meta property="og:type" content="${esc(meta.ogType)}" />`
+    );
+  }
   out = out.replace(
     /<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i,
     `<meta name="twitter:title" content="${esc(meta.title)}" />`
@@ -180,7 +288,15 @@ function inject(html, meta) {
     /(<p style="font-size:clamp\(16px,2\.2vw,20px\)[^"]*"[^>]*>)[^<]*(<\/p>)/,
     `$1${esc(meta.subtitle)}$2`
   );
+  const sd = structuredData(meta);
+  if (sd) {
+    // JSON.stringify output is already safe inside a <script> tag as long
+    // as we escape the one sequence that can break out: </
+    const json = JSON.stringify(sd).replace(/<\/(script)/gi, '<\\/$1');
+    const tag  = `<script type="application/ld+json">${json}</script>\n  </head>`;
+    out = out.replace(/<\/head>/i, tag);
+  }
   return out;
 }
 
-module.exports = { resolve, inject };
+module.exports = { resolve, inject, structuredData };

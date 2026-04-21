@@ -45,6 +45,27 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
+    <!-- Preconnect / dns-prefetch: open TCP+TLS sockets to the origins we
+         actually hit in the first 500ms so the browser doesn't serial-block
+         on DNS + handshake once the first fetch fires. gtag + tp-drive are
+         already loaded async via the scripts below, but the tile servers
+         (carto) and Sentry ingest fire on interaction, so preconnect buys
+         roughly 200-400ms on cold loads for users outside Europe. -->
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
+    <link rel="preconnect" href="https://www.google-analytics.com" crossorigin />
+    <link rel="preconnect" href="https://emrldtp.cc" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com" />
+    <link rel="dns-prefetch" href="https://b.basemaps.cartocdn.com" />
+    <link rel="dns-prefetch" href="https://c.basemaps.cartocdn.com" />
+    <link rel="dns-prefetch" href="https://d.basemaps.cartocdn.com" />
+    <link rel="dns-prefetch" href="https://sentry.avs.io" />
+
+    <!-- Preload the OG image so social-preview crawlers (Slack, Telegram,
+         LinkedIn) get it from cache on the redirected fetch. No measurable
+         effect on real users — this is crawler-latency insurance. -->
+    <link rel="preload" as="image" href="/og-image.png" fetchpriority="low" />
+
     <!-- Google Analytics (G-ZW8Y3YLN7S). Init is in /gtag-init.js because
          our CSP forbids inline scripts — see server/src/index.js helmet config. -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW8Y3YLN7S"></script>
@@ -141,6 +162,35 @@
             <li><strong style="color:#e2e8f0;">By aircraft</strong> &mdash; pick a plane model (e.g. Boeing 787, Airbus A350) and see every route it flies from your origin.</li>
             <li><strong style="color:#e2e8f0;">Route map</strong> &mdash; click any airport worldwide to explore its destinations, or draw a radius to find nearby airports.</li>
           </ul>
+        </section>
+        <!--
+          Visible FAQ — mirrors the FAQPage JSON-LD injected by the server
+          on the home route. Google requires the rich-result text to be
+          crawlable on the page for which the schema is declared; putting
+          it in the static fallback keeps the content accessible before
+          React hydrates (and therefore visible to Googlebot's initial
+          HTML pass and to non-JS crawlers like Bing and LinkedIn).
+        -->
+        <section style="max-width:960px;margin:60px auto 0;" aria-labelledby="faq-heading">
+          <h2 id="faq-heading" style="font-size:22px;font-weight:700;margin:0 0 12px;">Frequently asked questions</h2>
+          <div style="display:grid;gap:16px;color:#cbd5e1;font-size:15px;line-height:1.55;">
+            <div>
+              <h3 style="font-size:16px;font-weight:600;color:#e2e8f0;margin:0 0 4px;">How do I search flights by aircraft type on FlightFinder?</h3>
+              <p style="margin:0;">Pick an aircraft model &mdash; Boeing 737, Airbus A320, A380, Boeing 787 Dreamliner and more &mdash; enter your origin airport, and FlightFinder shows every route that plane flies from there with live fares.</p>
+            </div>
+            <div>
+              <h3 style="font-size:16px;font-weight:600;color:#e2e8f0;margin:0 0 4px;">Which aircraft types can I filter by?</h3>
+              <p style="margin:0;">We support Boeing 737/747/757/767/777/787, the full Airbus A220/A319/A320/A321/A330/A340/A350/A380 family, Embraer E170/E175/E190/E195, Bombardier CRJ and Dash 8, and the ATR 42/72 turboprops.</p>
+            </div>
+            <div>
+              <h3 style="font-size:16px;font-weight:600;color:#e2e8f0;margin:0 0 4px;">Is FlightFinder free to use?</h3>
+              <p style="margin:0;">Yes. FlightFinder is free. We surface live fares and route data from multiple providers; when you book, you are redirected to the airline or partner that owns the inventory.</p>
+            </div>
+            <div>
+              <h3 style="font-size:16px;font-weight:600;color:#e2e8f0;margin:0 0 4px;">Where does the route data come from?</h3>
+              <p style="margin:0;">Live schedules come from Amadeus, AeroDataBox and Travelpayouts. Observed routes (which aircraft actually flew a given city pair) are crowdsourced from adsb.lol ADS-B data under the Open Database License.</p>
+            </div>
+          </div>
         </section>
       </div>
     </div>
