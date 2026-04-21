@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE } from '../utils/api';
 import './ValidityCalendar.css';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ export default function ValidityCalendar({ origin, dest, onClose }) {
     setError(null);
     setCalendar(null);
 
-    const baseFetch = fetch(`/api/map/flight-dates?origin=${origin.iata}&destination=${dest.iata}`)
+    const baseFetch = fetch(`${API_BASE}/api/map/flight-dates?origin=${origin.iata}&destination=${dest.iata}`)
       .then(r => r.json())
       .then(data => {
         if (data.error) throw new Error(data.error);
@@ -60,7 +61,7 @@ export default function ValidityCalendar({ origin, dest, onClose }) {
     });
 
     const cheapFetches = monthsToFetch.map(month =>
-      fetch(`/api/flights/cheap-calendar?departure=${origin.iata}&arrival=${dest.iata}&month=${month}`)
+      fetch(`${API_BASE}/api/flights/cheap-calendar?departure=${origin.iata}&arrival=${dest.iata}&month=${month}`)
         .then(r => r.ok ? r.json() : { entries: [] })
         .then(d => Array.isArray(d.entries) ? d.entries : [])
         .catch(() => [])

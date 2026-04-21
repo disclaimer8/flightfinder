@@ -72,7 +72,7 @@ function App() {
     // Clean up URL immediately so user doesn't re-trigger on refresh
     window.history.replaceState({}, '', '/');
 
-    fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`)
+    fetch(`${API_BASE}/api/auth/verify-email?token=${encodeURIComponent(token)}`)
       .then(res => res.json())
       .then(data => {
         setVerifyState(data.success ? 'success' : 'error');

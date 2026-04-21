@@ -4,6 +4,7 @@ import { geodesicPoints, ORIGIN_PALETTE } from './mapArcHelpers';
 import { useAircraftSearch } from '../hooks/useAircraftSearch';
 import AircraftSearchResults from './AircraftSearchResults';
 import AircraftFlightCard from './AircraftFlightCard';
+import { API_BASE } from '../utils/api';
 import './RouteMap.css';
 import './AircraftRouteMap.css';
 
@@ -134,7 +135,7 @@ export default function AircraftRouteMap({
     qs.set('windowDays', '14');
     if (refreshTick) qs.set('_', String(Date.now()));
 
-    fetch(`/api/aircraft/routes?${qs.toString()}`)
+    fetch(`${API_BASE}/api/aircraft/routes?${qs.toString()}`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -182,7 +183,7 @@ export default function AircraftRouteMap({
           dotsCanvasRef.current?.redraw();
           fitToRoutes(json);
         } else {
-          fetch('/api/map/airports')
+          fetch(`${API_BASE}/api/map/airports`)
             .then(r => r.json())
             .then(ap => {
               if (cancelled) return;

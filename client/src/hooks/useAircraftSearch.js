@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { API_BASE } from '../utils/api';
 
 /**
  * Hook for streaming aircraft-family flight search via SSE.
@@ -40,7 +41,7 @@ export function useAircraftSearch() {
     if (params.passengers) qs.set('passengers',  String(params.passengers));
     if (params.nonStop)    qs.set('nonStop',     '1');
 
-    const url = `/api/flights/aircraft-search/stream?${qs.toString()}`;
+    const url = `${API_BASE}/api/flights/aircraft-search/stream?${qs.toString()}`;
     const es = new EventSource(url);
     esRef.current = es;
 

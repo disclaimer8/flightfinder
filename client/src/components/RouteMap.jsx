@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
+import { API_BASE } from '../utils/api';
 import './RouteMap.css';
 import ValidityCalendar from './ValidityCalendar';
 
@@ -426,7 +427,7 @@ export default function RouteMap() {
     highlightedRef.current = new Set();
 
     try {
-      const res  = await fetch(`/api/map/routes?origin=${ap.iata}`);
+      const res  = await fetch(`${API_BASE}/api/map/routes?origin=${ap.iata}`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -579,7 +580,7 @@ export default function RouteMap() {
         maxZoom: 19,
       }).addTo(map);
 
-      const res      = await fetch('/api/map/airports');
+      const res      = await fetch(`${API_BASE}/api/map/airports`);
       const airports = await res.json();
       if (cancelled) {
         // Effect was torn down while we were awaiting — undo what we created.
@@ -600,7 +601,7 @@ export default function RouteMap() {
       // Fetch hub-to-hub network baseline. Failure is non-fatal — the map
       // simply shows up empty like before.
       try {
-        const hubRes = await fetch('/api/map/hub-network');
+        const hubRes = await fetch(`${API_BASE}/api/map/hub-network`);
         if (hubRes.ok) {
           const hubData = await hubRes.json();
           if (cancelled) {

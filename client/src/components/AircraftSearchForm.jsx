@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import DatePicker from './DatePicker';
+import { API_BASE } from '../utils/api';
 import './AircraftSearchForm.css';
 
 // Simple airport-autocomplete field used for both FROM and TO.
@@ -17,7 +18,7 @@ function AirportField({ id, label, value, onChange, placeholder }) {
     if (input.length < 2) { setResults([]); return; }
     clearTimeout(debounce.current);
     debounce.current = setTimeout(() => {
-      fetch(`/api/aircraft/airports/search?q=${encodeURIComponent(input)}&limit=6`)
+      fetch(`${API_BASE}/api/aircraft/airports/search?q=${encodeURIComponent(input)}&limit=6`)
         .then(r => r.json())
         .then(d => { if (d.success) setResults(d.airports || []); })
         .catch(() => {});
@@ -82,7 +83,7 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
   const [directOnly, setDirectOnly] = useState(false);
 
   useEffect(() => {
-    fetch('/api/aircraft/families')
+    fetch(`${API_BASE}/api/aircraft/families`)
       .then(r => r.json())
       .then(d => {
         if (d.success && d.families) {
