@@ -12,6 +12,7 @@
 
 const popularDestinations = require('../models/popularDestinations');
 const amadeusService = require('./amadeusService');
+const duffelService  = require('./duffelService');
 const cacheService   = require('./cacheService');
 const openFlights    = require('./openFlightsService');
 const geocoding      = require('./geocodingService');
@@ -128,6 +129,71 @@ function extractBestFlight(raw, familyCodes, origin, dest) {
   return matching.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
 }
 
+/**
+ * Format and filter a raw Duffel response, keeping only offers whose aircraft
+ * (on any segment of the outbound slice) matches a code in the family code set.
+ *
+ * Duffel shape: { data: { offers: [...] } } OR { offers: [...] }.
+ * Each offer: { id, total_amount, total_currency, slices: [{ duration, segments: [{
+ *   aircraft: { iata_code, name }, operating_carrier, marketing_carrier,
+ *   departing_at, arriving_at, origin, destination }]}] }
+ *
+ * Returns the cheapest matching offer in the same normalized shape as
+ * `extractBestFlight` (Amadeus), or null if none match.
+ */
+function extractBestFlightDuffel(raw, familyCodes, origin, dest) {
+  const offers = raw?.data?.offers || raw?.offers || [];
+  if (!offers.length) return null;
+
+  const matching = [];
+
+  for (const offer of offers) {
+    const slice = offer.slices?.[0];
+    const segments = slice?.segments || [];
+    if (!segments.length) continue;
+
+    // Collect aircraft codes across the outbound slice
+    const codes = segments
+      .map(seg => seg.aircraft?.iata_code)
+      .filter(Boolean);
+
+    if (!codes.some(c => familyCodes.has(c))) continue;
+
+    const firstSeg = segments[0];
+    const lastSeg  = segments[segments.length - 1];
+    const stops    = segments.length - 1;
+    const duration = slice.duration || '';
+    const price    = parseFloat(offer.total_amount || 0);
+    const currency = offer.total_currency || 'EUR';
+
+    // Pick the first family-matching code for display; prefer segment that has it
+    const matchingSeg = segments.find(s => familyCodes.has(s.aircraft?.iata_code)) || firstSeg;
+    const displayCode = matchingSeg.aircraft?.iata_code || codes[0];
+    const aircraftName = matchingSeg.aircraft?.name || displayCode;
+    const airline = firstSeg.marketing_carrier?.iata_code
+      || firstSeg.operating_carrier?.iata_code
+      || null;
+
+    matching.push({
+      offerId: offer.id,
+      origin,
+      destination: dest,
+      price: price.toFixed(2),
+      currency,
+      departureTime: firstSeg.departing_at || null,
+      arrivalTime:   lastSeg.arriving_at    || null,
+      duration,
+      stops,
+      aircraftCode: displayCode,
+      aircraftName,
+      airline,
+    });
+  }
+
+  if (!matching.length) return null;
+  return matching.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
+}
+
 // ── Main async generator ──────────────────────────────────────────────────────
 
 /**
@@ -179,6 +245,17 @@ async function* searchByAircraftFamily(params) {
   let completed = 0;
   let found = 0;
 
+  // Provider selection: prefer Duffel when configured (Amadeus test env is sparse
+  // on future dates and produces empty streams — see commit history). Fall back
+  // to Amadeus per-pair on Duffel failure so a transient 4xx/rate-limit doesn't
+  // kill the whole stream.
+  const useDuffel = !!process.env.DUFFEL_API_KEY;
+  console.log(
+    useDuffel
+      ? '[aircraft-search] using Duffel as primary'
+      : '[aircraft-search] using Amadeus (Duffel not configured)'
+  );
+
   yield { event: 'progress', data: { phase: 'searching', completed: 0, total } };
 
   // 4. Fan-out in batches
@@ -187,15 +264,32 @@ async function* searchByAircraftFamily(params) {
 
     const batchResults = await Promise.allSettled(
       batch.map(async ({ origin, dest }) => {
-        const cacheKey = `raw:amadeus:${origin.iata}:${dest.code}:${date}:${passengers}:`;
+        const searchParams = {
+          departure_airport: origin.iata,
+          arrival_airport:   dest.code,
+          departure_date:    date,
+          passengers,
+        };
+
+        if (useDuffel) {
+          const duffelKey = `raw:duffel:${origin.iata}:${dest.code}:${date}:${passengers}:`;
+          try {
+            const { data: raw } = await cacheService.getOrFetch(duffelKey, () =>
+              duffelService.searchFlights(searchParams)
+            );
+            const best = extractBestFlightDuffel(raw, familyCodes, origin.iata, dest.code);
+            if (best) return best;
+            // If Duffel returned no family-matching offers, try Amadeus as fallback
+            // (Duffel's coverage for some carriers/routes is narrower than Amadeus).
+          } catch {
+            // swallow — fall through to Amadeus
+          }
+        }
+
+        const amadeusKey = `raw:amadeus:${origin.iata}:${dest.code}:${date}:${passengers}:`;
         try {
-          const { data: raw } = await cacheService.getOrFetch(cacheKey, () =>
-            amadeusService.searchFlights({
-              departure_airport: origin.iata,
-              arrival_airport:   dest.code,
-              departure_date:    date,
-              passengers,
-            })
+          const { data: raw } = await cacheService.getOrFetch(amadeusKey, () =>
+            amadeusService.searchFlights(searchParams)
           );
           return extractBestFlight(raw, familyCodes, origin.iata, dest.code);
         } catch {

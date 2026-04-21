@@ -589,7 +589,14 @@
 }
 
 .arm-cards-wrap {
-  padding: 4px 12px 16px;
+  padding: 20px;
+  background: #0d0d1a;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  margin-top: 4px;
+}
+@media (max-width: 600px) {
+  .arm-cards-wrap { padding: 12px; border-radius: 10px; }
 }
 
 /* View toggle (List / Map) — sits in the same header row as the back button.
