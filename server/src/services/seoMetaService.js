@@ -29,6 +29,19 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c])
 );
 
+// Replace the body between a tag-open prefix and its closing tag, using
+// only linear indexOf/slice so there's no regex backtracking surface.
+// Returns the input unchanged when either marker is missing.
+function replaceTagBody(html, openPrefix, closeTag, newBody) {
+  const openStart = html.indexOf(openPrefix);
+  if (openStart < 0) return html;
+  const openEnd = html.indexOf('>', openStart + openPrefix.length);
+  if (openEnd < 0) return html;
+  const closeStart = html.indexOf(closeTag, openEnd + 1);
+  if (closeStart < 0) return html;
+  return html.slice(0, openEnd + 1) + newBody + html.slice(closeStart);
+}
+
 // Default home metadata — matches client/index.html defaults. If those
 // change, keep these in sync (they're injected as overrides).
 const HOME = {
@@ -313,17 +326,14 @@ function inject(html, meta) {
       `<meta name="robots" content="${esc(meta.robots)}" />`
     );
   }
-  // Swap H1 + subtitle inside the static #root fallback. The selectors are
-  // the exact substrings used in client/index.html — if they change there,
-  // update both places (tests in smoke-test catch the regression).
-  out = out.replace(
-    /(<h1 style="font-size:clamp\(32px,6vw,56px\)[^"]*"[^>]*>)[^<]*(<\/h1>)/,
-    `$1${esc(meta.h1)}$2`
-  );
-  out = out.replace(
-    /(<p style="font-size:clamp\(16px,2\.2vw,20px\)[^"]*"[^>]*>)[^<]*(<\/p>)/,
-    `$1${esc(meta.subtitle)}$2`
-  );
+  // Swap H1 + subtitle inside the static #root fallback. The marker
+  // prefixes are the exact substrings used in client/index.html — if they
+  // change there, update both places (tests in smoke-test catch the
+  // regression). Uses indexOf/slice instead of regex to avoid the
+  // polynomial-backtracking pattern flagged by CodeQL js/polynomial-redos
+  // on `[^"]*"[^>]*>` when scanning arbitrary HTML.
+  out = replaceTagBody(out, '<h1 style="font-size:clamp(32px,6vw,56px)', '</h1>', esc(meta.h1));
+  out = replaceTagBody(out, '<p style="font-size:clamp(16px,2.2vw,20px)', '</p>',  esc(meta.subtitle));
   const sd = structuredData(meta);
   if (sd) {
     // JSON.stringify output is already safe inside a <script> tag as long
