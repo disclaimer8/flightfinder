@@ -131,6 +131,60 @@ exports.getAirportsInRadius = (req, res) => {
 // Returns cheapest available dates for the next ~11 months.
 // Used by the ValidityCalendar component to show a 12-month price heatmap.
 
+// ─── GET /api/map/route-aircraft?dep=LHR&arr=JFK ─────────────────────────────
+// Returns up to 6 aircraft families observed on the route in the last 90 days
+// with links back to the corresponding /aircraft/:slug landing page. Used by
+// RouteLandingPage for cross-linking and by search-results UI for badges.
+// Response shape: { dep, arr, windowDays, families: [{slug, label, icaoTypes, count}] }
+exports.getRouteAircraft = (req, res) => {
+  const dep = String(req.query.dep || '').toUpperCase();
+  const arr = String(req.query.arr || '').toUpperCase();
+  if (!/^[A-Z]{3}$/.test(dep) || !/^[A-Z]{3}$/.test(arr) || dep === arr) {
+    return res.status(400).json({ success: false, message: 'dep and arr IATA codes required (3 letters, distinct)' });
+  }
+  const windowDays = 90;
+  const cacheKey = `map:route-aircraft:${dep}:${arr}:${windowDays}`;
+  const cached = cacheService.get(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const { families: famDict } = require('../models/aircraftFamilies');
+    const { getFamilyList } = require('../models/aircraftFamilies');
+    const sinceMs = Date.now() - windowDays * 86400000;
+    const rows = db.observedAircraftByRoute(dep, arr, sinceMs) || [];
+    // Bucket ICAO types → family slug using the existing families dictionary.
+    const icaoToFamily = new Map();
+    const list = getFamilyList();
+    for (const fam of list) {
+      const famData = famDict[fam.name];
+      if (!famData) continue;
+      for (const code of famData.codes) {
+        if (!icaoToFamily.has(code)) icaoToFamily.set(code, fam);
+      }
+    }
+    const bySlug = new Map();
+    for (const r of rows) {
+      const icao = (r.aircraft_icao || '').toUpperCase();
+      const fam = icaoToFamily.get(icao);
+      if (!fam) continue;
+      const cur = bySlug.get(fam.slug) || { slug: fam.slug, label: fam.label, icaoTypes: new Set(), count: 0 };
+      cur.icaoTypes.add(icao);
+      cur.count += 1;
+      bySlug.set(fam.slug, cur);
+    }
+    const families = [...bySlug.values()]
+      .map(f => ({ slug: f.slug, label: f.label, icaoTypes: [...f.icaoTypes].sort(), count: f.count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+    const result = { dep, arr, windowDays, families };
+    cacheService.set(cacheKey, result, 1800); // 30 min
+    res.json(result);
+  } catch (err) {
+    console.error('[route-aircraft] failed:', err.message);
+    res.status(500).json({ success: false, message: 'failed to load route aircraft' });
+  }
+};
+
 exports.getFlightDates = async (req, res) => {
   const { origin, destination } = req.query;
   if (

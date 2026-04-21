@@ -12,6 +12,9 @@ export default function RouteLandingPage() {
   const { pair } = useParams();
   const navigate = useNavigate();
   const [state, setState] = useState({ status: 'loading' });
+  // Aircraft families observed on this city pair (last 90 days). Drives the
+  // cross-link rail back to /aircraft/:slug landing pages.
+  const [aircraft, setAircraft] = useState([]);
 
   useEffect(() => {
     const m = /^([a-z]{3})-([a-z]{3})$/i.exec(pair || '');
@@ -33,6 +36,25 @@ export default function RouteLandingPage() {
         to:   { iata: to,   city: toAp?.city   || to,   name: toAp?.name   || to,   country: toAp?.country   || '' },
       });
     });
+  }, [pair]);
+
+  // Fetch observed aircraft families for cross-linking. Independent of
+  // the airport-name lookup so the page header isn't blocked.
+  useEffect(() => {
+    const m = /^([a-z]{3})-([a-z]{3})$/i.exec(pair || '');
+    if (!m) return;
+    const dep = m[1].toUpperCase();
+    const arr = m[2].toUpperCase();
+    let cancelled = false;
+    fetch(`${API_BASE}/api/map/route-aircraft?dep=${dep}&arr=${arr}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const list = Array.isArray(data?.families) ? data.families : [];
+        setAircraft(list);
+      })
+      .catch(() => { /* non-critical — cross-links just won't render */ });
+    return () => { cancelled = true; };
   }, [pair]);
 
   if (state.status === 'loading') return <SkeletonResults message="Loading route…" />;
@@ -74,6 +96,22 @@ export default function RouteLandingPage() {
           </button>
         </div>
       </header>
+
+      {aircraft.length > 0 && (
+        <section className="landing-top-routes">
+          <h2>Aircraft flying {from.iata} &rarr; {to.iata}</h2>
+          <p className="landing-map-hint">
+            Families observed on this city pair in the last 90 days. Click any aircraft to see its global route map.
+          </p>
+          <ul className="landing-siblings-list">
+            {aircraft.map((f) => (
+              <li key={f.slug}>
+                <Link to={`/aircraft/${f.slug}`}>{f.label}</Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="landing-siblings">
         <h2>Explore more</h2>

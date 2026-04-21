@@ -221,7 +221,12 @@ if (!IS_DEV) {
     }
     res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
+    // Return a real 404 for unknown /aircraft/:slug and /routes/:pair URLs
+    // so crawlers stop wasting budget on typos and bot-fuzz. The HTML body
+    // still ships the React app so a human visitor sees the in-app
+    // "not found" screen instead of a raw error.
+    const status = meta.kind === 'not-found' ? 404 : 200;
+    res.status(status).send(html);
   };
 
   app.get('/',      spaFallbackLimiter, spaFallback);

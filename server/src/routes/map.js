@@ -19,4 +19,7 @@ router.get('/radius',      ctrl.getAirportsInRadius);
 // GET /api/map/flight-dates    — 12-month cheapest dates for a route
 router.get('/flight-dates', ctrl.getFlightDates);
 
+// GET /api/map/route-aircraft  — aircraft families observed on a city pair
+router.get('/route-aircraft', ctrl.getRouteAircraft);
+
 module.exports = router;

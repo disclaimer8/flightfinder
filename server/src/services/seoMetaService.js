@@ -137,7 +137,10 @@ function resolve(pathname) {
   const rtMatch = /^\/routes\/([^/?#]+)\/?$/.exec(pathname);
   if (rtMatch) return routeMeta(rtMatch[1].toLowerCase());
 
-  return HOME;
+  // Anything else (/foo, /aircraft, /routes without a slug, typos) is an
+  // unknown URL — return 404-style metadata so the server can set the real
+  // HTTP status and we don't index every bot-fuzzed URL as duplicate-home.
+  return notFoundMeta();
 }
 
 /**

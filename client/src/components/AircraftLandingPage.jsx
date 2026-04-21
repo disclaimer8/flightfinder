@@ -38,6 +38,8 @@ export default function AircraftLandingPage() {
   const [families, setFamilies] = useState([]);
   const [fam, setFam] = useState(null);
   const [error, setError] = useState(null);
+  // Top observed city pairs for this family (cross-linking to /routes/:pair).
+  const [topRoutes, setTopRoutes] = useState([]);
 
   useEffect(() => {
     // Fetch the full family list once — we need it to resolve slug → display
@@ -56,6 +58,24 @@ export default function AircraftLandingPage() {
       })
       .catch(() => setError('fetch-failed'));
   }, [slug]);
+
+  // Pull top observed routes for this family (global, all origins) so we can
+  // render a cross-link rail to /routes/:pair landing pages. Independent of
+  // the AircraftRouteMap fetch because that component takes an `origins` prop
+  // and we want the absolute top globally.
+  useEffect(() => {
+    if (!fam) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/aircraft/routes?family=${encodeURIComponent(fam.slug)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const routes = Array.isArray(data?.routes) ? data.routes.slice(0, 12) : [];
+        setTopRoutes(routes);
+      })
+      .catch(() => { /* non-critical — cross-links just won't render */ });
+    return () => { cancelled = true; };
+  }, [fam]);
 
   if (error === 'unknown-family') {
     return (
@@ -117,6 +137,24 @@ export default function AircraftLandingPage() {
           </Suspense>
         </div>
       </section>
+
+      {topRoutes.length > 0 && (
+        <section className="landing-top-routes">
+          <h2>Top routes flown by the {fam.label}</h2>
+          <p className="landing-map-hint">
+            City pairs we&rsquo;ve observed most often in the last 14 days. Click any route to see flights.
+          </p>
+          <ul className="landing-siblings-list">
+            {topRoutes.map((r) => (
+              <li key={`${r.dep}-${r.arr}`}>
+                <Link to={`/routes/${r.dep.toLowerCase()}-${r.arr.toLowerCase()}`}>
+                  {r.dep} &rarr; {r.arr}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="landing-siblings">
         <h2>Other aircraft you can search</h2>
