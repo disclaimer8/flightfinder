@@ -258,6 +258,25 @@
   cursor: text;
 }
 
+/* Direct-only toggle — inline checkbox between airline selector and submit. */
+.direct-only-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  margin: 0 0 10px;
+  user-select: none;
+}
+.direct-only-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.direct-only-toggle:hover span { color: #fff; }
+
 /* ─────────────────────────────────────────
    SEARCH BUTTON
 ───────────────────────────────────────── */

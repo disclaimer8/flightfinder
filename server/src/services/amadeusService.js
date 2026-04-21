@@ -37,6 +37,7 @@ exports.searchFlights = async (params) => {
     max: 20
   };
   if (params.return_date) query.returnDate = params.return_date;
+  if (params.nonStop) query.nonStop = true;
 
   const response = await amadeus.shopping.flightOffersSearch.get(query);
 

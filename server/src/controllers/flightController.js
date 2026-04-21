@@ -25,6 +25,7 @@ exports.searchFlights = async (req, res) => {
   const aircraftModel = vq.aircraftModel || req.query.aircraftModel;
   const familyName   = vq.familyName   || req.query.familyName;
   const passengers   = vq.passengers   || parseInt(req.query.passengers, 10) || 1;
+  const directOnly   = vq.directOnly   === true;
   const { useMockData, api } = req.query;
 
   // Allow per-request API override unless explicitly locked via LOCK_FLIGHT_API=true
@@ -43,6 +44,7 @@ exports.searchFlights = async (req, res) => {
         departure_date:    date      || getNextDate(),
         passengers,
         return_date: returnDate || null,
+        nonStop: directOnly,
       };
 
       // Use pre-sanitised cache key if available, else build from normalised values
@@ -113,6 +115,13 @@ exports.searchFlights = async (req, res) => {
       } else {
         flights = [];
       }
+    }
+
+    // Safety net: upstream filter parameters are honoured by Amadeus (nonStop)
+    // and Duffel (slice.max_connections), but mock data and edge-case cached
+    // results may still include connecting itineraries. Enforce the invariant.
+    if (directOnly) {
+      flights = flights.filter(f => (f.stops ?? 0) === 0);
     }
 
     res.json({

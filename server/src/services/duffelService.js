@@ -35,24 +35,27 @@ duffelClient.interceptors.request.use(config => {
  */
 exports.searchFlights = async (params) => {
   try {
+    const outboundSlice = {
+      origin: params.departure_airport,
+      destination: params.arrival_airport,
+      departure_date: params.departure_date ? params.departure_date.split('T')[0] : new Date().toISOString().split('T')[0],
+    };
+    if (params.nonStop) outboundSlice.max_connections = 0;
+
     const requestData = {
       cabin_class: 'economy',
-      slices: [
-        {
-          origin: params.departure_airport,
-          destination: params.arrival_airport,
-          departure_date: params.departure_date ? params.departure_date.split('T')[0] : new Date().toISOString().split('T')[0]
-        }
-      ],
+      slices: [outboundSlice],
       passengers: Array.from({ length: params.passengers || 1 }, () => ({ type: 'adult' }))
     };
 
     if (params.return_date) {
-      requestData.slices.push({
+      const returnSlice = {
         origin: params.arrival_airport,
         destination: params.departure_airport,
-        departure_date: params.return_date
-      });
+        departure_date: params.return_date,
+      };
+      if (params.nonStop) returnSlice.max_connections = 0;
+      requestData.slices.push(returnSlice);
     }
 
     // Duffel API expects payload nested under a top-level "data" key

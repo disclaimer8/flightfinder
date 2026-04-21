@@ -33,7 +33,7 @@ function sanitiseKey(str) {
  * Validate GET /api/flights  query params
  */
 function searchQuery(req, res, next) {
-  const { departure, arrival, date, returnDate, passengers, aircraftType, aircraftModel, familyName } = req.query;
+  const { departure, arrival, date, returnDate, passengers, aircraftType, aircraftModel, familyName, directOnly } = req.query;
 
   if (!departure || !arrival) {
     return bad(res, 'departure and arrival are required');
@@ -78,6 +78,10 @@ function searchQuery(req, res, next) {
     }
   }
 
+  // directOnly: accept "1" / "true" as truthy, anything else = false.
+  // Include in cache key so direct-only results don't poison the general cache.
+  const directOnlyBool = directOnly === '1' || directOnly === 'true';
+
   // Normalise onto req so controllers get clean values
   req.validatedQuery = {
     departure:    dep,
@@ -88,7 +92,8 @@ function searchQuery(req, res, next) {
     aircraftType: aircraftType?.toLowerCase() || null,
     aircraftModel: aircraftModel?.toUpperCase() || null,
     familyName:   (familyName && familyName.trim()) || null,
-    sanitisedCacheKey: `${dep}:${arr}:${date || ''}:${pax || 1}:${returnDate || ''}`,
+    directOnly:   directOnlyBool,
+    sanitisedCacheKey: `${dep}:${arr}:${date || ''}:${pax || 1}:${returnDate || ''}:${directOnlyBool ? 'd' : 'a'}`,
   };
 
   next();

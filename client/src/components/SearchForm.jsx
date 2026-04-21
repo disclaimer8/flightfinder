@@ -18,6 +18,7 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
     aircraftType: '',
     aircraftModel: '',
     airlines: [],
+    directOnly: false,
   });
 
   useEffect(() => {
@@ -333,6 +334,17 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
             selected={filters.airlines}
             onChange={(airlines) => setFilters(prev => ({ ...prev, airlines }))}
           />
+        )}
+
+        {mode === 'search' && (
+          <label className="direct-only-toggle">
+            <input
+              type="checkbox"
+              checked={filters.directOnly}
+              onChange={(e) => setFilters(prev => ({ ...prev, directOnly: e.target.checked }))}
+            />
+            <span>Only direct flights</span>
+          </label>
         )}
 
         <button
