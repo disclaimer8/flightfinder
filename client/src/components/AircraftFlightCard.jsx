@@ -19,7 +19,12 @@ import { buildBookingUrl, emitAffiliateClick } from '../utils/booking';
 export default function AircraftFlightCard({ flight, passengers, source }) {
   const f = flight;
   const bookingUrl = buildBookingUrl(
-    { origin: f.origin, destination: f.destination, departureTime: f.departureTime },
+    {
+      origin: f.origin,
+      destination: f.destination,
+      departureTime: f.departureTime,
+      airline: f.airline, // IATA in by-aircraft SSE shape → narrows Aviasales to this carrier
+    },
     passengers
   );
 
