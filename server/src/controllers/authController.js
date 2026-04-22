@@ -119,7 +119,18 @@ exports.logout = (req, res) => {
 exports.me = (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-  res.json({ success: true, user });
+  res.json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      email_verified: Boolean(user.email_verified),
+      created_at: user.created_at,
+      subscription_tier: user.subscription_tier || 'free',
+      sub_valid_until: user.sub_valid_until || null,
+      has_stripe_customer: Boolean(user.stripe_customer_id),
+    },
+  });
 };
 
 exports.verifyEmail = (req, res) => {

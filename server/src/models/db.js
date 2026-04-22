@@ -119,7 +119,7 @@ db.exec(`
 // Prepared statements
 const stmts = {
   getUserByEmail:    db.prepare('SELECT * FROM users WHERE email = ?'),
-  getUserById:       db.prepare('SELECT id, email, email_verified, created_at FROM users WHERE id = ?'),
+  getUserById:       db.prepare('SELECT id, email, email_verified, created_at, subscription_tier, sub_valid_until, stripe_customer_id FROM users WHERE id = ?'),
   createUser:        db.prepare('INSERT INTO users (email, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?)'),
   verifyUserEmail:   db.prepare('UPDATE users SET email_verified = 1, updated_at = ? WHERE id = ?'),
   createRefreshToken: db.prepare('INSERT INTO refresh_tokens (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)'),
