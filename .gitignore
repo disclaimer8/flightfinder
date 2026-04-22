@@ -8,5 +8,7 @@ server/.env
 .DS_Store
 client/android/
 client/ios/
-server/data/
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
 .superpowers/
