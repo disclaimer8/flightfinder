@@ -567,6 +567,13 @@ export default function RouteMap() {
       // container, bail rather than stacking a second Leaflet instance.
       if (mapRef.current) return;
 
+      // Third safety: if the user switched tabs (or the component unmounted
+      // in any other way) while we were awaiting the dynamic import, the ref
+      // may be null. Leaflet's L.map(null) throws "Map container not found"
+      // as an unhandled rejection. Seen on Safari 26 in prod (Sentry id
+      // JAVASCRIPT-REACT-2). Bail cleanly.
+      if (!containerRef.current) return;
+
       map = L.map(containerRef.current, {
         center: [20, 0],
         zoom:   2,
