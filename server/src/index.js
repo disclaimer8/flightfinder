@@ -126,6 +126,7 @@ app.use('/api/flights', searchLimiter);
 // ─────────────────────────────────────────
 app.use('/api/auth',          require('./routes/auth'));
 app.use('/api/flights',       require('./routes/flights'));
+app.use('/api/flights',       require('./routes/enrichment'));
 app.use('/api/aircraft',      require('./routes/aircraft'));
 app.use('/api/map',           require('./routes/map'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
