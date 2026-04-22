@@ -133,6 +133,27 @@ exports.me = (req, res) => {
   });
 };
 
+// Dev/ops utility: verify a user by email without the email round-trip.
+// Gated by ADMIN_TOKEN env var (if unset, endpoint always returns 503).
+exports.adminVerifyEmail = (req, res) => {
+  const adminToken = process.env.ADMIN_TOKEN;
+  if (!adminToken) return res.status(503).json({ success: false, message: 'Admin endpoint disabled' });
+  const header = req.headers.authorization || '';
+  const provided = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!provided || provided !== adminToken) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  const { email } = req.body || {};
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ success: false, message: 'email required' });
+  }
+  const user = db.getUserByEmail(email);
+  if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+  if (user.email_verified) return res.json({ success: true, already: true });
+  db.verifyUserEmail(user.id);
+  res.json({ success: true, verified: true, user_id: user.id });
+};
+
 exports.verifyEmail = (req, res) => {
   const { token } = req.query;
   if (!token) {

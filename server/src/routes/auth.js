@@ -28,6 +28,9 @@ const verifyLimiter = rateLimit({
 router.get('/verify-email', verifyLimiter, authController.verifyEmail);
 router.post('/resend-verification', verifyLimiter, authController.resendVerification);
 
+// Admin utility — only active when ADMIN_TOKEN env var is set. See authController.adminVerifyEmail.
+router.post('/admin/verify-email', express.json(), authController.adminVerifyEmail);
+
 // Auth routes
 router.use(authLimiter);
 router.post('/register', validate.authBody.register, authController.register);
