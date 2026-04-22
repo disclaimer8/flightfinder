@@ -4,10 +4,17 @@ import { useTrips, deleteTrip, fetchTripStatus } from '../hooks/useTrips';
 import './MyTrips.css';
 
 export default function MyTrips() {
-  const { getToken } = useAuth();
+  const { getToken, user, loading: authLoading } = useAuth();
   const { trips, error, refresh } = useTrips();
   const [statusById, setStatusById] = useState({});
 
+  if (authLoading) return <div className="mytrips-loading">Loading…</div>;
+  if (!user) return (
+    <div className="mytrips-empty">
+      <h2>Please sign in</h2>
+      <p>My Trips is a Pro feature — <a href="/">sign in on the homepage</a> to continue.</p>
+    </div>
+  );
   if (error) return <div className="mytrips-error">{error}</div>;
   if (!trips) return <div className="mytrips-loading">Loading…</div>;
   if (!trips.length) return (

@@ -29,11 +29,30 @@ export function AuthProvider({ children }) {
 
   const getToken = useCallback(() => tokenRef.current, []);
 
-  // Restore session on mount by calling /api/auth/me with any stored token
+  // Restore session on mount. Access token lives only in memory (security), so
+  // on full page reload it's gone — but the httpOnly refreshToken cookie
+  // survives. /api/auth/refresh trades that cookie for a fresh access token,
+  // then we hydrate the user via /me. Silent 401 means no valid cookie → stay
+  // logged out.
   useEffect(() => {
     (async () => {
-      if (tokenRef.current) await refreshUser();
-      setLoading(false);
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (data.accessToken) {
+            tokenRef.current = data.accessToken;
+            await refreshUser();
+          }
+        }
+      } catch {
+        // Network hiccup — stay unauthenticated, user can sign in manually.
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [refreshUser]);
 

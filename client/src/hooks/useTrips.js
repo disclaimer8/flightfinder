@@ -7,23 +7,38 @@ function authHeaders(token) {
 }
 
 export function useTrips() {
-  const { getToken } = useAuth();
+  const { getToken, user, loading: authLoading } = useAuth();
   const [trips, setTrips] = useState(null);
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
+    const token = getToken?.();
+    if (!token) {
+      // Session not yet restored or user genuinely logged out — don't fire
+      // a guaranteed-401 request. The effect below re-fires once auth settles.
+      setTrips([]);
+      setError(null);
+      return;
+    }
     try {
-      const res = await fetch(`${API_BASE}/api/trips`, { headers: authHeaders(getToken?.()) });
+      setError(null);
+      const res = await fetch(`${API_BASE}/api/trips`, { headers: authHeaders(token) });
       const j = await res.json();
-      if (!j.success) throw new Error(j.message);
+      if (!j.success) throw new Error(j.message || 'Failed to load trips');
       setTrips(j.data);
     } catch (e) {
       setError(e.message);
     }
   }, [getToken]);
 
-  useEffect(() => { refresh(); }, [refresh]);
-  return { trips, error, refresh };
+  useEffect(() => {
+    // Wait for AuthContext to finish its one-shot /refresh attempt, then
+    // fetch. user changing (login/logout) also re-triggers.
+    if (authLoading) return;
+    refresh();
+  }, [authLoading, user, refresh]);
+
+  return { trips, error, refresh, authLoading };
 }
 
 export async function addTrip(payload, token) {
