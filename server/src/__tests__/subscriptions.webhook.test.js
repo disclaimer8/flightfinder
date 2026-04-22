@@ -3,6 +3,7 @@
 // we build a valid signature manually using the secret.
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const request = require('supertest');
 const crypto  = require('crypto');
 
@@ -35,7 +36,18 @@ function signedRequest(payload) {
 
 function appWithWebhook() {
   const app = express();
-  app.post('/webhook', express.raw({ type: 'application/json' }), controller.handleWebhook);
+  // Match prod wiring — real prod route is rate-limited at 300/min/IP (see
+  // server/src/index.js). Using the same middleware shape in tests keeps
+  // CodeQL happy and catches any future regression where the limiter is
+  // accidentally skipped.
+  const webhookLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 1000,          // generous for tests that fire many requests in one run
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: false,    // suppress X-Forwarded-For / trust-proxy warnings in test env
+  });
+  app.post('/webhook', webhookLimiter, express.raw({ type: 'application/json' }), controller.handleWebhook);
   return app;
 }
 
