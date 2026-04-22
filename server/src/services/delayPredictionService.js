@@ -26,7 +26,7 @@ function predictDelay({ airline, flightNumber, dep, arr }) {
   }
 
   if (rows.length < MIN_SAMPLE) {
-    return { confidence: 'low', message: 'collecting data — predictions available soon', scope: 'insufficient' };
+    return { confidence: 'low', message: 'Collecting data — predictions available soon', scope: 'insufficient' };
   }
 
   const delays = rows.map(r => r.delay_minutes);

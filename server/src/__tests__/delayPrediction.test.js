@@ -25,7 +25,7 @@ describe('predictDelay', () => {
     for (let i = 0; i < 5; i++) seedObs({ airline: 'BA', flight: '001', dep: 'LHR', arr: 'JFK', delay: 10, daysAgo: i+1 });
     const out = predictDelay({ airline: 'BA', flightNumber: '001', dep: 'LHR', arr: 'JFK' });
     expect(out.confidence).toBe('low');
-    expect(out.message).toMatch(/collecting data/);
+    expect(out.message).toMatch(/collecting data/i);
   });
 
   test('tier 1 exact-flight, 12 obs → medium confidence, scope=exact-flight', () => {
