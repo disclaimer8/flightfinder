@@ -49,7 +49,15 @@ async function createCheckout(req, res) {
   } catch (err) {
     if (claimedLifetime) subsService.releaseReservedLifetimeSlot();
     console.error('[subs] createCheckout failed:', err);
-    return res.status(500).json({ success: false, message: 'Checkout failed' });
+    // Temporary debug surface: return the Stripe error only to admin-token callers
+    // to aid prod diagnosis. Revert after initial smoke tests.
+    const adminToken = process.env.ADMIN_TOKEN;
+    const isAdmin = adminToken && req.headers['x-admin-token'] === adminToken;
+    return res.status(500).json({
+      success: false,
+      message: 'Checkout failed',
+      ...(isAdmin ? { error: err.message, type: err.type, code: err.code } : {}),
+    });
   }
 }
 
