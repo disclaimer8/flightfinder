@@ -78,6 +78,14 @@ app.use(cors({
 // ─────────────────────────────────────────
 //  Body parsing
 // ─────────────────────────────────────────
+// Stripe webhook needs the raw body to verify the signature — must be mounted
+// BEFORE express.json() which would consume and JSON-parse the body.
+app.post(
+  '/api/subscriptions/webhook',
+  express.raw({ type: 'application/json' }),
+  require('./controllers/subscriptionController').handleWebhook,
+);
+
 app.use(express.json({ limit: '16kb' }));
 // cookieParser is used only for the httpOnly refresh-token cookie.
 // CSRF is mitigated by a layered defense:
@@ -116,11 +124,12 @@ app.use('/api/flights', searchLimiter);
 // ─────────────────────────────────────────
 //  Routes
 // ─────────────────────────────────────────
-app.use('/api/auth',     require('./routes/auth'));
-app.use('/api/flights',  require('./routes/flights'));
-app.use('/api/aircraft', require('./routes/aircraft'));
-app.use('/api/map',      require('./routes/map'));
-app.use('/',             require('./routes/seo'));            // /sitemap.xml
+app.use('/api/auth',          require('./routes/auth'));
+app.use('/api/flights',       require('./routes/flights'));
+app.use('/api/aircraft',      require('./routes/aircraft'));
+app.use('/api/map',           require('./routes/map'));
+app.use('/api/subscriptions', require('./routes/subscriptions'));
+app.use('/',                  require('./routes/seo'));            // /sitemap.xml
 
 // ─────────────────────────────────────────
 //  Health check
