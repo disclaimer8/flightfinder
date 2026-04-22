@@ -49,6 +49,9 @@ async function createCheckoutSession({ tier, customerId, successUrl, cancelUrl, 
     metadata: { ...metadata, tier },
     allow_promotion_codes: true,
     automatic_tax: { enabled: true },
+    // Capture address/name entered during Checkout so automatic_tax has the
+    // data it needs without requiring a billing address on the Customer up-front.
+    customer_update: { address: 'auto', name: 'auto' },
   };
 
   if (tier === 'pro_lifetime') {
