@@ -27,14 +27,25 @@ async function runCycle() {
   }
 
   const now = new Date();
-  const from = new Date(now.getTime() - 24 * 3600000).toISOString().slice(0, 16); // last 24h
-  const to   = now.toISOString().slice(0, 16);
+  // AeroDataBox caps each airport-window call at 12h, so split last-24h into
+  // two back-to-back 12h buckets per origin. Costs 2 calls × 2 units = 4 units
+  // per origin per cycle (up from the broken single 24h call that cost 0 and
+  // returned nothing).
+  const mkWindow = (endMs) => ({
+    from: new Date(endMs - 12 * 3600000).toISOString().slice(0, 16),
+    to:   new Date(endMs).toISOString().slice(0, 16),
+  });
+  const windows = [mkWindow(now.getTime() - 12 * 3600000), mkWindow(now.getTime())];
 
   let persisted = 0;
   for (const [origin, destSet] of byOrigin.entries()) {
     try {
-      const departures = await aerodatabox.getAirportDepartures(origin, from, to);
-      for (const dep of departures || []) {
+      const departures = [];
+      for (const w of windows) {
+        const batch = await aerodatabox.getAirportDepartures(origin, w.from, w.to);
+        if (Array.isArray(batch)) departures.push(...batch);
+      }
+      for (const dep of departures) {
         const arr = dep.arrival?.airport?.iata;
         if (!arr || !destSet.has(arr)) continue;
         const airline = dep.airline?.iata;
