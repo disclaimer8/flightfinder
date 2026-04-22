@@ -83,8 +83,20 @@ app.use(cors({
 // ─────────────────────────────────────────
 // Stripe webhook needs the raw body to verify the signature — must be mounted
 // BEFORE express.json() which would consume and JSON-parse the body.
+// Rate-limit: Stripe retries a failed event at most a few dozen times over
+// ~72h, so 300/min/IP is far above legitimate traffic and well below what an
+// attacker would need to DoS the signature-verify path. CodeQL flagged the
+// previous unlimited route.
+const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many webhook attempts' },
+});
 app.post(
   '/api/subscriptions/webhook',
+  webhookLimiter,
   express.raw({ type: 'application/json' }),
   require('./controllers/subscriptionController').handleWebhook,
 );
