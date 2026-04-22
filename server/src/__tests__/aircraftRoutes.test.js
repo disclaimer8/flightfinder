@@ -37,7 +37,7 @@ describe('GET /api/aircraft/routes — happy path', () => {
     expect(res.status).toBe(200);
 
     const b = res.body;
-    expect(b.family).toBe('a380');
+    expect(b.family).toBe('airbus-a380');
     expect(typeof b.familyName).toBe('string');
     expect(Array.isArray(b.icaoTypes)).toBe(true);
     expect(b.icaoTypes).toContain('A388'); // real ICAO type for A380-800
