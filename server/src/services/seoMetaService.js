@@ -151,6 +151,14 @@ function resolve(pathname) {
   const rtMatch = /^\/routes\/([^/?#]+)\/?$/.exec(pathname);
   if (rtMatch) return routeMeta(rtMatch[1].toLowerCase());
 
+  // Subscription pivot routes — indexable SPA pages served with 200 + generic
+  // home-style meta (their real content is rendered client-side by React Router).
+  if (pathname === '/pricing'         || pathname === '/pricing/')         return { ...HOME, kind: 'pricing',  canonical: `${BASE}/pricing` };
+  if (pathname === '/trips'           || pathname === '/trips/')           return { ...HOME, kind: 'trips',    canonical: `${BASE}/trips`, robots: 'noindex, follow' };
+  if (pathname === '/subscribe/return')                                    return { ...HOME, kind: 'subscribe', canonical: `${BASE}/pricing`, robots: 'noindex, nofollow' };
+  if (pathname === '/legal/terms'     || pathname === '/legal/terms/')     return { ...HOME, kind: 'legal',    canonical: `${BASE}/legal/terms` };
+  if (pathname === '/legal/privacy'   || pathname === '/legal/privacy/')   return { ...HOME, kind: 'legal',    canonical: `${BASE}/legal/privacy` };
+
   // Anything else (/foo, /aircraft, /routes without a slug, typos) is an
   // unknown URL — return 404-style metadata so the server can set the real
   // HTTP status and we don't index every bot-fuzzed URL as duplicate-home.
