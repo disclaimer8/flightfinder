@@ -1,0 +1,13 @@
+.upgrade-modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  display: grid; place-items: center; z-index: 1000;
+}
+.upgrade-modal {
+  background: #fff; border-radius: 10px; max-width: 420px; width: 92vw;
+  padding: 24px; box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+}
+.upgrade-modal h2 { margin: 0 0 8px; }
+.upgrade-modal-reason { color: #555; margin: 0 0 16px; }
+.upgrade-modal-bullets { margin: 0 0 20px; padding-left: 20px; color: #333; line-height: 1.6; }
+.upgrade-modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+.upgrade-modal-actions .btn-ghost { background: transparent; border: 1px solid #ccc; }
