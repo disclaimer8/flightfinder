@@ -1,5 +1,6 @@
 import { formatTime, formatDate } from '../utils/formatters';
 import EnrichedPanel from './EnrichedPanel';
+import { useClientConfig } from '../hooks/useClientConfig';
 import './FlightCard.css';
 
 function ItineraryRow({ itinerary, label }) {
@@ -74,6 +75,7 @@ function ItineraryRow({ itinerary, label }) {
 
 function FlightCard({ flight }) {
   const { aircraft } = flight;
+  const { enrichedCardEnabled = true } = useClientConfig();
 
   // Synthesize an id the enrichment endpoint accepts: "AA123:2026-05-15".
   const depDate = (flight.departureTime || '').slice(0, 10);
@@ -150,7 +152,7 @@ function FlightCard({ flight }) {
 
       </div>
 
-      {enrichedId && (
+      {enrichedCardEnabled && enrichedId && (
         <EnrichedPanel
           flight={{
             id: enrichedId,

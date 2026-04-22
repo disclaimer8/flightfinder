@@ -130,6 +130,7 @@ app.use('/api/flights',       require('./routes/enrichment'));
 app.use('/api/aircraft',      require('./routes/aircraft'));
 app.use('/api/map',           require('./routes/map'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
+app.use('/api/config',        require('./routes/config'));
 app.use('/',                  require('./routes/seo'));            // /sitemap.xml
 
 // ─────────────────────────────────────────
