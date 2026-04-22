@@ -1,0 +1,22 @@
+.mytrips { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+.mytrips h1 { margin: 0 0 16px; }
+.trip-list { list-style: none; padding: 0; display: grid; gap: 12px; }
+.trip-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; background: #fff; }
+.trip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.trip-title { font-weight: 600; }
+.trip-when { color: #6b7280; font-size: 14px; }
+.trip-actions { margin-top: 10px; display: flex; gap: 8px; }
+.trip-actions button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 13px;
+}
+.trip-actions button:hover { background: #f3f4f6; }
+.trip-status { margin-top: 10px; font-size: 13px; color: #374151; display: grid; gap: 4px; }
+.trip-live, .trip-pred, .trip-inbound { padding: 6px 8px; background: #f9fafb; border-radius: 4px; }
+.mytrips-empty { text-align: center; padding: 48px 16px; color: #6b7280; }
+.mytrips-loading { padding: 48px 16px; color: #6b7280; text-align: center; }
+.mytrips-error { padding: 24px 16px; color: #b91c1c; background: #fee2e2; border-radius: 6px; }

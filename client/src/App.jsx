@@ -143,6 +143,7 @@ function App() {
               {apiStatus && <APIStatus status={apiStatus} />}
               {user ? (
                 <div className="nav-user">
+                  <a className="nav-btn nav-btn-ghost" href="/trips">My Trips</a>
                   <span className="nav-user-email" title={user.email}>{user.email}</span>
                   <button className="nav-btn nav-btn-ghost" onClick={logout}>
                     Sign out

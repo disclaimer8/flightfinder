@@ -354,6 +354,25 @@
   box-shadow: 0 4px 12px rgba(12, 20, 39, 0.32);
 }
 
+.flight-trip-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+.btn-add-trip {
+  padding: 0.55rem 1.2rem;
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--r);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.86rem;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-add-trip:hover { background: var(--primary); color: #fff; }
+.btn-add-trip:disabled { opacity: 0.6; cursor: default; background: transparent; color: var(--text-3); border-color: var(--border); }
+
 .btn-external-icon {
   width: 11px;
   height: 11px;
