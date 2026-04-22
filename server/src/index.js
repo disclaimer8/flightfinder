@@ -293,9 +293,11 @@ if (require.main === module) {
   const { startAdsbLolWorker }        = require('./workers/adsblolWorker');
   const { startDelayIngestionWorker } = require('./workers/delayIngestionWorker');
   const { startFleetBootstrapWorker } = require('./workers/fleetBootstrapWorker');
-  const stopAdsbLolWorker  = startAdsbLolWorker();
-  const stopDelayIngest    = startDelayIngestionWorker();
-  const stopFleetBootstrap = startFleetBootstrapWorker();
+  const { startTripAlertWorker }      = require('./workers/tripAlertWorker');
+  const stopAdsbLolWorker   = startAdsbLolWorker();
+  const stopDelayIngest     = startDelayIngestionWorker();
+  const stopFleetBootstrap  = startFleetBootstrapWorker();
+  const stopTripAlertWorker = startTripAlertWorker();
 
   // Load airline amenities seed on boot (cheap, idempotent).
   try {
@@ -305,9 +307,10 @@ if (require.main === module) {
   }
 
   const shutdown = () => {
-    try { stopAdsbLolWorker();  } catch { /* noop */ }
-    try { stopDelayIngest();    } catch { /* noop */ }
-    try { stopFleetBootstrap(); } catch { /* noop */ }
+    try { stopAdsbLolWorker();    } catch { /* noop */ }
+    try { stopDelayIngest();      } catch { /* noop */ }
+    try { stopFleetBootstrap();   } catch { /* noop */ }
+    try { stopTripAlertWorker();  } catch { /* noop */ }
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT',  shutdown);
