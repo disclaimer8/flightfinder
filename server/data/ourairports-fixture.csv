@@ -1,0 +1,6 @@
+id,ident,type,name,latitude_deg,longitude_deg,elevation_ft,continent,iso_country,iso_region,municipality,scheduled_service,gps_code,iata_code,local_code,home_link,wikipedia_link,keywords
+2434,EGLL,large_airport,London Heathrow,51.4706001282,-0.461941003799,83,EU,GB,GB-ENG,London,yes,EGLL,LHR,,https://www.heathrow.com/,https://en.wikipedia.org/wiki/Heathrow_Airport,
+3797,KJFK,large_airport,John F Kennedy International,40.63980103,-73.77890015,13,NA,US,US-NY,New York,yes,KJFK,JFK,JFK,https://www.panynj.gov/airports/en/jfk.html,https://en.wikipedia.org/wiki/John_F._Kennedy_International_Airport,
+509,EDDF,large_airport,Frankfurt,50.033333,8.570556,364,EU,DE,DE-HE,Frankfurt-am-Main,yes,EDDF,FRA,,https://www.frankfurt-airport.com/,,
+3726,KLAX,large_airport,Los Angeles International,33.94250107,-118.4079971,125,NA,US,US-CA,Los Angeles,yes,KLAX,LAX,,https://www.flylax.com/,https://en.wikipedia.org/wiki/Los_Angeles_International_Airport,
+1714,LFPG,large_airport,Paris Charles de Gaulle,49.012798,2.55,392,EU,FR,FR-IDF,Paris,yes,LFPG,CDG,,https://www.parisaeroport.fr/,,
