@@ -1,0 +1,13 @@
+.enriched-panel { margin-top: 14px; border-top: 1px solid #eee; padding-top: 12px; }
+.enriched-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; }
+.enriched-field { min-height: 48px; }
+.enriched-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.enriched-value { font-size: 14px; color: #222; }
+.enriched-skel  { height: 18px; background: linear-gradient(90deg, #f4f4f4, #eaeaea, #f4f4f4); border-radius: 4px; animation: shimmer 1.2s infinite linear; }
+@keyframes shimmer { 0% { background-position: -80px 0; } 100% { background-position: 80px 0; } }
+.enriched-teaser { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; cursor: pointer; }
+.enriched-teaser .blur { filter: blur(4px); color: #888; }
+.enriched-teaser .lock-badge { font-size: 11px; color: #c2410c; background: #fff7ed; padding: 2px 6px; border-radius: 4px; }
+.amenities .yes { opacity: 1; } .amenities .no  { opacity: 0.25; }
+.livery-img { max-width: 100%; height: 60px; object-fit: cover; border-radius: 4px; }
+.enriched-error { font-size: 12px; color: #b91c1c; margin-bottom: 8px; }
