@@ -3,6 +3,7 @@
 const openFlights      = require('./openFlightsService');      // airports + airlines
 const aerodatabox      = require('./aerodataboxService');
 const openWeather      = require('./openWeatherService');      // defineDataSource
+const aviationWeather  = require('./aviationWeatherService');  // Plan 6 — METAR primary
 const liveries         = require('./wikimediaLiveryService');  // defineDataSource
 const amenities        = require('./amenitiesService');
 const fleet            = require('../models/fleet');
@@ -94,8 +95,21 @@ function computeCo2(flight) {
 async function safeWeatherForIata(iata) {
   try {
     const a = openFlights.getAirport(iata);
-    if (!a || !Number.isFinite(a.lat) || !Number.isFinite(a.lon)) return null;
-    return await openWeather.fetch({ lat: a.lat, lon: a.lon });
+    if (!a) return null;
+
+    // Primary: NOAA METAR if this airport has an ICAO code. Free, global coverage
+    // for any WMO/ICAO-reporting station.
+    if (a.icao) {
+      const metar = await aviationWeather.fetch({ icao: a.icao });
+      if (metar) return metar;
+    }
+
+    // Fallback: OpenWeather by coords. Covers non-ICAO airports and stations
+    // that are temporarily off the METAR feed.
+    if (Number.isFinite(a.lat) && Number.isFinite(a.lon)) {
+      return await openWeather.fetch({ lat: a.lat, lon: a.lon });
+    }
+    return null;
   } catch (err) {
     console.warn('[enrich] weather fail:', err.message);
     return null;
