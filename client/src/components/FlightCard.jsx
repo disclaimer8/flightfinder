@@ -78,10 +78,19 @@ function FlightCard({ flight }) {
   const { aircraft } = flight;
   const { enrichedCardEnabled = true, tripsEnabled = true } = useClientConfig();
 
-  // Synthesize an id the enrichment endpoint accepts: "AA123:2026-05-15".
+  // Synthesize an id the enrichment endpoint accepts: "LX345:2026-05-15".
+  // Search results return airline as the full name ("SWISS") and airlineIata
+  // as the 2-letter code ("LX"); flightNumber is usually prefixed ("LX0345").
+  // The server regex requires exactly 2-char airline + up to 4 digits, so we
+  // prefer airlineIata and strip any leading alphabetic prefix from the number.
   const depDate = (flight.departureTime || '').slice(0, 10);
-  const enrichedId = flight.airline && flight.flightNumber && depDate
-    ? `${flight.airline}${String(flight.flightNumber).replace(/\D/g, '')}:${depDate}`
+  const airlineCode = (flight.airlineIata || flight.airline || '').toUpperCase();
+  const flightDigits = String(flight.flightNumber || '')
+    .replace(/^[A-Z]+/i, '')   // drop leading airline code if present
+    .replace(/\D/g, '')        // keep digits only
+    .replace(/^0+/, '');        // trim leading zeros: LX0345 -> 345
+  const enrichedId = airlineCode.length === 2 && flightDigits && depDate
+    ? `${airlineCode}${flightDigits}:${depDate}`
     : null;
 
   const outboundItinerary = {

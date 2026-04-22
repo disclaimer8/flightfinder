@@ -19,8 +19,9 @@ export default function AddToTripsButton({ flight }) {
     try {
       const token = getToken?.();
       const { success } = await addTrip({
-        airline_iata:  flight.airline,
-        flight_number: flight.flightNumber || flight.number,
+        airline_iata:  (flight.airlineIata || flight.airline || '').toUpperCase(),
+        flight_number: String(flight.flightNumber || flight.number || '')
+                         .replace(/^[A-Z]+/i, '').replace(/\D/g, ''),
         dep_iata:      flight.departure?.code,
         arr_iata:      flight.arrival?.code,
         scheduled_dep: new Date(flight.departureTime).getTime(),
