@@ -280,10 +280,29 @@ if (require.main === module) {
     console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });
 
-  // Background poller: adsb.lol observed-routes write-through (opt-in via ADSBLOL_ENABLED=1).
-  const { startAdsbLolWorker } = require('./workers/adsblolWorker');
-  const stopAdsbLolWorker = startAdsbLolWorker();
-  const shutdown = () => { try { stopAdsbLolWorker(); } catch { /* noop */ } };
+  // Background workers.
+  //   adsblol         — observed-routes write-through (opt-in via ADSBLOL_ENABLED=1)
+  //   delayIngestion  — AeroDataBox departures → flight_observations (INGEST_ENABLED=1)
+  //   fleetBootstrap  — one-shot Mictronics → aircraft_fleet (FLEET_BOOTSTRAP=1)
+  const { startAdsbLolWorker }        = require('./workers/adsblolWorker');
+  const { startDelayIngestionWorker } = require('./workers/delayIngestionWorker');
+  const { startFleetBootstrapWorker } = require('./workers/fleetBootstrapWorker');
+  const stopAdsbLolWorker  = startAdsbLolWorker();
+  const stopDelayIngest    = startDelayIngestionWorker();
+  const stopFleetBootstrap = startFleetBootstrapWorker();
+
+  // Load airline amenities seed on boot (cheap, idempotent).
+  try {
+    require('./services/amenitiesService').loadSeedIntoDb();
+  } catch (err) {
+    console.warn('[amenities] seed failed:', err.message);
+  }
+
+  const shutdown = () => {
+    try { stopAdsbLolWorker();  } catch { /* noop */ }
+    try { stopDelayIngest();    } catch { /* noop */ }
+    try { stopFleetBootstrap(); } catch { /* noop */ }
+  };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT',  shutdown);
 
