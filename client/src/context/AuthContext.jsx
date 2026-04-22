@@ -9,31 +9,33 @@ export function AuthProvider({ children }) {
   // Store access token in a ref — never in localStorage
   const tokenRef = useRef(null);
 
+  const refreshUser = useCallback(async () => {
+    if (!tokenRef.current) { setUser(null); return null; }
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${tokenRef.current}` },
+      });
+      if (!res.ok) { tokenRef.current = null; setUser(null); return null; }
+      const data = await res.json();
+      const next = data.user ?? data;
+      setUser(next);
+      return next;
+    } catch {
+      tokenRef.current = null;
+      setUser(null);
+      return null;
+    }
+  }, []);
+
+  const getToken = useCallback(() => tokenRef.current, []);
+
   // Restore session on mount by calling /api/auth/me with any stored token
   useEffect(() => {
-    const restore = async () => {
-      if (!tokenRef.current) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${tokenRef.current}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user ?? data);
-        } else {
-          tokenRef.current = null;
-        }
-      } catch {
-        tokenRef.current = null;
-      } finally {
-        setLoading(false);
-      }
-    };
-    restore();
-  }, []);
+    (async () => {
+      if (tokenRef.current) await refreshUser();
+      setLoading(false);
+    })();
+  }, [refreshUser]);
 
   const login = useCallback(async (email, password) => {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
@@ -47,9 +49,10 @@ export function AuthProvider({ children }) {
       throw new Error(data.message || 'Login failed');
     }
     tokenRef.current = data.accessToken;
-    setUser({ email });
+    // Hydrate full user (subscription_tier, sub_valid_until, ...) via /auth/me.
+    await refreshUser();
     return data;
-  }, []);
+  }, [refreshUser]);
 
   const register = useCallback(async (email, password) => {
     const res = await fetch(`${API_BASE}/api/auth/register`, {
@@ -80,7 +83,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, getToken }}>
       {children}
     </AuthContext.Provider>
   );
