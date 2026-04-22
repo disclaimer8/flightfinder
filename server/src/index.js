@@ -133,6 +133,7 @@ app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/config',        require('./routes/config'));
 if (process.env.TRIPS_ENABLED !== '0') {
   app.use('/api/trips',       require('./routes/trips'));
+  app.use('/api/push',        require('./routes/push'));
 }
 app.use('/',                  require('./routes/seo'));            // /sitemap.xml
 

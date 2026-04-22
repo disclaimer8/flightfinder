@@ -42,7 +42,8 @@
     "jsonwebtoken": "^9.0.3",
     "mailgun.js": "^13.0.0",
     "node-cache": "^5.1.2",
-    "stripe": "^22.0.2"
+    "stripe": "^22.0.2",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "jest": "^30.3.0",
