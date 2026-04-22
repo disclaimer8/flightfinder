@@ -1,17 +1,32 @@
+import EnrichedPanel from './EnrichedPanel';
+import { useClientConfig } from '../hooks/useClientConfig';
+import { amadeusToIcao } from '../utils/amadeusToIcao';
+
 /**
  * Single flight card for the by-aircraft flow. Used by
  * AircraftSearchResults and by the DestinationPanel inside
  * AircraftRouteMap — both need identical markup.
  *
- * Previously linked out to an Aviasales affiliate; now informational
- * only (subscription pivot — Plan 3). Downstream enrichment from the
- * Pro endpoint will be grafted in a followup if needed here.
+ * By-aircraft shows route + aircraft combos (not scheduled flights), so we
+ * don't have a flight number. The enriched ID is `XX:YYYY-MM-DD` — server
+ * still enriches weather, amenities, CO₂ and livery; gate/on-time skip
+ * because they need a flight number.
  *
  * Props:
  *   flight — result row from the SSE stream
  */
 export default function AircraftFlightCard({ flight }) {
   const f = flight;
+  const { enrichedCardEnabled = true } = useClientConfig();
+
+  // Synthesise a route-scoped id: "LX:2026-06-01" (no flight#).
+  const airlineCode = (f.airlineIata || f.airline || '').toUpperCase();
+  const depDate = (f.departureTime || '').slice(0, 10);
+  const enrichedId = airlineCode.length === 2 && depDate
+    ? `${airlineCode}:${depDate}`
+    : null;
+  const icaoType = amadeusToIcao(f.aircraftCode);
+
   return (
     <div className="ac-card">
       <div className="ac-card-route">
@@ -51,6 +66,19 @@ export default function AircraftFlightCard({ flight }) {
         <div className="ac-card-price">
           <span className="ac-card-amount">{f.currency} {f.price}</span>
         </div>
+      )}
+
+      {enrichedCardEnabled && enrichedId && (
+        <EnrichedPanel
+          flight={{
+            id: enrichedId,
+            airline: airlineCode,
+            flightNumber: null,
+            departure: { code: f.origin },
+            arrival:   { code: f.destination },
+            aircraft:  { icaoType, registration: null },
+          }}
+        />
       )}
     </div>
   );

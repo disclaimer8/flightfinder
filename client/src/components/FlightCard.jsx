@@ -2,6 +2,7 @@ import { formatTime, formatDate } from '../utils/formatters';
 import EnrichedPanel from './EnrichedPanel';
 import AddToTripsButton from './AddToTripsButton';
 import { useClientConfig } from '../hooks/useClientConfig';
+import { amadeusToIcao } from '../utils/amadeusToIcao';
 import './FlightCard.css';
 
 function ItineraryRow({ itinerary, label }) {
@@ -172,12 +173,14 @@ function FlightCard({ flight }) {
         <EnrichedPanel
           flight={{
             id: enrichedId,
-            airline: flight.airline,
-            flightNumber: String(flight.flightNumber).replace(/\D/g, ''),
+            airline: airlineCode,
+            flightNumber: flightDigits,
             departure: flight.departure,
             arrival: flight.arrival,
             aircraft: {
-              icaoType: aircraft?.icaoType || aircraft?.code || null,
+              icaoType: aircraft?.icaoType
+                       || amadeusToIcao(flight.aircraftCode || aircraft?.code)
+                       || null,
               registration: aircraft?.registration || null,
             },
           }}

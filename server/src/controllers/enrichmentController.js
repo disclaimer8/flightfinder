@@ -3,12 +3,19 @@
 const enrichmentService = require('../services/enrichmentService');
 const cache = require('../services/cacheService');
 
-// ID format: "BA175:2026-05-15" → { airline:'BA', flightNumber:'175', date:'2026-05-15' }
+// ID formats:
+//   "BA175:2026-05-15" → { airline:'BA', flightNumber:'175', date:'2026-05-15' }  (mainline search)
+//   "LX:2026-05-15"    → { airline:'LX', flightNumber:null, date:'2026-05-15' }   (by-aircraft search — route+aircraft, no flight#)
+// When flightNumber is null the enrichment service still returns weather, amenities,
+// CO₂ and livery; gate/on-time/delay-forecast short-circuit to null because they
+// need a specific flight to look up.
 function parseFlightId(id) {
   const [head, date] = id.split(':');
-  const m = /^([A-Z0-9]{2})(\d{1,4})$/.exec(head || '');
-  if (!m) return null;
-  return { airline: m[1], flightNumber: m[2], date: date || null };
+  const withNum = /^([A-Z0-9]{2})(\d{1,4})$/.exec(head || '');
+  if (withNum) return { airline: withNum[1], flightNumber: withNum[2], date: date || null };
+  const airlineOnly = /^([A-Z0-9]{2})$/.exec(head || '');
+  if (airlineOnly) return { airline: airlineOnly[1], flightNumber: null, date: date || null };
+  return null;
 }
 
 async function getEnriched(req, res) {
