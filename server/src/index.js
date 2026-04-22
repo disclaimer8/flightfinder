@@ -20,6 +20,10 @@ const path    = require('path');
 const app  = express();
 const PORT = process.env.PORT || 5000;
 const IS_DEV = process.env.NODE_ENV !== 'production';
+// Bind to loopback in prod so nginx is the only ingress — no direct 5001 hits
+// from the internet bypassing rate-limit/headers. Dev stays on 0.0.0.0 so the
+// Vite proxy + Capacitor WebView can reach it from another machine/emulator.
+const BIND_HOST = process.env.BIND_HOST || (IS_DEV ? '0.0.0.0' : '127.0.0.1');
 
 // Trust nginx reverse proxy (needed for express-rate-limit + X-Forwarded-For)
 app.set('trust proxy', 1);
@@ -301,8 +305,8 @@ app.use((err, _req, res, _next) => {
 //  Start
 // ─────────────────────────────────────────
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  app.listen(PORT, BIND_HOST, () => {
+    console.log(`Server running on ${BIND_HOST}:${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });
 
   // Background workers.

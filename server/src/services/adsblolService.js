@@ -1,6 +1,7 @@
 'use strict';
 
 const axios = require('axios');
+const https = require('https');
 const cacheService = require('./cacheService');
 const db = require('../models/db');
 
@@ -11,7 +12,22 @@ const db = require('../models/db');
 const ADSBLOL_V2_URL  = 'https://api.adsb.lol/v2';
 const ADSBLOL_API_URL = 'https://api.adsb.lol';
 
-const adsblolClient = axios.create({ timeout: 15000 });
+// Single keep-alive agent with a bounded pool. Without this, each axios call
+// spawned a fresh TLS socket whose 'error'/'close' listeners stacked up on the
+// shared default agent — MaxListenersExceededWarning every ~20 min cycle and
+// eventual PM2 restart under memory pressure. Reusing one agent with a capped
+// maxSockets keeps the listener count deterministic and trims TLS handshakes.
+const adsblolAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 8,
+  maxFreeSockets: 4,
+  timeout: 30000,
+});
+
+const adsblolClient = axios.create({
+  timeout: 15000,
+  httpsAgent: adsblolAgent,
+});
 
 const ROUTESET_BATCH_SIZE = 100;
 
