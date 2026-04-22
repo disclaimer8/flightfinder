@@ -1,44 +1,19 @@
-import { buildBookingUrl, emitAffiliateClick } from '../utils/booking';
-
 /**
  * Single flight card for the by-aircraft flow. Used by
  * AircraftSearchResults and by the DestinationPanel inside
- * AircraftRouteMap — both need identical markup and identical
- * monetization behaviour, so they share this one component.
+ * AircraftRouteMap — both need identical markup.
  *
- * Clicking the card (anywhere, whole surface) opens the Travelpayouts
- * affiliate redirect to Aviasales in a new tab. If required booking
- * fields are missing we fall back to a non-clickable card so the user
- * still sees the data but the dead-end is explicit.
+ * Previously linked out to an Aviasales affiliate; now informational
+ * only (subscription pivot — Plan 3). Downstream enrichment from the
+ * Pro endpoint will be grafted in a followup if needed here.
  *
  * Props:
- *   flight     — result row from the SSE stream
- *   passengers — integer, forwarded into the booking URL (default 1)
- *   source     — 'by-aircraft-card' | 'by-aircraft-panel' (analytics tag)
+ *   flight — result row from the SSE stream
  */
-export default function AircraftFlightCard({ flight, passengers, source }) {
+export default function AircraftFlightCard({ flight }) {
   const f = flight;
-  const bookingUrl = buildBookingUrl(
-    {
-      origin: f.origin,
-      destination: f.destination,
-      departureTime: f.departureTime,
-    },
-    passengers
-  );
-
-  const onClick = () => emitAffiliateClick(source, {
-    origin: f.origin,
-    destination: f.destination,
-    aircraftCode: f.aircraftCode,
-    airline: f.airline,
-    price: f.price,
-    currency: f.currency,
-    departureTime: f.departureTime,
-  });
-
-  const body = (
-    <>
+  return (
+    <div className="ac-card">
       <div className="ac-card-route">
         <span className="ac-card-iata">{f.origin}</span>
         <span className="ac-card-arrow">→</span>
@@ -72,43 +47,12 @@ export default function AircraftFlightCard({ flight, passengers, source }) {
         </div>
       )}
 
-      <div className="ac-card-price">
-        <span className="ac-card-amount">{f.currency} {f.price}</span>
-        {bookingUrl ? (
-          <span className="ac-card-cta">
-            Find this route on Aviasales
-            <svg aria-hidden="true" focusable="false" className="ac-card-cta-icon" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </span>
-        ) : (
-          <span className="ac-card-cta ac-card-cta--disabled">Booking unavailable</span>
-        )}
-      </div>
-      {bookingUrl && (
-        <div className="ac-card-cta-hint">
-          Aviasales shows all flights on this route — pick the matching one.
+      {(f.price != null) && (
+        <div className="ac-card-price">
+          <span className="ac-card-amount">{f.currency} {f.price}</span>
         </div>
       )}
-    </>
-  );
-
-  if (!bookingUrl) {
-    return <div className="ac-card ac-card--dead">{body}</div>;
-  }
-
-  return (
-    <a
-      className="ac-card ac-card--link"
-      href={bookingUrl}
-      target="_blank"
-      rel="noopener noreferrer sponsored"
-      onClick={onClick}
-      title="Opens Aviasales results for this route — select your flight there"
-      aria-label={`Find ${f.origin} to ${f.destination} on Aviasales — select your flight there (opens new tab)`}
-    >
-      {body}
-    </a>
+    </div>
   );
 }
 

@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { formatTime, formatDate } from '../utils/formatters';
-import { buildBookingUrl, emitAffiliateClick } from '../utils/booking';
+import EnrichedPanel from './EnrichedPanel';
 import './FlightCard.css';
-import BookingModal from './BookingModal';
 
 function ItineraryRow({ itinerary, label }) {
   const { departure, arrival, departureTime, arrivalTime, duration, stops, stopAirports, segments } = itinerary;
@@ -74,11 +72,14 @@ function ItineraryRow({ itinerary, label }) {
   );
 }
 
-function FlightCard({ flight, passengers }) {
+function FlightCard({ flight }) {
   const { aircraft } = flight;
-  const [showBooking, setShowBooking] = useState(false);
 
-  const bookingUrl = buildBookingUrl(flight, passengers);
+  // Synthesize an id the enrichment endpoint accepts: "AA123:2026-05-15".
+  const depDate = (flight.departureTime || '').slice(0, 10);
+  const enrichedId = flight.airline && flight.flightNumber && depDate
+    ? `${flight.airline}${String(flight.flightNumber).replace(/\D/g, '')}:${depDate}`
+    : null;
 
   const outboundItinerary = {
     departure: flight.departure,
@@ -147,38 +148,24 @@ function FlightCard({ flight, passengers }) {
           </div>
         </div>
 
-        {bookingUrl ? (
-          <a
-            className="btn-book btn-book-external"
-            href={bookingUrl}
-            target="_blank"
-            rel="noopener noreferrer sponsored"
-            title="Opens Aviasales results for this route — select your flight there"
-            aria-label={`Find ${flight.departure?.code} to ${flight.arrival?.code} on Aviasales — select your flight there (opens new tab)`}
-            onClick={() => emitAffiliateClick('main-search', {
-              origin: flight.departure?.code,
-              destination: flight.arrival?.code,
-              airline: flight.airline,
-              price: flight.price,
-              currency: flight.currency,
-              departureTime: flight.departureTime,
-              isRoundTrip: !!flight.isRoundTrip,
-            })}
-          >
-            Find this route on Aviasales
-            <svg aria-hidden="true" focusable="false" className="btn-external-icon" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </a>
-        ) : (
-          <button className="btn-book" disabled>Book</button>
-        )}
       </div>
-    </div>
 
-    {showBooking && (
-      <BookingModal flight={flight} onClose={() => setShowBooking(false)} />
-    )}
+      {enrichedId && (
+        <EnrichedPanel
+          flight={{
+            id: enrichedId,
+            airline: flight.airline,
+            flightNumber: String(flight.flightNumber).replace(/\D/g, ''),
+            departure: flight.departure,
+            arrival: flight.arrival,
+            aircraft: {
+              icaoType: aircraft?.icaoType || aircraft?.code || null,
+              registration: aircraft?.registration || null,
+            },
+          }}
+        />
+      )}
+    </div>
     </>
   );
 }
