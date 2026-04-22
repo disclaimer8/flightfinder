@@ -437,11 +437,11 @@ export default function RouteMap() {
 
       setRoutes(data);
       routesRef.current = data;
-      highlightedRef.current = new Set(data.destinations);
+      highlightedRef.current = new Set(data.destinations || []);
 
       const map = mapRef.current;
       const L   = (await import('leaflet')).default;
-      for (const destIata of data.destinations) {
+      for (const destIata of (data.destinations || [])) {
         const confidence = data.confidences?.[destIata] ?? 'scheduled';
 
         const idx = airportsDataRef.current?.pts.indexOf(destIata);
@@ -581,12 +581,26 @@ export default function RouteMap() {
       }).addTo(map);
 
       const res      = await fetch(`${API_BASE}/api/map/airports`);
-      const airports = await res.json();
+      if (!res.ok) {
+        console.warn('[RouteMap] /api/map/airports', res.status);
+        map.remove();
+        if (mapRef.current === map) mapRef.current = null;
+        return;
+      }
+      const airports = await res.json().catch(() => null);
       if (cancelled) {
         // Effect was torn down while we were awaiting — undo what we created.
         map.remove();
         if (mapRef.current === map) mapRef.current = null;
         map = null;
+        return;
+      }
+      // Guard against 502/HTML-body responses that parsed into garbage. Every
+      // downstream consumer assumes airports.pts + airports.crd exist.
+      if (!airports || !Array.isArray(airports.pts) || !Array.isArray(airports.crd)) {
+        console.warn('[RouteMap] airports payload malformed — bailing');
+        map.remove();
+        if (mapRef.current === map) mapRef.current = null;
         return;
       }
       airportsDataRef.current = airports;
@@ -711,8 +725,8 @@ export default function RouteMap() {
             {routes && !routesLoading && (
               <>
                 <span className="rm-info-sub">
-                  {routes.destinations.length} destinations
-                  {routes.destinations.length > 0 && <> · tap a purple dot for calendar</>}
+                  {(routes.destinations?.length ?? 0)} destinations
+                  {(routes.destinations?.length ?? 0) > 0 && <> · tap a purple dot for calendar</>}
                 </span>
                 {(() => {
                   const allAc = new Set();
