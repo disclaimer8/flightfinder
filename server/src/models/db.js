@@ -116,6 +116,75 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_aircraft_db_type ON aircraft_db(icao_type);
 `);
 
+// flight_observations: one row per observed flight.
+// UNIQUE(airline, flight#, scheduled_dep) dedups multiple polls of the same flight.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS flight_observations (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    dep_iata       TEXT NOT NULL,
+    arr_iata       TEXT NOT NULL,
+    airline_iata   TEXT NOT NULL,
+    flight_number  TEXT NOT NULL,
+    aircraft_icao  TEXT,
+    scheduled_dep  INTEGER NOT NULL,
+    actual_dep     INTEGER,
+    scheduled_arr  INTEGER NOT NULL,
+    actual_arr     INTEGER,
+    delay_minutes  INTEGER,
+    status         TEXT,
+    observed_at    INTEGER NOT NULL,
+    UNIQUE(airline_iata, flight_number, scheduled_dep)
+  );
+  CREATE INDEX IF NOT EXISTS idx_obs_route  ON flight_observations(dep_iata, arr_iata, observed_at);
+  CREATE INDEX IF NOT EXISTS idx_obs_flight ON flight_observations(airline_iata, flight_number, scheduled_dep);
+`);
+
+// aircraft_fleet: one row per tail (icao24 hex id). Bootstrap from Mictronics +
+// OpenSky; refreshed monthly. operator_iata may be NULL for GA/private.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS aircraft_fleet (
+    icao24         TEXT PRIMARY KEY,
+    registration   TEXT,
+    icao_type      TEXT,
+    operator_iata  TEXT,
+    build_year     INTEGER,
+    first_seen_at  INTEGER NOT NULL,
+    updated_at     INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_fleet_reg      ON aircraft_fleet(registration);
+  CREATE INDEX IF NOT EXISTS idx_fleet_type     ON aircraft_fleet(icao_type);
+  CREATE INDEX IF NOT EXISTS idx_fleet_operator ON aircraft_fleet(operator_iata);
+`);
+
+// airline_liveries: cached Wikimedia photo URL per (airline, aircraft-type).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS airline_liveries (
+    airline_iata  TEXT NOT NULL,
+    icao_type     TEXT NOT NULL,
+    image_url     TEXT,
+    attribution   TEXT,
+    fetched_at    INTEGER NOT NULL,
+    PRIMARY KEY (airline_iata, icao_type)
+  );
+`);
+
+// airline_amenities: populated from seed JSON on boot. icao_type_hint='' means
+// the row applies to the whole airline's mainline fleet. SQLite doesn't allow
+// expressions in PRIMARY KEY, so we use NOT NULL DEFAULT '' to keep the PK
+// simple and sound.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS airline_amenities (
+    airline_iata    TEXT NOT NULL,
+    icao_type_hint  TEXT NOT NULL DEFAULT '',
+    wifi            INTEGER NOT NULL DEFAULT 0,
+    power           INTEGER NOT NULL DEFAULT 0,
+    entertainment   INTEGER NOT NULL DEFAULT 0,
+    meal            INTEGER NOT NULL DEFAULT 0,
+    updated_at      INTEGER NOT NULL,
+    PRIMARY KEY (airline_iata, icao_type_hint)
+  );
+`);
+
 // Prepared statements
 const stmts = {
   getUserByEmail:    db.prepare('SELECT * FROM users WHERE email = ?'),
