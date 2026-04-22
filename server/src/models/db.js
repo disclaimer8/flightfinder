@@ -43,6 +43,47 @@ try {
   // Column already exists — migration already ran
 }
 
+// Migration: subscription tier columns (see spec 2026-04-22-subscription-pivot-design.md)
+try { db.exec('ALTER TABLE users ADD COLUMN subscription_tier TEXT NOT NULL DEFAULT "free"'); } catch {}
+try { db.exec('ALTER TABLE users ADD COLUMN sub_valid_until INTEGER'); } catch {}
+try { db.exec('ALTER TABLE users ADD COLUMN stripe_customer_id TEXT'); } catch {}
+try { db.exec('CREATE UNIQUE INDEX idx_users_stripe_cust ON users(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL'); } catch {}
+
+// subscriptions: one row per Stripe subscription (or one-time lifetime charge).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS subscriptions (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    stripe_sub_id     TEXT UNIQUE,
+    stripe_session_id TEXT,
+    tier              TEXT NOT NULL,
+    status            TEXT NOT NULL,
+    period_end        INTEGER,
+    trial_end         INTEGER,
+    created_at        INTEGER NOT NULL,
+    updated_at        INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);
+`);
+
+// Single-row counter for the 500-slot lifetime Founders tier.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS lifetime_counter (
+    id    INTEGER PRIMARY KEY CHECK (id = 1),
+    taken INTEGER NOT NULL DEFAULT 0,
+    cap   INTEGER NOT NULL DEFAULT 500
+  );
+`);
+db.exec('INSERT OR IGNORE INTO lifetime_counter (id, taken, cap) VALUES (1, 0, 500)');
+
+// Webhook event dedup — Stripe retries are common, event.id is guaranteed unique.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS webhook_events (
+    id          TEXT PRIMARY KEY,
+    received_at INTEGER NOT NULL
+  );
+`);
+
 // observed_routes: append-only store of (dep, arr, aircraft_icao) tuples we've
 // actually seen airborne via AirLabs /flights. UNIQUE key means we UPSERT seen_at.
 // Bounded by airports × destinations × aircraft_types ≈ tens of thousands of rows.
@@ -152,6 +193,7 @@ function hashToken(raw) {
 }
 
 module.exports = {
+  db,
   getUserByEmail:   (email) => stmts.getUserByEmail.get(email),
   getUserById:      (id) => stmts.getUserById.get(id),
   createUser:       (email, passwordHash) => {
