@@ -32,13 +32,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:     ["'self'"],
-      scriptSrc:      ["'self'", 'https://www.googletagmanager.com', 'https://emrldtp.cc'], // gtag + Travelpayouts Drive loaders
+      scriptSrc:      ["'self'", 'https://www.googletagmanager.com'], // gtag only; Travelpayouts Drive widgets removed in subscription pivot
       styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], // Leaflet inline style= + TP Drive Google Fonts
       imgSrc:         ["'self'", 'data:', 'https:'], // CartoDB map tiles (loaded as <img> by Leaflet)
       connectSrc:     [
         "'self'",
         'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://analytics.google.com', // GA beacons
-        'https://emrldtp.cc', 'https://www.travelpayouts.com', 'https://sentry.avs.io', // Travelpayouts Drive fetches
         'https://*.ingest.de.sentry.io', // Our own Sentry (EU region) error + trace ingest
       ],
       fontSrc:        ["'self'", 'data:', 'https://fonts.gstatic.com'], // TP Drive Google Fonts
@@ -124,6 +123,25 @@ app.use('/api/flights', searchLimiter);
 // ─────────────────────────────────────────
 //  Routes
 // ─────────────────────────────────────────
+// Tag every Sentry transaction by high-level feature group so dashboards can
+// slice error rate + latency per product area instead of per raw path.
+app.use((req, _res, next) => {
+  if (!req.path) return next();
+  let tag = 'other';
+  if (req.path.startsWith('/api/subscriptions')) tag = 'subscriptions';
+  else if (req.path.startsWith('/api/trips') || req.path.startsWith('/api/push')) tag = 'trips';
+  else if (req.path.match(/^\/api\/flights\/[^/]+\/enriched/)) tag = 'enriched';
+  else if (req.path.startsWith('/api/flights')) tag = 'flights';
+  else if (req.path.startsWith('/api/map') || req.path.startsWith('/api/aircraft')) tag = 'map';
+  else if (req.path.startsWith('/api/auth')) tag = 'auth';
+  else if (req.path.startsWith('/api/config')) tag = 'config';
+  try {
+    const scope = Sentry.getCurrentScope?.();
+    scope?.setTag?.('route_group', tag);
+  } catch { /* noop — Sentry optional */ }
+  next();
+});
+
 app.use('/api/auth',          require('./routes/auth'));
 app.use('/api/flights',       require('./routes/flights'));
 app.use('/api/flights',       require('./routes/enrichment'));

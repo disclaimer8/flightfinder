@@ -133,29 +133,6 @@ exports.getPricesCalendar = async ({ origin, destination, month, currency }) => 
   }
 };
 
-/**
- * Build an affiliate deep-link URL for Aviasales search through the tp.media
- * redirect — required for click attribution in the Travelpayouts dashboard.
- * Final URL shape: https://tp.media/r?marker=...&trs=...&p=4114&u=<encoded>
- */
-exports.buildDeepLink = ({ origin, destination, date, returnDate, passengers = 1 }) => {
-  if (!origin || !destination || !date) return null;
-  const toDDMM = (iso) => {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return null;
-    return String(d.getUTCDate()).padStart(2, '0') + String(d.getUTCMonth() + 1).padStart(2, '0');
-  };
-  const departDDMM = toDDMM(date);
-  if (!departDDMM) return null;
-
-  let aviasalesUrl = `https://www.aviasales.com/search/${origin}${departDDMM}${destination}`;
-  if (returnDate) {
-    const ret = toDDMM(returnDate);
-    if (ret) aviasalesUrl += `${ret}${passengers}`;
-    else aviasalesUrl += `${passengers}`;
-  } else {
-    aviasalesUrl += `${passengers}`;
-  }
-
-  return `https://tp.media/r?marker=${MARKER}&trs=${TRS}&p=${PROGRAM}&u=${encodeURIComponent(aviasalesUrl)}`;
-};
+// Note: buildDeepLink (Aviasales affiliate URL) removed in the subscription
+// pivot. This service now exists only for its data fetches (getCheapest,
+// getPricesCalendar) used to populate the Explore price fallback.
