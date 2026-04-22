@@ -64,7 +64,9 @@ async function handleSubscriptionUpdated(sub) {
   if (sub.status === 'active' || sub.status === 'trialing') {
     subsModel.updateUserTier(row.user_id, row.tier, validUntil);
   } else if (sub.status === 'canceled' || sub.status === 'unpaid') {
-    subsModel.setUserTierFree(row.user_id);
+    if (!hasSurvivingPaidSubscription(row.user_id, row.id)) {
+      subsModel.setUserTierFree(row.user_id);
+    }
   }
 }
 
@@ -74,7 +76,21 @@ async function handleSubscriptionDeleted(sub) {
   subsModel.upsertSubscription(rowFromStripeSub({
     userId: row.user_id, sub, tier: row.tier, sessionId: row.stripe_session_id,
   }));
+  if (hasSurvivingPaidSubscription(row.user_id, row.id)) return;
   subsModel.setUserTierFree(row.user_id);
+}
+
+// Don't downgrade a user to free if they still hold another paid plan. Protects
+// the upgrade path monthly→lifetime where Stripe cancels the recurring sub as
+// a side-effect after the lifetime payment succeeds.
+function hasSurvivingPaidSubscription(userId, ignoreRowId) {
+  const rows = subsModel.getSubscriptionsForUser(userId);
+  return rows.some((r) => {
+    if (r.id === ignoreRowId) return false;
+    if (r.tier === 'pro_lifetime' && r.status === 'active') return true;
+    if (r.status === 'active' || r.status === 'trialing') return true;
+    return false;
+  });
 }
 
 async function handleInvoicePaymentFailed(invoice) {
