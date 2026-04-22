@@ -35,6 +35,7 @@ const stmts = {
   getLifetimeCounter:  db.prepare('SELECT taken, cap FROM lifetime_counter WHERE id = 1'),
   // Webhook dedup
   insertWebhookEvent:  db.prepare('INSERT OR IGNORE INTO webhook_events (id, received_at) VALUES (?, ?)'),
+  deleteWebhookEvent:  db.prepare('DELETE FROM webhook_events WHERE id = ?'),
 };
 
 module.exports = {
@@ -71,5 +72,9 @@ module.exports = {
   markWebhookEventProcessed(eventId, now = Date.now()) {
     const info = stmts.insertWebhookEvent.run(eventId, now);
     return info.changes === 1;
+  },
+  // Rolls back a previously marked event so Stripe retry gets a fresh pass.
+  deleteWebhookEvent(eventId) {
+    stmts.deleteWebhookEvent.run(eventId);
   },
 };

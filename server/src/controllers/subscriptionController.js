@@ -41,11 +41,9 @@ async function createCheckout(req, res) {
       tier, customerId,
       successUrl: `${origin}/?subscribe=success&session={CHECKOUT_SESSION_ID}`,
       cancelUrl:  `${origin}/?subscribe=cancel`,
+      metadata: { user_id: String(user.id) },
     });
-    // Inject user_id into session metadata for webhook handler
-    await stripeSvc._getClient().checkout.sessions.update(session.id, {
-      metadata: { tier, user_id: String(user.id) },
-    });
+    // Session metadata already has { tier, user_id } — no separate update needed.
 
     return res.json({ success: true, url: session.url });
   } catch (err) {
@@ -63,11 +61,16 @@ async function createPortal(req, res) {
   if (!user?.stripe_customer_id) return res.status(404).json({ success: false, message: 'No customer record' });
 
   const origin = process.env.PUBLIC_WEB_ORIGIN || 'https://himaxym.com';
-  const session = await stripeSvc.createBillingPortalSession({
-    customerId: user.stripe_customer_id,
-    returnUrl: `${origin}/?portal=return`,
-  });
-  return res.json({ success: true, url: session.url });
+  try {
+    const session = await stripeSvc.createBillingPortalSession({
+      customerId: user.stripe_customer_id,
+      returnUrl: `${origin}/?portal=return`,
+    });
+    return res.json({ success: true, url: session.url });
+  } catch (err) {
+    console.error('[subs] createPortal failed:', err);
+    return res.status(500).json({ success: false, message: 'Portal unavailable' });
+  }
 }
 
 // RAW body — mounted BEFORE json middleware. See server/src/index.js changes.
@@ -112,6 +115,7 @@ async function handleWebhook(req, res) {
     }
     return res.json({ received: true });
   } catch (err) {
+    subsModel.deleteWebhookEvent(event.id); // roll back dedup so Stripe retry re-processes
     console.error('[subs] webhook handler failed:', err);
     return res.status(500).json({ success: false, message: 'Handler error' });
   }
