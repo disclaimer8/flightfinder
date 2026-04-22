@@ -16,6 +16,13 @@ env:
   RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
   VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+  STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+  STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+  STRIPE_PRICE_MONTHLY: ${{ secrets.STRIPE_PRICE_MONTHLY }}
+  STRIPE_PRICE_ANNUAL: ${{ secrets.STRIPE_PRICE_ANNUAL }}
+  STRIPE_PRICE_LIFETIME: ${{ secrets.STRIPE_PRICE_LIFETIME }}
+  STRIPE_LIVE: ${{ secrets.STRIPE_LIVE }}
+  PUBLIC_WEB_ORIGIN: ${{ secrets.PUBLIC_WEB_ORIGIN }}
 
 jobs:
   deploy:
@@ -27,7 +34,7 @@ jobs:
           host: 178.104.32.46
           username: root
           key: ${{ secrets.claude }}
-          envs: OPENSKY_USERNAME,OPENSKY_PASSWORD,AIRLABS_API_KEY,TRAVELPAYOUTS_TOKEN,TRAVELPAYOUTS_MARKER,TRAVELPAYOUTS_TRS,RAPIDAPI_KEY,SENTRY_DSN,VITE_SENTRY_DSN
+          envs: OPENSKY_USERNAME,OPENSKY_PASSWORD,AIRLABS_API_KEY,TRAVELPAYOUTS_TOKEN,TRAVELPAYOUTS_MARKER,TRAVELPAYOUTS_TRS,RAPIDAPI_KEY,SENTRY_DSN,VITE_SENTRY_DSN,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,STRIPE_PRICE_MONTHLY,STRIPE_PRICE_ANNUAL,STRIPE_PRICE_LIFETIME,STRIPE_LIVE,PUBLIC_WEB_ORIGIN
           script: |
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
@@ -55,6 +62,17 @@ jobs:
             # Sentry server DSN (idempotent)
             sed -i '/^SENTRY_DSN/d' server/.env
             echo "SENTRY_DSN=${SENTRY_DSN}" >> server/.env
+            # Write Stripe credentials (idempotent)
+            sed -i '/^STRIPE_/d' server/.env
+            echo "STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}" >> server/.env
+            echo "STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}" >> server/.env
+            echo "STRIPE_PRICE_MONTHLY=${STRIPE_PRICE_MONTHLY}" >> server/.env
+            echo "STRIPE_PRICE_ANNUAL=${STRIPE_PRICE_ANNUAL}" >> server/.env
+            echo "STRIPE_PRICE_LIFETIME=${STRIPE_PRICE_LIFETIME}" >> server/.env
+            echo "STRIPE_LIVE=${STRIPE_LIVE}" >> server/.env
+            # Public origin for Stripe Checkout return URLs
+            sed -i '/^PUBLIC_WEB_ORIGIN/d' server/.env
+            echo "PUBLIC_WEB_ORIGIN=${PUBLIC_WEB_ORIGIN}" >> server/.env
             cd server && npm install --omit=dev
             # pngquant is needed by client/scripts/optimize-images.mjs (postbuild
             # hook). Install idempotently; apt-get is fast when already present.
