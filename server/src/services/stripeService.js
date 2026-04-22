@@ -46,7 +46,7 @@ async function createCheckoutSession({ tier, customerId, successUrl, cancelUrl, 
     success_url: successUrl,
     cancel_url:  cancelUrl,
     line_items: [{ price, quantity: 1 }],
-    metadata: { tier, ...metadata },
+    metadata: { ...metadata, tier },
     allow_promotion_codes: true,
     automatic_tax: { enabled: true },
   };
@@ -58,7 +58,7 @@ async function createCheckoutSession({ tier, customerId, successUrl, cancelUrl, 
   const sub = {
     ...base,
     mode: 'subscription',
-    subscription_data: { metadata: { tier, ...metadata } },
+    subscription_data: { metadata: { ...metadata, tier } },
   };
   if (trial) sub.subscription_data.trial_period_days = 7;
   return getClient().checkout.sessions.create(sub);
