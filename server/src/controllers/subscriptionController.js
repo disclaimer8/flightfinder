@@ -39,8 +39,8 @@ async function createCheckout(req, res) {
     const origin = process.env.PUBLIC_WEB_ORIGIN || 'https://himaxym.com';
     const session = await stripeSvc.createCheckoutSession({
       tier, customerId,
-      successUrl: `${origin}/?subscribe=success&session={CHECKOUT_SESSION_ID}`,
-      cancelUrl:  `${origin}/?subscribe=cancel`,
+      successUrl: `${origin}/subscribe/return?subscribe=success&session={CHECKOUT_SESSION_ID}`,
+      cancelUrl:  `${origin}/subscribe/return?subscribe=cancel`,
       metadata: { user_id: String(user.id) },
     });
     // Session metadata already has { tier, user_id } — no separate update needed.

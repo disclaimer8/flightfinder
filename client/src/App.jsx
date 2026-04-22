@@ -16,6 +16,7 @@ import { useFlightSearch } from './hooks/useFlightSearch';
 import { FilterOptionsContext } from './context/FilterOptionsContext';
 import { useAuth } from './context/AuthContext';
 import { API_BASE } from './utils/api';
+import { isNativeApp } from './utils/platform';
 import './App.css';
 
 function App() {
@@ -141,6 +142,9 @@ function App() {
             </div>
             <div className="nav-right">
               {apiStatus && <APIStatus status={apiStatus} />}
+              {!isNativeApp() && (
+                <a className="nav-btn nav-btn-ghost" href="/pricing">Pricing</a>
+              )}
               {user ? (
                 <div className="nav-user">
                   <a className="nav-btn nav-btn-ghost" href="/trips">My Trips</a>

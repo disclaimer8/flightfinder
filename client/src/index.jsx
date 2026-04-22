@@ -10,6 +10,10 @@ import { AuthProvider } from './context/AuthContext';
 import './index.css';
 
 const MyTrips = lazy(() => import('./pages/MyTrips'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const SubscribeReturn = lazy(() => import('./pages/SubscribeReturn'));
+const Terms = lazy(() => import('./pages/legal/Terms'));
+const Privacy = lazy(() => import('./pages/legal/Privacy'));
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -21,6 +25,10 @@ root.render(
             <Route path="/aircraft/:slug" element={<AircraftLandingPage />} />
             <Route path="/routes/:pair" element={<RouteLandingPage />} />
             <Route path="/trips" element={<Suspense fallback={null}><MyTrips /></Suspense>} />
+            <Route path="/pricing" element={<Suspense fallback={null}><Pricing /></Suspense>} />
+            <Route path="/subscribe/return" element={<Suspense fallback={null}><SubscribeReturn /></Suspense>} />
+            <Route path="/legal/terms" element={<Suspense fallback={null}><Terms /></Suspense>} />
+            <Route path="/legal/privacy" element={<Suspense fallback={null}><Privacy /></Suspense>} />
             <Route path="*" element={<App />} />
           </Routes>
         </BrowserRouter>
