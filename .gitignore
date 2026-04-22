@@ -9,3 +9,4 @@ server/.env
 client/android/
 client/ios/
 server/data/
+.superpowers/
