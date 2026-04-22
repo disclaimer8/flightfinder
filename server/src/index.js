@@ -324,6 +324,23 @@ if (require.main === module) {
     console.warn('[amenities] seed failed:', err.message);
   }
 
+  // Load OurAirports if its CSV is present (downloaded by ourAirportsRefreshWorker,
+  // or shipped via data dir). Then run a one-shot diff audit against OpenFlights.
+  try {
+    const pth = require('path');
+    const loaded = require('./services/ourAirportsService').loadFromCsv(
+      pth.resolve(__dirname, '../data/ourairports.csv'),
+    );
+    if (loaded) {
+      console.log(`[ourairports] loaded ${loaded} airports`);
+      require('./services/airportValidation').runAudit();
+    } else {
+      console.log('[ourairports] CSV not present — skipping');
+    }
+  } catch (err) {
+    console.warn('[ourairports] load failed:', err.message);
+  }
+
   const shutdown = () => {
     try { stopAdsbLolWorker();    } catch { /* noop */ }
     try { stopDelayIngest();      } catch { /* noop */ }
