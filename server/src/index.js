@@ -58,10 +58,15 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
   : (IS_DEV ? ['http://localhost:3000', 'http://localhost:5173'] : []);
 
+// Native Capacitor WebView origins — iOS uses `capacitor://localhost`,
+// Android uses `https://localhost` (Capacitor 7+ default androidScheme).
+// Always allowed so the mobile apps reach the API regardless of prod ALLOWED_ORIGINS.
+const NATIVE_ORIGINS = new Set(['capacitor://localhost', 'https://localhost']);
+
 app.use(cors({
   origin: (origin, cb) => {
-    // allow server-to-server (no origin) and allowed origins
-    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    // allow server-to-server (no origin), native WebViews, and allowed origins
+    if (!origin || NATIVE_ORIGINS.has(origin) || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
       return cb(null, true);
     }
     cb(new Error('Not allowed by CORS'));

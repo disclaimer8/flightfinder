@@ -26,14 +26,19 @@ const _splitEnv = (s) =>
     .map(o => o.trim())
     .filter(Boolean);
 
+// Native Capacitor WebView origins — iOS is `capacitor://localhost`,
+// Android is `https://localhost`. Always trusted for CSRF purposes:
+// they can't be forged by a third-party browser page.
+const NATIVE_ORIGINS = ['capacitor://localhost', 'https://localhost'];
+
 function loadAllowedOrigins() {
   const fromEnv = _splitEnv(process.env.ALLOWED_ORIGINS);
-  if (fromEnv.length) return new Set(fromEnv);
+  if (fromEnv.length) return new Set([...fromEnv, ...NATIVE_ORIGINS]);
   // Dev fallback mirrors the CORS config in index.js.
   if (process.env.NODE_ENV !== 'production') {
-    return new Set(['http://localhost:3000', 'http://localhost:5173']);
+    return new Set(['http://localhost:3000', 'http://localhost:5173', ...NATIVE_ORIGINS]);
   }
-  return new Set();
+  return new Set(NATIVE_ORIGINS);
 }
 
 module.exports = function csrfOriginCheck(req, res, next) {
