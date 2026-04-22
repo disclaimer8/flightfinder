@@ -386,7 +386,7 @@ Minimum tests, placed strictly where failures cost money or privacy. Everything 
 - `/enriched` response shape (contract for the card)
 - Entitlement flags from `/auth/me`
 
-Tool: Vitest + supertest (already installed).
+Tools: server uses **Jest + supertest**, client uses **Vitest + @testing-library/react** (both already installed per each `package.json`).
 
 **SHOULD (simple unit, local):**
 - `predictDelay` 3-tier fallback
