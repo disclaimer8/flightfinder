@@ -157,18 +157,20 @@ db.exec(`
   );
 `);
 
-// airline_amenities: populated from seed JSON on boot. icao_type_hint is nullable;
-// rows without a type apply to the whole airline's mainline fleet.
+// airline_amenities: populated from seed JSON on boot. icao_type_hint='' means
+// the row applies to the whole airline's mainline fleet. SQLite doesn't allow
+// expressions in PRIMARY KEY, so we use NOT NULL DEFAULT '' to keep the PK
+// simple and sound (NULL in composite PK is permissive in SQLite).
 db.exec(`
   CREATE TABLE IF NOT EXISTS airline_amenities (
     airline_iata    TEXT NOT NULL,
-    icao_type_hint  TEXT,
+    icao_type_hint  TEXT NOT NULL DEFAULT '',
     wifi            INTEGER NOT NULL DEFAULT 0,
     power           INTEGER NOT NULL DEFAULT 0,
     entertainment   INTEGER NOT NULL DEFAULT 0,
     meal            INTEGER NOT NULL DEFAULT 0,
     updated_at      INTEGER NOT NULL,
-    PRIMARY KEY (airline_iata, COALESCE(icao_type_hint, ''))
+    PRIMARY KEY (airline_iata, icao_type_hint)
   );
 `);
 ```
