@@ -137,7 +137,7 @@ In `server/src/models/db.js`, after the existing `email_verified` migration bloc
 
 ```js
 // Migration: subscription tier columns (see spec 2026-04-22-subscription-pivot-design.md)
-try { db.exec('ALTER TABLE users ADD COLUMN subscription_tier TEXT NOT NULL DEFAULT "free"'); } catch {}
+try { db.exec("ALTER TABLE users ADD COLUMN subscription_tier TEXT NOT NULL DEFAULT 'free'"); } catch {}
 try { db.exec('ALTER TABLE users ADD COLUMN sub_valid_until INTEGER'); } catch {}
 try { db.exec('ALTER TABLE users ADD COLUMN stripe_customer_id TEXT'); } catch {}
 try { db.exec('CREATE UNIQUE INDEX idx_users_stripe_cust ON users(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL'); } catch {}
