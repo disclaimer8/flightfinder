@@ -59,8 +59,29 @@ parseCSV(path.join(__dirname, '../data/airlines.dat')).forEach(f => {
 
 console.log(`[openflights] Loaded ${airportsMap.size} airports, ${airlinesMap.size} airlines`);
 
-/** Look up an airport by IATA code */
-exports.getAirport = (iata) => airportsMap.get(iata?.toUpperCase()) || null;
+// Plan 6 — prefer OurAirports (nightly fresh) for coords/name/city/country/ICAO.
+// OpenFlights is kept as the timezone source because OurAirports doesn't
+// carry IANA tz strings, and as a fallback for airports OurAirports doesn't cover.
+const ourAirports = require('./ourAirportsService');
+
+/** Look up an airport by IATA code. Merges OurAirports (primary) + OpenFlights (timezone/fallback). */
+exports.getAirport = (iata) => {
+  const key = iata?.toUpperCase();
+  if (!key) return null;
+  const of = airportsMap.get(key) || null;
+  const oa = ourAirports.isLoaded() ? ourAirports.getAirport(key) : null;
+  if (!of && !oa) return null;
+  return {
+    iata: key,
+    icao:    oa?.icao    ?? of?.icao    ?? null,
+    name:    oa?.name    ?? of?.name    ?? null,
+    city:    oa?.city    ?? of?.city    ?? null,
+    country: oa?.country ?? of?.country ?? null,
+    lat:     Number.isFinite(oa?.lat) ? oa.lat : (Number.isFinite(of?.lat) ? of.lat : null),
+    lon:     Number.isFinite(oa?.lon) ? oa.lon : (Number.isFinite(of?.lon) ? of.lon : null),
+    timezone: of?.timezone || null,
+  };
+};
 
 /** Look up an airline by IATA code */
 exports.getAirline = (iata) => airlinesMap.get(iata?.toUpperCase()) || null;
