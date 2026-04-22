@@ -56,7 +56,7 @@ const HOME = {
 
 const BY_AIRCRAFT = {
   title: 'Search Flights by Aircraft Type — FlightFinder',
-  description: 'Pick an aircraft model (Boeing 787, Airbus A350, A380, Boeing 737 MAX and more) and see every route that plane flies worldwide — then book the one you want.',
+  description: 'Pick an aircraft model (Boeing 787, Airbus A350, A380, Boeing 737 MAX and more) and see every route that plane flies worldwide.',
   canonical: `${BASE}/by-aircraft`,
   h1: 'Search flights by aircraft',
   subtitle: 'Pick an aircraft model — Boeing 787, Airbus A350, A380, A320, Boeing 737 and more — and we show you every route it flies worldwide.',
@@ -87,10 +87,10 @@ function aircraftMeta(slug) {
   const manufacturer = fam?.family?.manufacturer || '';
   return {
     title: `${label} flights and routes — which airlines fly it, where, and when | FlightFinder`,
-    description: `Find every route operated by the ${label}. See which airlines fly the ${manufacturer} ${fam?.name || ''} fleet, on what city pairs, and book the next available flight.`,
+    description: `Find every route operated by the ${label}. See which airlines fly the ${manufacturer} ${fam?.name || ''} fleet and the city pairs they serve.`,
     canonical: `${BASE}/aircraft/${slug}`,
     h1: `${label} — flights, routes and airlines`,
-    subtitle: `Every city pair operated by the ${label} worldwide. Pick a route to book the next available flight on this aircraft.`,
+    subtitle: `Every city pair operated by the ${label} worldwide. Pick a route to see live schedule data and aircraft details.`,
     robots: 'index, follow',
     ogType: 'article',
     kind: 'aircraft',
@@ -252,7 +252,7 @@ function structuredData(meta) {
           name: 'Is FlightFinder free to use?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Yes. FlightFinder is free. We surface live fares and route data from multiple providers; when you book, you are redirected to the airline or partner that owns the inventory.',
+            text: 'Search and schedule data are free. Pro ($4.99/month, $39/year, or $99 one-time lifetime) unlocks the enriched flight card — on-time stats, CO₂ per passenger, amenities, live gate & weather — plus My Trips with push alerts.',
           },
         },
         {
