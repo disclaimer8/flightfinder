@@ -28,6 +28,12 @@ env:
   INGEST_TOP_ROUTES: ${{ secrets.INGEST_TOP_ROUTES }}
   FLEET_BOOTSTRAP: ${{ secrets.FLEET_BOOTSTRAP }}
   OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+  VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+  VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+  VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+  TRIPS_ENABLED: ${{ secrets.TRIPS_ENABLED }}
+  ENRICHED_CARD: ${{ secrets.ENRICHED_CARD }}
+  ALERT_THRESHOLD_MIN: ${{ secrets.ALERT_THRESHOLD_MIN }}
 
 jobs:
   deploy:
@@ -39,7 +45,7 @@ jobs:
           host: 178.104.32.46
           username: root
           key: ${{ secrets.claude }}
-          envs: OPENSKY_USERNAME,OPENSKY_PASSWORD,AIRLABS_API_KEY,TRAVELPAYOUTS_TOKEN,TRAVELPAYOUTS_MARKER,TRAVELPAYOUTS_TRS,RAPIDAPI_KEY,SENTRY_DSN,VITE_SENTRY_DSN,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,STRIPE_PRICE_MONTHLY,STRIPE_PRICE_ANNUAL,STRIPE_PRICE_LIFETIME,STRIPE_LIVE,PUBLIC_WEB_ORIGIN,ADMIN_TOKEN,INGEST_ENABLED,INGEST_TOP_ROUTES,FLEET_BOOTSTRAP,OPENWEATHER_API_KEY
+          envs: OPENSKY_USERNAME,OPENSKY_PASSWORD,AIRLABS_API_KEY,TRAVELPAYOUTS_TOKEN,TRAVELPAYOUTS_MARKER,TRAVELPAYOUTS_TRS,RAPIDAPI_KEY,SENTRY_DSN,VITE_SENTRY_DSN,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,STRIPE_PRICE_MONTHLY,STRIPE_PRICE_ANNUAL,STRIPE_PRICE_LIFETIME,STRIPE_LIVE,PUBLIC_WEB_ORIGIN,ADMIN_TOKEN,INGEST_ENABLED,INGEST_TOP_ROUTES,FLEET_BOOTSTRAP,OPENWEATHER_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,TRIPS_ENABLED,ENRICHED_CARD,ALERT_THRESHOLD_MIN
           script: |
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
@@ -90,6 +96,19 @@ jobs:
             echo "INGEST_TOP_ROUTES=${INGEST_TOP_ROUTES:-30}" >> server/.env
             echo "FLEET_BOOTSTRAP=${FLEET_BOOTSTRAP:-0}" >> server/.env
             echo "OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}" >> server/.env
+            # VAPID + trips kill-switches (Plan 4)
+            sed -i '/^VAPID_PUBLIC_KEY/d' server/.env
+            sed -i '/^VAPID_PRIVATE_KEY/d' server/.env
+            sed -i '/^VAPID_SUBJECT/d' server/.env
+            sed -i '/^TRIPS_ENABLED/d' server/.env
+            sed -i '/^ENRICHED_CARD/d' server/.env
+            sed -i '/^ALERT_THRESHOLD_MIN/d' server/.env
+            echo "VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}" >> server/.env
+            echo "VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}" >> server/.env
+            echo "VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@himaxym.com}" >> server/.env
+            echo "TRIPS_ENABLED=${TRIPS_ENABLED:-1}" >> server/.env
+            echo "ENRICHED_CARD=${ENRICHED_CARD:-1}" >> server/.env
+            echo "ALERT_THRESHOLD_MIN=${ALERT_THRESHOLD_MIN:-30}" >> server/.env
             cd server && npm install --omit=dev
             # pngquant is needed by client/scripts/optimize-images.mjs (postbuild
             # hook). Install idempotently; apt-get is fast when already present.
