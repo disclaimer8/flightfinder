@@ -185,6 +185,40 @@ db.exec(`
   );
 `);
 
+// user_trips (Plan 4): flights the user has saved to My Trips. Owner-scoped
+// access via every query — never select by id alone.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_trips (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    airline_iata    TEXT NOT NULL,
+    flight_number   TEXT NOT NULL,
+    dep_iata        TEXT NOT NULL,
+    arr_iata        TEXT NOT NULL,
+    scheduled_dep   INTEGER NOT NULL,
+    scheduled_arr   INTEGER NOT NULL,
+    note            TEXT,
+    alerts_enabled  INTEGER NOT NULL DEFAULT 1,
+    created_at      INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_trips_user     ON user_trips(user_id);
+  CREATE INDEX IF NOT EXISTS idx_trips_upcoming ON user_trips(scheduled_dep);
+`);
+
+// push_tokens: web-push subscription endpoints per user. UNIQUE(endpoint)
+// because browser's push service reuses endpoints across re-subscribes.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS push_tokens (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint   TEXT NOT NULL UNIQUE,
+    p256dh     TEXT NOT NULL,
+    auth       TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_push_user ON push_tokens(user_id);
+`);
+
 // Prepared statements
 const stmts = {
   getUserByEmail:    db.prepare('SELECT * FROM users WHERE email = ?'),
