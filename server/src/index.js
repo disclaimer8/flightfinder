@@ -149,6 +149,7 @@ app.use((req, _res, next) => {
   else if (req.path.match(/^\/api\/flights\/[^/]+\/enriched/)) tag = 'enriched';
   else if (req.path.startsWith('/api/flights')) tag = 'flights';
   else if (req.path.startsWith('/api/map') || req.path.startsWith('/api/aircraft')) tag = 'map';
+  else if (req.path.startsWith('/api/safety')) tag = 'safety';
   else if (req.path.startsWith('/api/auth')) tag = 'auth';
   else if (req.path.startsWith('/api/config')) tag = 'config';
   try {
@@ -165,6 +166,7 @@ app.use('/api/aircraft',      require('./routes/aircraft'));
 app.use('/api/map',           require('./routes/map'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/config',        require('./routes/config'));
+app.use('/api/safety',        require('./routes/safety'));
 app.use('/api/admin/ingest-status', require('./routes/ingestStatus'));
 if (process.env.TRIPS_ENABLED !== '0') {
   app.use('/api/trips',       require('./routes/trips'));
