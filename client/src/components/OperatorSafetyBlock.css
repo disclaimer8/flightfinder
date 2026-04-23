@@ -10,3 +10,13 @@
 .operator-safety__teaser { margin: 4px 0 6px; color: #4b5563; }
 .operator-safety__link { color: #1f2937; text-decoration: none; }
 .operator-safety__link:hover { text-decoration: underline; }
+.operator-safety--unavailable {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; font-size: 13px;
+}
+.operator-safety__muted {
+  color: #6b7280; flex: 1;
+}
+.operator-safety__link[rel="nofollow"] {
+  color: #6b7280; font-size: 12px;
+}

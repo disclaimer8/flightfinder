@@ -21,14 +21,29 @@ export default function OperatorSafetyBlock({ airlineIata, airlineIcao }) {
 
   if (error || !data || !code) return null;
 
+  const coverage = data.coverage || 'unknown';
   const counts = data.counts || {};
   const total = counts.total || 0;
   const fatal = counts.fatal || 0;
 
+  // Non-US operators: NTSB doesn't track them. Show an honest "data unavailable"
+  // state instead of a false "0 incidents" signal.
+  if (coverage !== 'us-ntsb') {
+    return (
+      <div className="operator-safety operator-safety--unavailable">
+        <span className="operator-safety__label">Safety data</span>
+        <span className="operator-safety__muted">Unavailable for this operator</span>
+        <Link to="/legal/attributions" className="operator-safety__link" rel="nofollow">
+          Why?
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="operator-safety">
       <div className="operator-safety__row">
-        <span className="operator-safety__label">90-day safety record</span>
+        <span className="operator-safety__label">90-day safety record (US NTSB)</span>
         <span className={`operator-safety__count${fatal > 0 ? ' operator-safety__count--fatal' : ''}`}>
           {fatal > 0 && <strong>{fatal} fatal · </strong>}
           {total} total
