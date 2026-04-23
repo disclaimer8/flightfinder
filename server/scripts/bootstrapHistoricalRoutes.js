@@ -23,25 +23,24 @@ const openFlights = require('../src/services/openFlightsService');
 const dbModule    = require('../src/models/db');
 
 // Release URLs from MrAirspace/aircraft-flight-schedules GitHub releases.
-// Tags follow two patterns:
-//   - aircraft_flight_schedules_<year>_quarter<N>  (2025 Q1 – 2026 Q1, detailed version)
-//   - aircraft_flight_logs_<year>_quarter<N>        (2024 Q1 – Q4, basic flight logs)
-// Filenames inside each release are <YEAR>_Q<N>.parquet.
-// Fetched from https://github.com/MrAirspace/aircraft-flight-schedules/releases
-// on 2026-04-24. Verify URLs before the prod run — releases are added quarterly.
+// Verified live 2026-04-24 via `gh api /repos/MrAirspace/aircraft-flight-schedules/releases`.
+// Filename patterns per release:
+//   - aircraft_flight_schedules_<year>_quarter<N> → <YEAR>_Q<N>_detailed_github.parquet (2025 Q1 – 2026 Q1)
+//   - aircraft_flight_logs_<year>_quarter<N>      → <YEAR>_Q<N>_github.parquet           (2024 Q1 – Q4)
+// Total ~5.2 GB across 9 files. Listed newest-first so interrupted runs get recent data.
 const DEFAULT_URLS = [
   // 2026
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2026_quarter1/2026_Q1.parquet',
-  // 2025
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter4/2025_Q4.parquet',
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter3/2025_Q3.parquet',
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter2/2025_Q2.parquet',
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter1/2025_Q1.parquet',
-  // 2024
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter4/2024_Q4.parquet',
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter3/2024_Q3.parquet',
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter2/2024_Q2.parquet',
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter1/2024_Q1.parquet',
+  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2026_quarter1/2026_Q1_detailed_github.parquet',
+  // 2025 (detailed versions)
+  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter4/2025_Q4_detailed_github.parquet',
+  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter3/2025_Q3_detailed_github.parquet',
+  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter2/2025_Q2_detailed_github.parquet',
+  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter1/2025_Q1_detailed_github.parquet',
+  // 2024 (logs versions — detailed not published for this year)
+  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter4/2024_Q4_github.parquet',
+  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter3/2024_Q3_github.parquet',
+  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter2/2024_Q2_github.parquet',
+  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter1/2024_Q1_github.parquet',
 ];
 
 /**
