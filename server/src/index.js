@@ -330,11 +330,13 @@ if (require.main === module) {
   const { startFleetBootstrapWorker } = require('./workers/fleetBootstrapWorker');
   const { startTripAlertWorker }      = require('./workers/tripAlertWorker');
   const { startOurAirportsRefreshWorker } = require('./workers/ourAirportsRefreshWorker');
+  const { startSafetyIngestionWorker }    = require('./workers/safetyIngestionWorker');
   const stopAdsbLolWorker      = startAdsbLolWorker();
   const stopDelayIngest        = startDelayIngestionWorker();
   const stopFleetBootstrap     = startFleetBootstrapWorker();
   const stopTripAlertWorker    = startTripAlertWorker();
   const stopOurAirportsRefresh = startOurAirportsRefreshWorker();
+  const stopSafetyIngest       = startSafetyIngestionWorker();
 
   // Load airline amenities seed on boot (cheap, idempotent).
   try {
@@ -366,6 +368,7 @@ if (require.main === module) {
     try { stopFleetBootstrap();      } catch { /* noop */ }
     try { stopTripAlertWorker();     } catch { /* noop */ }
     try { stopOurAirportsRefresh();  } catch { /* noop */ }
+    try { stopSafetyIngest();        } catch { /* noop */ }
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT',  shutdown);
