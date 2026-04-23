@@ -226,6 +226,23 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_safety_aircraft    ON safety_events(aircraft_icao_type, occurred_at);
 `);
 
+// faa_registry: static N-number -> aircraft metadata map, bootstrapped daily from
+// the FAA Releasable Aircraft Database (US public domain). Used by the safety
+// ingest pipeline to resolve NTSB registrations into ICAO aircraft types.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS faa_registry (
+    n_number      TEXT PRIMARY KEY,
+    icao24_hex    TEXT,
+    manufacturer  TEXT,
+    model         TEXT,
+    year_built    INTEGER,
+    owner_name    TEXT,
+    updated_at    INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_faa_icao24 ON faa_registry(icao24_hex);
+  CREATE INDEX IF NOT EXISTS idx_faa_mfr_model ON faa_registry(manufacturer, model);
+`);
+
 // user_trips (Plan 4): flights the user has saved to My Trips. Owner-scoped
 // access via every query — never select by id alone.
 db.exec(`
