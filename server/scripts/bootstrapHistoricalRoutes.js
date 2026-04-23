@@ -10,13 +10,8 @@
 // or to process just one quarter:
 //   HISTORICAL_BOOTSTRAP_CONFIRM=1 HISTORICAL_PARQUET_URLS='<url>' node scripts/bootstrapHistoricalRoutes.js
 //
-// Safety guard: refuses to run without explicit env confirmation to prevent accidental runs.
-
-if (process.env.HISTORICAL_BOOTSTRAP_CONFIRM !== '1') {
-  console.log('HISTORICAL_BOOTSTRAP_CONFIRM not set. Refusing to run.');
-  console.log('Set HISTORICAL_BOOTSTRAP_CONFIRM=1 to proceed.');
-  process.exit(1);
-}
+// Safety guard: when run directly, refuses without explicit env confirmation.
+// When require()'d (e.g. by tests) the guard is skipped so helpers are importable.
 
 const https = require('https');
 const http  = require('http');
@@ -204,10 +199,18 @@ async function main() {
   );
 }
 
-main().catch(e => {
-  console.error('[historical] fatal:', e);
-  process.exit(1);
-});
-
 // Exported for unit tests
 module.exports = { parseDateToMs };
+
+// Only run when executed directly (not when require()'d by tests)
+if (require.main === module) {
+  if (process.env.HISTORICAL_BOOTSTRAP_CONFIRM !== '1') {
+    console.log('HISTORICAL_BOOTSTRAP_CONFIRM not set. Refusing to run.');
+    console.log('Set HISTORICAL_BOOTSTRAP_CONFIRM=1 to proceed.');
+    process.exit(1);
+  }
+  main().catch(e => {
+    console.error('[historical] fatal:', e);
+    process.exit(1);
+  });
+}
