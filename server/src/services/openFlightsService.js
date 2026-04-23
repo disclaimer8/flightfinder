@@ -104,3 +104,9 @@ exports.getAirportByIcao = (icao) => {
   const iata = icaoMap.get(icao.toUpperCase());
   return iata ? airportsMap.get(iata) : null;
 };
+
+/** Convert an ICAO airport code to IATA (e.g. KLAX → LAX). Returns null when not found. */
+exports.iataForIcao = (icao) => {
+  if (!icao || typeof icao !== 'string') return null;
+  return icaoMap.get(icao.toUpperCase()) || null;
+};
