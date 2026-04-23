@@ -45,15 +45,21 @@ parseCSV(path.join(__dirname, '../data/airports.dat')).forEach(f => {
 // airlines.dat columns:
 // 0:id 1:name 2:alias 3:iata 4:icao 5:callsign 6:country 7:active
 const airlinesMap = new Map();
+const airlinesIcaoMap = new Map(); // ICAO → airline record (for reverse lookup when only ICAO provided)
 parseCSV(path.join(__dirname, '../data/airlines.dat')).forEach(f => {
   const iata = f[3];
   if (iata && iata.length >= 2 && f[7] === 'Y') {
-    airlinesMap.set(iata, {
+    const record = {
       iata,
       name: f[1],
       icao: f[4],
       country: f[6],
-    });
+    };
+    airlinesMap.set(iata, record);
+    // Also index by ICAO for reverse lookup
+    if (f[4]) {
+      airlinesIcaoMap.set(f[4].toUpperCase(), record);
+    }
   }
 });
 
@@ -85,6 +91,9 @@ exports.getAirport = (iata) => {
 
 /** Look up an airline by IATA code */
 exports.getAirline = (iata) => airlinesMap.get(iata?.toUpperCase()) || null;
+
+/** Look up an airline by ICAO code */
+exports.getAirlineByIcao = (icao) => airlinesIcaoMap.get(icao?.toUpperCase()) || null;
 
 /** Validate that an IATA airport code exists */
 exports.isValidAirport = (iata) => airportsMap.has(iata?.toUpperCase());

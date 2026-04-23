@@ -43,6 +43,8 @@ module.exports = {
   paywallCTA:       'Upgrade to Pro for full operator and aircraft history',
   attributionsTitle: 'Data attributions',
   ntsbCredit:       'Aviation accident data: U.S. National Transportation Safety Board (NTSB) — public domain.',
+  coverageUsNtsb:   'Coverage: US NTSB only',
+  coverageUnknown:  'Global safety data unavailable — our source (NTSB) only tracks US events.',
   severityLabel:    (code) => SEVERITY_LABEL[code] || SEVERITY_LABEL.unknown,
   cicttLabel:       (code) => CICTT_LABEL[code] || CICTT_LABEL.OTHR,
 };

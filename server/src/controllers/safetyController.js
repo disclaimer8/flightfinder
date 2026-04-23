@@ -1,7 +1,8 @@
 'use strict';
 
-const safety = require('../models/safetyEvents');
-const STR    = require('../services/safety/strings');
+const safety      = require('../models/safetyEvents');
+const STR         = require('../services/safety/strings');
+const openFlights = require('../services/openFlightsService');
 
 const NINETY_DAYS_MS  = 90 * 24 * 60 * 60 * 1000;
 const ONE_YEAR_MS     = 365 * 24 * 60 * 60 * 1000;
@@ -51,6 +52,19 @@ function shapeEvent(row) {
   };
 }
 
+// NTSB publishes US-only aviation events. For non-US operators the zero-count
+// response would mislead users into thinking "no incidents" instead of
+// "we don't track this". We surface the coverage state explicitly.
+function resolveOperatorCoverage({ iata, icao }) {
+  let airline = iata ? openFlights.getAirline(iata) : null;
+  if (!airline && icao) {
+    airline = openFlights.getAirlineByIcao(icao);
+  }
+  const country = airline?.country || null;
+  const coverage = country === 'United States' ? 'us-ntsb' : 'unknown';
+  return { country, coverage };
+}
+
 exports.listEvents = (req, res) => {
   const { limit, offset, severity, country } = req.validatedQuery;
   const rows = safety.getRecent({ limit, offset, severity, country });
@@ -71,9 +85,12 @@ exports.getEvent = (req, res) => {
 exports.getOperator = (req, res) => {
   const { iata, icao } = req.validatedParams;
   const free90 = safety.countByOperator({ iata, icao, sinceMs: Date.now() - NINETY_DAYS_MS });
+  const { country, coverage } = resolveOperatorCoverage({ iata, icao });
   const payload = {
     success: true,
     operator: { iata, icao },
+    operatorCountry: country,
+    coverage,
     period: '90d',
     counts: free90,
   };

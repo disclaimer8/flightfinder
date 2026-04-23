@@ -112,4 +112,20 @@ describe('/api/safety/* HTTP', () => {
     const r = await request(app).get('/api/safety/aircraft/N111AA');
     expect(r.status).toBe(401);
   });
+
+  test('GET /api/safety/operators/AAL returns coverage=us-ntsb + operatorCountry=United States', async () => {
+    const r = await request(app).get('/api/safety/operators/AAL');
+    expect(r.status).toBe(200);
+    expect(r.body.coverage).toBe('us-ntsb');
+    expect(r.body.operatorCountry).toBe('United States');
+  });
+
+  test('GET /api/safety/operators/BA (non-US IATA) returns coverage=unknown', async () => {
+    const r = await request(app).get('/api/safety/operators/BA');
+    expect(r.status).toBe(200);
+    expect(r.body.coverage).toBe('unknown');
+    expect(r.body.operatorCountry).toBe('United Kingdom');
+    // counts still returned, but expected to be all-zero (BA has no NTSB events in seed)
+    expect(r.body.counts.total).toBe(0);
+  });
 });
