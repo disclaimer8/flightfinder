@@ -14,11 +14,60 @@ const MAX_HOURS_BACK = 12;
 /** Exposed for tests only */
 exports._clearCache = () => _cache.clear();
 
+const TOKEN_URL = 'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token';
+
+// In-process token cache. Tokens last ~30 minutes (expires_in=1800), we refresh 60s early.
+let _tokenCache = { accessToken: null, expiresAt: 0 };
+
+async function getAccessToken() {
+  const id = process.env.OPENSKY_CLIENT_ID;
+  const secret = process.env.OPENSKY_CLIENT_SECRET;
+  if (!id || !secret) return null; // anonymous mode
+
+  if (_tokenCache.accessToken && Date.now() < _tokenCache.expiresAt) {
+    return _tokenCache.accessToken;
+  }
+
+  try {
+    const res = await axios.post(
+      TOKEN_URL,
+      new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: id,
+        client_secret: secret,
+      }).toString(),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 10_000,
+        validateStatus: () => true,
+      }
+    );
+    if (res.status !== 200 || !res.data?.access_token) {
+      console.warn(`[openSky] OAuth2 token exchange failed (HTTP ${res.status})`);
+      return null;
+    }
+    const expiresIn = Number(res.data.expires_in) || 300;
+    _tokenCache = {
+      accessToken: res.data.access_token,
+      expiresAt: Date.now() + Math.max(expiresIn - 60, 60) * 1000,
+    };
+    return _tokenCache.accessToken;
+  } catch (err) {
+    console.warn(`[openSky] OAuth2 token exchange error: ${err.message}`);
+    return null;
+  }
+}
+
+// Exposed for tests to reset between suites.
+exports._clearTokenCache = () => { _tokenCache = { accessToken: null, expiresAt: 0 }; };
+
 /**
  * Fetch direct destination airports seen departing from `icao` in the last
  * `daysBack` days (max 7 — OpenSky free tier limit per request).
  *
- * Requires OPENSKY_USERNAME + OPENSKY_PASSWORD env vars.
+ * Requires OPENSKY_CLIENT_ID + OPENSKY_CLIENT_SECRET env vars (OAuth2 client
+ * credentials — register at https://opensky-network.org/my-opensky/account).
+ * Falls back to anonymous access (reduced rate limits) when creds are absent.
  * Returns [] silently when unauthenticated, rate-limited, or airport unknown.
  *
  * @param {string} icao   4-letter ICAO code of origin airport
@@ -42,11 +91,9 @@ exports.getDepartures = async (icao, hoursBack = MAX_HOURS_BACK) => {
   const url = `https://opensky-network.org/api/flights/departure?airport=${code}&begin=${beginUnix}&end=${endUnix}`;
 
   const config = {};
-  if (process.env.OPENSKY_USERNAME && process.env.OPENSKY_PASSWORD) {
-    config.auth = {
-      username: process.env.OPENSKY_USERNAME,
-      password: process.env.OPENSKY_PASSWORD,
-    };
+  const token = await getAccessToken();
+  if (token) {
+    config.headers = { ...(config.headers || {}), Authorization: `Bearer ${token}` };
   }
 
   let raw = [];
