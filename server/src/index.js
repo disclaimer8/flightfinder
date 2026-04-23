@@ -331,14 +331,16 @@ if (require.main === module) {
   const { startDelayIngestionWorker } = require('./workers/delayIngestionWorker');
   const { startFleetBootstrapWorker } = require('./workers/fleetBootstrapWorker');
   const { startTripAlertWorker }      = require('./workers/tripAlertWorker');
-  const { startOurAirportsRefreshWorker } = require('./workers/ourAirportsRefreshWorker');
-  const { startSafetyIngestionWorker }    = require('./workers/safetyIngestionWorker');
+  const { startOurAirportsRefreshWorker }  = require('./workers/ourAirportsRefreshWorker');
+  const { startSafetyIngestionWorker }     = require('./workers/safetyIngestionWorker');
+  const { startFaaRegistryRefreshWorker }  = require('./workers/faaRegistryRefreshWorker');
   const stopAdsbLolWorker      = startAdsbLolWorker();
   const stopDelayIngest        = startDelayIngestionWorker();
   const stopFleetBootstrap     = startFleetBootstrapWorker();
   const stopTripAlertWorker    = startTripAlertWorker();
   const stopOurAirportsRefresh = startOurAirportsRefreshWorker();
   const stopSafetyIngest       = startSafetyIngestionWorker();
+  const stopFaaRegistryRefresh = startFaaRegistryRefreshWorker();
 
   // Load airline amenities seed on boot (cheap, idempotent).
   try {
@@ -371,6 +373,7 @@ if (require.main === module) {
     try { stopTripAlertWorker();     } catch { /* noop */ }
     try { stopOurAirportsRefresh();  } catch { /* noop */ }
     try { stopSafetyIngest();        } catch { /* noop */ }
+    try { stopFaaRegistryRefresh();  } catch { /* noop */ }
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT',  shutdown);
@@ -380,6 +383,12 @@ if (require.main === module) {
   require('./services/aircraftDbService')
     .bootstrap()
     .catch((err) => console.warn('[aircraftdb] bootstrap failed:', err.message));
+
+  // Fire-and-forget: populate faa_registry (N-number → MFR/MODEL) for NTSB safety
+  // event enrichment. Gated by FAA_REGISTRY_BOOTSTRAP=1. ~30-40MB download, ~300k rows.
+  require('./services/faaRegistryService')
+    .bootstrap()
+    .catch((err) => console.warn('[faaRegistry] bootstrap failed:', err.message));
 }
 
 module.exports = app; // export for tests
