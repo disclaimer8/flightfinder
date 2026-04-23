@@ -14,6 +14,8 @@ const Pricing = lazy(() => import('./pages/Pricing'));
 const SubscribeReturn = lazy(() => import('./pages/SubscribeReturn'));
 const Terms = lazy(() => import('./pages/legal/Terms'));
 const Privacy = lazy(() => import('./pages/legal/Privacy'));
+const SafetyFeed        = lazy(() => import('./pages/safety/SafetyFeed'));
+const SafetyEventDetail = lazy(() => import('./pages/safety/SafetyEventDetail'));
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -29,6 +31,8 @@ root.render(
             <Route path="/subscribe/return" element={<Suspense fallback={null}><SubscribeReturn /></Suspense>} />
             <Route path="/legal/terms" element={<Suspense fallback={null}><Terms /></Suspense>} />
             <Route path="/legal/privacy" element={<Suspense fallback={null}><Privacy /></Suspense>} />
+            <Route path="/safety/feed"        element={<Suspense fallback={null}><SafetyFeed /></Suspense>} />
+            <Route path="/safety/events/:id"  element={<Suspense fallback={null}><SafetyEventDetail /></Suspense>} />
             <Route path="*" element={<App />} />
           </Routes>
         </BrowserRouter>

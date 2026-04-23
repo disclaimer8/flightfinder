@@ -1,0 +1,58 @@
+.safety-feed {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+.safety-feed__header h1 { margin: 0 0 8px; font-size: 28px; }
+.safety-feed__header p  { margin: 0 0 24px; color: #4b5563; }
+.safety-feed__filters {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.safety-pill {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.safety-pill--active {
+  background: #1f2937; color: white; border-color: #1f2937;
+}
+.safety-feed__list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.safety-card {
+  background: white; border: 1px solid #e5e7eb;
+  border-left: 4px solid #9ca3af;
+  border-radius: 8px;
+}
+.safety-card--fatal     { border-left-color: #dc2626; }
+.safety-card--hull_loss { border-left-color: #ea580c; }
+.safety-card--serious_incident { border-left-color: #d97706; }
+.safety-card--incident  { border-left-color: #f59e0b; }
+.safety-card--minor     { border-left-color: #6b7280; }
+
+.safety-card__link {
+  display: block; padding: 14px 16px; color: inherit; text-decoration: none;
+}
+.safety-card__head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px; font-size: 13px;
+}
+.safety-badge {
+  font-weight: 600; padding: 2px 8px; border-radius: 4px;
+  background: #f3f4f6; color: #1f2937;
+}
+.safety-badge--fatal     { background: #fee2e2; color: #991b1b; }
+.safety-badge--hull_loss { background: #ffedd5; color: #9a3412; }
+.safety-badge--serious_incident { background: #fef3c7; color: #92400e; }
+.safety-card__date  { color: #6b7280; }
+.safety-card__title {
+  margin: 0; font-size: 16px; font-weight: 600; color: #111827;
+}
+.safety-card__route { color: #4b5563; font-weight: 500; margin-left: 4px; }
+.safety-card__meta  { margin: 4px 0 0; color: #6b7280; font-size: 14px; }
+.safety-feed__loading, .safety-feed__error, .safety-feed__empty {
+  padding: 40px 0; text-align: center; color: #6b7280;
+}
+.safety-feed__error { color: #b91c1c; }

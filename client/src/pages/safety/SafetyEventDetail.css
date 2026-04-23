@@ -1,0 +1,22 @@
+.safety-detail { max-width: 820px; margin: 0 auto; padding: 24px 16px 64px; }
+.safety-detail__back { color: #1f2937; text-decoration: none; }
+.safety-detail__title {
+  display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap;
+  margin: 16px 0 24px;
+}
+.safety-detail__grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 24px; margin: 0 0 24px;
+}
+.safety-detail__grid div { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+.safety-detail__grid dt { font-size: 13px; color: #6b7280; margin: 0; }
+.safety-detail__grid dd { margin: 2px 0 0; color: #111827; font-weight: 500; }
+.safety-detail__narrative { margin: 24px 0; }
+.safety-detail__narrative h2 { font-size: 18px; margin: 0 0 8px; }
+.safety-detail__source { color: #6b7280; font-size: 13px; margin-top: 32px; }
+.safety-badge {
+  font-weight: 600; padding: 2px 10px; border-radius: 4px;
+  background: #f3f4f6; color: #1f2937; font-size: 13px;
+}
+.safety-badge--fatal     { background: #fee2e2; color: #991b1b; }
+.safety-badge--hull_loss { background: #ffedd5; color: #9a3412; }
+.safety-badge--serious_incident { background: #fef3c7; color: #92400e; }
