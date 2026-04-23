@@ -158,6 +158,37 @@ function resolve(pathname) {
   if (pathname === '/subscribe/return')                                    return { ...HOME, kind: 'subscribe', canonical: `${BASE}/pricing`, robots: 'noindex, nofollow' };
   if (pathname === '/legal/terms'     || pathname === '/legal/terms/')     return { ...HOME, kind: 'legal',    canonical: `${BASE}/legal/terms` };
   if (pathname === '/legal/privacy'   || pathname === '/legal/privacy/')   return { ...HOME, kind: 'legal',    canonical: `${BASE}/legal/privacy` };
+  if (pathname === '/legal/attributions' || pathname === '/legal/attributions/') return { ...HOME, kind: 'legal', canonical: `${BASE}/legal/attributions` };
+
+  if (pathname === '/safety/feed' || pathname === '/safety/feed/') {
+    return {
+      title: 'Aviation safety feed — recent NTSB accidents and incidents | FlightFinder',
+      description: 'Browse recent aviation accidents and incidents from the official U.S. NTSB database. Filter by severity. Updated daily.',
+      canonical: `${BASE}/safety/feed`,
+      h1: 'Aviation safety feed',
+      subtitle: 'Recent NTSB accidents and incidents',
+      robots: 'index, follow',
+      ogType: 'website',
+      kind: 'safety-feed',
+    };
+  }
+
+  const safetyEventMatch = /^\/safety\/events\/([^/?#]+)\/?$/.exec(pathname);
+  if (safetyEventMatch) {
+    const id = safetyEventMatch[1];
+    if (!/^\d+$/.test(id)) return notFoundMeta();
+    return {
+      title: 'Aviation safety event — NTSB record | FlightFinder',
+      description: 'Detailed view of an NTSB aviation accident or incident report.',
+      canonical: `${BASE}/safety/events/${id}`,
+      h1: 'Aviation safety event',
+      subtitle: 'NTSB record',
+      robots: 'index, follow',
+      ogType: 'article',
+      kind: 'safety-event',
+      eventId: id,
+    };
+  }
 
   // Anything else (/foo, /aircraft, /routes without a slug, typos) is an
   // unknown URL — return 404-style metadata so the server can set the real
