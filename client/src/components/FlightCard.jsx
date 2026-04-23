@@ -1,6 +1,7 @@
 import { formatTime, formatDate } from '../utils/formatters';
 import EnrichedPanel from './EnrichedPanel';
 import AddToTripsButton from './AddToTripsButton';
+import OperatorSafetyBlock from './OperatorSafetyBlock';
 import { useClientConfig } from '../hooks/useClientConfig';
 import { amadeusToIcao } from '../utils/amadeusToIcao';
 import './FlightCard.css';
@@ -162,6 +163,13 @@ function FlightCard({ flight }) {
         </div>
 
       </div>
+
+      {(flight.airlineIata || flight.airline) && (
+        <OperatorSafetyBlock
+          airlineIata={flight.airlineIata || (flight.airline?.length === 2 ? flight.airline : null)}
+          airlineIcao={flight.airlineIcao || (flight.airline?.length === 3 ? flight.airline : null)}
+        />
+      )}
 
       {tripsEnabled && (
         <div className="flight-trip-actions">

@@ -1,0 +1,12 @@
+.operator-safety {
+  margin-top: 8px; padding: 8px 12px;
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
+  font-size: 13px;
+}
+.operator-safety__row { display: flex; justify-content: space-between; align-items: center; }
+.operator-safety__label { color: #4b5563; }
+.operator-safety__count { color: #111827; font-weight: 500; }
+.operator-safety__count--fatal { color: #991b1b; }
+.operator-safety__teaser { margin: 4px 0 6px; color: #4b5563; }
+.operator-safety__link { color: #1f2937; text-decoration: none; }
+.operator-safety__link:hover { text-decoration: underline; }
