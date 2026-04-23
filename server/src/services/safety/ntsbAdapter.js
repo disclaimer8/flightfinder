@@ -4,6 +4,8 @@ const axios = require('axios');
 const { normalizeSeverity, isHullLoss } = require('./severity');
 const { mapCicttCategory, mapPhaseOfFlight } = require('./cicttCategory');
 const openFlights = require('../openFlightsService');
+const faaRegistry = require('../../models/faaRegistry');
+const { resolveIcaoType } = require('./faaModelToIcao');
 
 const ENDPOINT = 'https://data.ntsb.gov/carol-main-public/api/Query/Main';
 
@@ -51,6 +53,17 @@ function mapToSafetyEvent(raw, observedAt) {
     return Number.isFinite(t) ? t : observedAt;
   })();
 
+  // Resolve ICAO aircraft type for US N-number registrations via FAA Registry.
+  // Falls back to null when the tail isn't in the registry or MFR+MODEL isn't mapped.
+  let aircraftIcaoType = null;
+  const regRaw = raw.AircraftRegistration ? String(raw.AircraftRegistration).toUpperCase() : null;
+  if (regRaw && /^N[A-Z0-9]{1,5}$/.test(regRaw)) {
+    const faaRow = faaRegistry.getByNNumber(regRaw);
+    if (faaRow) {
+      aircraftIcaoType = resolveIcaoType(faaRow.manufacturer, faaRow.model);
+    }
+  }
+
   return {
     source:             'ntsb',
     source_event_id:    eventId,
@@ -64,8 +77,8 @@ function mapToSafetyEvent(raw, observedAt) {
     operator_iata:      raw.OperatorIATA || null,
     operator_icao:      raw.OperatorICAO || null,
     operator_name:      raw.OperatorName || null,
-    aircraft_icao_type: null, // MVP: NTSB ships only make+model strings — deferred to v2
-    registration:       raw.AircraftRegistration ? String(raw.AircraftRegistration).toUpperCase() : null,
+    aircraft_icao_type: aircraftIcaoType,
+    registration:       regRaw,
     dep_iata:           airportIdToIata(raw.DepartureAirport),
     arr_iata:           airportIdToIata(raw.DestinationAirport),
     location_country:   raw.EventCountry || null,

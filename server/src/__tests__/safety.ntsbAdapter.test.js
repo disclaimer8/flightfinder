@@ -10,6 +10,20 @@ const FIXTURE = JSON.parse(
 describe('mapToSafetyEvent', () => {
   const NOW = 1735000000000;
 
+  // Seed FAA registry so N12345 resolves to Boeing 737-800 (ICAO: B738)
+  beforeAll(() => {
+    const faaRegistry = require('../models/faaRegistry');
+    faaRegistry.upsertMany([{
+      n_number:     'N12345',
+      icao24_hex:   null,
+      manufacturer: 'BOEING',
+      model:        '737-800',
+      year_built:   2015,
+      owner_name:   'AMERICAN AIRLINES INC',
+      updated_at:   Date.now(),
+    }]);
+  });
+
   test('runway excursion → incident, RE, KLAX→KSFO', () => {
     const r = mapToSafetyEvent(FIXTURE.ResultList[0], NOW);
     expect(r.source).toBe('ntsb');
@@ -21,7 +35,7 @@ describe('mapToSafetyEvent', () => {
     expect(r.arr_iata).toBe('SFO');
     expect(r.operator_icao).toBe('AAL');
     expect(r.operator_name).toBe('American Airlines');
-    expect(r.aircraft_icao_type).toBeNull();
+    expect(r.aircraft_icao_type).toBe('B738');  // resolved via FAA Registry
     expect(r.registration).toBe('N12345');
     expect(r.location_lat).toBeCloseTo(37.6189);
     expect(r.location_lon).toBeCloseTo(-122.3750);
@@ -85,6 +99,19 @@ describe('mapToSafetyEvent', () => {
     expect(mapToSafetyEvent(null, NOW)).toBeNull();
     expect(mapToSafetyEvent(undefined, NOW)).toBeNull();
     expect(mapToSafetyEvent({}, NOW)).toBeNull();
+  });
+
+  test('US N-number registration resolves aircraft_icao_type via FAA registry', () => {
+    const r = mapToSafetyEvent(FIXTURE.ResultList[0], NOW);
+    expect(r.registration).toBe('N12345');
+    expect(r.aircraft_icao_type).toBe('B738');
+  });
+
+  test('US N-number not in registry → aircraft_icao_type null', () => {
+    // ResultList[1] has N98765 which has no FAA registry entry
+    const r = mapToSafetyEvent(FIXTURE.ResultList[1], NOW);
+    expect(r.registration).toBe('N98765');
+    expect(r.aircraft_icao_type).toBeNull();
   });
 });
 
