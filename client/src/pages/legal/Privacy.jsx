@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import styles from './legal.module.css';
 
 export default function Privacy() {
@@ -52,6 +53,11 @@ export default function Privacy() {
 
       <h2>8. Changes</h2>
       <p>We will notify registered users by email for material changes.</p>
+
+      <p>
+        See also: <Link to="/legal/terms">Terms</Link> ·{' '}
+        <Link to="/legal/attributions">Attributions</Link>
+      </p>
     </article>
   );
 }

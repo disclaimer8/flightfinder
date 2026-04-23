@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import styles from './legal.module.css';
 
 export default function Terms() {
@@ -63,6 +64,11 @@ export default function Terms() {
 
       <h2>10. Governing law</h2>
       <p>These Terms are governed by the laws applicable at the operator's registered residence, without regard to conflict-of-laws rules.</p>
+
+      <p>
+        See also: <Link to="/legal/privacy">Privacy</Link> ·{' '}
+        <Link to="/legal/attributions">Attributions</Link>
+      </p>
     </article>
   );
 }
