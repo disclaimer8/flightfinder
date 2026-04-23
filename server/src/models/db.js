@@ -185,6 +185,47 @@ db.exec(`
   );
 `);
 
+// safety_events: aviation accident/incident records, source-of-truth NTSB.
+// One row per (source, source_event_id). occurred_at is the official event UTC
+// epoch ms. operator_iata/icao + registration + aircraft_icao_type may be NULL
+// for general-aviation events. UNIQUE constraint dedups daily re-ingestion.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS safety_events (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    source              TEXT    NOT NULL,
+    source_event_id     TEXT    NOT NULL,
+    occurred_at         INTEGER NOT NULL,
+    severity            TEXT    NOT NULL,
+    fatalities          INTEGER NOT NULL DEFAULT 0,
+    injuries            INTEGER NOT NULL DEFAULT 0,
+    hull_loss           INTEGER NOT NULL DEFAULT 0,
+    cictt_category      TEXT,
+    phase_of_flight     TEXT,
+    operator_iata       TEXT,
+    operator_icao       TEXT,
+    operator_name       TEXT,
+    aircraft_icao_type  TEXT,
+    registration        TEXT,
+    dep_iata            TEXT,
+    arr_iata            TEXT,
+    location_country    TEXT,
+    location_lat        REAL,
+    location_lon        REAL,
+    narrative           TEXT,
+    report_url          TEXT,
+    ingested_at         INTEGER NOT NULL,
+    updated_at          INTEGER NOT NULL,
+    UNIQUE(source, source_event_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_safety_occurred    ON safety_events(occurred_at);
+  CREATE INDEX IF NOT EXISTS idx_safety_operator    ON safety_events(operator_iata, occurred_at);
+  CREATE INDEX IF NOT EXISTS idx_safety_op_icao     ON safety_events(operator_icao, occurred_at);
+  CREATE INDEX IF NOT EXISTS idx_safety_reg         ON safety_events(registration, occurred_at);
+  CREATE INDEX IF NOT EXISTS idx_safety_route       ON safety_events(dep_iata, arr_iata, occurred_at);
+  CREATE INDEX IF NOT EXISTS idx_safety_severity    ON safety_events(severity, occurred_at);
+  CREATE INDEX IF NOT EXISTS idx_safety_aircraft    ON safety_events(aircraft_icao_type, occurred_at);
+`);
+
 // user_trips (Plan 4): flights the user has saved to My Trips. Owner-scoped
 // access via every query — never select by id alone.
 db.exec(`
