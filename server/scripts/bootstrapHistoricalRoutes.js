@@ -66,13 +66,15 @@ async function downloadToTempFile(url, maxRedirects = 10) {
     `mras-${Date.now()}-${Math.random().toString(36).slice(2)}.parquet`
   );
 
-  await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     const transport = parsed.protocol === 'http:' ? http : https;
     const file = fs.createWriteStream(tmpPath);
 
     transport.get(url, (res) => {
-      // Follow redirects (GitHub release assets redirect to objects storage)
+      // Follow redirects (GitHub release assets redirect to objects storage).
+      // Recursion returns its OWN tmpPath — pass it through via resolve so
+      // the outer caller gets the real downloaded file, not our (deleted) one.
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         file.close();
         try { fs.unlinkSync(tmpPath); } catch {}
@@ -86,7 +88,7 @@ async function downloadToTempFile(url, maxRedirects = 10) {
         return reject(new Error(`HTTP ${res.statusCode} from ${url}`));
       }
       res.pipe(file);
-      file.on('finish', () => file.close(resolve));
+      file.on('finish', () => file.close(() => resolve(tmpPath)));
       file.on('error', (err) => {
         try { fs.unlinkSync(tmpPath); } catch {}
         reject(err);
@@ -96,8 +98,6 @@ async function downloadToTempFile(url, maxRedirects = 10) {
       reject(err);
     });
   });
-
-  return tmpPath;
 }
 
 /**
