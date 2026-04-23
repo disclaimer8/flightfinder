@@ -95,12 +95,15 @@ db.exec(`
     airline_iata   TEXT,
     seen_at        INTEGER NOT NULL,
     first_seen_at  INTEGER NOT NULL,
+    source         TEXT,
     PRIMARY KEY (dep_iata, arr_iata, aircraft_icao)
   );
   CREATE INDEX IF NOT EXISTS idx_observed_dep        ON observed_routes(dep_iata, seen_at);
   CREATE INDEX IF NOT EXISTS idx_observed_dep_arr    ON observed_routes(dep_iata, arr_iata);
   CREATE INDEX IF NOT EXISTS idx_observed_aircraft   ON observed_routes(aircraft_icao, seen_at);
 `);
+// Migration: source column on observed_routes for existing DBs (plan 7e) — 'live' | 'historical'
+try { db.exec("ALTER TABLE observed_routes ADD COLUMN source TEXT"); } catch {}
 
 // aircraft_db: static hex (ICAO24) -> aircraft metadata map, bootstrapped from an
 // upstream public dataset (Mictronics readsb aircrafts.json, ~500k rows). Used to
@@ -294,11 +297,12 @@ const stmts = {
   deleteExpiredVerificationTokens: db.prepare('DELETE FROM email_verification_tokens WHERE expires_at < ?'),
 
   upsertObservedRoute: db.prepare(`
-    INSERT INTO observed_routes (dep_iata, arr_iata, aircraft_icao, airline_iata, seen_at, first_seen_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO observed_routes (dep_iata, arr_iata, aircraft_icao, airline_iata, seen_at, first_seen_at, source)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(dep_iata, arr_iata, aircraft_icao) DO UPDATE SET
-      seen_at = excluded.seen_at,
-      airline_iata = COALESCE(excluded.airline_iata, observed_routes.airline_iata)
+      seen_at      = excluded.seen_at,
+      airline_iata = COALESCE(excluded.airline_iata, observed_routes.airline_iata),
+      source       = COALESCE(observed_routes.source, excluded.source)
   `),
   observedAircraftByRoute: db.prepare(`
     SELECT aircraft_icao, seen_at FROM observed_routes
@@ -376,9 +380,9 @@ module.exports = {
   deleteVerificationTokensByUser: (userId) => stmts.deleteVerificationTokensByUser.run(userId),
   deleteExpiredVerificationTokens: () => stmts.deleteExpiredVerificationTokens.run(Date.now()),
 
-  upsertObservedRoute: ({ depIata, arrIata, aircraftIcao, airlineIata }) => {
+  upsertObservedRoute: ({ depIata, arrIata, aircraftIcao, airlineIata, source = 'live' }) => {
     const now = Date.now();
-    return stmts.upsertObservedRoute.run(depIata, arrIata, aircraftIcao, airlineIata || null, now, now);
+    return stmts.upsertObservedRoute.run(depIata, arrIata, aircraftIcao, airlineIata || null, now, now, source);
   },
   observedAircraftByRoute: (depIata, arrIata, sinceMs) =>
     stmts.observedAircraftByRoute.all(depIata, arrIata, sinceMs),
