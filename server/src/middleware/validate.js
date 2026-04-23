@@ -410,4 +410,53 @@ function aircraftRoutesQuery(req, res, next) {
   next();
 }
 
-module.exports = { searchQuery, exploreQuery, cheapCalendarQuery, bookBody, sanitiseKey, authBody, aircraftSearchQuery, scheduledAircraftQuery, aircraftRoutesQuery };
+const SEVERITIES_SET = new Set(['fatal', 'hull_loss', 'serious_incident', 'incident', 'minor', 'unknown']);
+const SAFETY_COUNTRY_RE = /^[A-Z]{2,4}$/;       // ISO-3166 alpha-2/3 OR NTSB country code (e.g. "USA")
+const SAFETY_REG_RE     = /^[A-Z0-9-]{3,12}$/;
+const SAFETY_ICAO_AIRLINE_RE = /^[A-Z]{3}$/;
+const SAFETY_IATA_AIRLINE_RE = /^[A-Z0-9]{2,3}$/;
+const SAFETY_ID_RE      = /^\d{1,12}$/;
+
+function safetyEventsQuery(req, res, next) {
+  const { limit, offset, severity, country } = req.query;
+  const lim = limit  != null ? parseInt(limit,  10) : 50;
+  const off = offset != null ? parseInt(offset, 10) : 0;
+  if (!Number.isFinite(lim) || lim < 1 || lim > 200) return bad(res, 'limit must be 1-200');
+  if (!Number.isFinite(off) || off < 0)              return bad(res, 'offset must be >= 0');
+  if (severity && !SEVERITIES_SET.has(String(severity))) {
+    return bad(res, `severity must be one of: ${[...SEVERITIES_SET].join(', ')}`);
+  }
+  let countryUpper = null;
+  if (country) {
+    countryUpper = String(country).toUpperCase();
+    if (!SAFETY_COUNTRY_RE.test(countryUpper)) return bad(res, 'country must be 2-4 letters');
+  }
+  req.validatedQuery = { limit: lim, offset: off, severity: severity || null, country: countryUpper };
+  next();
+}
+
+function safetyEventIdParam(req, res, next) {
+  const { id } = req.params;
+  if (!SAFETY_ID_RE.test(String(id))) return bad(res, 'id must be a positive integer');
+  req.validatedParams = { id: parseInt(id, 10) };
+  next();
+}
+
+function safetyOperatorParam(req, res, next) {
+  const { code } = req.params;
+  const upper = String(code || '').toUpperCase();
+  if (SAFETY_ICAO_AIRLINE_RE.test(upper))      req.validatedParams = { icao: upper, iata: null };
+  else if (SAFETY_IATA_AIRLINE_RE.test(upper)) req.validatedParams = { iata: upper, icao: null };
+  else return bad(res, 'operator must be a 2-3 letter IATA or 3 letter ICAO code');
+  next();
+}
+
+function safetyRegistrationParam(req, res, next) {
+  const { reg } = req.params;
+  const upper = String(reg || '').toUpperCase();
+  if (!SAFETY_REG_RE.test(upper)) return bad(res, 'registration must be 3-12 chars (letters, digits, dash)');
+  req.validatedParams = { registration: upper };
+  next();
+}
+
+module.exports = { searchQuery, exploreQuery, cheapCalendarQuery, bookBody, sanitiseKey, authBody, aircraftSearchQuery, scheduledAircraftQuery, aircraftRoutesQuery, safetyEventsQuery, safetyEventIdParam, safetyOperatorParam, safetyRegistrationParam };
