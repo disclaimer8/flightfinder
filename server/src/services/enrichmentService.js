@@ -4,6 +4,7 @@ const openFlights      = require('./openFlightsService');      // airports + air
 const aerodatabox      = require('./aerodataboxService');
 const openWeather      = require('./openWeatherService');      // defineDataSource
 const aviationWeather  = require('./aviationWeatherService');  // Plan 6 — METAR primary
+const airlabs          = require('./airlabsService');           // Plan 7 — gate/status primary
 const liveries         = require('./wikimediaLiveryService');  // defineDataSource
 const amenities        = require('./amenitiesService');
 const fleet            = require('../models/fleet');
@@ -129,7 +130,31 @@ async function safeLivery(airlineIata, icaoType) {
 }
 
 async function safeGateInfo(airline, flightNumber) {
-  if (!aerodatabox.isEnabled?.() || !airline || !flightNumber) return null;
+  if (!airline || !flightNumber) return null;
+  // Primary: AirLabs /flight (paid 25k/month plan, cheap per-call). Returns
+  // gate/terminal/baggage in the same shape we expose. Falls through to
+  // AeroDataBox only when AirLabs has no record (very rare for scheduled
+  // flights).
+  try {
+    const al = await airlabs.getFlight(`${airline}${flightNumber}`);
+    if (al) {
+      return {
+        originTerminal: al.dep_terminal || null,
+        originGate:     al.dep_gate || null,
+        destTerminal:   al.arr_terminal || null,
+        destGate:       al.arr_gate || null,
+        baggage:        al.arr_baggage || null,
+        status:         al.status || null,
+        registration:   al.reg_number || null,
+        aircraftIcao:   al.aircraft_icao || null,
+        delayMinutes:   al.delayed ?? al.dep_delayed ?? al.arr_delayed ?? null,
+      };
+    }
+  } catch (err) {
+    console.warn('[enrich] airlabs gate fail:', err.message);
+  }
+
+  if (!aerodatabox.isEnabled?.()) return null;
   try {
     const today = new Date().toISOString().slice(0, 10);
     const f = await aerodatabox.getFlightByNumber(`${airline}${flightNumber}`, today);

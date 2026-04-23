@@ -275,6 +275,68 @@ exports.getLiveFlights = async (iata) => {
 };
 
 /**
+ * GET /v9/flight?flight_iata=BA175 — per-flight status (gate, terminal,
+ * registration, aircraft type, delay, status). Replaces AeroDataBox
+ * getFlightByNumber in the enrichment card; saves AeroDataBox quota.
+ *
+ * 1 credit per call on the AirLabs developer plan (25k/month).
+ */
+exports.getFlight = async (flightIata) => {
+  if (!AIRLABS_API_KEY) return null;
+  const key = String(flightIata || '').toUpperCase();
+  if (!key) return null;
+  const cacheKey = `airlabs:flight:${key}`;
+  const cached = cacheService.get(cacheKey);
+  if (cached !== undefined) return cached;
+  try {
+    const res = await airlabsClient.get('/flight', {
+      params: { flight_iata: key, api_key: AIRLABS_API_KEY },
+    });
+    const f = res.data?.response;
+    if (!f || typeof f !== 'object') {
+      cacheService.set(cacheKey, null, cacheService.TTL.negative);
+      return null;
+    }
+    cacheService.set(cacheKey, f, cacheService.TTL.liveFlights); // 10 min
+    return f;
+  } catch (err) {
+    console.warn(`[airlabs] getFlight failed for ${key}: ${err?.response?.status ?? err.message}`);
+    cacheService.set(cacheKey, null, cacheService.TTL.negative);
+    return null;
+  }
+};
+
+/**
+ * GET /v9/airplanes?reg_number=X or ?hex=Y — per-tail fleet record.
+ * Returns { hex, reg_number, icao_code_hex, airline_iata, delivered, ... }.
+ * `delivered` is an ISO date from which we derive build_year.
+ */
+exports.getAirplane = async ({ hex, reg }) => {
+  if (!AIRLABS_API_KEY) return null;
+  const params = { api_key: AIRLABS_API_KEY };
+  if (hex) params.hex = String(hex).toLowerCase();
+  else if (reg) params.reg_number = String(reg).toUpperCase();
+  else return null;
+
+  const cacheKey = `airlabs:airplane:${params.hex || params.reg_number}`;
+  const cached = cacheService.get(cacheKey);
+  if (cached !== undefined) return cached;
+  try {
+    const res = await airlabsClient.get('/airplanes', { params });
+    const rows = Array.isArray(res.data?.response) ? res.data.response : [];
+    const row = rows[0] || null;
+    // Fleet data barely changes — cache 30 days on hit, 24h on miss.
+    const ttl = row ? cacheService.TTL.staticRef : cacheService.TTL.negative;
+    cacheService.set(cacheKey, row, ttl);
+    return row;
+  } catch (err) {
+    console.warn(`[airlabs] getAirplane failed: ${err?.response?.status ?? err.message}`);
+    cacheService.set(cacheKey, null, cacheService.TTL.negative);
+    return null;
+  }
+};
+
+/**
  * Classify aircraft into a high-level type based on its model/name
  */
 function classifyAircraftType(name = '') {
