@@ -27,7 +27,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@dsnp/parquetjs": "^1.8.7",
     "@sentry/node": "^10.49.0",
+    "adm-zip": "^0.5.17",
     "amadeus": "^11.0.0",
     "argon2": "^0.44.0",
     "axios": "^1.15.1",
