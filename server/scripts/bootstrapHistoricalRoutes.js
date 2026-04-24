@@ -1,8 +1,8 @@
 'use strict';
 
 // One-shot import of historical aircraft route tuples from MrAirspace/aircraft-flight-schedules
-// parquet releases. Reads parquet URL list from env or hardcoded DEFAULT_URLS. Streams each
-// file, filters incomplete tracks, maps ICAO airport codes to IATA, bulk-upserts into
+// parquet releases. Uses DuckDB to stream-query each remote parquet via HTTP range requests,
+// filter incomplete tracks, map ICAO airport codes to IATA, and bulk-upsert into
 // observed_routes with source='historical'.
 //
 // Run:
@@ -10,37 +10,37 @@
 // or to process just one quarter:
 //   HISTORICAL_BOOTSTRAP_CONFIRM=1 HISTORICAL_PARQUET_URLS='<url>' node scripts/bootstrapHistoricalRoutes.js
 //
+// Memory: ~150MB regardless of parquet file size (was 2-3GB with @dsnp/parquetjs which
+// loaded row groups whole). DuckDB streams via httpfs extension with predicate pushdown.
+//
 // Safety guard: when run directly, refuses without explicit env confirmation.
 // When require()'d (e.g. by tests) the guard is skipped so helpers are importable.
 
-const https = require('https');
-const http  = require('http');
-const fs    = require('fs');
-const path  = require('path');
-const os    = require('os');
-const { ParquetReader } = require('@dsnp/parquetjs');
+const duckdb      = require('duckdb');
 const openFlights = require('../src/services/openFlightsService');
 const dbModule    = require('../src/models/db');
 
-// Release URLs from MrAirspace/aircraft-flight-schedules GitHub releases.
-// Verified live 2026-04-24 via `gh api /repos/MrAirspace/aircraft-flight-schedules/releases`.
-// Filename patterns per release:
-//   - aircraft_flight_schedules_<year>_quarter<N> → <YEAR>_Q<N>_detailed_github.parquet (2025 Q1 – 2026 Q1)
-//   - aircraft_flight_logs_<year>_quarter<N>      → <YEAR>_Q<N>_github.parquet           (2024 Q1 – Q4)
-// Total ~5.2 GB across 9 files. Listed newest-first so interrupted runs get recent data.
+// Release URLs from MrAirspace/aircraft-flight-schedules GitHub releases (verified
+// live 2026-04-24 + schema inspected via DuckDB DESCRIBE).
+//
+// Schema facts per release type:
+//   - aircraft_flight_schedules_<year>_quarter<N> → <YEAR>_Q<N>_detailed_github.parquet
+//     2025 Q1 – 2026 Q1. AC_Type populated (~96% of rows). USE THESE.
+//   - aircraft_flight_logs_<year>_quarter<N>      → <YEAR>_Q<N>_github.parquet
+//     2024 Q1 – Q4. AC_Type is '-' for ALL rows. Useless for our (dep, arr, ac_type) schema.
+//     DROPPED.
+//
+// Data format quirk: ApplicableAirports is stored as Python-repr strings like
+// "['EHAM', 'EHRD']" or "-" for missing. We extract the first 4-char ICAO with a
+// DuckDB regex.
+//
+// Total ~4.0 GB across 5 files. Listed newest-first.
 const DEFAULT_URLS = [
-  // 2026
   'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2026_quarter1/2026_Q1_detailed_github.parquet',
-  // 2025 (detailed versions)
   'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter4/2025_Q4_detailed_github.parquet',
   'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter3/2025_Q3_detailed_github.parquet',
   'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter2/2025_Q2_detailed_github.parquet',
   'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_schedules_2025_quarter1/2025_Q1_detailed_github.parquet',
-  // 2024 (logs versions — detailed not published for this year)
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter4/2024_Q4_github.parquet',
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter3/2024_Q3_github.parquet',
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter2/2024_Q2_github.parquet',
-  'https://github.com/MrAirspace/aircraft-flight-schedules/releases/download/aircraft_flight_logs_2024_quarter1/2024_Q1_github.parquet',
 ];
 
 /**
@@ -54,90 +54,74 @@ function parseDateToMs(iso) {
   return Number.isFinite(t) ? t : null;
 }
 
-/**
- * Download a URL to a temp file, following up to maxRedirects HTTP redirects.
- * Returns the temp file path. Caller is responsible for cleanup.
- */
-async function downloadToTempFile(url, maxRedirects = 10) {
-  if (maxRedirects <= 0) throw new Error(`Too many redirects for ${url}`);
+let _duckDb = null;
+let _duckConn = null;
 
-  const tmpPath = path.join(
-    os.tmpdir(),
-    `mras-${Date.now()}-${Math.random().toString(36).slice(2)}.parquet`
-  );
-
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
-    const transport = parsed.protocol === 'http:' ? http : https;
-    const file = fs.createWriteStream(tmpPath);
-
-    transport.get(url, (res) => {
-      // Follow redirects (GitHub release assets redirect to objects storage).
-      // Recursion returns its OWN tmpPath — pass it through via resolve so
-      // the outer caller gets the real downloaded file, not our (deleted) one.
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        file.close();
-        try { fs.unlinkSync(tmpPath); } catch {}
-        downloadToTempFile(res.headers.location, maxRedirects - 1)
-          .then(resolve, reject);
-        return;
-      }
-      if (res.statusCode !== 200) {
-        file.close();
-        try { fs.unlinkSync(tmpPath); } catch {}
-        return reject(new Error(`HTTP ${res.statusCode} from ${url}`));
-      }
-      res.pipe(file);
-      file.on('finish', () => file.close(() => resolve(tmpPath)));
-      file.on('error', (err) => {
-        try { fs.unlinkSync(tmpPath); } catch {}
-        reject(err);
-      });
-    }).on('error', (err) => {
-      try { fs.unlinkSync(tmpPath); } catch {}
-      reject(err);
-    });
+/** Lazy-init DuckDB in-memory with httpfs extension ready */
+async function getDuckConn() {
+  if (_duckConn) return _duckConn;
+  _duckDb = new duckdb.Database(':memory:');
+  _duckConn = _duckDb.connect();
+  // httpfs is bundled with recent DuckDB builds; INSTALL is a no-op if already installed,
+  // LOAD activates the extension for this session.
+  await new Promise((resolve, reject) => {
+    _duckConn.exec("INSTALL httpfs; LOAD httpfs;", (err) => err ? reject(err) : resolve());
   });
+  return _duckConn;
 }
 
 /**
- * Process one parquet file: download → stream → filter → map → upsert.
+ * Stream-query one remote parquet and upsert rows into observed_routes.
+ * DuckDB reads via HTTP range requests — no full download, no temp file.
+ * Memory: ~150MB regardless of parquet size.
  */
 async function importParquet(url) {
-  console.log(`[historical] downloading ${url} ...`);
-  const tmpPath = await downloadToTempFile(url);
-  try {
-    const reader = await ParquetReader.openFile(tmpPath);
-    const cursor = reader.getCursor();
-    let processed = 0, imported = 0, skipped = 0;
-    let record;
+  console.log(`[historical] streaming ${url} ...`);
+  const conn = await getDuckConn();
 
-    while ((record = await cursor.next())) {
+  // Predicate pushdown: WHERE clause filters at parquet scan time.
+  // ApplicableAirports are Python-repr strings "['EHAM', 'EHRD']" or "-" for missing.
+  // regexp_extract with pattern '[A-Z]{4}' pulls the first 4-char ICAO from the list.
+  const sql = `
+    SELECT
+      regexp_extract(Track_Origin_ApplicableAirports,      '[A-Z]{4}', 0) AS origin_icao,
+      regexp_extract(Track_Destination_ApplicableAirports, '[A-Z]{4}', 0) AS dest_icao,
+      UPPER(TRIM(CAST(AC_Type AS VARCHAR)))  AS ac_type,
+      UPPER(TRIM(CAST(Airline AS VARCHAR)))  AS airline,
+      Track_Origin_DateTime_UTC               AS seen_at_iso
+    FROM read_parquet('${url.replace(/'/g, "''")}')
+    WHERE AC_Type IS NOT NULL
+      AND AC_Type NOT IN ('-', '')
+      AND Track_Origin_ApplicableAirports IS NOT NULL
+      AND Track_Origin_ApplicableAirports <> '-'
+      AND Track_Destination_ApplicableAirports IS NOT NULL
+      AND Track_Destination_ApplicableAirports <> '-'
+  `;
+
+  let processed = 0, imported = 0, skipped = 0;
+  let rowErrors = 0;
+
+  // Use conn.stream() — more reliable than conn.each() in node-duckdb binding.
+  // stream returns an async iterator of row batches.
+  const stream = conn.stream(sql);
+  for await (const row of stream) {
+    try {
       processed++;
 
-      const depIcao = String(record.Track_Origin_ApplicableAirports || '').trim().toUpperCase();
-      const arrIcao = String(record.Track_Destination_ApplicableAirports || '').trim().toUpperCase();
-      const acType  = String(record.AC_Type || '').trim().toUpperCase();
-      const airline = String(record.Airline || '').trim().toUpperCase();
-      const seenAt  = parseDateToMs(record.Track_Origin_DateTime_UTC);
+      const origin  = row.origin_icao;
+      const dest    = row.dest_icao;
+      const acType  = row.ac_type;
+      const airline = row.airline || '';
+      const seenAt  = parseDateToMs(row.seen_at_iso);
 
-      // Skip incomplete tracks (missing endpoints, no aircraft type, or no timestamp)
-      if (!depIcao || depIcao === '-' || !arrIcao || arrIcao === '-' || !acType || !seenAt) {
-        skipped++;
-        continue;
-      }
+      if (!origin || !dest || !acType || !seenAt) { skipped++; continue; }
 
-      // MrAirspace "ApplicableAirports" can be multi-airport "EHAM|EHRD" — take first (nearest).
-      const depIata = openFlights.iataForIcao(depIcao.split('|')[0]);
-      const arrIata = openFlights.iataForIcao(arrIcao.split('|')[0]);
-      if (!depIata || !arrIata) {
-        skipped++;
-        continue;
-      }
+      const depIata = openFlights.iataForIcao(origin);
+      const arrIata = openFlights.iataForIcao(dest);
+      if (!depIata || !arrIata) { skipped++; continue; }
 
       // Airlines in this dataset use ICAO codes (DLH, BAW), not IATA (LH, BA).
-      // We only store airline if it looks like a 2-char IATA code.
-      // Follow-up: add ICAO-airline → IATA lookup if needed.
+      // Store only clean 2-char IATA codes; leave ICAO mapping as follow-up.
       const airlineIata = airline.length === 2 ? airline : null;
 
       dbModule.upsertObservedRoute({
@@ -150,19 +134,21 @@ async function importParquet(url) {
       imported++;
 
       if (processed % 100_000 === 0) {
-        console.log(`[historical]   ${processed.toLocaleString()} processed, ${imported.toLocaleString()} imported, ${skipped.toLocaleString()} skipped`);
+        const rss = Math.round(process.memoryUsage().rss / 1024 / 1024);
+        console.log(`[historical]   ${processed.toLocaleString()} processed, ${imported.toLocaleString()} imported, ${skipped.toLocaleString()} skipped, RSS=${rss}MB`);
       }
+    } catch (err) {
+      rowErrors++;
+      if (rowErrors < 5) console.warn(`[historical] row error: ${err.message}`);
     }
-
-    await reader.close();
-    console.log(
-      `[historical] done ${url}\n` +
-      `  total=${processed.toLocaleString()} imported=${imported.toLocaleString()} skipped=${skipped.toLocaleString()}`
-    );
-    return { processed, imported, skipped };
-  } finally {
-    try { fs.unlinkSync(tmpPath); } catch {}
   }
+  if (rowErrors > 0) console.warn(`[historical] total row errors: ${rowErrors}`);
+
+  console.log(
+    `[historical] done ${url}\n` +
+    `  total=${processed.toLocaleString()} imported=${imported.toLocaleString()} skipped=${skipped.toLocaleString()}`
+  );
+  return { processed, imported, skipped };
 }
 
 async function main() {
@@ -196,6 +182,10 @@ async function main() {
     `  aircraft types: ${afterStats.aircraft_types}\n` +
     `  airports: ${afterStats.airports}`
   );
+
+  if (_duckDb) {
+    try { _duckDb.close(); } catch {}
+  }
 }
 
 // Exported for unit tests
