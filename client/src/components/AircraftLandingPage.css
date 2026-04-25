@@ -1,8 +1,11 @@
+/* Light-theme palette aligned with index.css design tokens.
+ * Page renders against the global --bg (#f8fafc) — text colors must be dark
+ * enough for AA contrast. Earlier dark-mode hex values left the page unreadable. */
 .landing {
   max-width: 1100px;
   margin: 0 auto;
   padding: 24px 20px 80px;
-  color: #e2e8f0;
+  color: #0f172a; /* --text */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -10,12 +13,12 @@
   display: flex;
   gap: 8px;
   font-size: 14px;
-  color: #94a3b8;
+  color: #64748b; /* slate-500, muted */
   margin-bottom: 24px;
   flex-wrap: wrap;
 }
 .landing-breadcrumb a {
-  color: #93c5fd;
+  color: #4f46e5; /* --primary-dark */
   text-decoration: none;
 }
 .landing-breadcrumb a:hover { text-decoration: underline; }
@@ -27,8 +30,8 @@
   display: inline-block;
   padding: 4px 12px;
   border-radius: 999px;
-  background: rgba(56, 189, 248, 0.12);
-  color: #7dd3fc;
+  background: #eef2ff; /* --primary-light */
+  color: #4f46e5; /* --primary-dark */
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 16px;
@@ -41,18 +44,19 @@
   line-height: 1.1;
   margin: 0 0 16px;
   letter-spacing: -0.5px;
+  color: #0f172a;
 }
 .landing-sub {
   font-size: 18px;
-  color: #cbd5e1;
+  color: #475569; /* --text-2 */
   line-height: 1.55;
   max-width: 780px;
   margin: 0 0 24px;
 }
 .landing-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .landing-cta {
-  background: linear-gradient(135deg, #38bdf8, #a855f7);
-  color: #0c1427;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
   font-weight: 700;
   font-size: 16px;
   padding: 14px 24px;
@@ -62,18 +66,19 @@
   text-decoration: none;
   display: inline-block;
 }
-.landing-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(56,189,248,0.25); }
+.landing-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25); }
 
 .landing-map { margin-bottom: 48px; }
 .landing-map h2 {
   font-size: 24px;
   font-weight: 700;
   margin: 0 0 8px;
+  color: #0f172a;
 }
-.landing-map-hint { color: #94a3b8; font-size: 15px; margin: 0 0 16px; }
+.landing-map-hint { color: #64748b; font-size: 15px; margin: 0 0 16px; }
 .landing-map-frame {
-  background: #0f1a36;
-  border: 1px solid #1e2d52;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   min-height: 520px;
   overflow: hidden;
@@ -84,6 +89,7 @@
   font-size: 22px;
   font-weight: 700;
   margin: 0 0 8px;
+  color: #0f172a;
 }
 
 .landing-prose {
@@ -94,15 +100,16 @@
   font-size: 24px;
   font-weight: 700;
   margin: 0 0 12px;
+  color: #0f172a;
 }
 .landing-prose h3 {
   font-size: 18px;
   font-weight: 700;
   margin: 24px 0 8px;
-  color: #e2e8f0;
+  color: #0f172a;
 }
 .landing-prose p {
-  color: #cbd5e1;
+  color: #334155; /* slate-700 — readable body copy */
   font-size: 16px;
   line-height: 1.65;
   margin: 0 0 12px;
@@ -116,17 +123,18 @@
   font-size: 22px;
   font-weight: 700;
   margin: 0 0 16px;
+  color: #0f172a;
 }
 .landing-faq-item {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 12px 16px;
   margin-bottom: 10px;
 }
 .landing-faq-item summary {
   font-weight: 600;
-  color: #e2e8f0;
+  color: #0f172a;
   font-size: 16px;
   cursor: pointer;
   list-style: none;
@@ -140,12 +148,12 @@
   right: 0;
   top: 0;
   font-weight: 400;
-  color: #7dd3fc;
+  color: #6366f1;
   transition: transform 0.15s ease;
 }
 .landing-faq-item[open] summary::after { content: '−'; }
 .landing-faq-item p {
-  color: #cbd5e1;
+  color: #334155;
   font-size: 15px;
   line-height: 1.6;
   margin: 12px 0 0;
@@ -155,6 +163,7 @@
   font-size: 20px;
   font-weight: 700;
   margin: 0 0 16px;
+  color: #0f172a;
 }
 .landing-siblings-list {
   list-style: none;
@@ -165,20 +174,20 @@
   gap: 10px;
 }
 .landing-siblings-list a {
-  color: #e2e8f0;
+  color: #0f172a;
   text-decoration: none;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   font-size: 14px;
   display: block;
 }
 .landing-siblings-list a:hover {
-  background: rgba(56, 189, 248, 0.1);
-  border-color: rgba(56, 189, 248, 0.4);
+  background: #eef2ff;
+  border-color: #6366f1;
 }
 
-.landing--not-found { text-align: center; padding: 80px 20px; }
+.landing--not-found { text-align: center; padding: 80px 20px; color: #0f172a; }
 .landing--not-found h1 { font-size: 32px; margin-bottom: 12px; }
-.landing--not-found code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; }
+.landing--not-found code { background: #f1f5f9; color: #0f172a; padding: 2px 6px; border-radius: 4px; }
