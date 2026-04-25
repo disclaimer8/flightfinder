@@ -271,12 +271,17 @@ export default function AircraftRouteMap({
     const shouldKick = view === 'list' || fallbackLevel === 3;
     if (!shouldKick) return;
     if (cardsKickedRef.current) return;
-    cardsKickedRef.current = true;
 
+    // Server requires city OR iata for /aircraft-search/stream — without an
+    // origin (e.g. /aircraft/:slug landing page in default state) the search
+    // would 400. Wait for user to pick an airport before firing.
     const firstOrigin = (originIatas || []).filter(Boolean)[0];
+    if (!firstOrigin) return;
+
+    cardsKickedRef.current = true;
     cardsSearch.search({
       familyName,
-      iata: firstOrigin || undefined,
+      iata: firstOrigin,
       date: date || null,
       passengers: passengers || 1,
       nonStop: directOnly,
