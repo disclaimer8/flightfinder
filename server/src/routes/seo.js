@@ -39,7 +39,7 @@ router.get('/sitemap.xml', async (_req, res) => {
   // carry enough long-tail weight for a first sitemap.
   try {
     const db = require('../models/db');
-    const { edges = [] } = db.getHubNetwork?.({ hubLimit: 200, minDests: 5, edgeLimit: 100 }) || {};
+    const { edges = [] } = db.getHubNetwork?.({ hubLimit: 200, minDests: 15, edgeLimit: 100 }) || {};
     for (const [from, to] of edges) {
       urls.push({
         loc: `${BASE}/routes/${from.toLowerCase()}-${to.toLowerCase()}`,

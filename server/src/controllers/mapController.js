@@ -77,11 +77,13 @@ exports.getRoutes = async (req, res) => {
 exports.getHubNetwork = async (_req, res) => {
   try {
     const { data } = await cacheService.getOrFetch(
-      'map:hub-network:v2',
+      'map:hub-network:v3',
       async () => {
-        // minDests kept low (5) while observed_routes is still warming up.
-        // Raise to 15-20 once adsb.lol + AirLabs have backfilled ~2 weeks.
-        const { edges } = db.getHubNetwork({ hubLimit: 200, minDests: 5, edgeLimit: 3000 });
+        // observed_routes has 3.85M tuples + 4011 airports after Plan 7e
+        // historical bootstrap (2026-04-24). Raised minDests 5 → 15 to clamp
+        // the network to genuine commercial hubs and drop GA-only airports
+        // that crept in via business-jet ADS-B traffic.
+        const { edges } = db.getHubNetwork({ hubLimit: 200, minDests: 15, edgeLimit: 3000 });
         // Defensive validation — drop any edge whose endpoints are not 3-letter uppercase
         // IATAs known to the airports dataset. Guards the client against stray rows.
         const clean = [];

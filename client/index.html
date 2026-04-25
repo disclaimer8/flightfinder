@@ -50,13 +50,12 @@
 
     <!-- Preconnect / dns-prefetch: open TCP+TLS sockets to the origins we
          actually hit in the first 500ms so the browser doesn't serial-block
-         on DNS + handshake once the first fetch fires. gtag + tp-drive are
-         already loaded async via the scripts below, but the tile servers
-         (carto) and Sentry ingest fire on interaction, so preconnect buys
-         roughly 200-400ms on cold loads for users outside Europe. -->
+         on DNS + handshake once the first fetch fires. gtag fires on first
+         pageview; tile servers (carto) and Sentry ingest fire on interaction,
+         so preconnect buys roughly 200-400ms on cold loads for users outside
+         Europe. -->
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
     <link rel="preconnect" href="https://www.google-analytics.com" crossorigin />
-    <link rel="preconnect" href="https://emrldtp.cc" crossorigin />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com" />
     <link rel="dns-prefetch" href="https://b.basemaps.cartocdn.com" />
@@ -74,12 +73,7 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW8Y3YLN7S"></script>
     <script src="/gtag-init.js"></script>
 
-    <!-- Travelpayouts Drive loader. Init is in /tp-drive-init.js because
-         our CSP forbids inline scripts — see server/src/index.js helmet config. -->
-    <script data-noptimize="1" data-cfasync="false" data-wpfc-render="false"
-            src="/tp-drive-init.js"></script>
-
-    <!-- Structured data: WebSite + SearchAction -->
+<!-- Structured data: WebSite + SearchAction -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",

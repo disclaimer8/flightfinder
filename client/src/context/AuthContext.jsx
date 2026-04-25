@@ -32,9 +32,15 @@ export function AuthProvider({ children }) {
   // Restore session on mount. Access token lives only in memory (security), so
   // on full page reload it's gone — but the httpOnly refreshToken cookie
   // survives. /api/auth/refresh trades that cookie for a fresh access token,
-  // then we hydrate the user via /me. Silent 401 means no valid cookie → stay
-  // logged out.
+  // then we hydrate the user via /me. The cookie is httpOnly so JS can't see
+  // it directly — instead we set a localStorage hint on successful login and
+  // skip the refresh probe entirely for users who've never authenticated.
+  // This avoids spamming /auth/refresh with 401s for anonymous visitors.
   useEffect(() => {
+    if (typeof window !== 'undefined' && !window.localStorage.getItem('hadAuth')) {
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/api/auth/refresh`, {
@@ -47,6 +53,9 @@ export function AuthProvider({ children }) {
             tokenRef.current = data.accessToken;
             await refreshUser();
           }
+        } else {
+          // Stale hint — cookie expired/revoked. Clear so future visits skip the probe.
+          try { window.localStorage.removeItem('hadAuth'); } catch {}
         }
       } catch {
         // Network hiccup — stay unauthenticated, user can sign in manually.
@@ -68,6 +77,7 @@ export function AuthProvider({ children }) {
       throw new Error(data.message || 'Login failed');
     }
     tokenRef.current = data.accessToken;
+    try { window.localStorage.setItem('hadAuth', '1'); } catch {}
     // Hydrate full user (subscription_tier, sub_valid_until, ...) via /auth/me.
     await refreshUser();
     return data;
@@ -98,6 +108,7 @@ export function AuthProvider({ children }) {
       // Ignore network errors on logout
     }
     tokenRef.current = null;
+    try { window.localStorage.removeItem('hadAuth'); } catch {}
     setUser(null);
   }, []);
 

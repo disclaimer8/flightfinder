@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { API_BASE } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 
+// Module-level promise cache prevents thundering-herd when N FlightCards mount
+// simultaneously. Same (flightId, tier, hasToken) → one in-flight request.
+// TTL 5 min — enriched data (gate, weather, livery, on-time) doesn't change
+// faster than that. Searches that revisit flights within session hit cache.
+const _enrichedCache = new Map();
+const _ENRICHED_TTL_MS = 5 * 60 * 1000;
+
 // Pro users: fetch /enriched; free users: fetch /enriched/teaser (same shape, nulls).
 // flight prop shape: { id, departure:{code}, arrival:{code}, aircraft:{icaoType, registration} }
 export function useEnrichedCard(flight) {
@@ -10,38 +17,50 @@ export function useEnrichedCard(flight) {
 
   useEffect(() => {
     if (!flight?.id) return;
-    const controller = new AbortController();
+    let active = true;
     const isPro = !!user?.subscription_tier?.startsWith('pro_');
     const token = getToken?.();
-
-    const qs = new URLSearchParams({
-      dep:  flight.departure?.code || '',
-      arr:  flight.arrival?.code || '',
-      type: flight.aircraft?.icaoType || '',
-      reg:  flight.aircraft?.registration || '',
-    }).toString();
-
-    const url = isPro
-      ? `${API_BASE}/api/flights/${encodeURIComponent(flight.id)}/enriched?${qs}`
-      : `${API_BASE}/api/flights/${encodeURIComponent(flight.id)}/enriched/teaser`;
+    const cacheKey = `${flight.id}|${isPro ? 'pro' : 'free'}|${token ? 'auth' : 'anon'}`;
 
     setState((s) => ({ ...s, loading: true, error: null }));
-    fetch(url, {
-      signal: controller.signal,
-      headers: isPro && token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((r) => r.json())
+
+    let promise;
+    const cached = _enrichedCache.get(cacheKey);
+    if (cached && (Date.now() - cached.at) < _ENRICHED_TTL_MS) {
+      promise = cached.promise;
+    } else {
+      const qs = new URLSearchParams({
+        dep:  flight.departure?.code || '',
+        arr:  flight.arrival?.code || '',
+        type: flight.aircraft?.icaoType || '',
+        reg:  flight.aircraft?.registration || '',
+      }).toString();
+      const url = isPro
+        ? `${API_BASE}/api/flights/${encodeURIComponent(flight.id)}/enriched?${qs}`
+        : `${API_BASE}/api/flights/${encodeURIComponent(flight.id)}/enriched/teaser`;
+      promise = fetch(url, {
+        headers: isPro && token ? { Authorization: `Bearer ${token}` } : {},
+      }).then((r) => r.json());
+      _enrichedCache.set(cacheKey, { at: Date.now(), promise });
+      // Evict on error so retries can re-fire
+      promise.catch(() => _enrichedCache.delete(cacheKey));
+    }
+
+    promise
       .then((j) => {
+        if (!active) return;
         if (!j.success) throw new Error(j.message || 'enrich failed');
         setState({ loading: false, data: j.data, tier: j.tier, error: null });
       })
       .catch((err) => {
-        if (err.name === 'AbortError') return;
+        if (!active) return;
         setState({ loading: false, data: null, tier: null, error: err.message });
       });
 
-    return () => controller.abort();
+    return () => { active = false; };
   }, [flight?.id, user?.subscription_tier, getToken]);
 
   return state;
 }
+
+export function _clearEnrichedCache() { _enrichedCache.clear(); }
