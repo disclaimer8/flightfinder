@@ -1,17 +1,82 @@
 'use strict';
 const path  = require('path');
 const fs    = require('fs');
-const { mapToSafetyEvent } = require('../services/safety/ntsbAdapter');
+const {
+  mapToSafetyEvent,
+  parseVehicleDetails,
+  parseLocation,
+  parseUSDate,
+  severityFromNew,
+} = require('../services/safety/ntsbAdapter');
 
 const FIXTURE = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'fixtures/ntsb-sample.json'), 'utf8')
 );
 
+describe('parseVehicleDetails', () => {
+  test.each([
+    ['N12345 : BOEING/737-800', { registration: 'N12345', manufacturer: 'BOEING', model: '737-800' }],
+    ['PH-EME : TEXTRON/182T',   { registration: 'PH-EME', manufacturer: 'TEXTRON', model: '182T' }],
+    ['N220KK : CESSNA/208',     { registration: 'N220KK', manufacturer: 'CESSNA',  model: '208' }],
+    ['N99 : PIPER',             { registration: 'N99',    manufacturer: 'PIPER',   model: null }],
+    ['-',                       { registration: null,     manufacturer: null,      model: null }],
+    ['',                        { registration: null,     manufacturer: null,      model: null }],
+  ])('%s', (input, expected) => {
+    expect(parseVehicleDetails(input)).toEqual(expected);
+  });
+});
+
+describe('parseLocation', () => {
+  test.each([
+    ['San Francisco, CA',          'USA'],   // US state code
+    ['Miami, FL',                  'USA'],
+    ['Anchorage, AK',              'USA'],
+    ['La Bastide Clairence, FR',   'FR'],   // foreign 2-letter
+    ['Tokyo, Japan',               'Japan'],
+    ['Unknown',                    null],   // single segment
+    ['',                           null],
+  ])('%s', (input, expected) => {
+    expect(parseLocation(input)).toBe(expected);
+  });
+});
+
+describe('parseUSDate', () => {
+  test('MM/DD/YYYY → epoch ms', () => {
+    expect(parseUSDate('04/15/2026')).toBe(Date.parse('2026-04-15T00:00:00Z'));
+  });
+  test('garbage → null', () => {
+    expect(parseUSDate('not-a-date')).toBeNull();
+    expect(parseUSDate('')).toBeNull();
+    expect(parseUSDate(null)).toBeNull();
+  });
+});
+
+describe('severityFromNew', () => {
+  test('Fatal → fatal', () => {
+    expect(severityFromNew({ injuries: 'Fatal', eventType: 'Accident' })).toBe('fatal');
+  });
+  test('Serious → serious_incident', () => {
+    expect(severityFromNew({ injuries: 'Serious', eventType: 'Incident' })).toBe('serious_incident');
+  });
+  test('Minor → incident', () => {
+    expect(severityFromNew({ injuries: 'Minor', eventType: 'Accident' })).toBe('incident');
+  });
+  test('None + Accident → incident (substantial damage assumed)', () => {
+    expect(severityFromNew({ injuries: 'None', eventType: 'Accident' })).toBe('incident');
+  });
+  test('None + Incident → minor', () => {
+    expect(severityFromNew({ injuries: 'None', eventType: 'Incident' })).toBe('minor');
+  });
+  test('empty → unknown', () => {
+    expect(severityFromNew({ injuries: '', eventType: '' })).toBe('unknown');
+  });
+});
+
 describe('mapToSafetyEvent', () => {
   const NOW = 1735000000000;
 
-  // Seed FAA registry so N12345 resolves to Boeing 737-800 (ICAO: B738)
   beforeAll(() => {
+    // Seed FAA registry so N12345 resolves to Boeing 737-800 (ICAO: B738)
     const faaRegistry = require('../models/faaRegistry');
     faaRegistry.upsertMany([{
       n_number:     'N12345',
@@ -24,75 +89,64 @@ describe('mapToSafetyEvent', () => {
     }]);
   });
 
-  test('runway excursion → incident, RE, KLAX→KSFO', () => {
-    const r = mapToSafetyEvent(FIXTURE.ResultList[0], NOW);
+  test('Accident with no injuries → incident, US location', () => {
+    const r = mapToSafetyEvent(FIXTURE.results[0], NOW);
     expect(r.source).toBe('ntsb');
-    expect(r.source_event_id).toBe('WPR24LA101');
+    expect(r.source_event_id).toBe('WPR26LA101');
     expect(r.severity).toBe('incident');
-    expect(r.cictt_category).toBe('RE');
-    expect(r.phase_of_flight).toBe('LDG');
-    expect(r.dep_iata).toBe('LAX');
-    expect(r.arr_iata).toBe('SFO');
-    expect(r.operator_icao).toBe('AAL');
-    expect(r.operator_name).toBe('American Airlines');
-    expect(r.aircraft_icao_type).toBe('B738');  // resolved via FAA Registry
     expect(r.registration).toBe('N12345');
-    expect(r.location_lat).toBeCloseTo(37.6189);
-    expect(r.location_lon).toBeCloseTo(-122.3750);
+    expect(r.aircraft_icao_type).toBe('B738');  // resolved via FAA Registry
+    expect(r.location_country).toBe('USA');
+    expect(r.narrative).toMatch(/gear collapse/);
+    expect(r.report_url).toContain('WPR26LA101');
     expect(r.fatalities).toBe(0);
     expect(r.hull_loss).toBe(0);
-    expect(r.ingested_at).toBe(NOW);
-    expect(r.updated_at).toBe(NOW);
-    expect(r.report_url).toContain('WPR24LA101');
+    expect(r.cictt_category).toBeNull();
+    expect(r.phase_of_flight).toBeNull();
+    expect(r.location_lat).toBeNull();
+    expect(r.location_lon).toBeNull();
   });
 
-  test('LOC-I + Destroyed + 4 fatalities → fatal, hull_loss=1', () => {
-    const r = mapToSafetyEvent(FIXTURE.ResultList[1], NOW);
+  test('Fatal accident → fatal severity, fatalities=1', () => {
+    const r = mapToSafetyEvent(FIXTURE.results[1], NOW);
     expect(r.severity).toBe('fatal');
-    expect(r.fatalities).toBe(4);
-    expect(r.hull_loss).toBe(1);
-    expect(r.cictt_category).toBe('LOC-I');
+    expect(r.fatalities).toBe(1);
+    expect(r.registration).toBe('N98765');
   });
 
-  test('Bird strike, minor damage → minor', () => {
-    const r = mapToSafetyEvent(FIXTURE.ResultList[2], NOW);
+  test('Incident with no injuries → minor', () => {
+    const r = mapToSafetyEvent(FIXTURE.results[2], NOW);
     expect(r.severity).toBe('minor');
-    expect(r.cictt_category).toBe('BIRD');
   });
 
-  test('CFIT fatal → fatal + hull_loss', () => {
-    const r = mapToSafetyEvent(FIXTURE.ResultList[3], NOW);
+  test('Fatal accident in Alaska → still USA', () => {
+    const r = mapToSafetyEvent(FIXTURE.results[3], NOW);
     expect(r.severity).toBe('fatal');
-    expect(r.cictt_category).toBe('CFIT');
-    expect(r.hull_loss).toBe(1);
+    expect(r.location_country).toBe('USA');
   });
 
-  test('Turbulence with 3 serious + 7 minor → serious_incident', () => {
-    const r = mapToSafetyEvent(FIXTURE.ResultList[4], NOW);
+  test('Serious incident → serious_incident', () => {
+    const r = mapToSafetyEvent(FIXTURE.results[4], NOW);
     expect(r.severity).toBe('serious_incident');
-    expect(r.cictt_category).toBe('TURB');
-    expect(r.injuries).toBe(10);
+    expect(r.injuries).toBe(1);
   });
 
-  test('Powerplant failure with Cape Air operator IATA mapped', () => {
-    const r = mapToSafetyEvent(FIXTURE.ResultList[5], NOW);
-    expect(r.cictt_category).toBe('SCF-PP');
-    expect(r.operator_iata).toBe('9K');
-    expect(r.operator_icao).toBe('KAP');
-  });
-
-  test('Fuel exhaustion → FUEL, incident', () => {
-    const r = mapToSafetyEvent(FIXTURE.ResultList[6], NOW);
-    expect(r.cictt_category).toBe('FUEL');
+  test('Minor injuries with docketUrl → uses docketUrl', () => {
+    const r = mapToSafetyEvent(FIXTURE.results[5], NOW);
     expect(r.severity).toBe('incident');
+    expect(r.report_url).toBe('http://example.com/docket/ERA26LA199');
   });
 
-  test('Empty/missing fields → unknown severity, OTHR category, no crash', () => {
-    const r = mapToSafetyEvent(FIXTURE.ResultList[7], NOW);
-    expect(r.severity).toBe('unknown');
-    expect(r.cictt_category).toBe('OTHR');
-    expect(r.phase_of_flight).toBe('UNK');
-    expect(r.operator_name).toBeNull();
+  test('Foreign event → country code preserved', () => {
+    const r = mapToSafetyEvent(FIXTURE.results[6], NOW);
+    expect(r.location_country).toBe('FR');
+    expect(r.registration).toBe('PH-EME');
+    expect(r.aircraft_icao_type).toBeNull(); // PH- not in FAA registry; TEXTRON 182T not in seed
+  });
+
+  test('Empty ntsbNumber → null', () => {
+    const r = mapToSafetyEvent(FIXTURE.results[7], NOW);
+    expect(r).toBeNull();
   });
 
   test('null/empty input → null (defensive)', () => {
@@ -100,26 +154,16 @@ describe('mapToSafetyEvent', () => {
     expect(mapToSafetyEvent(undefined, NOW)).toBeNull();
     expect(mapToSafetyEvent({}, NOW)).toBeNull();
   });
-
-  test('US N-number registration resolves aircraft_icao_type via FAA registry', () => {
-    const r = mapToSafetyEvent(FIXTURE.ResultList[0], NOW);
-    expect(r.registration).toBe('N12345');
-    expect(r.aircraft_icao_type).toBe('B738');
-  });
-
-  test('US N-number not in registry → aircraft_icao_type null', () => {
-    // ResultList[1] has N98765 which has no FAA registry entry
-    const r = mapToSafetyEvent(FIXTURE.ResultList[1], NOW);
-    expect(r.registration).toBe('N98765');
-    expect(r.aircraft_icao_type).toBeNull();
-  });
 });
 
 describe('fetchPage (network — mocked)', () => {
   test('returns rows on 200', async () => {
     jest.resetModules();
     jest.doMock('axios', () => ({
-      post: jest.fn().mockResolvedValue({ status: 200, data: FIXTURE }),
+      post: jest.fn().mockResolvedValue({
+        status: 200,
+        data: { paging: { totalCount: 8 }, results: FIXTURE.results },
+      }),
     }));
     const { fetchPage } = require('../services/safety/ntsbAdapter');
     const out = await fetchPage({ sinceDays: 30, page: 0, pageSize: 50 });
@@ -127,24 +171,26 @@ describe('fetchPage (network — mocked)', () => {
     expect(out.hasMore).toBe(false);
   });
 
-  test('hasMore=true when page is full', async () => {
+  test('hasMore=true when totalCount > seen', async () => {
     jest.resetModules();
-    const fullPage = { ResultListCount: 50, ResultList: new Array(50).fill(FIXTURE.ResultList[0]) };
     jest.doMock('axios', () => ({
-      post: jest.fn().mockResolvedValue({ status: 200, data: fullPage }),
+      post: jest.fn().mockResolvedValue({
+        status: 200,
+        data: { paging: { totalCount: 200 }, results: new Array(50).fill(FIXTURE.results[0]) },
+      }),
     }));
     const { fetchPage } = require('../services/safety/ntsbAdapter');
     const out = await fetchPage({ sinceDays: 30, page: 0, pageSize: 50 });
     expect(out.hasMore).toBe(true);
   });
 
-  test('non-200 → throws', async () => {
+  test('non-200 → throws with v2 marker', async () => {
     jest.resetModules();
     jest.doMock('axios', () => ({
       post: jest.fn().mockResolvedValue({ status: 503, data: 'Service Unavailable' }),
     }));
     const { fetchPage } = require('../services/safety/ntsbAdapter');
     await expect(fetchPage({ sinceDays: 30, page: 0, pageSize: 50 }))
-      .rejects.toThrow(/NTSB CAROL/);
+      .rejects.toThrow(/Carol v2/);
   });
 });
