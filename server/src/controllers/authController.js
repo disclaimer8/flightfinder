@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const db = require('../models/db');
 const authService = require('../services/authService');
 const emailService = require('../services/emailService');
@@ -140,7 +141,9 @@ exports.adminVerifyEmail = (req, res) => {
   if (!adminToken) return res.status(503).json({ success: false, message: 'Admin endpoint disabled' });
   const header = req.headers.authorization || '';
   const provided = header.startsWith('Bearer ') ? header.slice(7) : '';
-  if (!provided || provided !== adminToken) {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(adminToken);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
   const { email } = req.body || {};
