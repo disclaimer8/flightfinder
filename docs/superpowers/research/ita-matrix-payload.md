@@ -57,7 +57,8 @@ fingerprinting that is **not validated server-side** based on test runs. Marked
 | `User-Agent`              | cosmetic  | full Chrome UA string                                           |
 | `sec-ch-ua*`              | cosmetic  | Chrome client-hints                                             |
 
-No CSRF token, no `Cookie`, no `Authorization`, no session ID in headers.
+No CSRF *token*, no `Cookie`, no `Authorization`, no session ID in headers — only the
+standard `X-Requested-With: XMLHttpRequest` marker on the inner request (see below).
 **Session is per-search**: the `session` and `solutionSet` fields in the JSON response
 are required to do follow-up calls (e.g. expanding to a specific itinerary), but the
 **initial search call requires no session at all**.
@@ -228,6 +229,28 @@ itineraryStopCountList  object  — {groups:[{label:0|1|2..., minPrice}]}
 warningsItinerary       list    — overnight / long-layover / risky-connection groups
 ```
 
+### Price fields — which one is "the" price?
+
+Each solution carries **four** price-shaped fields and they do **not** all match. Verified
+across **all 25 solutions** in the captured fixture:
+
+| Field                          | Example     | Meaning                                                |
+| ------------------------------ | ----------- | ------------------------------------------------------ |
+| `displayTotal`                 | `EUR589.94` | The price the user pays. **Canonical.**                |
+| `ext.totalPrice`               | `EUR589.94` | Same value as `displayTotal` (verified for all 25).    |
+| `pricings[0].displayPrice`     | `EUR589.94` | Same value as `displayTotal` (verified for all 25).    |
+| `ext.price`                    | `EUR590.00` | **DIFFERENT** — appears to be a rounded-up "from" price. Do NOT use as the user-facing total. |
+
+`ext.pricePerMile` is a derived metric (e.g. `"EUR0.0606372046"`) and is not a total.
+
+**Recommendation for `itaMatrixService.parse()`:** read **`displayTotal`** as the canonical
+price field. `ext.totalPrice` and `pricings[0].displayPrice` are equivalent fallbacks.
+**Never** read `ext.price` as the user-facing total — it is rounded up by ~$0.06–$1.00 and
+will surface to users as a wrong amount.
+
+(If a future capture shows these three "canonical" fields disagreeing on any solution,
+that is a new known-unknown to add to the list at the bottom.)
+
 ### `solutionList.solutions[i]` — the itineraries
 
 ```jsonc
@@ -246,7 +269,7 @@ warningsItinerary       list    — overnight / long-layover / risky-connection 
     "ext":            { "dominantCarrier": { "code": "UA", "shortName": "United" } },
     "carriers":       [ { "code": "UA", "shortName": "United" }, ... ],
     "singleCarrier":  { /* nullable */ },
-    "distance":       /* total miles, number */,
+    "distance":       { "units": "MI", "value": 9730 }, // object — `units` is self-documenting (always "MI" in our capture); `value` is integer
     "slices": [
       {
         "origin":      { "code": "LIS", "name": "Lisbon" },
@@ -280,7 +303,10 @@ warningsItinerary       list    — overnight / long-layover / risky-connection 
   `2026-05-27T05:05+01:00`. NOT UTC. Different segments in the same slice can have
   different offsets (origin TZ vs destination TZ).
 - **Duration**: integer minutes.
-- **Distance**: integer (units undocumented; appears to be miles based on magnitude).
+- **Distance**: object `{ "units": "MI", "value": <integer> }`. `units` is self-documenting
+  (observed value `"MI"` for all 25 solutions in our capture); `value` is the integer total
+  for the whole itinerary. Parser must read `distance.value` and respect `distance.units`,
+  not assume miles.
 - **Flights**: `"<carrier-IATA><number>"` strings, e.g. `"UA9159"`. May be a code-share
   (no obvious flag in the response — the actual operating carrier requires a follow-up
   call to fare details, untested).
