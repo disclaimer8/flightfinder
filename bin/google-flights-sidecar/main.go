@@ -81,7 +81,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+	// Sidecar ceiling must be shorter than the Node-side axios timeout (10s)
+	// so callers receive a 5xx before they give up themselves.
+	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
 
 	offers, _, err := session.GetOffers(ctx, args)
