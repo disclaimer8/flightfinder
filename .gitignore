@@ -12,3 +12,8 @@ server/data/*.db
 server/data/*.db-shm
 server/data/*.db-wal
 .superpowers/
+
+# Compiled Go sidecar (local dev build inside source dir)
+/bin/google-flights-sidecar/google-flights-server
+# Compiled Go sidecar (CI build output)
+/server/bin/google-flights-server

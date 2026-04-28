@@ -1,0 +1,2 @@
+# Compiled Go sidecar — built in CI, never committed
+/bin/google-flights-server
