@@ -48,7 +48,77 @@ describe('itaMatrixService.parse', () => {
       expect(f.source).toBe('ita');
       expect(f.departure.code).toMatch(/^[A-Z]{3}$/);
       expect(f.arrival.code).toMatch(/^[A-Z]{3}$/);
+      // IATA airline codes are 2-3 chars (alphanumeric). Null is also acceptable
+      // when neither the regex nor carriers[] could resolve a confident code.
+      if (f.airlineIata !== null) {
+        expect(f.airlineIata).toMatch(/^[A-Z0-9]{2,3}$/);
+      }
     });
+  });
+
+  test('airlineIata for known carrier resolves via carriers[] not regex', () => {
+    // Synthetic itinerary: 3-char prefix "FOO" present in carriers[] should be
+    // accepted as IATA (some airlines do have 3-char IATA codes).
+    const synthetic = {
+      solutionList: {
+        solutions: [
+          {
+            displayTotal: 'EUR100.00',
+            itinerary: {
+              carriers: [{ code: 'FOO', shortName: 'Foo Air' }],
+              slices: [
+                {
+                  origin: { code: 'AAA', name: 'Alpha' },
+                  destination: { code: 'BBB', name: 'Beta' },
+                  departure: '2026-06-01T10:00',
+                  arrival: '2026-06-01T12:00',
+                  duration: 120,
+                  flights: ['FOO123'],
+                  stops: [],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+    const flights = svc.parse(synthetic);
+    expect(flights).toHaveLength(1);
+    expect(flights[0].airlineIata).toBe('FOO');
+    expect(flights[0].airline).toBe('Foo Air');
+    expect(flights[0].segments[0].airlineIata).toBe('FOO');
+  });
+
+  test('airlineIata refuses ambiguous 3-char prefix when not in carriers[]', () => {
+    // Same shape, but carriers[] omits the FOO entry. The 3-char prefix is
+    // probably ICAO (e.g. "UAL") — we must NOT mislabel it as IATA.
+    const synthetic = {
+      solutionList: {
+        solutions: [
+          {
+            displayTotal: 'EUR100.00',
+            itinerary: {
+              carriers: [],
+              slices: [
+                {
+                  origin: { code: 'AAA', name: 'Alpha' },
+                  destination: { code: 'BBB', name: 'Beta' },
+                  departure: '2026-06-01T10:00',
+                  arrival: '2026-06-01T12:00',
+                  duration: 120,
+                  flights: ['FOO123'],
+                  stops: [],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+    const flights = svc.parse(synthetic);
+    expect(flights).toHaveLength(1);
+    expect(flights[0].airlineIata).toBeNull();
+    expect(flights[0].segments[0].airlineIata).toBeNull();
   });
 });
 

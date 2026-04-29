@@ -51,17 +51,16 @@ function buildFlight(solution) {
   const flightNumbers = Array.isArray(slice.flights) ? slice.flights : [];
   if (flightNumbers.length === 0) return null;
 
-  const firstFlight = flightNumbers[0];
-  const firstIata = extractIata(firstFlight);
+  const carrierIndex = buildCarrierIndex(itinerary);
   const dominantCarrier =
     (itinerary.ext && itinerary.ext.dominantCarrier) ||
     (Array.isArray(itinerary.carriers) && itinerary.carriers[0]) ||
     null;
-  const carrierForFlight = (iata) =>
-    Array.isArray(itinerary.carriers)
-      ? itinerary.carriers.find((c) => c && c.code === iata) || null
-      : null;
-  const firstCarrier = carrierForFlight(firstIata) || dominantCarrier;
+
+  const firstFlight = flightNumbers[0];
+  const firstLookup = lookupCarrier(carrierIndex, firstFlight);
+  const firstIata = firstLookup.code;
+  const firstCarrier = firstLookup.info || dominantCarrier;
 
   const stops = (slice.stops || []).map((s) => s && s.code).filter(Boolean);
   // Hop chain: origin -> stops -> destination
@@ -91,13 +90,16 @@ function buildFlight(solution) {
     stopAirports: stops,
     aircraftCode: 'N/A',
     aircraftName: 'N/A',
-    airline: (firstCarrier && firstCarrier.shortName) || firstIata || 'N/A',
+    airline:
+      (firstCarrier && (firstCarrier.shortName || firstCarrier.name)) ||
+      firstIata ||
+      'N/A',
     airlineIata: firstIata || (firstCarrier && firstCarrier.code) || null,
     flightNumber: firstFlight,
     price: extractPrice(solution),
     segments: flightNumbers.map((fn, idx) => {
-      const iata = extractIata(fn);
-      const carrier = carrierForFlight(iata) || dominantCarrier;
+      const { code: iata, info } = lookupCarrier(carrierIndex, fn);
+      const carrier = info || dominantCarrier;
       return {
         departure: {
           code: hopCodes[idx] || null,
@@ -109,7 +111,7 @@ function buildFlight(solution) {
           time: idx === flightNumbers.length - 1 ? slice.arrival || null : null,
           city: null,
         },
-        airline: (carrier && carrier.shortName) || iata,
+        airline: (carrier && (carrier.shortName || carrier.name)) || iata || null,
         airlineIata: iata || (carrier && carrier.code) || null,
         flightNumber: fn,
         aircraftCode: 'N/A',
@@ -121,15 +123,48 @@ function buildFlight(solution) {
   };
 }
 
-function extractIata(flightNo) {
-  // Matrix flight numbers are "<IATA-airline-code><number>", e.g. "UA9159", "Y41234", "9X345".
-  // IATA airline codes are 2 chars (alphanumeric, must contain >=1 letter); rare 3-char
-  // ICAO codes also appear. Anchor digits-to-end so the prefix is deterministic.
-  const s = String(flightNo || '');
-  let m = s.match(/^([A-Z][A-Z0-9]|[A-Z0-9][A-Z])(\d+)$/);
-  if (m) return m[1];
-  m = s.match(/^([A-Z0-9]{3})(\d+)$/);
-  return m ? m[1] : null;
+/**
+ * Build a Map<UPPER carrier code, carrierInfo> from itinerary.carriers[].
+ * The carriers array is the AUTHORITATIVE source for IATA codes used in this
+ * itinerary's flight numbers; flight-number prefix regex is only a last resort.
+ */
+function buildCarrierIndex(itinerary) {
+  const list = (itinerary && itinerary.carriers) || [];
+  const byCode = new Map();
+  for (const c of list) {
+    if (c && c.code) byCode.set(String(c.code).toUpperCase(), c);
+  }
+  return byCode;
+}
+
+/**
+ * Resolve a flight number to { code, info } where `code` is the IATA airline code.
+ *
+ * Strategy:
+ *   1. Try 2-char alphanumeric prefix (the IATA convention). Accept it even if
+ *      not present in carriers[] (still IATA-shaped, may be a partner not listed).
+ *   2. Try 3-char prefix BUT only accept it if confirmed by carriers[] (some
+ *      rare airlines do have 3-char IATA codes; otherwise the prefix is ICAO,
+ *      which we MUST NOT label as IATA).
+ *   3. Otherwise return { code: null, info: null }. Downstream callers handle
+ *      null gracefully — better than misidentifying ICAO as IATA.
+ */
+function lookupCarrier(carrierIndex, flightNo) {
+  const s = String(flightNo || '').toUpperCase().trim();
+  const twoChar = s.match(/^([A-Z0-9]{2})\d/);
+  if (twoChar) {
+    const hit = carrierIndex.get(twoChar[1]);
+    if (hit) return { code: twoChar[1], info: hit };
+    return { code: twoChar[1], info: null };
+  }
+  const threeChar = s.match(/^([A-Z0-9]{3})\d/);
+  if (threeChar) {
+    const hit = carrierIndex.get(threeChar[1]);
+    if (hit) return { code: threeChar[1], info: hit };
+    // 3-char prefix not in carriers[]: probably ICAO — refuse to call it IATA.
+    return { code: null, info: null };
+  }
+  return { code: null, info: null };
 }
 
 /**
