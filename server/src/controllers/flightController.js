@@ -7,6 +7,7 @@ const cacheService = require('../services/cacheService');
 const openFlights = require('../services/openFlightsService');
 const travelpayoutsService = require('../services/travelpayoutsService');
 const aerodataboxService = require('../services/aerodataboxService');
+const flightSearchOrchestrator = require('../services/flightSearchOrchestrator');
 const { resolveFamily } = require('../models/aircraftFamilies');
 
 const FLIGHT_API = process.env.FLIGHT_API || 'amadeus'; // 'amadeus' | 'duffel'
@@ -32,54 +33,20 @@ exports.searchFlights = async (req, res) => {
   const activeApi = (process.env.LOCK_FLIGHT_API !== 'true' && api) ? api : FLIGHT_API;
 
   try {
-    let flights = [];
-    const hasAmadeus = !!(process.env.AMADEUS_CLIENT_ID && process.env.AMADEUS_CLIENT_SECRET);
-    const hasDuffel  = !!(process.env.DUFFEL_API_KEY);
-    let useRealAPI = (activeApi === 'duffel' ? hasDuffel : hasAmadeus) && useMockData !== 'true';
-
-    if (useRealAPI) {
-      const searchParams = {
-        departure_airport: departure || 'LIS',
-        arrival_airport:   arrival   || 'NYC',
-        departure_date:    date      || getNextDate(),
-        passengers,
-        return_date: returnDate || null,
-        nonStop: directOnly,
-      };
-
-      // Use pre-sanitised cache key if available, else build from normalised values
-      const cacheKey = `flights:${activeApi}:${vq.sanitisedCacheKey || `${searchParams.departure_airport}:${searchParams.arrival_airport}:${searchParams.departure_date}:${passengers}:${returnDate || ''}`}`;
-
-      try {
-        const { data: cachedFlights, fromCache } = await cacheService.getOrFetch(cacheKey, async () => {
-          if (activeApi === 'duffel' && process.env.DUFFEL_API_KEY) {
-            console.log('Using Duffel API');
-            const duffelResponse = await duffelService.searchFlights(searchParams);
-            return formatDuffelFlights(duffelResponse);
-          } else {
-            console.log(`Using Amadeus API (activeApi=${activeApi})`);
-            const amadeusResponse = await amadeusService.searchFlights(searchParams);
-            const result = formatAmadeusFlights(amadeusResponse);
-
-            const aircraftIatas = extractAircraftIatas(amadeusResponse);
-            await enrichWithAircraftData(result, aircraftIatas);
-
-            const airlineIatas = extractAirlineIatas(amadeusResponse);
-            await enrichWithAirlineData(result, airlineIatas);
-
-            return result.filter(f => f.isValidRoute !== false);
-          }
-        });
-
-        flights = cachedFlights;
-        if (fromCache) console.log(`[cache] Serving ${flights.length} flights from cache`);
-      } catch (error) {
-        console.error('%s API error, falling back to mock data:', activeApi, error.message, JSON.stringify(error?.response?.result || error?.response?.data || error));
-        flights = getMockFlights(departure, arrival);
-      }
-    } else {
-      // Use mock data
+    // Single owner of the cache + fallback chain (google → ita → travelpayouts → stale-cache).
+    // Returns { flights: NormalizedFlight[], source: 'cache'|'google'|'ita'|'travelpayouts'|'stale-cache'|'none' }.
+    // useMockData=true is honoured as an explicit override for local debugging.
+    let flights;
+    let sourceLabel;
+    if (useMockData === 'true') {
       flights = getMockFlights(departure, arrival);
+      sourceLabel = 'mock';
+    } else {
+      const orch = await flightSearchOrchestrator.search({
+        departure, arrival, date, returnDate, passengers,
+      });
+      flights = orch.flights;
+      sourceLabel = orch.source;
     }
 
     // Safety guard — should always be array, but protect against unexpected cache/API results
@@ -88,16 +55,27 @@ exports.searchFlights = async (req, res) => {
       flights = [];
     }
 
-    // Apply filters
+    // Aircraft filter compatibility note: googleFlightsService stores the
+    // human-readable aircraft string in aircraftCode (e.g. "Boeing 787-9"),
+    // so an aircraftType/aircraftModel filter keyed on IATA codes ("789") will
+    // reject all Google-sourced flights. Existing TP/Duffel sources still
+    // produce IATA codes here, so the filter remains useful for those. Future
+    // work: normalize aircraft identifiers in the upstream parsers.
     if (aircraftType) {
       flights = flights.filter(f => {
-        const aircraft = f.aircraft || aircraftData[f.aircraftCode];
-        return aircraft && aircraft.type === aircraftType.toLowerCase();
+        const ac = f.aircraft || aircraftData[f.aircraftCode];
+        return ac && ac.type === aircraftType.toLowerCase();
       });
     }
 
     if (aircraftModel) {
-      flights = flights.filter(f => f.aircraftCode === aircraftModel.toUpperCase());
+      const wanted = aircraftModel.toUpperCase();
+      flights = flights.filter(f => {
+        const code = String(f.aircraftCode || '').toUpperCase();
+        // Substring fallback covers Google-source human-readable codes
+        // (e.g. "BOEING 787-9" matches wanted="789").
+        return code === wanted || code.includes(wanted);
+      });
     }
 
     // Family filter — accepts slug ("a380") or display name ("Airbus A380").
@@ -127,7 +105,7 @@ exports.searchFlights = async (req, res) => {
     res.json({
       success: true,
       count: flights.length,
-      source: useRealAPI ? activeApi : 'mock',
+      source: sourceLabel,
       data: flights
     });
   } catch (error) {
