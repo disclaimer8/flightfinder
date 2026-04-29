@@ -1,11 +1,11 @@
 jest.mock('../services/googleFlightsService');
 jest.mock('../services/itaMatrixService');
-jest.mock('../services/travelpayoutsService');
+jest.mock('../services/travelpayoutsAdapter');
 jest.mock('../services/cacheService');
 
 const google = require('../services/googleFlightsService');
 const ita = require('../services/itaMatrixService');
-const tp = require('../services/travelpayoutsService');
+const tpAdapter = require('../services/travelpayoutsAdapter');
 const cache = require('../services/cacheService');
 const orch = require('../services/flightSearchOrchestrator');
 
@@ -43,6 +43,21 @@ describe('flightSearchOrchestrator.search', () => {
     expect(cache.set).toHaveBeenCalled();
   });
 
+  test('caches both fresh and stale on success', async () => {
+    google.search.mockResolvedValue(STUB_FLIGHT);
+    await orch.search(PARAMS);
+    expect(cache.set).toHaveBeenCalledWith(
+      expect.stringMatching(/^flights:/),
+      STUB_FLIGHT,
+      expect.any(Number)
+    );
+    expect(cache.set).toHaveBeenCalledWith(
+      expect.stringMatching(/^stale:flights:/),
+      STUB_FLIGHT,
+      expect.any(Number)
+    );
+  });
+
   test('falls through to ITA when google returns null', async () => {
     google.search.mockResolvedValue(null);
     ita.search.mockResolvedValue(STUB_FLIGHT);
@@ -50,7 +65,7 @@ describe('flightSearchOrchestrator.search', () => {
     expect(r.source).toBe('ita');
     expect(google.search).toHaveBeenCalled();
     expect(ita.search).toHaveBeenCalled();
-    expect(tp.getCheapest).not.toHaveBeenCalled();
+    expect(tpAdapter.search).not.toHaveBeenCalled();
   });
 
   test('falls through to ITA when google returns []', async () => {
@@ -63,18 +78,17 @@ describe('flightSearchOrchestrator.search', () => {
   test('falls through to travelpayouts when google and ita both fail', async () => {
     google.search.mockResolvedValue(null);
     ita.search.mockResolvedValue(null);
-    tp.isConfigured.mockReturnValue(true);
-    tp.getCheapest.mockResolvedValue(STUB_FLIGHT);
+    tpAdapter.search.mockResolvedValue(STUB_FLIGHT);
     const r = await orch.search(PARAMS);
     expect(r.source).toBe('travelpayouts');
+    expect(tpAdapter.search).toHaveBeenCalledWith(PARAMS);
   });
 
-  test('skips travelpayouts when isConfigured returns false', async () => {
+  test('returns source none when adapter signals not-configured (null)', async () => {
     google.search.mockResolvedValue(null);
     ita.search.mockResolvedValue(null);
-    tp.isConfigured.mockReturnValue(false);
+    tpAdapter.search.mockResolvedValue(null);
     const r = await orch.search(PARAMS);
-    expect(tp.getCheapest).not.toHaveBeenCalled();
     expect(r.flights).toEqual([]);
     expect(r.source).toBe('none');
   });
@@ -82,7 +96,7 @@ describe('flightSearchOrchestrator.search', () => {
   test('returns empty when all sources fail', async () => {
     google.search.mockResolvedValue(null);
     ita.search.mockResolvedValue(null);
-    tp.isConfigured.mockReturnValue(false);
+    tpAdapter.search.mockResolvedValue(null);
     const r = await orch.search(PARAMS);
     expect(r.flights).toEqual([]);
     expect(r.source).toBe('none');
@@ -92,7 +106,7 @@ describe('flightSearchOrchestrator.search', () => {
     cache.get.mockImplementation((k) => (k.startsWith('stale:') ? STUB_FLIGHT : undefined));
     google.search.mockResolvedValue(null);
     ita.search.mockResolvedValue(null);
-    tp.isConfigured.mockReturnValue(false);
+    tpAdapter.search.mockResolvedValue(null);
     const r = await orch.search(PARAMS);
     expect(r.source).toBe('stale-cache');
     expect(r.flights).toEqual(STUB_FLIGHT);

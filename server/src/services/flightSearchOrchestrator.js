@@ -1,6 +1,6 @@
 const google = require('./googleFlightsService');
 const ita = require('./itaMatrixService');
-const tp = require('./travelpayoutsService');
+const tpAdapter = require('./travelpayoutsAdapter');
 const cache = require('./cacheService');
 
 const TTL_FRESH = (cache.TTL && cache.TTL.flights) || 600;        // 10 min
@@ -36,16 +36,9 @@ exports.search = async (params) => {
   if (nonEmpty(fresh)) return { flights: fresh, source: 'cache' };
 
   const candidates = [
-    { name: 'google', run: () => google.search(params) },
-    { name: 'ita',    run: () => ita.search(params) },
-    {
-      name: 'travelpayouts',
-      run: async () => {
-        if (typeof tp.isConfigured === 'function' && !tp.isConfigured()) return null;
-        if (typeof tp.getCheapest !== 'function') return null;
-        return tp.getCheapest(params);
-      },
-    },
+    { name: 'google',        run: () => google.search(params) },
+    { name: 'ita',           run: () => ita.search(params) },
+    { name: 'travelpayouts', run: () => tpAdapter.search(params) },
   ];
 
   for (const c of candidates) {
