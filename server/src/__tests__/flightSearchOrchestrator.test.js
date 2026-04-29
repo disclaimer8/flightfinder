@@ -49,12 +49,12 @@ describe('flightSearchOrchestrator.search', () => {
     expect(cache.set).toHaveBeenCalledWith(
       expect.stringMatching(/^flights:/),
       STUB_FLIGHT,
-      expect.any(Number)
+      600
     );
     expect(cache.set).toHaveBeenCalledWith(
       expect.stringMatching(/^stale:flights:/),
       STUB_FLIGHT,
-      expect.any(Number)
+      86400
     );
   });
 
