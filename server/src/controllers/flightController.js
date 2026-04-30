@@ -27,10 +27,10 @@ exports.searchFlights = async (req, res) => {
   const familyName   = vq.familyName   || req.query.familyName;
   const passengers   = vq.passengers   || parseInt(req.query.passengers, 10) || 1;
   const directOnly   = vq.directOnly   === true;
-  const { useMockData, api } = req.query;
+  const { useMockData } = req.query;
 
-  // Allow per-request API override unless explicitly locked via LOCK_FLIGHT_API=true
-  const activeApi = (process.env.LOCK_FLIGHT_API !== 'true' && api) ? api : FLIGHT_API;
+  // Note: ?api= override removed — orchestrator owns the source chain.
+  // FLIGHT_API / LOCK_FLIGHT_API still consumed by the Explore handler below.
 
   try {
     // Single owner of the cache + fallback chain (google → ita → travelpayouts → stale-cache).
@@ -72,9 +72,19 @@ exports.searchFlights = async (req, res) => {
       const wanted = aircraftModel.toUpperCase();
       flights = flights.filter(f => {
         const code = String(f.aircraftCode || '').toUpperCase();
+        // ITA/Travelpayouts emit 'N/A' as a placeholder when aircraft is unknown;
+        // never let a placeholder satisfy a model filter (a permissive substring
+        // would otherwise match e.g. wanted="N" or "NA" and leak placeholder rows).
+        if (!code || code === 'N/A') return false;
+        if (code === wanted) return true;
         // Substring fallback covers Google-source human-readable codes
-        // (e.g. "BOEING 787-9" matches wanted="789").
-        return code === wanted || code.includes(wanted);
+        // (e.g. "BOEING 787-9" matches wanted="789"). Restricted to ≥3-char
+        // queries against codes that look human-readable (contain space or hyphen)
+        // so short queries never substring-match short IATA codes like "789".
+        if (wanted.length >= 3 && /[\s-]/.test(code)) {
+          return code.includes(wanted);
+        }
+        return false;
       });
     }
 
@@ -100,6 +110,10 @@ exports.searchFlights = async (req, res) => {
     // results may still include connecting itineraries. Enforce the invariant.
     if (directOnly) {
       flights = flights.filter(f => (f.stops ?? 0) === 0);
+    }
+
+    if (sourceLabel === 'none') {
+      console.warn(`[flights] no results across all sources for ${departure}->${arrival} ${date}`);
     }
 
     res.json({

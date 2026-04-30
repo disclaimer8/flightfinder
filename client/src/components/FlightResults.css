@@ -62,6 +62,42 @@
   color: var(--amber-text);
 }
 
+.source-badge.source-google {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+
+.source-badge.source-ita {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  color: #5b21b6;
+}
+
+.source-badge.source-travelpayouts {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.source-badge.source-cache {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.source-badge.source-stale {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #9a3412;
+}
+
+.source-badge.source-none {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
 /* ── Sort bar ── */
 .sort-bar {
   display: flex;

@@ -38,7 +38,7 @@ describe('useFlightSearch', () => {
   it('sets flights and hasSearched on successful search', async () => {
     const mockFlights = [{ id: '1', price: '200', airline: 'AA' }];
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-      okResponse({ data: mockFlights, source: 'amadeus' })
+      okResponse({ data: mockFlights, source: 'google' })
     ));
 
     const { result } = renderHook(() => useFlightSearch(null));
@@ -50,7 +50,7 @@ describe('useFlightSearch', () => {
     expect(result.current.flights).toEqual(mockFlights);
     expect(result.current.hasSearched).toBe(true);
     expect(result.current.loading).toBe(false);
-    expect(result.current.apiSource).toBe('amadeus');
+    expect(result.current.apiSource).toBe('google');
   });
 
   it('sets error on failed search', async () => {

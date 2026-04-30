@@ -70,6 +70,33 @@ const SORT_OPTIONS = [
   { id: 'arrival',    label: 'Latest dep.' },
 ];
 
+// Source domain after the orchestrator refactor:
+// google → ita → travelpayouts → cache → stale-cache → none, plus 'mock'
+// for explicit ?useMockData=true. Legacy amadeus/duffel kept for any cached
+// frontend bundle still referencing them.
+const SOURCE_LABELS = {
+  google: '✈ Google Flights',
+  ita: '🛫 ITA Matrix',
+  travelpayouts: '💸 Travelpayouts',
+  cache: '🗂 Cached',
+  'stale-cache': '⏱ Stale (24h)',
+  none: '❌ No results',
+  mock: '📋 Demo',
+  amadeus: 'Amadeus',
+  duffel: 'Duffel',
+};
+const SOURCE_CLASSES = {
+  google: 'source-google',
+  ita: 'source-ita',
+  travelpayouts: 'source-travelpayouts',
+  cache: 'source-cache',
+  'stale-cache': 'source-stale',
+  none: 'source-none',
+  mock: 'source-mock',
+  amadeus: 'source-amadeus',
+  duffel: 'source-duffel',
+};
+
 const EMPTY_FILTERS = {
   stops: [],
   airlines: [],
@@ -166,8 +193,8 @@ function FlightResults({ flights, source, hasSearched, initialAirlines = [] }) {
               )}
             </span>
             {IS_DEV && source && (
-              <span className={`source-badge source-${source}`}>
-                {source === 'amadeus' ? 'Amadeus' : source === 'duffel' ? 'Duffel' : '📋 Demo'}
+              <span className={`source-badge ${SOURCE_CLASSES[source] || ''}`}>
+                {SOURCE_LABELS[source] || source}
               </span>
             )}
           </div>
