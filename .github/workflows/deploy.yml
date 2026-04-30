@@ -6,6 +6,11 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
 env:
   OPENSKY_USERNAME: ${{ secrets.OPENSKY_USERNAME }}
   OPENSKY_PASSWORD: ${{ secrets.OPENSKY_PASSWORD }}
@@ -54,6 +59,7 @@ jobs:
           key: ${{ secrets.claude }}
           envs: OPENSKY_USERNAME,OPENSKY_PASSWORD,OPENSKY_CLIENT_ID,OPENSKY_CLIENT_SECRET,AIRLABS_API_KEY,TRAVELPAYOUTS_TOKEN,TRAVELPAYOUTS_MARKER,TRAVELPAYOUTS_TRS,RAPIDAPI_KEY,SENTRY_DSN,VITE_SENTRY_DSN,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,STRIPE_PRICE_MONTHLY,STRIPE_PRICE_ANNUAL,STRIPE_PRICE_LIFETIME,STRIPE_LIVE,PUBLIC_WEB_ORIGIN,ADMIN_TOKEN,INGEST_ENABLED,INGEST_TOP_ROUTES,FLEET_BOOTSTRAP,OPENWEATHER_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,TRIPS_ENABLED,ENRICHED_CARD,ALERT_THRESHOLD_MIN,OURAIRPORTS_REFRESH,SAFETY_INGEST_ENABLED,SAFETY_INGEST_DAYS,FAA_REGISTRY_BOOTSTRAP,FAA_REGISTRY_REFRESH
           script: |
+            set -euo pipefail
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             export PATH="$PATH:/usr/local/bin"
@@ -131,21 +137,33 @@ jobs:
             echo "FAA_REGISTRY_REFRESH=${FAA_REGISTRY_REFRESH:-0}" >> server/.env
             cd server && npm install --omit=dev
             # Install Go 1.23+ if not already present (needed by Google Flights sidecar)
+            GO_VERSION=1.23.4
+            GO_TARBALL="go${GO_VERSION}.linux-amd64.tar.gz"
+            # Pin SHA256 from https://go.dev/dl/?mode=json — must match.
+            # Update in lockstep with GO_VERSION.
+            GO_SHA256=6924efde5de86fe277676e929dc9917d466efa02fb934197bc2eba35d5680971
             if ! command -v go >/dev/null 2>&1 || ! go version | grep -qE 'go1\.(2[3-9]|[3-9][0-9])'; then
-              echo "[deploy] installing Go 1.23..."
-              GO_VERSION=1.23.4
-              GO_TARBALL="go${GO_VERSION}.linux-amd64.tar.gz"
+              echo "[deploy] installing Go ${GO_VERSION}..."
               curl -fsSL "https://go.dev/dl/${GO_TARBALL}" -o "/tmp/${GO_TARBALL}"
+              echo "${GO_SHA256}  /tmp/${GO_TARBALL}" | sha256sum -c -
               rm -rf /usr/local/go
               tar -C /usr/local -xzf "/tmp/${GO_TARBALL}"
               rm -f "/tmp/${GO_TARBALL}"
               ln -sf /usr/local/go/bin/go /usr/local/bin/go
             fi
-            # Build google-flights sidecar binary (idempotent — go build is fast on no-op)
+            # Build google-flights sidecar binary (idempotent; binary rotation for rollback)
             cd /root/flightfinder/bin/google-flights-sidecar
             mkdir -p /root/flightfinder/server/bin
-            go build -o /root/flightfinder/server/bin/google-flights-server .
-            test -x /root/flightfinder/server/bin/google-flights-server || (echo "[deploy] sidecar build failed" && exit 1)
+            # Keep last successful binary as .previous for emergency rollback
+            if [ -x /root/flightfinder/server/bin/google-flights-server ]; then
+              cp /root/flightfinder/server/bin/google-flights-server \
+                 /root/flightfinder/server/bin/google-flights-server.previous
+            fi
+            # Build to a staging path; only swap on success
+            go build -o /root/flightfinder/server/bin/google-flights-server.new .
+            mv -f /root/flightfinder/server/bin/google-flights-server.new \
+                  /root/flightfinder/server/bin/google-flights-server
+            test -x /root/flightfinder/server/bin/google-flights-server
             cd /root/flightfinder/server
             # pngquant is needed by client/scripts/optimize-images.mjs (postbuild
             # hook). Install idempotently; apt-get is fast when already present.
@@ -166,7 +184,26 @@ jobs:
                 sed -i '/^\s*brotli/d' /etc/nginx/sites-enabled/flightfinder
               fi
             fi
-            nginx -t && systemctl reload nginx
             cd /root/flightfinder
-            pm2 reload ecosystem.config.js --update-env
+            # First-deploy guard: if a manually-started flightfinder process exists with
+            # a different cwd than ecosystem.config.js declares, PM2 reload won't absorb
+            # it cleanly — drop it so startOrReload can claim the name. This is a one-time
+            # cost on first deploy; subsequent deploys see PM2's recorded ecosystem state.
+            pm2 describe flightfinder >/dev/null 2>&1 && \
+              ! pm2 describe flightfinder | grep -q "ecosystem.config.js" && \
+              pm2 delete flightfinder || true
+            pm2 startOrReload ecosystem.config.js --update-env
+            # Wait for both apps to come up
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              curl -fsS http://127.0.0.1:5001/api/health >/dev/null 2>&1 && \
+              curl -fsS http://127.0.0.1:5002/health >/dev/null 2>&1 && break
+              sleep 1
+            done
+            # Final assert
+            curl -fsS http://127.0.0.1:5001/api/health >/dev/null \
+              || (echo "[deploy] flightfinder health check failed"; pm2 logs flightfinder --lines 50 --nostream; exit 1)
+            curl -fsS http://127.0.0.1:5002/health >/dev/null \
+              || (echo "[deploy] sidecar health check failed"; pm2 logs google-flights-sidecar --lines 50 --nostream; exit 1)
             pm2 save
+            # nginx reload last — only flip routes after both apps are healthy
+            nginx -t && systemctl reload nginx
