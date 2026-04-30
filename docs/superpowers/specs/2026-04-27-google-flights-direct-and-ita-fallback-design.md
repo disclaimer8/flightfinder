@@ -208,3 +208,18 @@ Coverage target: orchestrator at 100% (it's the SLO-critical bit).
 - Removing dormant `amadeusService.js`.
 - Frontend changes.
 - Performance work beyond what the cache layer provides.
+
+## Deferred — ITA Matrix live HTTP wire-up
+
+The ITA Matrix parser ships fully tested. The live `search()` returns `null`,
+so the orchestrator falls through to travelpayouts whenever Google is down.
+Effectively a one-source live system today.
+
+Wire-up requires:
+- multipart/mixed `gapi-batch` body construction
+- `bgProgramResponse` WAA token strategy (likely headless-browser warmup)
+- additional fixture coverage (multi-slice round-trip, codeshare, direct, intra-region)
+
+Trigger to revisit: when production telemetry shows Google failure rate
+above ~5% on a sustained basis, OR when a parsable failure mode (Google
+HTTP 429 / 403) becomes routine.

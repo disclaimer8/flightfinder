@@ -36,6 +36,8 @@ jobs:
 
           # Validate the source label is one we expect (catches orchestrator regressions)
           SOURCE=$(echo "$RESP" | jq -r '.source')
+          # `ita` is currently a no-op (parser ready, live HTTP deferred).
+          # It remains in the whitelist for forward compatibility.
           case "$SOURCE" in
             cache|google|ita|travelpayouts|stale-cache|none|mock) ;;
             *) echo "::error::unknown source label: $SOURCE"; exit 1 ;;

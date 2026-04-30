@@ -12,7 +12,8 @@ const ITA_REQUEST_TEMPLATE_PATH = path.join(
 const ITA_TIMEOUT_MS = parseInt(process.env.ITA_TIMEOUT_MS || '12000', 10);
 
 let _template = null;
-function loadTemplate() {
+// eslint-disable-next-line no-unused-vars -- reserved for live-search wire-up
+function _loadTemplate() {
   if (_template !== null) return _template;
   try {
     _template = JSON.parse(fs.readFileSync(ITA_REQUEST_TEMPLATE_PATH, 'utf8'));
@@ -182,27 +183,27 @@ function extractPrice(solution) {
 }
 
 /**
- * Live search via the captured request envelope. The body is a multipart/mixed
- * envelope wrapping a JSON RPC. We mutate JUST the search params inside the
- * inner JSON, re-serialize, and POST.
+ * Live ITA Matrix search — DEFERRED.
+ *
+ * Status: parser is fully implemented and tested against captured fixtures.
+ * Live HTTP wire-up is deferred because:
+ *   1. The endpoint is content-alkalimatrix-pa.googleapis.com/batch (Google
+ *      gapi-batch multipart envelope), not the URL-encoded XHR the original
+ *      design assumed. Body construction is non-trivial.
+ *   2. The captured request includes a `bgProgramResponse` WAA anti-bot
+ *      token of unknown server-side requirement (TTL, replay constraints).
+ *      Live wire-up may require a headless-browser warmup to mint a fresh
+ *      token per session.
+ *
+ * Until live wire-up lands, this returns null and the orchestrator advances
+ * to travelpayouts. ITA contributes zero in production traffic today.
+ *
+ * Tracking: see docs/superpowers/specs/2026-04-27-google-flights-direct-and-ita-fallback-design.md
+ *           "Deferred work" section. Open a follow-up plan when Google
+ *           failure rate observed in production justifies the wire-up cost.
  *
  * Returns NormalizedFlight[] | null. NEVER throws.
- *
- * NOT YET WIRED: the captured body carries a WAA `bgProgramResponse` token of
- * unknown server-side requirement; substituting params into a multipart body
- * without breaking boundary delimiters (or rebuilding the multipart envelope
- * from a parsed shape) is non-trivial. Returning null here means the
- * orchestrator advances past ITA to travelpayouts, which is acceptable for
- * the initial deployment: ITA is the 2nd-tier fallback and most production
- * traffic should be served by the primary Google sidecar. Live-ITA wire-up
- * is a follow-up task once we observe how often the primary fails.
  */
 exports.search = async (_params) => {
-  const t = loadTemplate();
-  if (!t) {
-    console.warn('[itaMatrixService] request template missing — cannot live-search');
-    return null;
-  }
-  console.warn('[itaMatrixService] live search not yet wired (returns null)');
   return null;
 };
