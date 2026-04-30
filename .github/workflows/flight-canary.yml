@@ -1,0 +1,67 @@
+name: flight-canary
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6h
+  workflow_dispatch: {}
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Hit production search and validate shape
+        env:
+          PROD_URL: https://himaxym.com
+        run: |
+          set -euo pipefail
+
+          # Pick a query 30 days out for a route with reliable supply
+          DEP=$(date -u -d '+30 days' +%Y-%m-%d)
+          URL="$PROD_URL/api/flights?departure=LIS&arrival=JFK&date=$DEP&passengers=1"
+          echo "Canary URL: $URL"
+
+          # Fetch with timeout and abort if non-2xx
+          RESP=$(curl -fsS --max-time 25 "$URL")
+          if [ -z "$RESP" ]; then
+            echo "::error::empty response body"
+            exit 1
+          fi
+
+          # Validate top-level shape
+          echo "$RESP" | jq -e '.success == true' >/dev/null || (echo "::error::success != true" && exit 1)
+          echo "$RESP" | jq -e '.data | type == "array"' >/dev/null || (echo "::error::data not array" && exit 1)
+          echo "$RESP" | jq -e '.data | length > 0' >/dev/null || (echo "::error::data empty (no results)" && exit 1)
+          echo "$RESP" | jq -e '.source | type == "string"' >/dev/null || (echo "::error::source missing" && exit 1)
+
+          # Validate the source label is one we expect (catches orchestrator regressions)
+          SOURCE=$(echo "$RESP" | jq -r '.source')
+          case "$SOURCE" in
+            cache|google|ita|travelpayouts|stale-cache|none|mock) ;;
+            *) echo "::error::unknown source label: $SOURCE"; exit 1 ;;
+          esac
+          echo "source=$SOURCE"
+
+          # Validate per-flight fields
+          echo "$RESP" | jq -e '.data[0].departure.code | test("^[A-Z]{3}$")' >/dev/null \
+            || (echo "::error::departure.code not a 3-letter IATA" && exit 1)
+          echo "$RESP" | jq -e '.data[0].arrival.code | test("^[A-Z]{3}$")' >/dev/null \
+            || (echo "::error::arrival.code not a 3-letter IATA" && exit 1)
+          echo "$RESP" | jq -e '.data[0].duration | type == "number"' >/dev/null \
+            || (echo "::error::duration not a number" && exit 1)
+
+          # Duration sanity check — catches parser regressions silently producing 0
+          # or off-by-1000 (e.g. seconds vs minutes vs nanoseconds bugs).
+          # LIS->JFK should be 8-15h with stops; allow 30min..30h.
+          DUR=$(echo "$RESP" | jq -r '.data[0].duration')
+          if [ "$DUR" -lt 30 ] || [ "$DUR" -gt 1800 ]; then
+            echo "::error::duration $DUR min outside sanity bounds [30, 1800]"
+            exit 1
+          fi
+          echo "duration=$DUR"
+
+          # Segment array present and non-empty
+          echo "$RESP" | jq -e '.data[0].segments | type == "array" and length > 0' >/dev/null \
+            || (echo "::error::segments missing or empty" && exit 1)
+
+          echo "::notice::canary OK source=$SOURCE flights=$(echo "$RESP" | jq -r '.data | length') duration=${DUR}min"
