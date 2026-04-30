@@ -4,11 +4,11 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
-import AircraftLandingPage from './components/AircraftLandingPage';
-import RouteLandingPage from './components/RouteLandingPage';
 import { AuthProvider } from './context/AuthContext';
 import './index.css';
 
+const AircraftLandingPage = lazy(() => import('./components/AircraftLandingPage'));
+const RouteLandingPage    = lazy(() => import('./components/RouteLandingPage'));
 const MyTrips = lazy(() => import('./pages/MyTrips'));
 const Pricing = lazy(() => import('./pages/Pricing'));
 const SubscribeReturn = lazy(() => import('./pages/SubscribeReturn'));
@@ -25,8 +25,8 @@ root.render(
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/aircraft/:slug" element={<AircraftLandingPage />} />
-            <Route path="/routes/:pair" element={<RouteLandingPage />} />
+            <Route path="/aircraft/:slug" element={<Suspense fallback={null}><AircraftLandingPage /></Suspense>} />
+            <Route path="/routes/:pair" element={<Suspense fallback={null}><RouteLandingPage /></Suspense>} />
             <Route path="/trips" element={<Suspense fallback={null}><MyTrips /></Suspense>} />
             <Route path="/pricing" element={<Suspense fallback={null}><Pricing /></Suspense>} />
             <Route path="/subscribe/return" element={<Suspense fallback={null}><SubscribeReturn /></Suspense>} />

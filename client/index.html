@@ -63,15 +63,17 @@
     <link rel="dns-prefetch" href="https://d.basemaps.cartocdn.com" />
     <link rel="dns-prefetch" href="https://sentry.avs.io" />
 
-    <!-- Preload the OG image so social-preview crawlers (Slack, Telegram,
-         LinkedIn) get it from cache on the redirected fetch. No measurable
-         effect on real users — this is crawler-latency insurance. -->
-    <link rel="preload" as="image" href="/og-image.png" fetchpriority="low" />
+    <!-- OG image is referenced via og:image meta tag above; crawlers fetch
+         it directly when they parse the page. No need to preload it for
+         real users — that wasted ~25KB and ~700ms on mobile cold-start
+         (it's behind a CSS background, not on the LCP path). -->
 
     <!-- Google Analytics (G-ZW8Y3YLN7S). Init is in /gtag-init.js because
-         our CSP forbids inline scripts — see server/src/index.js helmet config. -->
+         our CSP forbids inline scripts — see server/src/index.js helmet config.
+         Both scripts are deferred so they don't block parsing of the
+         critical above-the-fold markup. -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW8Y3YLN7S"></script>
-    <script src="/gtag-init.js"></script>
+    <script defer src="/gtag-init.js"></script>
 
 <!-- Structured data: WebSite + SearchAction -->
     <script type="application/ld+json">
