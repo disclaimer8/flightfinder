@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'flightfinder',
       script: 'src/index.js',
-      cwd: './server',
+      cwd: '/root/flightfinder/server',
       instances: 1,
       autorestart: true,
       max_memory_restart: '500M',
