@@ -44,7 +44,8 @@ describe('travelpayoutsAdapter.search', () => {
     expect(f.source).toBe('travelpayouts');
     expect(f.departure.code).toBe('LIS');
     expect(f.arrival.code).toBe('JFK');
-    expect(f.price).toEqual({ amount: 350, currency: 'EUR' });
+    expect(f.price).toBe(350);
+    expect(f.currency).toBe('EUR');
     expect(f.airline).toBe('TP');
     expect(f.airlineIata).toBe('TP');
     expect(f.flightNumber).toBe('TP123');

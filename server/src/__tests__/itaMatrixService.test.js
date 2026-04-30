@@ -27,12 +27,12 @@ describe('itaMatrixService.parse', () => {
     const flights = svc.parse(innerJson);
     const f = flights[0];
     expect(f.price).not.toBeNull();
-    expect(typeof f.price.amount).toBe('number');
-    expect(f.price.currency).toMatch(/^[A-Z]{3}$/);
+    expect(typeof f.price).toBe('number');
+    expect(f.currency).toMatch(/^[A-Z]{3}$/);
     // displayTotal in fixture is e.g. "EUR589.94" — verify we parsed correctly
     const firstSolution = innerJson.solutionList.solutions[0];
     const expectedAmount = parseFloat(firstSolution.displayTotal.replace(/[A-Z]/g, ''));
-    expect(f.price.amount).toBeCloseTo(expectedAmount, 2);
+    expect(f.price).toBeCloseTo(expectedAmount, 2);
   });
 
   test('returns empty array on missing/empty input', () => {

@@ -64,9 +64,8 @@ function normalize(offer, { departure, arrival, date }) {
     flightNumber: offer.flightNumber
       ? `${airline || ''}${offer.flightNumber}`
       : '',
-    price: Number.isFinite(priceAmount)
-      ? { amount: priceAmount, currency: offer.currency || 'USD' }
-      : null,
+    price: Number.isFinite(priceAmount) ? priceAmount : null,
+    currency: offer.currency || 'USD',
     segments: [],
     source: 'travelpayouts',
   };

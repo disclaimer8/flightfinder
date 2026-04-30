@@ -28,7 +28,8 @@ function buildFlight(offer) {
     airline: first.AirlineName || firstIata,
     airlineIata: firstIata,
     flightNumber: normalizeFlightNumber(first.FlightNumber),
-    price: offer.Price != null ? { amount: Number(offer.Price), currency: 'EUR' } : null,
+    price: offer.Price != null ? Number(offer.Price) : null,
+    currency: 'EUR',
     segments: legs.map(l => {
       const iata = extractIata(l.FlightNumber);
       return {

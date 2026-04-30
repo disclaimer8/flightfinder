@@ -71,6 +71,8 @@ function buildFlight(solution) {
     slice.destination && slice.destination.code,
   ];
 
+  const priceObj = extractPrice(solution);
+
   return {
     departure: {
       code: slice.origin && slice.origin.code,
@@ -97,7 +99,8 @@ function buildFlight(solution) {
       'N/A',
     airlineIata: firstIata || (firstCarrier && firstCarrier.code) || null,
     flightNumber: firstFlight,
-    price: extractPrice(solution),
+    price: priceObj ? priceObj.amount : null,
+    currency: priceObj ? priceObj.currency : null,
     segments: flightNumbers.map((fn, idx) => {
       const { code: iata, info } = lookupCarrier(carrierIndex, fn);
       const carrier = info || dominantCarrier;
