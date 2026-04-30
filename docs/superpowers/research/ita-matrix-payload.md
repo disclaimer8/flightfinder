@@ -32,7 +32,7 @@ Fixtures:
 | URL            | `https://content-alkalimatrix-pa.googleapis.com/batch?%24ct=multipart%2Fmixed%3B%20boundary%3D<boundary>`                              |
 | HTTP method    | `POST`                                                                                                                               |
 | Outer `Content-Type` | `text/plain; charset=UTF-8` (the `%24ct=...` query param is what tells the server it is multipart; the literal header is text/plain) |
-| Inner endpoint | `POST /v1/search?key=AIzaSyBH1mte6BdKzvf0c2mYprkyvfHCRWmfX7g&alt=json`                                                               |
+| Inner endpoint | `POST /v1/search?key=AIzaSy__REDACTED__&alt=json`                                                               |
 | Inner `Content-Type` | `application/json`                                                                                                              |
 | Auth          | The `key=` query param IS the auth (Google public API key, hardcoded in matrix-v5 JS bundle). No cookie required, no `Authorization` header sent. |
 
@@ -186,7 +186,7 @@ Every line break is `\r\n` (CRLF). No leading newline before the opening `--batc
 
   "summarizerSet":       "wholeTrip",     // "wholeTrip" | "slice" — controls aggregate scope
   "name":                "specificDatesSlice", // request-name tag, used for telemetry on the server side
-  "bgProgramResponse":   "<base64-ish blob, see anti-bot section above>"
+  "bgProgramResponse":   "<REDACTED — see private capture for runtime testing>"
 }
 ```
 

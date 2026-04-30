@@ -17,3 +17,7 @@ server/data/*.db-wal
 /bin/google-flights-sidecar/google-flights-server
 # Compiled Go sidecar (CI build output)
 /server/bin/google-flights-server
+
+# Playwright MCP captures (may contain session tokens, API keys)
+/.playwright-mcp/
+*.har
