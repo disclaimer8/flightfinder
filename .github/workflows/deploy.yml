@@ -111,7 +111,7 @@ jobs:
             sed -i '/^TRIPS_ENABLED/d' server/.env
             sed -i '/^ENRICHED_CARD/d' server/.env
             sed -i '/^ALERT_THRESHOLD_MIN/d' server/.env
-            echo "VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}" >> server/.env
+            echo "VAPID_PUBLIC_KEY=${нVAPID_PUBLIC_KEY}" >> server/.env
             echo "VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}" >> server/.env
             echo "VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@himaxym.com}" >> server/.env
             echo "TRIPS_ENABLED=${TRIPS_ENABLED:-1}" >> server/.env
@@ -130,6 +130,23 @@ jobs:
             echo "FAA_REGISTRY_BOOTSTRAP=${FAA_REGISTRY_BOOTSTRAP:-0}" >> server/.env
             echo "FAA_REGISTRY_REFRESH=${FAA_REGISTRY_REFRESH:-0}" >> server/.env
             cd server && npm install --omit=dev
+            # Install Go 1.23+ if not already present (needed by Google Flights sidecar)
+            if ! command -v go >/dev/null 2>&1 || ! go version | grep -qE 'go1\.(2[3-9]|[3-9][0-9])'; then
+              echo "[deploy] installing Go 1.23..."
+              GO_VERSION=1.23.4
+              GO_TARBALL="go${GO_VERSION}.linux-amd64.tar.gz"
+              curl -fsSL "https://go.dev/dl/${GO_TARBALL}" -o "/tmp/${GO_TARBALL}"
+              rm -rf /usr/local/go
+              tar -C /usr/local -xzf "/tmp/${GO_TARBALL}"
+              rm -f "/tmp/${GO_TARBALL}"
+              ln -sf /usr/local/go/bin/go /usr/local/bin/go
+            fi
+            # Build google-flights sidecar binary (idempotent — go build is fast on no-op)
+            cd /root/flightfinder/bin/google-flights-sidecar
+            mkdir -p /root/flightfinder/server/bin
+            go build -o /root/flightfinder/server/bin/google-flights-server .
+            test -x /root/flightfinder/server/bin/google-flights-server || (echo "[deploy] sidecar build failed" && exit 1)
+            cd /root/flightfinder/server
             # pngquant is needed by client/scripts/optimize-images.mjs (postbuild
             # hook). Install idempotently; apt-get is fast when already present.
             command -v pngquant >/dev/null 2>&1 || apt-get install -y pngquant
@@ -150,5 +167,6 @@ jobs:
               fi
             fi
             nginx -t && systemctl reload nginx
-            pm2 restart flightfinder --update-env
+            cd /root/flightfinder
+            pm2 reload ecosystem.config.js --update-env
             pm2 save
