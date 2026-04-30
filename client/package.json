@@ -37,6 +37,7 @@
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.5",
     "vite": "^8.0.9",
+    "vite-plugin-compression": "^0.5.1",
     "vitest": "^4.1.4"
   }
 }
