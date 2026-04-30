@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /**
- * Recursively compresses PNGs under client/public/ + client/dist/ via pngquant.
- * Runs in `postbuild` so both the source PNG (shipped via public/) and any
- * build-copied copy end up compressed. Skips files that pngquant says would
- * grow (--skip-if-larger).
+ * Compresses PNGs under client/dist/ via pngquant.
+ * Runs in `postbuild` against the build output only. We deliberately do NOT
+ * walk client/public/ — Vite copies public/ to dist/ verbatim, and rewriting
+ * source PNGs in place created a dirty working tree on the production server
+ * that blocked subsequent `git pull` (because public/ files are tracked in
+ * git). Optimising dist/ alone gives the same shipped-byte savings without
+ * mutating tracked source files.
  *
  * Requires pngquant on PATH. Install with `brew install pngquant` locally, or
  * `apt-get install -y pngquant` in CI/on the server. On deploy, the build step
@@ -20,7 +23,6 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const roots = [
-  join(__dirname, '..', 'public'),
   join(__dirname, '..', 'dist'),
 ];
 
