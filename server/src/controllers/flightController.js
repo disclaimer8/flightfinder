@@ -62,9 +62,17 @@ exports.searchFlights = async (req, res) => {
     // produce IATA codes here, so the filter remains useful for those. Future
     // work: normalize aircraft identifiers in the upstream parsers.
     if (aircraftType) {
+      const wantedType = aircraftType.toLowerCase();
       flights = flights.filter(f => {
+        // 1. IATA-keyed lookup (Amadeus/Duffel/TP path — code is "789", "77W", etc.)
         const ac = f.aircraft || aircraftData[f.aircraftCode];
-        return ac && ac.type === aircraftType.toLowerCase();
+        if (ac && ac.type === wantedType) return true;
+        // 2. Human-readable fallback for Google-source ("Boeing 787-9", "Airbus A380").
+        // classifyAircraftByCode does substring matching (e.g. "BOEING 787".includes('787')).
+        const code = String(f.aircraftCode || '');
+        if (!code || code === 'N/A') return false;
+        const classified = classifyAircraftByCode(code);
+        return classified && classified.type === wantedType;
       });
     }
 
