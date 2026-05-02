@@ -1,0 +1,19 @@
+{
+  "hint": "The Airbus A330 is a twin-engine wide-body used on medium-to-long-haul routes worldwide. The A330neo is the current re-engined variant.",
+  "overview": "The A330 family covers the older A330ceo (A330-200 and A330-300) and the current A330neo (A330-800 and A330-900) re-engined with Rolls-Royce Trent 7000 engines. Typical capacity ranges from 250 to 300 passengers in two or three classes, with range around 7,200 nautical miles on the A330-900 and approximately 8,100 on the A330-800. The A330 is a workhorse medium-to-long-haul twin that fits below the A350 and 787 in many fleets. The A330 MRTT tanker variant is widely used by military operators globally.",
+  "operators": "Delta Air Lines uses the A330-300 and A330-900 on transatlantic routes. Air France, KLM, Lufthansa, Turkish Airlines, and TAP operate A330s on medium-haul long routes. Qatar Airways and Saudia use the type across their networks. In Asia-Pacific, Cathay Pacific, Korean Air, Philippine Airlines, Garuda, and China Airlines operate significant A330 fleets. Condor and other leisure carriers have adopted the A330-900 as a 767 and older A330 replacement for European-to-North-America leisure flying.",
+  "faq": [
+    {
+      "q": "What's the difference between the A330ceo and A330neo?",
+      "a": "The neo uses Rolls-Royce Trent 7000 engines, new Sharklets, and an updated cabin, giving roughly 14% better fuel burn per seat. Range on the A330-900 extends to around 7,200 nautical miles compared to about 6,350 on the A330-300ceo. Cabin standard is newer with larger overhead bins and the Airspace interior used on the A350."
+    },
+    {
+      "q": "How many passengers does the A330 carry?",
+      "a": "The A330-200 and A330-800 typically seat 240 to 260 in three classes. The A330-300 and A330-900 carry roughly 280 to 310 in three classes, or up to around 440 in dense two-class leisure configurations. Most legacy operators run three-class layouts with flat-bed business, premium economy, and a 2-4-2 economy cabin."
+    },
+    {
+      "q": "What's the A330 used for today?",
+      "a": "Medium and long-haul twin-aisle routes that do not need a 787 or A350 capacity level. Common roles include transatlantic flying, intra-Asia long legs, Middle East to Europe, and Pacific service. It also appears frequently in leisure and charter markets where operating cost per seat matters more than absolute fuel burn, and the A330-900 is the dominant variant on new orders."
+    }
+  ]
+}

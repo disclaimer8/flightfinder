@@ -1,0 +1,19 @@
+{
+  "hint": "The Airbus A320 is the universal narrow-body standard — operated by almost every major airline worldwide, from low-cost to legacy.",
+  "overview": "The A320 is Airbus's core narrow-body, seating 140 to 180 passengers across two and single-class layouts with a range of roughly 3,500 nautical miles. The A320neo family, re-engined with CFM LEAP or Pratt and Whitney geared turbofans, delivers about 15% better fuel burn per seat than the ceo. It is the most-produced commercial airliner family in the world alongside the 737, and together they account for the overwhelming majority of narrow-body departures globally. The common A320-family type rating lets airlines mix A319, A320, and A321 aircraft on the same pilot roster.",
+  "operators": "Lufthansa Group, Air France-KLM, IAG, easyJet, Wizz Air, Ryanair (as its A320 subsidiary historically), Indigo, China Southern, China Eastern, American Airlines, United, Delta, JetBlue, Spirit, Frontier, Turkish Airlines, Emirates via flydubai and many Middle East and Asian carriers all operate significant A320 family fleets. It is genuinely easier to list airlines that do not fly the A320 than those that do. Indigo in India is one of the largest single-airline A320-family operators in the world.",
+  "faq": [
+    {
+      "q": "How many passengers does the A320 carry?",
+      "a": "About 150 to 180 in typical two-class or single-class configurations. Low-cost carriers often fit 180 seats in a high-density layout. Legacy carriers with business or premium economy cabins usually carry 140 to 162. The A320neo has the same passenger capacity as the ceo, the difference is in engines and fuel burn."
+    },
+    {
+      "q": "What's the A320neo?",
+      "a": "The neo (new engine option) is the current-generation A320 re-engined with either CFM LEAP or Pratt and Whitney PW1100G geared turbofans. It burns around 15% less fuel per seat than the older ceo and includes sharklet wingtips. Range is slightly extended to about 3,500 nautical miles, and passengers experience a quieter cabin and newer interior standard."
+    },
+    {
+      "q": "Is the A320 still being produced?",
+      "a": "Yes, in large volumes. The A320neo family is one of the highest-rate production aircraft lines in the world, with a very long order backlog stretching well into the 2030s. Production ramp-up is a primary focus for Airbus, and supply chain constraints in recent years have been the main bottleneck on delivery rate rather than demand."
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "hint": "The Boeing 767 is a mid-size wide-body still common on transatlantic and freight routes, slowly being replaced by the 787.",
+  "overview": "The 767 is a twin-engine, twin-aisle wide-body introduced in 1982 that pioneered the ETOPS framework now used by every modern twin. Passenger variants in service today are mainly the 767-300ER and smaller numbers of 767-400ER, typically carrying 210 to 270 passengers in two or three classes with a range up to around 6,000 nautical miles. On the freight side, the 767-300F remains in full production for FedEx and UPS. The type is progressively being retired from passenger fleets as 787s and A330neos take over its transatlantic and trans-Pacific sectors.",
+  "operators": "Delta Air Lines and United Airlines operate the largest 767-300ER and 767-400ER passenger fleets on transatlantic routes to Europe and select Latin America services. FedEx and UPS operate very large 767 freighter fleets and continue to take deliveries. LATAM still uses the 767 on some long South American routes. Several legacy carriers worldwide retain a few frames for mid-size wide-body missions, though most European and Asian operators have transitioned to the 787 or A330neo.",
+  "faq": [
+    {
+      "q": "Is the 767 still flying passengers in 2026?",
+      "a": "Yes, primarily with Delta and United on transatlantic and Latin America routes. Several other legacy carriers continue to operate a small number. Most airlines are transitioning to the 787-9 or A330-900neo, so passenger 767 service is shrinking year over year, while freight variants remain in full production."
+    },
+    {
+      "q": "What's the typical cabin layout on a 767?",
+      "a": "On Delta and United the 767-300ER and 767-400ER carry 200 to 240 passengers across Delta One or Polaris business class, premium economy, and economy, in a 2-3-2 economy cabin. That 2-3-2 layout is a passenger favorite because two thirds of seats are aisle or window, unlike most newer wide-bodies."
+    },
+    {
+      "q": "What's the range of a 767-300ER?",
+      "a": "Around 5,900 to 6,100 nautical miles with a full passenger load, enough to cover any North Atlantic route and most US to South America long-haul sectors. Extended-range versions have been used historically on routes up to about 12 hours block time, though modern twins like the 787 now fly further with better fuel economics."
+    }
+  ]
+}

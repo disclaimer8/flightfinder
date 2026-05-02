@@ -2,16 +2,20 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
 import SkeletonResults from './SkeletonResults';
-import { AIRCRAFT_COPY } from '../content/landingCopy';
 import './AircraftLandingPage.css';
 
 const AircraftRouteMap = lazy(() => import('./AircraftRouteMap'));
 
+// Per-slug landing copy lives in client/public/content/landing/aircraft/<slug>.json
+// — split out of the bundle in batch 4 so the AircraftLandingPage chunk dropped
+// from ~50KB raw to ~5KB. The JSON is fetched in parallel with /api/aircraft/families
+// so it doesn't add a serial wait.
 export default function AircraftLandingPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [families, setFamilies] = useState([]);
   const [fam, setFam] = useState(null);
+  const [copy, setCopy] = useState(null);
   const [error, setError] = useState(null);
   // Top observed city pairs for this family (cross-linking to /routes/:pair).
   const [topRoutes, setTopRoutes] = useState([]);
@@ -32,6 +36,19 @@ export default function AircraftLandingPage() {
         setFam(match);
       })
       .catch(() => setError('fetch-failed'));
+  }, [slug]);
+
+  // Load landing copy for this slug. 404 → fall through to the generic copy
+  // assembled in the render branch below (slugs without bespoke copy still
+  // render, just with a templated hint and empty overview/operators/faq).
+  useEffect(() => {
+    let cancelled = false;
+    setCopy(null);
+    fetch(`/content/landing/aircraft/${slug}.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled) setCopy(data); })
+      .catch(() => { /* render falls through to generic copy */ });
+    return () => { cancelled = true; };
   }, [slug]);
 
   // Pull top observed routes for this family (global, all origins) so we can
@@ -66,7 +83,7 @@ export default function AircraftLandingPage() {
     return <SkeletonResults message="Loading aircraft data…" />;
   }
 
-  const copy = AIRCRAFT_COPY[slug] || {
+  const resolvedCopy = copy || {
     hint: `The ${fam.label} is used on commercial routes worldwide. Explore every city pair it serves below.`,
     overview: null,
     operators: null,
@@ -86,7 +103,7 @@ export default function AircraftLandingPage() {
       <header className="landing-header">
         <span className="landing-badge">{fam.manufacturer} &middot; {fam.type}</span>
         <h1 className="landing-h1">{fam.label} flights and routes</h1>
-        <p className="landing-sub">{copy.hint}</p>
+        <p className="landing-sub">{resolvedCopy.hint}</p>
         <div className="landing-cta-row">
           <button
             type="button"
@@ -98,14 +115,14 @@ export default function AircraftLandingPage() {
         </div>
       </header>
 
-      {copy.overview && (
+      {resolvedCopy.overview && (
         <section className="landing-prose">
           <h2>About the {fam.label}</h2>
-          <p>{copy.overview}</p>
-          {copy.operators && (
+          <p>{resolvedCopy.overview}</p>
+          {resolvedCopy.operators && (
             <>
               <h3>Who flies it?</h3>
-              <p>{copy.operators}</p>
+              <p>{resolvedCopy.operators}</p>
             </>
           )}
         </section>
@@ -149,10 +166,10 @@ export default function AircraftLandingPage() {
         </section>
       )}
 
-      {Array.isArray(copy.faq) && copy.faq.length > 0 && (
+      {Array.isArray(resolvedCopy.faq) && resolvedCopy.faq.length > 0 && (
         <section className="landing-faq">
           <h2>Frequently asked questions about the {fam.label}</h2>
-          {copy.faq.map((qa, i) => (
+          {resolvedCopy.faq.map((qa, i) => (
             <details key={i} className="landing-faq-item" open={i === 0}>
               <summary>{qa.q}</summary>
               <p>{qa.a}</p>

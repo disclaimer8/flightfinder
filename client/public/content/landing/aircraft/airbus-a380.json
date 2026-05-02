@@ -1,0 +1,19 @@
+{
+  "hint": "The Airbus A380 is the double-deck super-jumbo — Emirates, British Airways, Qantas, Singapore Airlines, and Lufthansa still fly it on select high-density routes.",
+  "overview": "The A380 is the only full-length double-deck commercial airliner, seating 450 to 575 passengers in typical four-class layouts, with theoretical capacity above 850 in single-class configurations. Production ended in 2021, but the global fleet remains in active service on high-demand routes where slot-constrained airports or raw passenger volume justify the capacity. The A380 cabin offers space for showers (Emirates), first-class suites, onboard bars, and very wide business cabins, which has made it an enthusiast favorite. Range is around 8,000 nautical miles, enough for any major trunk route.",
+  "operators": "Emirates operates the world's largest A380 fleet by a wide margin, using it across nearly every major route out of Dubai. British Airways flies the A380 from Heathrow to destinations like Los Angeles, Miami, Dubai, Johannesburg, and Singapore. Qantas uses it on Sydney and Melbourne to Los Angeles and London via Singapore. Singapore Airlines flies it to London, Sydney, and other trunk routes. Lufthansa returned its A380 fleet to service and operates them from Munich. Korean Air, ANA, Qatar, and Etihad also operate the type on select routes.",
+  "faq": [
+    {
+      "q": "Is the A380 still flying in 2026?",
+      "a": "Yes. Emirates, British Airways, Qantas, Singapore Airlines, Lufthansa, Korean Air, ANA, Qatar, and Etihad all operate the A380 on selected high-demand routes. Production has ended, but the existing fleet is in full service and expected to continue flying well into the 2030s on routes where its capacity advantages matter, particularly at slot-constrained airports."
+    },
+    {
+      "q": "What's the A380 cabin experience like?",
+      "a": "Spacious and quiet. Economy is typically 3-4-3 on the main deck, but the cabin feels wider than a 777 or A350. Business class is on the upper deck with 1-2-1 layouts on most carriers. Emirates offers showers in first class and an onboard lounge; Etihad previously offered The Residence. The staircase between decks is a signature A380 feature."
+    },
+    {
+      "q": "How many passengers does the A380 carry?",
+      "a": "A typical four-class layout carries 450 to 550 passengers. Emirates two-class leisure configurations reach about 615. Theoretical single-class maximum is around 853 but no operator uses that layout. The aircraft's appeal is partly that airlines generally configure it with generous premium cabins rather than maximum-density seating."
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "hint": "The Airbus A340 is a four-engine long-hauler nearly retired from major carriers — Lufthansa, SWISS, and a few others still operate a shrinking fleet.",
+  "overview": "The A340 family (A340-200, -300, -500, -600) was Airbus's answer to long-haul flying in the 1990s with four engines for ETOPS-free routing. Twin-engine economics from the 777 and later A350 made it uncompetitive, and most fleets are now gone. A handful of carriers keep small A340-300 and A340-600 fleets for specific missions, and the type sees occasional use on routes with infrastructure or performance constraints where a twin would be penalized. Expect continued retirements through the late 2020s.",
+  "operators": "Lufthansa retains a small A340-600 fleet used on selected long-haul routes, though numbers are decreasing each year. SWISS operates a small A340-300 fleet out of Zurich. A handful of other legacy and leisure carriers keep isolated A340 frames in service for specific missions. Replacements are typically the A350-900, A350-1000, or 787-9. The type remains useful for operators who value four-engine redundancy on ultra-remote routing, though that category is rapidly disappearing.",
+  "faq": [
+    {
+      "q": "Is the A340 still flying in 2026?",
+      "a": "Only in small numbers. Lufthansa and SWISS retain limited A340 fleets, and a handful of other carriers still operate isolated frames. Most major operators have already retired the type in favor of the A350 or 787. If an A340 matters to you, check the operating aircraft at booking and again close to departure, since equipment swaps are common."
+    },
+    {
+      "q": "Why is the A340 being retired?",
+      "a": "Four-engine fuel burn cannot compete with modern twins like the 777, 787, or A350 on the same routes. Once ETOPS rules made long overwater twin-engine flying routine, the economic case for four engines on passenger long-haul disappeared. Maintenance cost per seat-mile is also significantly higher, which is why fleets have shrunk so quickly."
+    },
+    {
+      "q": "How many passengers does the A340 carry?",
+      "a": "The A340-300 typically seats 260 to 295 in three classes. The longer A340-600 carries roughly 320 to 380 in three classes and was historically used on high-demand long-haul routes. Range is around 7,400 nautical miles for the -300 and about 7,900 for the -600 depending on payload."
+    }
+  ]
+}

@@ -235,11 +235,19 @@ if (!IS_DEV) {
   // parameter variants (SearchAction URLs like ?from=LHR&to=JFK would otherwise
   // register as duplicate-content URLs in Google's index).
   app.use(express.static(clientBuild, {
-    etag: false,
+    // ETag is enabled (default) so /content/landing/*.json — which doesn't
+    // carry a content hash in the filename — gets strong revalidation via
+    // 304 responses. Hashed assets in /assets/* stay immutable so they
+    // never round-trip; ETag generation cost on first response is trivial.
     index: false,
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('index.html')) {
         res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+      } else if (filePath.includes('/content/landing/')) {
+        // Path-stable static content. Re-validate hourly so copy edits
+        // propagate within an hour, with stale-while-revalidate so users
+        // never block on the network when a refresh is needed.
+        res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
       } else {
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       }

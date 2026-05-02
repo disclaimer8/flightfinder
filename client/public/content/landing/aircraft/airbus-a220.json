@@ -1,0 +1,19 @@
+{
+  "hint": "The Airbus A220 (ex-Bombardier CSeries) is a clean-sheet narrow-body that Delta, airBaltic, and Swiss use for regional and thin mid-range routes.",
+  "overview": "The A220 is a clean-sheet design from the 2010s, originally launched as the Bombardier CSeries before Airbus took over the program. The A220-100 seats around 100 to 120 passengers and the A220-300 carries about 130 to 150. The cabin has a 2-3 layout wider than typical regional jets, and fuel burn per seat is competitive with the best new narrow-bodies. Range reaches roughly 3,300 nautical miles on the A220-300, which lets carriers fly routes too thin for an A320 but longer than traditional regional jet sectors.",
+  "operators": "Delta Air Lines is the largest A220 operator and uses both variants across the United States on routes that do not fill a mainline A320 or 737. airBaltic in Riga has standardized its entire fleet on the A220-300 across Europe. Swiss International flies the A220 on European short-haul. JetBlue, Breeze, Air France, ITA Airways, Korean Air, and Air Canada all operate growing A220 fleets. The aircraft has become a go-to choice for mid-size markets and regional long-legs where narrow-bodies are too big.",
+  "faq": [
+    {
+      "q": "How many passengers does the A220 carry?",
+      "a": "The smaller A220-100 seats about 100 to 120 in typical two-class configurations. The A220-300, which most operators prefer, carries roughly 130 to 150. High-density single-class A220-300 layouts can reach around 160 seats, and most carriers fit a standard 3-2 economy with 5-across seating that is unusually wide for a narrow-body."
+    },
+    {
+      "q": "Is the A220 a regional or mainline aircraft?",
+      "a": "It straddles both. Range up to about 3,300 nautical miles on the A220-300 and mainline-grade cabin standards make it capable of routes like New York to Los Angeles or long European legs, while its smaller capacity makes it economical on thinner markets that cannot fill a larger A320. Most operators treat it as mainline equipment, not regional."
+    },
+    {
+      "q": "What does the cabin feel like?",
+      "a": "Cabin is noticeably quieter than older narrow-bodies thanks to the geared turbofan engines, and the 2-3 economy layout means roughly 60% of seats are aisle or window. Overhead bins are sized for full-size carry-on roller bags, and windows are larger than on an A320 or 737, which makes the cabin feel more spacious in practice."
+    }
+  ]
+}

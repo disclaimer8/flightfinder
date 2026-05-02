@@ -1,0 +1,19 @@
+{
+  "hint": "The Airbus A321 (and the neo / LR / XLR variants) extends the A320 family to transatlantic range on a single-aisle airframe.",
+  "overview": "The A321 is the stretched A320, seating 180 to 240 passengers and offering a range up to about 4,000 nautical miles on the A321neo and around 4,700 on the A321LR. The newer A321XLR, which began meaningful service entry in the mid-2020s, pushes range to approximately 4,700 to 4,900 nautical miles with auxiliary fuel tanks, enough to cover most transatlantic and many trans-Pacific narrow-body-friendly sectors. The A321 has effectively taken over from the retired 757 in its long and thin transatlantic role and is displacing smaller wide-bodies on thinner long-haul markets.",
+  "operators": "American Airlines and Delta operate huge A321neo fleets across the United States and into Latin America. United is ramping up A321neo and A321XLR for transatlantic and long Americas flying. Aer Lingus, JetBlue, Iberia, and TAP have used the A321LR and A321XLR to open thinner transatlantic routes. Wizz Air, Vueling, and easyJet use the A321 in high-density European leisure flying. Turkish Airlines, Indigo, and major Asian carriers have very large A321neo fleets as their narrow-body long-leg standard.",
+  "faq": [
+    {
+      "q": "What's the A321XLR?",
+      "a": "The XLR is the longest-range A321 variant, with a rear center auxiliary fuel tank that extends range to around 4,700 to 4,900 nautical miles. That opens transatlantic and many long narrow-body routes such as smaller European cities to the US East Coast, or longer intra-Asia legs. Service entry began meaningfully in the mid-2020s, and orders are strong across North America and Europe."
+    },
+    {
+      "q": "How many passengers does the A321 carry?",
+      "a": "Typical two-class A321neo layouts carry 180 to 220 seats. Low-cost single-class A321 configurations reach around 240. Transatlantic A321LR and XLR layouts with flat-bed business class typically seat about 165 to 180 due to the larger premium cabin. Exit-limit depends on door configuration and usually caps around 244 on the standard layout."
+    },
+    {
+      "q": "Can the A321XLR really replace wide-bodies on transatlantic routes?",
+      "a": "On thin transatlantic markets, yes. It will not replace a 777 or A350 on high-demand routes like London to New York that need hundreds of seats. But for city pairs that generate roughly 150 to 180 daily passengers each way, like secondary European cities to the US East Coast, the XLR makes year-round service economically viable where a wide-body would not fill."
+    }
+  ]
+}

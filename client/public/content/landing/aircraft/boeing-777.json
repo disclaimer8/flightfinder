@@ -1,0 +1,19 @@
+{
+  "hint": "The Boeing 777 is the long-haul backbone of most legacy carriers — the 777-300ER carries 300+ passengers across any ocean in the world.",
+  "overview": "The 777 family has anchored wide-body long-haul aviation since the mid-1990s. The 777-300ER is the dominant variant, typically seating 300 to 396 passengers in three classes with a range of around 7,300 nautical miles. The smaller 777-200ER and ultra-long-range 777-200LR remain in specialized roles. The next-generation 777-9 is entering service in the mid-2020s with larger capacity and new composite wings. Its twin-engine economics at wide-body scale made the 777 the aircraft that effectively ended four-engine dominance on long-haul.",
+  "operators": "Emirates operates the world's largest 777 fleet, using the 777-300ER on nearly every long-haul route out of Dubai. Qatar Airways, Singapore Airlines, Cathay Pacific, ANA, Japan Airlines, and Korean Air all rely heavily on the 777-300ER for trunk routes across Asia, Europe, and North America. Air France, KLM, British Airways, and Lufthansa fly it on transatlantic and Asia routes. United and American operate the 777-200ER and -300ER on their premium international networks.",
+  "faq": [
+    {
+      "q": "How many passengers does the 777 carry?",
+      "a": "The 777-300ER typically carries 300 to 396 passengers in a three-class layout depending on carrier configuration. Emirates in two classes can reach 427. The shorter 777-200ER seats around 280 to 320, and the upcoming 777-9 will carry roughly 400 to 425 in a standard three-class cabin."
+    },
+    {
+      "q": "What's the range of a 777-300ER?",
+      "a": "About 7,300 nautical miles, roughly 14 hours of flying, which covers virtually any city pair in the world with one stop at most. The 777-200LR variant extends that to approximately 8,500 nautical miles and has been used on ultra-long routes like Newark to Singapore in earlier years."
+    },
+    {
+      "q": "Is business class on the 777 any good?",
+      "a": "Quality varies widely by airline. Qatar Qsuite on the 777 is considered one of the best business products in the world, with fully enclosed suites. Emirates, Singapore, Cathay, and ANA also offer well-regarded business cabins. Legacy US carriers have generally upgraded their 777 business cabins to fully flat, direct-aisle-access seats over the past several years."
+    }
+  ]
+}

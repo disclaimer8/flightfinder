@@ -1,0 +1,19 @@
+{
+  "hint": "The Airbus A350 XWB is the newest long-haul wide-body — used by Qatar, Singapore, Cathay, and ANA on ultra-long routes like Auckland to Doha.",
+  "overview": "The A350 XWB is a composite-fuselage long-haul twin with two passenger variants, the A350-900 and the larger A350-1000. The -900 seats roughly 300 to 350 passengers with a range near 8,100 nautical miles, while the -1000 carries 350 to 410 passengers with a range around 8,700. The ultra-long-range A350-900ULR was designed for routes over 9,500 nautical miles, such as Singapore to Newark, which it serves nonstop. The cabin uses Airbus's Airspace interior with lower cabin altitude and higher humidity comparable to the 787.",
+  "operators": "Qatar Airways operates one of the largest A350 fleets and uses both -900 and -1000 variants on long-haul including Doha to the US and Australia. Singapore Airlines flies the A350-900ULR on the world's longest nonstop routes including Newark and Los Angeles. Cathay Pacific, ANA, Japan Airlines, Korean Air, and China Airlines use the A350 across Pacific routes. Lufthansa, British Airways, Virgin Atlantic, Air France, and ITA Airways operate A350s on transatlantic and Asia flying. Emirates took delivery of A350-900s starting in the mid-2020s.",
+  "faq": [
+    {
+      "q": "What's the range of the A350?",
+      "a": "The A350-900 has a range of about 8,100 nautical miles and the A350-1000 about 8,700. The ultra-long-range A350-900ULR extends that to over 9,500 nautical miles, enough for Singapore to Newark nonstop, which is currently the world's longest scheduled commercial route at around 18.5 hours of flight time."
+    },
+    {
+      "q": "What's the cabin experience on the A350?",
+      "a": "Similar to the 787: lower cabin altitude around 6,000 feet, higher humidity, quieter cabin, and larger windows. Most operators run three-class cabins with flat-bed business, premium economy, and a 3-3-3 economy layout. Some carriers have installed 3-4-3 economy but the aircraft was designed for 3-3-3. The Airspace cabin standard features mood lighting and larger overhead bins."
+    },
+    {
+      "q": "How many passengers does the A350 carry?",
+      "a": "The A350-900 typically seats 300 to 350 in three classes. The A350-1000 carries roughly 350 to 410. Ultra-dense leisure layouts can push higher, though most customers fly the type in premium-heavy three-class configurations. Singapore Airlines' A350-900ULR is configured for only 161 business and premium economy seats for maximum ultra-long-haul comfort."
+    }
+  ]
+}

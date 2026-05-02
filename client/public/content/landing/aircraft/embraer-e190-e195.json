@@ -1,0 +1,19 @@
+{
+  "hint": "The Embraer E190/E195 is a larger regional or small-mainline jet used by airBaltic, KLM Cityhopper, and Helvetic on secondary routes.",
+  "overview": "The E190 and E195, and the newer E190-E2 and E195-E2 (branded as the E2 family), seat roughly 96 to 146 passengers. The E2 variants use new Pratt and Whitney PW1900G geared turbofans for significantly better fuel burn. The aircraft fills the space between regional jets like the E175 and full narrow-bodies like the A220 or A319. Range on the E195-E2 reaches around 2,800 nautical miles, enough for intra-European flying and regional leisure routes. The 2-2 cabin layout is maintained on the E1 generation while the E2 widens slightly.",
+  "operators": "airBaltic previously flew the E195 but has now standardized on the A220. KLM Cityhopper operates the E190 and E195-E2 on European short-haul. Helvetic Airways, Air Astana, Porter Airlines (North American), Breeze Airways, and Azul all operate E-Jet family aircraft. JetBlue has historically flown the E190 but is transitioning toward the A220. Several African and Asian carriers also use the E190 and E195 on regional and secondary trunk routes where a larger narrow-body would not fill.",
+  "faq": [
+    {
+      "q": "What's the E2 and how is it different?",
+      "a": "The E190-E2 and E195-E2 are re-engined with Pratt and Whitney PW1900G geared turbofans plus a new wing. Fuel burn is roughly 17% lower per seat than the E1 generation, and the aircraft is quieter. Range extends to around 2,800 nautical miles on the E195-E2. Cabin standard is newer with larger overhead bins, and the windows are slightly larger."
+    },
+    {
+      "q": "How many passengers do the E190 and E195 carry?",
+      "a": "The E190 seats around 96 to 114 depending on configuration. The larger E195 carries about 108 to 124 in single-class layouts. The E195-E2 reaches up to 146 in high-density configurations. All versions use a 2-2 cabin with every seat either aisle or window, which is a notable passenger comfort advantage over 3-3 narrow-bodies."
+    },
+    {
+      "q": "Is the E190/E195 considered mainline or regional?",
+      "a": "It depends on the operator. In Europe, KLM Cityhopper and similar carriers treat it as mainline feeder equipment. In the United States, regional scope clauses limit the E190 from being used in large numbers since it exceeds 76 seats. Breeze Airways uses the E190 and E195 as low-cost mainline equipment on point-to-point underserved routes."
+    }
+  ]
+}

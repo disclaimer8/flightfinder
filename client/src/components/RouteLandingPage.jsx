@@ -2,8 +2,12 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
 import SkeletonResults from './SkeletonResults';
-import { ROUTE_COPY } from '../content/landingCopy';
 import './AircraftLandingPage.css';
+
+// Route landing copy (FAQ + tips template) lives in
+// client/public/content/landing/route.json — split out of the bundle in
+// batch 4. The blurb uses {from.city}/{to.city}/{from.iata}/{to.iata}
+// placeholders that interpolate() resolves at render.
 
 // Replace {from.city}, {from.iata}, {to.city}, {to.iata} placeholders
 // with the resolved airport values. Kept inline because this is the only
@@ -27,6 +31,16 @@ export default function RouteLandingPage() {
   // Aircraft families observed on this city pair (last 90 days). Drives the
   // cross-link rail back to /aircraft/:slug landing pages.
   const [aircraft, setAircraft] = useState([]);
+  const [routeCopy, setRouteCopy] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/content/landing/route.json')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled) setRouteCopy(data); })
+      .catch(() => { /* render falls back to no FAQ / no tips blurb */ });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const m = /^([a-z]{3})-([a-z]{3})$/i.exec(pair || '');
@@ -109,10 +123,12 @@ export default function RouteLandingPage() {
         </div>
       </header>
 
-      <section className="landing-prose">
-        <h2>Booking tips for {from.city} &rarr; {to.city}</h2>
-        <p>{interpolate(ROUTE_COPY.tipsBlurb, from, to)}</p>
-      </section>
+      {routeCopy?.tipsBlurb && (
+        <section className="landing-prose">
+          <h2>Booking tips for {from.city} &rarr; {to.city}</h2>
+          <p>{interpolate(routeCopy.tipsBlurb, from, to)}</p>
+        </section>
+      )}
 
       {aircraft.length > 0 && (
         <section className="landing-top-routes">
@@ -130,10 +146,10 @@ export default function RouteLandingPage() {
         </section>
       )}
 
-      {Array.isArray(ROUTE_COPY.faq) && ROUTE_COPY.faq.length > 0 && (
+      {Array.isArray(routeCopy?.faq) && routeCopy.faq.length > 0 && (
         <section className="landing-faq">
           <h2>Frequently asked questions about {from.iata} &rarr; {to.iata}</h2>
-          {ROUTE_COPY.faq.map((qa, i) => (
+          {routeCopy.faq.map((qa, i) => (
             <details key={i} className="landing-faq-item" open={i === 0}>
               <summary>{interpolate(qa.q, from, to)}</summary>
               <p>{interpolate(qa.a, from, to)}</p>

@@ -1,0 +1,19 @@
+{
+  "hint": "The Embraer E170/E175 is the regional jet workhorse of US major carriers and European regional subsidiaries.",
+  "overview": "The E170 and E175 are the smaller members of the original Embraer E-Jet family, seating roughly 70 to 88 passengers in a 2-2 layout with no middle seats. Range is around 2,000 to 2,200 nautical miles. The E175 is the dominant variant in the United States thanks to scope clause compatibility at major carriers, which limits regional jets to 76 seats and certain weight thresholds. The newer E175-E2 offers better fuel economics but has seen limited adoption in the US because its weight exceeds scope clause limits at major legacy carriers.",
+  "operators": "In the United States, the E175 dominates regional flying at American Eagle, Delta Connection, United Express, and Alaska Horizon fleets operated by SkyWest, Republic, Envoy, Endeavor, and Horizon Air. In Europe, Lufthansa CityLine, KLM Cityhopper, and Finnair use the E175 and E190 on regional flying. The aircraft's 2-2 layout and relatively quiet cabin make it a passenger favorite compared with older regional jets like the CRJ-200. Range is long enough for US transcontinental regional missions and most intra-European flying.",
+  "faq": [
+    {
+      "q": "What's the 2-2 seating layout like?",
+      "a": "Every seat is either an aisle or a window. There are no middle seats. The cabin is narrower than a mainline narrow-body but the seat-pair layout is widely considered the most comfortable part of the E170/E175 experience, particularly compared to the 1-2 or 2-2 layouts on older regional jets like the CRJ series or Embraer ERJ-145."
+    },
+    {
+      "q": "What's the difference between the E170, E175, and E190?",
+      "a": "Fuselage length and passenger capacity. The E170 seats about 70 to 78, the E175 about 76 to 88, the E190 about 96 to 114, and the E195 about 108 to 124. All share a common type rating and similar cabin width. The E170 and E175 are regional-focused, while the E190 and E195 are small-mainline."
+    },
+    {
+      "q": "Why is the E175 so common at US carriers?",
+      "a": "Pilot scope clauses at the three major US legacy carriers (American, Delta, United) limit regional aircraft to 76 seats and 86,000 pound maximum takeoff weight. The E175 fits those limits precisely, making it the standard aircraft for regional subsidiary flying. The newer E175-E2 exceeds those limits and has therefore not been ordered in meaningful volume by US majors."
+    }
+  ]
+}

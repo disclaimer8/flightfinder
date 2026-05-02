@@ -1,0 +1,19 @@
+{
+  "hint": "The Boeing 787 Dreamliner is the modern long-haul choice: lower cabin altitude, larger windows, and routes that open city pairs the 747 never could.",
+  "overview": "The 787 family (787-8, 787-9, 787-10) is a composite-fuselage twin-aisle twin designed around long-haul fuel efficiency. The 787-9 is the most common variant, seating roughly 270 to 310 passengers in three classes with a range near 7,500 nautical miles. The 787-8 is shorter-range and smaller, while the 787-10 is a capacity-focused stretch for denser markets. Its lower cabin altitude of about 6,000 feet and higher humidity reduce jetlag, and the aircraft economics allow viable year-round service on thin long-haul routes that previously could not support a wide-body.",
+  "operators": "ANA launched the 787 and operates one of the largest fleets alongside Japan Airlines. United Airlines uses the 787-8, -9, and -10 across its Pacific and Atlantic networks. British Airways, Virgin Atlantic, KLM, Air France, and Lufthansa Group carriers all operate 787s on long-haul. Qatar, Etihad, Saudia, and Gulf Air fly it from the Middle East. Norse Atlantic, LOT, and Neos use the 787 to fly low-cost or leisure long-haul. In Asia-Pacific, Qantas uses the 787-9 on Perth to London and other ultra-long legs.",
+  "faq": [
+    {
+      "q": "How many passengers fit on a 787?",
+      "a": "It varies by variant. The 787-8 typically seats 240 to 260 in three classes. The 787-9, the most common variant, carries 270 to 310. The stretched 787-10 reaches 320 to 350 in three classes, or around 380 in denser two-class configurations used by some Asian carriers on regional trunk routes."
+    },
+    {
+      "q": "What's different about the 787 cabin experience?",
+      "a": "The 787 pressurizes to a lower cabin altitude of about 6,000 feet instead of the traditional 8,000 feet, and maintains higher cabin humidity. That reduces dehydration and jetlag on long flights. Windows are larger than on comparable wide-bodies, with electrochromic dimming instead of pull-down shades, and the cabin noise level is noticeably lower."
+    },
+    {
+      "q": "What's the range of the 787-9?",
+      "a": "Around 7,500 nautical miles, which covers city pairs like London to Perth, New York to Manila, or Los Angeles to Singapore. That range is what has let airlines open ultra-long-haul thin routes, since the 787 economics work with smaller passenger loads that would not support a larger 777 or A350."
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "hint": "The Boeing 737 is the world's best-selling narrow-body — from the MAX 8 on short-haul hops to the 737-800 workhorses that still anchor most low-cost fleets.",
+  "overview": "The 737 has been in continuous production since 1967 and remains the most widely operated jet airliner in the world. Today's fleets split between the Next Generation family (737-700, -800, -900ER) and the current MAX line (MAX 7, 8, 9, 10). A typical 737-800 seats 162 to 189 passengers in two classes, while the MAX 8 carries a similar load with roughly 14% better fuel burn per seat. The type handles short and medium-haul missions up to about 3,500 nautical miles and forms the backbone of low-cost and legacy narrow-body operations on almost every continent.",
+  "operators": "Ryanair operates the largest 737 fleet in Europe, running 737-800s and MAX 8-200s across intra-European leisure routes. Southwest Airlines is the largest 737 operator globally, flying exclusively 737s across the United States. United, American, and Alaska operate mixed NG and MAX fleets on domestic and near-international routes. Air Canada, TUI, and Norwegian use the MAX on longer narrow-body legs including transatlantic charter and leisure flying. In Asia, Lion Air and SpiceJet operate large 737 fleets on domestic and regional routes.",
+  "faq": [
+    {
+      "q": "How many passengers does the Boeing 737 carry?",
+      "a": "It depends on the variant and configuration. A 737-800 or MAX 8 typically seats 162 to 189 in a two-class layout, or up to around 200 in a high-density single-class cabin. The smaller 737-700 and MAX 7 carry roughly 126 to 149 seats, while the stretched MAX 9 and MAX 10 reach 178 to 204 and 188 to 230 respectively."
+    },
+    {
+      "q": "What's the range of a 737 MAX?",
+      "a": "The MAX 8 has a range of about 3,500 nautical miles, which covers most transcontinental US routes and many transatlantic sectors from the US East Coast to Western Europe. The longer-range MAX 8 ER and MAX 10 push closer to 3,300 to 3,800 nautical miles depending on payload, enough for routes like New York to Rome or Los Angeles to Honolulu with full passenger loads."
+    },
+    {
+      "q": "Is the 737 still flying in 2026?",
+      "a": "Yes, very much so. The NG family (737-700/800/900) is still in service across most major and low-cost carriers, and the MAX family is in full production and continued deliveries. Between NG and MAX variants, the 737 remains the single most-produced and most-flown airliner worldwide, with thousands of daily departures."
+    }
+  ]
+}

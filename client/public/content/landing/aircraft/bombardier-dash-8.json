@@ -1,0 +1,19 @@
+{
+  "hint": "The Dash 8 (especially the Q400) is a fuel-efficient turboprop used by regional carriers on sub-1-hour hops.",
+  "overview": "The Dash 8 family, now produced by De Havilland Canada, covers the Dash 8-100, -200, -300, and the current Q400 (Dash 8-400). The Q400 is the largest variant, seating 74 to 90 passengers with cruise speed faster than earlier turboprops at around 360 knots. Range is about 1,200 nautical miles. Turboprops like the Q400 remain competitive on sub-400 nautical mile regional routes where their fuel burn advantage over regional jets is significant. Earlier -100/-200/-300 variants are largely retired from passenger service and used mostly in remote or specialized operations.",
+  "operators": "Porter Airlines in Canada is built almost entirely around the Q400 for flying out of downtown Toronto Billy Bishop Airport, where jet operations are restricted. WestJet Encore, Jazz Aviation, Horizon Air (previously), and QantasLink operate Q400 fleets for regional flying. In Europe, carriers like Widerøe and other regional specialists have operated the type. Across Asia-Pacific, several regional carriers fly Q400s on short domestic sectors where turboprop economics beat jet alternatives. Production was suspended in the early 2020s pending a possible restart.",
+  "faq": [
+    {
+      "q": "What's it like to fly on a Q400?",
+      "a": "The cabin is narrower than a jet, with 2-2 seating and overhead bins sized only for small carry-ons. Noise is higher than a jet due to the propellers, though the Q400 uses active noise cancellation and is noticeably quieter than older turboprops. Flight times on typical 300 nautical mile routes are 45 to 60 minutes. Descent and approach can feel more active than a jet."
+    },
+    {
+      "q": "Is the Dash 8 still being produced?",
+      "a": "Production was suspended in the early 2020s after De Havilland Canada moved the program out of Downsview in Toronto. The company has indicated plans to restart Q400 production at a new facility, though timing remains uncertain. The existing fleet continues to operate actively, and backlogs of parts support continued service for years to come."
+    },
+    {
+      "q": "Why do some airlines still use turboprops?",
+      "a": "Fuel burn per seat on sub-400 nautical mile routes is significantly better than any regional jet. Turboprops also handle short runways and some high-elevation or hot-climate airports better than equivalent jets. For very short sectors, their block times are comparable to jets once you include climb and descent. That combination keeps them economical on thin, short regional routes."
+    }
+  ]
+}

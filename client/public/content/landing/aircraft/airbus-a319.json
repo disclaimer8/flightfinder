@@ -1,0 +1,19 @@
+{
+  "hint": "The Airbus A319 is the shortest A320-family variant — common on regional European routes and North American LCC fleets.",
+  "overview": "The A319 is a shortened A320 seating roughly 124 to 156 passengers depending on configuration. It shares a common type rating with the rest of the A320 family, which makes it easy for airlines to use interchangeably. Range is similar to the A320 at around 3,700 nautical miles, though the smaller cabin has made the variant less favored than the A320 or A321 on new orders. The neo version, the A319neo, saw limited uptake as most carriers preferred the larger A320neo and A321neo for better per-seat economics.",
+  "operators": "American Airlines, United Airlines, and Delta Air Lines all operate significant A319 fleets across North American short and medium-haul routes. easyJet, British Airways, Lufthansa, Air France, and Iberia use the A319 across European short-haul networks. Frontier Airlines retains A319s in its leisure fleet. The type remains useful for mid-size city pairs where a full A320 would leave too many empty seats, but orders have mostly shifted to the A320neo and A321neo.",
+  "faq": [
+    {
+      "q": "What's the difference between the A319 and A320?",
+      "a": "The A319 is about 3.7 meters shorter than the A320, which translates to roughly 30 fewer seats in a typical layout. Range is similar on both variants. From a passenger perspective the cabin looks the same, just shorter. Pilots fly both interchangeably thanks to a common type rating across the entire A320 family."
+    },
+    {
+      "q": "Is the A319 still being produced?",
+      "a": "The A319neo is technically still offered but receives very few orders since most operators prefer the larger A320neo and A321neo for better per-seat economics. Production is effectively minimal. Existing A319ceo fleets are expected to continue in service well into the 2030s before replacement, particularly at US legacy carriers where the variant fits thinner routes."
+    },
+    {
+      "q": "How many passengers does the A319 carry?",
+      "a": "About 124 to 150 in two-class configurations common at legacy carriers, and up to around 156 in a high-density single-class layout. Exit-limit is typically 156 passengers on the standard door configuration. Cabin comfort is identical to the A320 per seat, just with fewer rows and a shorter aisle."
+    }
+  ]
+}

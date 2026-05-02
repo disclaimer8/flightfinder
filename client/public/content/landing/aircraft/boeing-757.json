@@ -1,0 +1,19 @@
+{
+  "hint": "The Boeing 757 is the transatlantic narrow-body: long legs, steep-climb performance, and the last US-built single-aisle jet for charter and legacy operators.",
+  "overview": "The 757 was produced from 1982 until 2004 and was never directly replaced, which is why it remains in service. The 757-200 seats around 180 to 200 passengers in a standard two-class layout and has a range of roughly 3,900 nautical miles, enough for US-to-Europe transatlantic flying. Its combination of twin-aisle-like range on a single-aisle airframe and strong hot-and-high performance keeps it valuable on routes that are too thin for a wide-body but too long for most other narrow-bodies. The 757-300 is a stretched variant rarely used outside leisure operators.",
+  "operators": "Delta Air Lines and United Airlines operate the largest remaining 757 fleets, using them on US transcontinental flying and thinner transatlantic routes to Europe. Icelandair has flown the 757 for decades as the perfect aircraft for the North Atlantic via Keflavik. FedEx operates a very large 757 freighter fleet. A handful of leisure and charter carriers in Europe and Central Asia continue to operate the type, though replacements with the A321neo and A321XLR are accelerating fleet retirements.",
+  "faq": [
+    {
+      "q": "Is the Boeing 757 still flying in 2026?",
+      "a": "Yes, though fleets are shrinking each year. Delta, United, and Icelandair remain significant passenger operators, and FedEx flies a large 757 freighter fleet. The A321neo and A321XLR are the most common replacements on passenger routes, so expect retirements to continue into the late 2020s, particularly for the older -200s."
+    },
+    {
+      "q": "Why do airlines use the 757 on transatlantic routes?",
+      "a": "The 757-200 has range around 3,900 nautical miles and strong climb performance, which lets it fly routes from the US East Coast to Western Europe with a full passenger load. Its single-aisle operating cost is significantly lower than a wide-body, making it ideal for thin transatlantic markets that could not profitably support a 767 or 787."
+    },
+    {
+      "q": "How many passengers does the 757 carry?",
+      "a": "A typical two-class 757-200 seats 180 to 200 passengers, with charter layouts reaching around 230. The stretched 757-300 carries up to about 243 in a two-class configuration and was used mostly by leisure and holiday operators rather than legacy carriers."
+    }
+  ]
+}

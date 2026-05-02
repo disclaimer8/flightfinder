@@ -1,0 +1,19 @@
+{
+  "hint": "The ATR 42/72 are Franco-Italian turboprops that dominate island-hopping, short regional, and sub-400 nautical mile markets worldwide.",
+  "overview": "The ATR 42 seats about 48 passengers and the larger ATR 72 seats 70 to 78. Both are twin-turboprop regional aircraft produced by ATR, the Franco-Italian joint venture between Airbus and Leonardo. Range is around 700 to 900 nautical miles for the ATR 72-600, which is more than enough for typical regional and island-hopping missions. Fuel burn per seat on short routes is the lowest of any regional aircraft in production, which is why ATRs dominate specific markets: island networks, short regional sectors, and developing-country domestic flying where economics matter and runway length may be limited.",
+  "operators": "Wideroe in Norway, Azul and LATAM in South America, Indigo in India, Mount Cook Airlines in New Zealand, HOP in France historically, Binter Canarias in Spain, and many Caribbean and Pacific island carriers operate ATR fleets. ATRs are particularly common in Indonesia, the Philippines, Japanese regional carriers, and across many African domestic networks. The ATR 72-600 is by far the most common variant in current fleets, and ATR has launched the ATR 72-600 with short-takeoff enhancements for extreme regional operations.",
+  "faq": [
+    {
+      "q": "What's the difference between the ATR 42 and ATR 72?",
+      "a": "Size. The ATR 42 seats about 48 passengers and the ATR 72 seats 70 to 78. They share a common type rating, so pilots can fly both with minimal differences training. Most fleets prefer the larger ATR 72 for per-seat economics, but the ATR 42 remains useful on very thin routes or airports with limited infrastructure where a smaller airframe is required."
+    },
+    {
+      "q": "What's the flight experience like?",
+      "a": "Cabin is 2-2 seating with no middle seats, noise from the propellers is higher than a jet though newer aircraft have noise insulation, and flight times are short, usually under 90 minutes. Overhead bins are small, so roller bags typically get gate-checked. The aircraft handles short runways well and can operate into airports that would not accept a regional jet at maximum payload."
+    },
+    {
+      "q": "Why are turboprops used for short routes?",
+      "a": "Fuel burn per seat on routes under 400 nautical miles is the lowest of any regional aircraft in production. Block times on short sectors are comparable to regional jets once you include climb and descent time. Turboprops also handle short runways, hot-and-high airports, and unpaved strips better than equivalent jets, which keeps them irreplaceable on many island, developing-country, and remote regional networks."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "faq": [
+    {
+      "q": "How long does the flight from {from.city} to {to.city} take?",
+      "a": "Flight time from {from.city} ({from.iata}) to {to.city} ({to.iata}) depends on routing, aircraft type, and whether the flight is direct or connecting. A direct flight typically reflects great-circle distance plus winds, while one-stop options can add several hours depending on the layover airport. Check the exact duration in the search results above, where we show block time per itinerary along with stop count."
+    },
+    {
+      "q": "Which airlines fly from {from.city} to {to.city}?",
+      "a": "Airline availability for {from.iata} to {to.iata} changes by season and sometimes week to week as carriers adjust capacity. Our search above pulls live schedules and returns the airlines currently selling this route, both direct and connecting. Codeshare and interline itineraries are included, so you may see results operated by one carrier but sold by another."
+    },
+    {
+      "q": "Are there direct flights from {from.city} to {to.city}?",
+      "a": "Direct (nonstop) availability on {from.iata} to {to.iata} varies by date, day of week, and season. Busy city pairs usually have multiple daily nonstops, while thinner routes may only have direct service a few days per week or only during peak seasons. Use our search above with flexible dates to see which days actually have nonstop options."
+    },
+    {
+      "q": "What is the cheapest month to fly from {from.city} to {to.city}?",
+      "a": "Prices on {from.iata} to {to.iata} shift with seasonality, school holidays, and major events at both ends. Our 12-month price calendar below the search results shows the lowest fare found per departure date, which makes it easy to spot the cheapest weeks at a glance. Flexibility of a few days around your target date often unlocks significantly lower fares."
+    }
+  ],
+  "tipsBlurb": "For most economy fares on {from.city} to {to.city}, booking roughly three to eight weeks ahead tends to hit the sweet spot on price, with last-minute fares rising sharply in the final two weeks. Tuesday, Wednesday, and Saturday departures are usually cheaper than Fridays and Sundays, and early-morning or late-evening flights often undercut midday slots. If you are traveling light, the difference between a basic economy fare with carry-on only and a standard fare with a checked bag can be significant. Compare both options before booking, and also check whether {from.iata} or {to.iata} has a nearby alternative airport that might offer better fares on the same dates."
+}

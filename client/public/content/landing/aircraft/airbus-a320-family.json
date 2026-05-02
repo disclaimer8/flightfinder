@@ -1,0 +1,19 @@
+{
+  "hint": "The A320 family covers the A318, A319, A320, and A321 — the most-flown narrow-body family in commercial aviation.",
+  "overview": "The A320 family spans four fuselage lengths sharing a common type rating, common cockpit, and largely common systems. In order of size: the A318 (out of production and rare), A319, A320, and A321, each seating progressively more passengers. The neo generation re-engines the A319, A320, and A321 with CFM LEAP or Pratt and Whitney geared turbofans for roughly 15% better fuel burn. Together with the 737, the A320 family dominates narrow-body flying. Pilots qualified on one variant can fly any of them with minimal differences training, which is a major operational advantage for carriers.",
+  "operators": "Nearly every major airline with narrow-body operations flies some combination of A320-family aircraft. Lufthansa Group, IAG, Air France-KLM, American Airlines, United, Delta, JetBlue, easyJet, Wizz Air, Turkish Airlines, Indigo, China Southern, China Eastern, Air China, Emirates via flydubai, Qatar, Aeroflot, LATAM, Avianca, and Copa all operate large A320 family fleets. The family is the single largest installed base of commercial jets in service when combined with the A220 operators.",
+  "faq": [
+    {
+      "q": "What's the difference between the A318, A319, A320, and A321?",
+      "a": "Fuselage length and seat count. The A318 is the shortest at around 107 seats (rarely used today), then the A319 at about 124 to 156, the A320 at 150 to 180, and the A321 at 180 to 240. All share a common type rating, which means pilots trained on one can fly any of them with only short differences training. Systems and cockpits are nearly identical."
+    },
+    {
+      "q": "Is the A318 still flying?",
+      "a": "Very rarely. A small number remain in service for niche operations, but the variant never sold in volume and most have been retired. Air France and British Airways previously used the A318 for specialty city-pair flying, but those configurations are no longer regularly scheduled. Most passengers will never fly one."
+    },
+    {
+      "q": "Why do airlines mix A320-family variants?",
+      "a": "Because the common type rating lets one pilot pool fly multiple sizes, airlines can match aircraft size to demand on each route without multiplying training and operational cost. A thin route gets an A319, a medium route gets an A320, a busy trunk or long leg gets an A321. That flexibility is a major structural advantage of the family."
+    }
+  ]
+}
