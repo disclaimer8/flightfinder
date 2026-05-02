@@ -154,7 +154,7 @@ exports.getFilterOptions = async (req, res) => {
         { code: 'MAD', name: 'Madrid' },
         { code: 'BCN', name: 'Barcelona' },
         { code: 'AGP', name: 'Malaga' },
-        { code: 'LON', name: 'London (LHR)' },
+        { code: 'LHR', name: 'London (Heathrow)' },
         { code: 'LGW', name: 'London (Gatwick)' },
         { code: 'STN', name: 'London (Stansted)' },
         { code: 'MAN', name: 'Manchester' },
@@ -485,8 +485,8 @@ exports.getFilterOptions = async (req, res) => {
     res.json({
       cities: [
         { code: 'LIS', name: 'Lisbon' },
-        { code: 'NYC', name: 'New York' },
-        { code: 'LON', name: 'London' },
+        { code: 'JFK', name: 'New York' },
+        { code: 'LHR', name: 'London' },
         { code: 'LAX', name: 'Los Angeles' }
       ],
       aircraftTypes: ['turboprop', 'jet', 'regional', 'wide-body'],

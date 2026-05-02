@@ -35,12 +35,22 @@ export function useEnrichedCard(flight) {
         type: flight.aircraft?.icaoType || '',
         reg:  flight.aircraft?.registration || '',
       }).toString();
-      const url = isPro
-        ? `${API_BASE}/api/flights/${encodeURIComponent(flight.id)}/enriched?${qs}`
-        : `${API_BASE}/api/flights/${encodeURIComponent(flight.id)}/enriched/teaser`;
-      promise = fetch(url, {
-        headers: isPro && token ? { Authorization: `Bearer ${token}` } : {},
-      }).then((r) => r.json());
+      const teaserUrl   = `${API_BASE}/api/flights/${encodeURIComponent(flight.id)}/enriched/teaser`;
+      const enrichedUrl = `${API_BASE}/api/flights/${encodeURIComponent(flight.id)}/enriched?${qs}`;
+      // Pro users hit /enriched with their bearer; if the token is stale or
+      // the subscription has been downgraded server-side, the API returns
+      // 401/403. Rather than surfacing a generic "Could not load extra info"
+      // banner, transparently fall back to /teaser so the user still sees
+      // blurred placeholders instead of a broken UI.
+      const fetchWithFallback = async () => {
+        if (isPro && token) {
+          const r = await fetch(enrichedUrl, { headers: { Authorization: `Bearer ${token}` } });
+          if (r.status !== 401 && r.status !== 403) return r.json();
+        }
+        const r2 = await fetch(teaserUrl);
+        return r2.json();
+      };
+      promise = fetchWithFallback();
       _enrichedCache.set(cacheKey, { at: Date.now(), promise });
       // Evict on error so retries can re-fire
       promise.catch(() => _enrichedCache.delete(cacheKey));
