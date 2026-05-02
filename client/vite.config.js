@@ -17,25 +17,33 @@ export default defineConfig({
     compression({ algorithm: 'brotliCompress', ext: '.br', threshold: 1024, deleteOriginFile: false }),
   ],
   build: {
-    // Predictable chunk boundaries — react-vendor (react/react-dom/scheduler),
-    // router-vendor (react-router-dom), and sentry are split out so that
-    // first-paint doesn't wait for them. Leaflet already lands in its own
-    // chunk because it's imported dynamically inside the map components
-    // (also lazy-loaded via React.lazy in App.jsx). Each chunk hash is stable
-    // across releases as long as the underlying library version doesn't
-    // change, which keeps long-term browser cache hits high.
+    // Predictable chunk boundaries — react-vendor (react/react-dom/scheduler)
+    // and router-vendor (react-router-dom) are split out so first-paint
+    // doesn't wait for them. Leaflet lands in its own chunk because it's
+    // imported dynamically inside the map components (also lazy-loaded via
+    // React.lazy in App.jsx). Sentry is dynamic-imported in src/index.jsx
+    // (after first paint via requestIdleCallback), so rolldown auto-creates
+    // an async chunk for it and its @sentry/* deps without an explicit rule.
+    //
+    // The path matchers below use `node_modules/<pkg>/` (with both the
+    // leading and trailing slash) — without that anchoring `react-vendor`
+    // greedily caught `@sentry/react` because its path also contains
+    // `/react/`. The bug ballooned react-vendor from 189KB to 650KB raw
+    // when sentry was made async; tight matchers prevent recurrence.
     rollupOptions: {
       output: {
         entryFileNames:  'assets/[name]-[hash:16].js',
         chunkFileNames:  'assets/[name]-[hash:16].js',
         assetFileNames:  'assets/[name]-[hash:16][extname]',
         manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            if (id.includes('react-dom') || id.includes('/react/') || id.includes('scheduler')) {
-              return 'react-vendor';
-            }
-            if (id.includes('react-router')) return 'router-vendor';
-            if (id.includes('@sentry')) return 'sentry';
+          if (!id.includes('node_modules')) return;
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/scheduler/')
+          ) return 'react-vendor';
+          if (id.includes('node_modules/react-router/') || id.includes('node_modules/react-router-dom/')) {
+            return 'router-vendor';
           }
         },
       },

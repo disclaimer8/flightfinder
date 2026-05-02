@@ -1,4 +1,3 @@
-import './sentry'; // Must run before any other imports so Sentry can instrument fetch/XHR.
 import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
@@ -42,3 +41,16 @@ root.render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+
+// Sentry init runs after first paint — saves ~14KB brotli + ~300-800ms of
+// main-thread parse on the critical path. We accept that errors thrown in
+// the very first idle window (typically <100ms) won't be captured; for an
+// app with no live users yet (project_no_users_yet) the trade-off is
+// straightforwardly worth it. Once Sentry initialises it instruments
+// fetch/XHR globally, so subsequent network errors are still captured.
+const initSentry = () => import('./sentry');
+if (typeof window.requestIdleCallback === 'function') {
+  window.requestIdleCallback(initSentry, { timeout: 2000 });
+} else {
+  setTimeout(initSentry, 0);
+}

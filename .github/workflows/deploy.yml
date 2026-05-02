@@ -171,6 +171,16 @@ jobs:
             # VITE_SENTRY_DSN is a build-time env — export into client build so
             # Vite bakes it into the bundle. Client code reads import.meta.env.
             cd ../client && npm install && VITE_SENTRY_DSN="${VITE_SENTRY_DSN}" npm run build
+            # Mirror immutable build assets to a www-data-readable path so nginx
+            # can serve /assets/* directly (bypass Express). /root is mode 700,
+            # so the nginx worker (www-data) can't traverse there. /var/www is
+            # the canonical static-content location on Ubuntu and already
+            # world-traversable. brotli_static + the *.br files emitted by
+            # vite-plugin-compression then kick in for max compression at
+            # zero per-request CPU.
+            mkdir -p /var/www/flightfinder/assets
+            rsync -a --delete /root/flightfinder/client/dist/assets/ /var/www/flightfinder/assets/
+            chmod -R o+rX /var/www/flightfinder
             cp /root/flightfinder/nginx/himaxym.conf /etc/nginx/sites-enabled/flightfinder
             # Ensure brotli nginx modules are installed. Ubuntu auto-enables them
             # from /etc/nginx/modules-enabled/ after install. If the packages

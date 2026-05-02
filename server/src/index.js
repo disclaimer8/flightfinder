@@ -33,6 +33,11 @@ app.set('trust proxy', 1);
 // ─────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'same-site' },
+  // HSTS is owned by nginx (with preload flag) — see nginx/himaxym.conf.
+  // Helmet's default would emit a duplicate header without `preload`,
+  // and double Strict-Transport-Security headers are technically valid
+  // but messy and risk one of them being chosen by older middleboxes.
+  hsts: false,
   contentSecurityPolicy: {
     directives: {
       defaultSrc:     ["'self'"],
