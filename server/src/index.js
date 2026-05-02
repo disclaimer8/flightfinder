@@ -123,7 +123,12 @@ app.use(cookieParser());
 // Enrichment paths are skipped from the general + search limiters because a
 // single FlightResults page may render 30+ cards and each card fires its own
 // teaser/enriched request. They get a dedicated higher limit below.
-const isEnrichmentPath = (req) => /^\/api\/flights\/[^/]+\/enriched/.test(req.path);
+//
+// Use `req.originalUrl` rather than `req.path`: when a limiter is mounted at
+// `/api` the inner `req.path` is `/flights/.../enriched/teaser` (mount prefix
+// stripped), so a regex anchored to `/api/flights` never matches and the skip
+// is silently a no-op. originalUrl preserves the full request path.
+const isEnrichmentPath = (req) => /\/api\/flights\/[^/]+\/enriched/.test(req.originalUrl || req.url);
 
 // General API limit: 120 req / 15 min per IP
 const apiLimiter = rateLimit({
@@ -160,7 +165,7 @@ const enrichLimiter = rateLimit({
 app.use('/api', apiLimiter);
 app.use('/api/flights', searchLimiter);
 app.use('/api/flights', (req, res, next) => {
-  if (isEnrichmentPath({ path: '/api/flights' + req.path })) return enrichLimiter(req, res, next);
+  if (isEnrichmentPath(req)) return enrichLimiter(req, res, next);
   next();
 });
 
