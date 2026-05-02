@@ -120,6 +120,11 @@ app.use(cookieParser());
 // ─────────────────────────────────────────
 //  Rate limiting
 // ─────────────────────────────────────────
+// Enrichment paths are skipped from the general + search limiters because a
+// single FlightResults page may render 30+ cards and each card fires its own
+// teaser/enriched request. They get a dedicated higher limit below.
+const isEnrichmentPath = (req) => /^\/api\/flights\/[^/]+\/enriched/.test(req.path);
+
 // General API limit: 120 req / 15 min per IP
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -127,19 +132,37 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },
+  skip: isEnrichmentPath,
 });
 
-// Tighter limit for expensive search endpoints
+// Tighter limit for expensive search endpoints (search, explore, calendar).
+// Enrichment endpoints are skipped — see enrichLimiter below.
 const searchLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Search rate limit exceeded, please wait a moment.' },
+  skip: isEnrichmentPath,
+});
+
+// Enrichment endpoints are cheap, idempotent, and fan out N-per-page (one
+// fetch per FlightCard mounted in the results list). Bump to 300/min so a
+// page returning ~30 flights doesn't immediately exhaust the budget.
+const enrichLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Enrichment rate limit exceeded.' },
 });
 
 app.use('/api', apiLimiter);
 app.use('/api/flights', searchLimiter);
+app.use('/api/flights', (req, res, next) => {
+  if (isEnrichmentPath({ path: '/api/flights' + req.path })) return enrichLimiter(req, res, next);
+  next();
+});
 
 // ─────────────────────────────────────────
 //  Routes

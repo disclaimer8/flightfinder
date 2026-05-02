@@ -41,14 +41,26 @@ export function useEnrichedCard(flight) {
       // the subscription has been downgraded server-side, the API returns
       // 401/403. Rather than surfacing a generic "Could not load extra info"
       // banner, transparently fall back to /teaser so the user still sees
-      // blurred placeholders instead of a broken UI.
+      // blurred placeholders instead of a broken UI. A page rendering 30+
+      // FlightCards fans out 30+ teaser fetches; if rate-limiter (429) or
+      // upstream timeout makes that endpoint unhappy, treat it the same way:
+      // return a tier:'free'/data:null shape so the card renders blurred
+      // teasers without an angry red banner.
+      const SOFT_FAIL = { success: true, tier: 'free', data: null };
       const fetchWithFallback = async () => {
         if (isPro && token) {
-          const r = await fetch(enrichedUrl, { headers: { Authorization: `Bearer ${token}` } });
-          if (r.status !== 401 && r.status !== 403) return r.json();
+          try {
+            const r = await fetch(enrichedUrl, { headers: { Authorization: `Bearer ${token}` } });
+            if (r.status !== 401 && r.status !== 403 && r.status !== 429) return r.json();
+          } catch { /* fall through to teaser */ }
         }
-        const r2 = await fetch(teaserUrl);
-        return r2.json();
+        try {
+          const r2 = await fetch(teaserUrl);
+          if (r2.status === 429 || !r2.ok) return SOFT_FAIL;
+          return r2.json();
+        } catch {
+          return SOFT_FAIL;
+        }
       };
       promise = fetchWithFallback();
       _enrichedCache.set(cacheKey, { at: Date.now(), promise });
