@@ -93,22 +93,36 @@ type StatResult struct {
 // SUM(CAST(fatalities AS INTEGER)) is intentionally lossy: SQLite parses the
 // leading digits and ignores the rest, so "15+2" → 15 and "Unknown" → 0.
 // Acceptable for ranking; the absolute total is illustrative, not audit-grade.
-func GetAircraftStats(db *sql.DB) ([]StatResult, error) {
+//
+// commercialOnly limits to scheduled/charter/regional carriers (NTSB Part
+// 121/125/129/135 + brand-prefix matched non-NTSB rows). Without it, top-10
+// is dominated by U.S. general aviation (Cessna 172, Piper PA-18) — true
+// but irrelevant to a flight-search audience that only books on commercial
+// equipment. See migrate-commercial.py for the heuristic.
+func GetAircraftStats(db *sql.DB, commercialOnly bool) ([]StatResult, error) {
+	where := "aircraft_model IS NOT NULL AND aircraft_model != ''"
+	if commercialOnly {
+		where += " AND is_commercial = 1"
+	}
 	return runStat(db, `
 		SELECT aircraft_model, COUNT(id) AS c, SUM(CAST(fatalities AS INTEGER)) AS f
 		FROM accidents
-		WHERE aircraft_model IS NOT NULL AND aircraft_model != ''
+		WHERE `+where+`
 		GROUP BY aircraft_model
 		ORDER BY c DESC
 		LIMIT 10`)
 }
 
 // GetOperatorStats — top operators by accident count.
-func GetOperatorStats(db *sql.DB) ([]StatResult, error) {
+func GetOperatorStats(db *sql.DB, commercialOnly bool) ([]StatResult, error) {
+	where := "operator IS NOT NULL AND operator != ''"
+	if commercialOnly {
+		where += " AND is_commercial = 1"
+	}
 	return runStat(db, `
 		SELECT operator, COUNT(id) AS c, SUM(CAST(fatalities AS INTEGER)) AS f
 		FROM accidents
-		WHERE operator IS NOT NULL AND operator != ''
+		WHERE `+where+`
 		GROUP BY operator
 		ORDER BY c DESC
 		LIMIT 10`)
