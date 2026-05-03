@@ -17,6 +17,20 @@ import compression from 'vite-plugin-compression';
  * CSP-compatible: the result is an inline `<style>` block, allowed by
  * the existing `style-src 'self' 'unsafe-inline'` directive in helmet.
  */
+// Escape every RegExp metacharacter, not just `.`. Vite's content-hash
+// fileNames are alphanumeric in practice, so escaping only the dot
+// happened to work — but a pattern that escapes `.` and silently passes
+// through `\`, `^`, `$`, `*`, `+`, `?`, `(`, `)`, `[`, `]`, `{`, `}`, `|`
+// is exactly the shape CodeQL flags as "incomplete string escaping".
+// One day someone changes assetFileNames to include a literal bracket
+// or plus-sign and the regex starts matching the wrong link tag, or
+// throws on construction. Use the standard MDN escape pattern. (We can
+// switch to RegExp.escape() once Node ≥24 is the floor; today we want
+// the same code to run in test on whatever the dev's Node is.)
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function inlineEntryCss() {
   return {
     name: 'inline-entry-css',
@@ -31,7 +45,7 @@ function inlineEntryCss() {
         );
         if (!entryCssAsset || typeof entryCssAsset.source !== 'string') return html;
         const cssContent = entryCssAsset.source;
-        const linkRe = new RegExp(`<link[^>]+href="/${entryCssAsset.fileName.replace(/\./g, '\\.')}"[^>]*>`, 'i');
+        const linkRe = new RegExp(`<link[^>]+href="/${escapeRegExp(entryCssAsset.fileName)}"[^>]*>`, 'i');
         const inlined = `<style data-inline-entry-css>${cssContent}</style>`;
         return html.replace(linkRe, inlined);
       },
