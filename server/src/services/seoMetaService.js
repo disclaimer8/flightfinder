@@ -86,11 +86,11 @@ function aircraftMeta(slug) {
   const label = fam?.family?.label || fam?.name || slug;
   const manufacturer = fam?.family?.manufacturer || '';
   return {
-    title: `${label} flights and routes — which airlines fly it, where, and when | FlightFinder`,
-    description: `Find every route operated by the ${label}. See which airlines fly the ${manufacturer} ${fam?.name || ''} fleet and the city pairs they serve.`,
+    title: `${label} flights, routes and safety record | FlightFinder`,
+    description: `Every route operated by the ${label}: airlines, city pairs, and recent safety events for the ${manufacturer} ${fam?.name || ''} fleet. Live schedule data.`,
     canonical: `${BASE}/aircraft/${slug}`,
     h1: `${label} — flights, routes and airlines`,
-    subtitle: `Every city pair operated by the ${label} worldwide. Pick a route to see live schedule data and aircraft details.`,
+    subtitle: `Every city pair operated by the ${label} worldwide. Live schedule data, recent safety events, and operator details.`,
     robots: 'index, follow',
     ogType: 'article',
     kind: 'aircraft',
@@ -162,11 +162,11 @@ function resolve(pathname) {
 
   if (pathname === '/safety/feed' || pathname === '/safety/feed/') {
     return {
-      title: 'Aviation safety feed — recent NTSB accidents and incidents | FlightFinder',
-      description: 'Browse recent aviation accidents and incidents from the official U.S. NTSB database. Filter by severity. Updated daily.',
+      title: 'NTSB recent aviation accidents — daily feed (United States) | FlightFinder',
+      description: 'Daily updated feed of recent U.S. aviation accidents and incidents from the official NTSB CAROL database. Filter by severity. Cross-references aircraft type and operator.',
       canonical: `${BASE}/safety/feed`,
-      h1: 'Aviation safety feed',
-      subtitle: 'Recent NTSB accidents and incidents',
+      h1: 'NTSB recent aviation accidents and incidents',
+      subtitle: 'Daily updated feed from the official U.S. National Transportation Safety Board database',
       robots: 'index, follow',
       ogType: 'website',
       kind: 'safety-feed',
@@ -175,8 +175,10 @@ function resolve(pathname) {
 
   if (pathname === '/safety/global' || pathname === '/safety/global/') {
     return {
-      title: 'Global aviation safety records — historical accidents worldwide | FlightFinder',
-      description: 'Worldwide aviation accident database aggregated from Aviation Safety Network, B3A, and Wikidata. 5,200+ records since 1980 with map visualisation and rankings by aircraft type and operator.',
+      // 62 chars — fits Google mobile SERP without truncation, leads with
+      // the number-of-records signal that wins keyword matches.
+      title: 'Aviation accident database — 5,200 records worldwide since 1980',
+      description: 'Searchable global aviation accident database: 5,200+ records since 1980 from Aviation Safety Network, B3A, Wikidata. Map and rankings by aircraft and operator.',
       canonical: `${BASE}/safety/global`,
       h1: 'Global aviation safety',
       subtitle: 'Historical accidents worldwide',
@@ -247,6 +249,17 @@ function structuredData(meta) {
         })),
       });
     }
+    // Vehicle schema — schema.org has no Aircraft type, but Vehicle is
+    // ingested cleanly by Google entity panels and Bing knowledge cards.
+    graph.push({
+      '@type': 'Vehicle',
+      name: meta.aircraftLabel,
+      ...(meta.aircraftManufacturer ? {
+        manufacturer: { '@type': 'Organization', name: meta.aircraftManufacturer },
+      } : {}),
+      vehicleConfiguration: 'Commercial aircraft',
+      url: meta.canonical,
+    });
   } else if (meta.kind === 'route') {
     graph.push({
       '@type': 'BreadcrumbList',
@@ -279,6 +292,62 @@ function structuredData(meta) {
         })),
       });
     }
+  } else if (meta.kind === 'safety-global') {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: 'Safety', item: `${BASE}/safety/global` },
+        { '@type': 'ListItem', position: 3, name: 'Global aviation safety', item: meta.canonical },
+      ],
+    });
+    // Dataset schema — gateway to Google Dataset Search. The dataset is
+    // facts (date/operator/aircraft/fatalities) aggregated from public
+    // sources; the aggregation itself is the publishable artefact.
+    graph.push({
+      '@type': 'Dataset',
+      name: 'Global aviation accident records (1980–present)',
+      description: 'Worldwide aviation accident dataset aggregated from the Aviation Safety Network, the Bureau of Aircraft Accidents Archives (B3A), and Wikidata. Approximately 5,200 records since 1980 with aircraft type, operator, location, fatalities and source URL where known. Updated weekly.',
+      url: meta.canonical,
+      keywords: [
+        'aviation safety',
+        'aircraft accidents',
+        'plane crashes',
+        'aviation incidents',
+        'flight safety',
+        'aircraft type safety records',
+      ],
+      isAccessibleForFree: true,
+      creator: { '@type': 'Organization', name: 'FlightFinder', url: BASE },
+      temporalCoverage: '1980-01-01/..',
+      spatialCoverage: { '@type': 'Place', name: 'Worldwide' },
+      distribution: [
+        {
+          '@type': 'DataDownload',
+          encodingFormat: 'application/json',
+          contentUrl: `${BASE}/api/safety/global/accidents`,
+        },
+      ],
+    });
+  } else if (meta.kind === 'safety-feed') {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: 'Safety', item: `${BASE}/safety/global` },
+        { '@type': 'ListItem', position: 3, name: 'NTSB feed', item: meta.canonical },
+      ],
+    });
+    graph.push({
+      '@type': 'Dataset',
+      name: 'NTSB recent aviation accidents and incidents',
+      description: 'Recent U.S. aviation accidents and incidents from the official National Transportation Safety Board (NTSB) CAROL database. Updated daily.',
+      url: meta.canonical,
+      keywords: ['NTSB', 'aviation accidents', 'aviation incidents', 'aviation safety', 'United States'],
+      isAccessibleForFree: true,
+      creator: { '@type': 'Organization', name: 'FlightFinder', url: BASE },
+      spatialCoverage: { '@type': 'Country', name: 'United States' },
+    });
   } else if (meta.kind === 'home') {
     graph.push({
       '@type': 'FAQPage',

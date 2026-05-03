@@ -22,6 +22,8 @@ router.get('/sitemap.xml', async (_req, res) => {
     { loc: `${BASE}/`,              changefreq: 'weekly',  priority: '1.0' },
     { loc: `${BASE}/by-aircraft`,   changefreq: 'weekly',  priority: '0.9' },
     { loc: `${BASE}/map`,           changefreq: 'weekly',  priority: '0.8' },
+    { loc: `${BASE}/safety/global`, changefreq: 'weekly',  priority: '0.8' },
+    { loc: `${BASE}/safety/feed`,   changefreq: 'daily',   priority: '0.7' },
   ];
 
   // Aircraft landing pages — /aircraft/:slug for every family we support.

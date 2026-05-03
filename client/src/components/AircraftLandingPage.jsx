@@ -29,9 +29,15 @@ function fetchGlobalAccidentsCached() {
 
 // Build a regex that matches the family stem at the start of aircraft_model.
 // Slug "boeing-737" → /^Boeing 737/i, "airbus-a320" → /^Airbus A320/i.
+//
+// Strip the "-family" suffix that some slugs carry (e.g. "airbus-a320-family"):
+// the underlying aircraft_model strings are concrete variants ("Airbus A320-200",
+// "Airbus A321") and never start with "Airbus A320 Family". Without this strip
+// the family landing page rendered an empty safety section.
 function familyMatchRegex(slug) {
   if (!slug) return null;
-  const stem = slug
+  const cleaned = slug.replace(/-family$/, '');
+  const stem = cleaned
     .split('-')
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
@@ -243,9 +249,9 @@ export default function AircraftLandingPage() {
                         className="landing-safety-link"
                         href={url}
                         target="_blank"
-                        rel="noopener noreferrer"
+                        rel="nofollow noopener noreferrer"
                       >
-                        Source report →
+                        Read the {ev.operator || 'operator'} {ev.date || ''} report →
                       </a>
                     )}
                   </div>
