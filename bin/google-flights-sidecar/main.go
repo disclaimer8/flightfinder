@@ -81,9 +81,15 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	// Sidecar ceiling must be shorter than the Node-side axios timeout (10s)
-	// so callers receive a 5xx before they give up themselves.
-	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+	// Sidecar ceiling must be shorter than the Node-side axios timeout
+	// so callers receive a 5xx before they give up themselves. Bumped
+	// 8s → 22s after observing short-haul routes (LIS-OPO, BER-MUC,
+	// JFK-BOS) sometimes take 12-18s to come back from Google — under
+	// the old ceiling those queries silently 504'd, the orchestrator
+	// fell through to Travelpayouts (which has no offer for the date),
+	// and the user saw "no flights" on a route with dozens of daily
+	// services. Node-side axios is now 28s to give the sidecar room.
+	ctx, cancel := context.WithTimeout(r.Context(), 22*time.Second)
 	defer cancel()
 
 	offers, _, err := session.GetOffers(ctx, args)

@@ -2,7 +2,12 @@ const axios = require('axios');
 const { airplaneToIcao } = require('./airplaneToIcao');
 
 const SIDECAR_URL = process.env.GOOGLE_SIDECAR_URL || 'http://127.0.0.1:5002';
-const TIMEOUT_MS  = parseInt(process.env.GOOGLE_SIDECAR_TIMEOUT_MS || '10000', 10);
+// Bumped 10s → 28s alongside the sidecar's 22s context timeout. On short-
+// haul / domestic routes the upstream library occasionally takes 12-18s
+// to come back; under the old ceiling we'd cancel and fall through to
+// Travelpayouts (which has no offer for arbitrary dates), so the user
+// saw "no flights" for routes with dozens of services daily.
+const TIMEOUT_MS  = parseInt(process.env.GOOGLE_SIDECAR_TIMEOUT_MS || '28000', 10);
 
 exports.parse = (raw) => {
   if (!raw || !Array.isArray(raw.offers)) return [];
