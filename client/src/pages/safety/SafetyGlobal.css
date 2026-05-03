@@ -243,6 +243,26 @@
   font-size: 13px;
 }
 .safety-global__search::placeholder { color: #64748b; }
+.safety-global__select {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #e2e8f0;
+  font-size: 13px;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #94a3b8 50%),
+                    linear-gradient(135deg, #94a3b8 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 24px;
+}
+.safety-global__select option {
+  background: #0f172a;
+  color: #e2e8f0;
+}
 
 /* Mobile: filters become a bottom sheet via the FAB */
 .safety-global__filters-fab {

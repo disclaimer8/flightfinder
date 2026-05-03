@@ -47,7 +47,8 @@ app.use(helmet({
       connectSrc:     [
         "'self'",
         'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://analytics.google.com', // GA beacons
-        'https://*.ingest.de.sentry.io', // Our own Sentry (EU region) error + trace ingest
+        // No external Sentry endpoint — client errors POST to our own
+        // /api/client-error which forwards to @sentry/node out-of-band.
       ],
       fontSrc:        ["'self'", 'data:', 'https://fonts.gstatic.com'], // TP Drive Google Fonts
       objectSrc:      ["'none'"],
@@ -200,6 +201,7 @@ app.use('/api/map',           require('./routes/map'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/config',        require('./routes/config'));
 app.use('/api/safety',        require('./routes/safety'));
+app.use('/api/client-error',  require('./routes/clientError'));
 app.use('/api/admin/ingest-status', require('./routes/ingestStatus'));
 if (process.env.TRIPS_ENABLED !== '0') {
   app.use('/api/trips',       require('./routes/trips'));

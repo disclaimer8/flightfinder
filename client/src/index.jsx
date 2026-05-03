@@ -44,15 +44,7 @@ root.render(
   </React.StrictMode>
 );
 
-// Sentry init runs after first paint — saves ~14KB brotli + ~300-800ms of
-// main-thread parse on the critical path. We accept that errors thrown in
-// the very first idle window (typically <100ms) won't be captured; for an
-// app with no live users yet (project_no_users_yet) the trade-off is
-// straightforwardly worth it. Once Sentry initialises it instruments
-// fetch/XHR globally, so subsequent network errors are still captured.
-const initSentry = () => import('./sentry');
-if (typeof window.requestIdleCallback === 'function') {
-  window.requestIdleCallback(initSentry, { timeout: 2000 });
-} else {
-  setTimeout(initSentry, 0);
-}
+// Thin error reporter — replaces @sentry/react which weighed 124KB brotli.
+// Init is deferred to idle so we never block first paint. The reporter
+// itself is <1KB (see errorReporter.js); no SDK chunk to download.
+import('./errorReporter').then(m => m.initErrorReporter());

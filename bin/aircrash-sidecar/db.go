@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -159,6 +160,17 @@ type MapPoint struct {
 	Lon        float64 `json:"lon"`
 }
 
+// MapFilters carries the optional server-side filters for /map_data.
+// All fields are optional: empty values mean "no filter on this dimension".
+// Operator is a free-text contains-match (case-insensitive); Category is
+// matched exactly against the aircraft_category column populated by
+// migrate-category.py (wide-body / narrow-body / regional / turboprop /
+// helicopter / ga / other).
+type MapFilters struct {
+	Operator string
+	Category string
+}
+
 // GetMapPoints returns geocoded accident points for map rendering, capped to
 // at most `limit` rows (the controller enforces an upper bound). The 0.000001
 // sentinel is used by the upstream geocoder to mark "tried, not found"; we
@@ -167,8 +179,25 @@ type MapPoint struct {
 // `substr(normalized_date, 1, 4)` extracts the YYYY portion when the parser
 // successfully normalised the date; for unparseable strings normalized_date
 // echoes the original ("xx Oct 2024") and the cast fails, leaving year NULL.
-func GetMapPoints(db *sql.DB, limit int) ([]MapPoint, error) {
-	const query = `
+//
+// Filters: when MapFilters.Operator or .Category is set, narrow the result.
+// Pre-filtering server-side avoids shipping the full 30K rows just to drop
+// 95% in the browser. Both columns are indexed (idx_accidents_operator,
+// idx_accidents_category) by migrate-category.py.
+func GetMapPoints(db *sql.DB, limit int, filters MapFilters) ([]MapPoint, error) {
+	where := []string{"lat IS NOT NULL", "lat != 0", "lat != 0.000001"}
+	args := []interface{}{}
+	if filters.Category != "" {
+		where = append(where, "aircraft_category = ?")
+		args = append(args, filters.Category)
+	}
+	if filters.Operator != "" {
+		where = append(where, "operator LIKE ? COLLATE NOCASE")
+		args = append(args, "%"+filters.Operator+"%")
+	}
+	args = append(args, limit)
+
+	query := `
 		SELECT id,
 		       aircraft_model,
 		       fatalities,
@@ -176,10 +205,11 @@ func GetMapPoints(db *sql.DB, limit int) ([]MapPoint, error) {
 		       lat,
 		       lon
 		FROM accidents
-		WHERE lat IS NOT NULL AND lat != 0 AND lat != 0.000001
+		WHERE ` + strings.Join(where, " AND ") + `
 		ORDER BY normalized_date DESC, id DESC
 		LIMIT ?`
-	rows, err := db.Query(query, limit)
+
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -202,6 +232,54 @@ func GetMapPoints(db *sql.DB, limit int) ([]MapPoint, error) {
 			}
 		}
 		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// GetOperators returns the top operators (by accident count) optionally
+// filtered by a free-text contains-match. Powers the operator typeahead
+// on the safety map. commercialOnly mirrors the /stats/operators contract
+// — when true, restricts to scheduled/charter carriers (Part 121/125/129/
+// 135 + brand-prefix-matched non-NTSB rows) so the suggestion list isn't
+// dominated by one-off GA flying clubs.
+//
+// The query is intentionally case-insensitive (COLLATE NOCASE) — operator
+// strings come from multiple scrapers and aren't normalised, so "Delta",
+// "DELTA AIR LINES INC", and "Delta Air Lines" should all match a query
+// of "delta".
+func GetOperators(db *sql.DB, q string, commercialOnly bool, limit int) ([]string, error) {
+	where := []string{"operator IS NOT NULL", "operator != ''"}
+	args := []interface{}{}
+	if commercialOnly {
+		where = append(where, "is_commercial = 1")
+	}
+	if q != "" {
+		where = append(where, "operator LIKE ? COLLATE NOCASE")
+		args = append(args, "%"+q+"%")
+	}
+	args = append(args, limit)
+
+	query := `
+		SELECT operator
+		FROM accidents
+		WHERE ` + strings.Join(where, " AND ") + `
+		GROUP BY operator
+		ORDER BY COUNT(*) DESC
+		LIMIT ?`
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]string, 0, limit)
+	for rows.Next() {
+		var op string
+		if err := rows.Scan(&op); err != nil {
+			continue
+		}
+		out = append(out, op)
 	}
 	return out, rows.Err()
 }
