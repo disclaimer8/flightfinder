@@ -5,7 +5,26 @@
  *
  * Usage:
  *   router.get('/', validate.searchQuery, controller.searchFlights);
+ *
+ * Type-safety note: every validator below assumes `req.query.X` is a string
+ * (or undefined). server/src/index.js sets a hardened `query parser` that
+ * returns ONLY string values via URLSearchParams, so attackers cannot smuggle
+ * arrays/objects via `?x=a&x=b` or `?x[a]=1`. Even with that guarantee, the
+ * validators include `typeof X !== 'string'` checks before calling string
+ * methods (.length, .test, .toUpperCase) as defense-in-depth — if the parser
+ * is ever swapped or a value reaches here from another source, the validators
+ * still fail closed instead of throwing TypeError or false-passing.
  */
+
+/**
+ * Returns the value if it is a non-empty string, else `undefined`. Returning
+ * `undefined` (not null) preserves the semantics callers wrote against the
+ * raw `req.query.X` — `value !== undefined` keeps working as a "was it
+ * provided?" check, and `!value` keeps working as "absent or empty".
+ */
+function asStr(v) {
+  return typeof v === 'string' && v.length > 0 ? v : undefined;
+}
 
 const IATA_RE      = /^[A-Z]{2,3}$/;
 const DATE_RE      = /^\d{4}-\d{2}-\d{2}$/;
@@ -33,7 +52,15 @@ function sanitiseKey(str) {
  * Validate GET /api/flights  query params
  */
 function searchQuery(req, res, next) {
-  const { departure, arrival, date, returnDate, passengers, aircraftType, aircraftModel, familyName, directOnly } = req.query;
+  const departure  = asStr(req.query.departure);
+  const arrival    = asStr(req.query.arrival);
+  const date       = asStr(req.query.date);
+  const returnDate = asStr(req.query.returnDate);
+  const passengers = asStr(req.query.passengers);
+  const aircraftType  = asStr(req.query.aircraftType);
+  const aircraftModel = asStr(req.query.aircraftModel);
+  const familyName    = asStr(req.query.familyName);
+  const directOnly    = asStr(req.query.directOnly);
 
   if (!departure || !arrival) {
     return bad(res, 'departure and arrival are required');
@@ -72,8 +99,8 @@ function searchQuery(req, res, next) {
     return bad(res, 'aircraftModel must be 1–6 alphanumeric characters');
   }
 
-  if (familyName !== undefined && familyName !== '') {
-    if (typeof familyName !== 'string' || familyName.trim().length < 2 || familyName.length > 60) {
+  if (familyName) {
+    if (familyName.trim().length < 2 || familyName.length > 60) {
       return bad(res, 'familyName must be a 2–60 char string');
     }
   }
@@ -103,7 +130,11 @@ function searchQuery(req, res, next) {
  * Validate GET /api/flights/explore  query params
  */
 function exploreQuery(req, res, next) {
-  const { departure, date, aircraftType, aircraftModel, familyName } = req.query;
+  const departure     = asStr(req.query.departure);
+  const date          = asStr(req.query.date);
+  const aircraftType  = asStr(req.query.aircraftType);
+  const aircraftModel = asStr(req.query.aircraftModel);
+  const familyName    = asStr(req.query.familyName);
 
   if (!departure) return bad(res, 'departure is required');
 
@@ -129,7 +160,9 @@ function exploreQuery(req, res, next) {
   // familyName is a free-form display name or slug (e.g. "Boeing 787" or
   // "boeing-787") that the controller resolves via aircraftFamilies. Cap
   // length and reject control characters so it can't smuggle into the
-  // cache key or downstream regex.
+  // cache key or downstream regex. asStr() above already guarantees string
+  // type, so .length and .test() are safe — the explicit check below is the
+  // value-shape guard, not a type guard.
   if (familyName && (familyName.length > 64 || /[\x00-\x1f]/.test(familyName))) {
     return bad(res, 'familyName invalid');
   }
@@ -150,7 +183,10 @@ function exploreQuery(req, res, next) {
  * Validate GET /api/flights/cheap-calendar  query params
  */
 function cheapCalendarQuery(req, res, next) {
-  const { departure, arrival, month, currency } = req.query;
+  const departure = asStr(req.query.departure);
+  const arrival   = asStr(req.query.arrival);
+  const month     = asStr(req.query.month);
+  const currency  = asStr(req.query.currency);
 
   if (!departure || !arrival) {
     return bad(res, 'departure and arrival are required');
@@ -287,10 +323,16 @@ const authBody = {
  * Validate GET /api/flights/aircraft-search/stream  query params
  */
 function aircraftSearchQuery(req, res, next) {
-  const { familyName, city, radius, iata, date, passengers, nonStop } = req.query;
+  const familyName = asStr(req.query.familyName);
+  const city       = asStr(req.query.city);
+  const radius     = asStr(req.query.radius);
+  const iata       = asStr(req.query.iata);
+  const date       = asStr(req.query.date);
+  const passengers = asStr(req.query.passengers);
+  const nonStop    = asStr(req.query.nonStop);
   const directOnly = nonStop === '1' || nonStop === 'true';
 
-  if (!familyName || typeof familyName !== 'string' || familyName.trim().length < 3) {
+  if (!familyName || familyName.trim().length < 3) {
     return bad(res, 'familyName is required (e.g. "Boeing 737")');
   }
 
@@ -341,7 +383,9 @@ function aircraftSearchQuery(req, res, next) {
  * Mirrors searchQuery but tighter: date is required and must be within 180 days.
  */
 function scheduledAircraftQuery(req, res, next) {
-  const { departure, arrival, date } = req.query;
+  const departure = asStr(req.query.departure);
+  const arrival   = asStr(req.query.arrival);
+  const date      = asStr(req.query.date);
 
   if (!departure || !arrival) {
     return bad(res, 'departure and arrival are required');
@@ -382,20 +426,19 @@ function scheduledAircraftQuery(req, res, next) {
  *   windowDays   optional, default 14, max 90
  */
 function aircraftRoutesQuery(req, res, next) {
-  const { family, origins, windowDays } = req.query;
+  const family     = asStr(req.query.family);
+  const origins    = asStr(req.query.origins);
+  const windowDays = asStr(req.query.windowDays);
 
   // family accepts either a slug ("a340", "a320-family") or a display name
   // ("Airbus A340", "Airbus A320 family"). Controller normalises via resolveFamily().
-  if (!family || typeof family !== 'string' || family.trim().length < 2 || family.length > 64) {
+  if (!family || family.trim().length < 2 || family.length > 64) {
     return bad(res, 'family is required');
   }
 
   // origins is optional — omitted/empty means "worldwide" global map for the family.
   let originsUpper = [];
-  if (origins !== undefined && origins !== '' && origins !== null) {
-    if (typeof origins !== 'string') {
-      return bad(res, 'origins must be a CSV string of IATA codes');
-    }
+  if (origins) {
     const list = origins.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
     if (list.length > 10) return bad(res, 'origins must contain at most 10 IATA codes');
     for (const o of list) {
@@ -427,17 +470,20 @@ const SAFETY_IATA_AIRLINE_RE = /^[A-Z0-9]{2,3}$/;
 const SAFETY_ID_RE      = /^\d{1,12}$/;
 
 function safetyEventsQuery(req, res, next) {
-  const { limit, offset, severity, country } = req.query;
+  const limit    = asStr(req.query.limit);
+  const offset   = asStr(req.query.offset);
+  const severity = asStr(req.query.severity);
+  const country  = asStr(req.query.country);
   const lim = limit  != null ? parseInt(limit,  10) : 50;
   const off = offset != null ? parseInt(offset, 10) : 0;
   if (!Number.isFinite(lim) || lim < 1 || lim > 200) return bad(res, 'limit must be 1-200');
   if (!Number.isFinite(off) || off < 0)              return bad(res, 'offset must be >= 0');
-  if (severity && !SEVERITIES_SET.has(String(severity))) {
+  if (severity && !SEVERITIES_SET.has(severity)) {
     return bad(res, `severity must be one of: ${[...SEVERITIES_SET].join(', ')}`);
   }
   let countryUpper = null;
   if (country) {
-    countryUpper = String(country).toUpperCase();
+    countryUpper = country.toUpperCase();
     if (!SAFETY_COUNTRY_RE.test(countryUpper)) return bad(res, 'country must be 2-4 letters');
   }
   req.validatedQuery = { limit: lim, offset: off, severity: severity || null, country: countryUpper };
