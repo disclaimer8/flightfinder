@@ -85,15 +85,22 @@ function FlightCard({ flight }) {
   // as the 2-letter code ("LX"); flightNumber is usually prefixed ("LX0345").
   // The server regex requires exactly 2-char airline + up to 4 digits, so we
   // prefer airlineIata and strip any leading alphabetic prefix from the number.
+  // Backend stamps a deterministic flight.id (`${IATA}${digits}:${date}`)
+  // so the FE no longer has to derive one. We keep the local synthesis as a
+  // fallback for cached responses produced before the backend started
+  // emitting the field. Anonymous fallback ids ("anon:...") aren't usable
+  // as enrichment keys — treat them like a missing id.
   const depDate = (flight.departureTime || '').slice(0, 10);
   const airlineCode = (flight.airlineIata || flight.airline || '').toUpperCase();
   const flightDigits = String(flight.flightNumber || '')
     .replace(/^[A-Z]+/i, '')   // drop leading airline code if present
     .replace(/\D/g, '')        // keep digits only
     .replace(/^0+/, '');        // trim leading zeros: LX0345 -> 345
-  const enrichedId = airlineCode.length === 2 && flightDigits && depDate
+  const syntheticId = airlineCode.length === 2 && flightDigits && depDate
     ? `${airlineCode}${flightDigits}:${depDate}`
     : null;
+  const backendId = flight.id && !String(flight.id).startsWith('anon:') ? flight.id : null;
+  const enrichedId = backendId || syntheticId;
 
   const outboundItinerary = {
     departure: flight.departure,

@@ -2,9 +2,47 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import compression from 'vite-plugin-compression';
 
+/**
+ * Inline the entry CSS into <head> so first paint doesn't block on a
+ * separate /assets/index-*.css fetch. Lazy-route CSS chunks
+ * (AircraftLandingPage.css, RouteMap.css etc.) are still emitted as
+ * separate <link rel="stylesheet"> tags by Vite — only the entry
+ * chunk's CSS gets inlined here.
+ *
+ * Why a custom plugin: the obvious "use beasties / critters" path tries
+ * to extract _critical_ CSS via puppeteer above-the-fold detection,
+ * which is fragile and adds 30+ MB of node_modules. Our entry CSS is
+ * already tiny (~46 KB raw / 8 KB brotli). Just inline the whole thing.
+ *
+ * CSP-compatible: the result is an inline `<style>` block, allowed by
+ * the existing `style-src 'self' 'unsafe-inline'` directive in helmet.
+ */
+function inlineEntryCss() {
+  return {
+    name: 'inline-entry-css',
+    apply: 'build',
+    enforce: 'post',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx.bundle) return html;
+        const entryCssAsset = Object.values(ctx.bundle).find(
+          (a) => a.type === 'asset' && a.fileName?.startsWith('assets/index-') && a.fileName.endsWith('.css')
+        );
+        if (!entryCssAsset || typeof entryCssAsset.source !== 'string') return html;
+        const cssContent = entryCssAsset.source;
+        const linkRe = new RegExp(`<link[^>]+href="/${entryCssAsset.fileName.replace(/\./g, '\\.')}"[^>]*>`, 'i');
+        const inlined = `<style data-inline-entry-css>${cssContent}</style>`;
+        return html.replace(linkRe, inlined);
+      },
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     react(),
+    inlineEntryCss(),
     // Pre-compress JS/CSS/HTML/SVG into *.br at build time so nginx can serve
     // them via brotli_static — single max-quality (level 11) compression done
     // once per release instead of dynamic level-5 per request. Drop dynamic

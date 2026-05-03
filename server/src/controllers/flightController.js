@@ -13,6 +13,28 @@ const { resolveFamily } = require('../models/aircraftFamilies');
 const FLIGHT_API = process.env.FLIGHT_API || 'amadeus'; // 'amadeus' | 'duffel'
 
 /**
+ * Build a deterministic flight id the FE can use as a React key + enrichment
+ * cache key. Matches the legacy FE-side derivation in FlightCard.jsx so cache
+ * entries stay valid across the change. Mutates the flight object in place.
+ */
+function stampFlightId(flight) {
+  if (flight.id) return; // already set (e.g. by upstream)
+  const flightNo = String(flight.flightNumber || '');
+  const airlineCode = (flight.airlineIata || flightNo.match(/^([A-Z0-9]{2,3})/)?.[1] || '').toUpperCase();
+  const flightDigits = flightNo.replace(/^[A-Z]+/i, '').replace(/\D/g, '').replace(/^0+/, '');
+  const depDate = String(flight.departureTime || '').slice(0, 10);
+  if (airlineCode.length >= 2 && airlineCode.length <= 3 && flightDigits && depDate) {
+    flight.id = `${airlineCode}${flightDigits}:${depDate}`;
+    return;
+  }
+  // Fallback so two flights without identifiers still get unique keys.
+  const dep  = flight.departure?.code || '?';
+  const arr  = flight.arrival?.code || '?';
+  const time = (flight.departureTime || '').replace(/[^\dTZ:+-]/g, '');
+  flight.id  = `anon:${dep}-${arr}:${time || Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
  * Search flights with real API (Amadeus) or fallback to mock data
  */
 exports.searchFlights = async (req, res) => {
@@ -133,6 +155,14 @@ exports.searchFlights = async (req, res) => {
     if (sourceLabel === 'none') {
       console.warn(`[flights] no results across all sources for ${departure}->${arrival} ${date}`);
     }
+
+    // Stamp every flight with a deterministic id so the FE can use it as a
+    // React key + an enrichment-cache key. Algorithm matches what FlightCard
+    // would synthesise client-side: `${airlineIata}${flightDigits}:${depDate}`
+    // (e.g. "BA176:2026-05-10"). When the airline / flight number are missing
+    // we fall back to a stable hash of departure+arrival+time so duplicate
+    // React keys still don't collapse multiple cards into one.
+    flights.forEach(stampFlightId);
 
     res.json({
       success: true,
@@ -612,13 +642,20 @@ exports.exploreDestinations = async (req, res) => {
             });
 
             if (matching.length) {
-              const best = matching.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
+              // Prefer a non-stop itinerary if one exists in the matching set;
+              // a 1-stop on the requested aircraft is technically valid but
+              // means the connection might be on a different plane. Fall back
+              // to cheapest when no non-stop is available.
+              const direct = matching.filter(f => (f.stops ?? 0) === 0);
+              const pool   = direct.length ? direct : matching;
+              const best   = pool.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
               return {
                 destination: dest,
                 price: best.price,
                 currency: best.currency,
                 duration: best.duration,
                 stops: best.stops ?? 0,
+                directOnAircraft: (best.stops ?? 0) === 0,
                 airline: best.airline,
                 aircraftCode: best.aircraftCode,
                 aircraftName: best.aircraft?.name || best.aircraftCode,
