@@ -2,6 +2,46 @@
 
 const subsModel   = require('../models/subscriptions');
 const stripeSvc   = require('./stripeService');
+const { db }      = require('../models/db');
+
+const getUserTier = db.prepare('SELECT subscription_tier FROM users WHERE id = ?');
+
+// Tier hierarchy used to prevent accidental downgrades when a Pro user
+// (especially a Lifetime holder) clicks Checkout a second time. Higher
+// number wins; users.subscription_tier is only overwritten if the
+// incoming tier ranks at least as high. Real downgrades (cancellation,
+// payment failure) come through handleSubscriptionUpdated /
+// handleSubscriptionDeleted, which call setUserTierFree() unconditionally
+// — those still work as expected.
+//
+// Why this is here: prod incident 2026-05-03 — user with active
+// pro_lifetime clicked the Annual checkout flow (curiosity / accidental
+// double-tap), Stripe issued a 7-day trialing pro_annual subscription,
+// our handleCheckoutCompleted unconditionally wrote
+// users.subscription_tier='pro_annual' + sub_valid_until=trial_end.
+// 7 days later the trial would have expired and the user would have
+// silently dropped from Lifetime to Free, even though the lifetime
+// row in the subscriptions table is still active.
+const TIER_RANK = { free: 0, pro_monthly: 1, pro_annual: 2, pro_lifetime: 3 };
+
+function rankOf(tier) {
+  return TIER_RANK[tier] ?? -1;
+}
+
+// Apply users.subscription_tier update only if the incoming tier is at
+// least as good as what's already there. Returns true if applied.
+function safeUpdateUserTier(userId, tier, validUntil, stripeCustomerId) {
+  const current = getUserTier.get(userId)?.subscription_tier;
+  if (current && rankOf(current) > rankOf(tier)) {
+    console.warn(
+      `[subs] refusing to downgrade user ${userId} from ${current} to ${tier} ` +
+      `(checkout completed for a lower tier — keeping the better plan)`,
+    );
+    return false;
+  }
+  subsModel.updateUserTier(userId, tier, validUntil, stripeCustomerId);
+  return true;
+}
 
 // Maps Stripe Subscription object → our row shape.
 function rowFromStripeSub({ userId, sub, tier, sessionId }) {
@@ -38,7 +78,7 @@ async function handleCheckoutCompleted(session) {
       trial_end: null,
       now: Date.now(),
     });
-    subsModel.updateUserTier(userId, 'pro_lifetime', null, session.customer);
+    safeUpdateUserTier(userId, 'pro_lifetime', null, session.customer);
     return;
   }
 
@@ -46,7 +86,7 @@ async function handleCheckoutCompleted(session) {
   const stripe = stripeSvc._getClient();
   const sub    = await stripe.subscriptions.retrieve(session.subscription);
   subsModel.upsertSubscription(rowFromStripeSub({ userId, sub, tier, sessionId: session.id }));
-  subsModel.updateUserTier(
+  safeUpdateUserTier(
     userId,
     tier,
     sub.current_period_end ? sub.current_period_end * 1000 : null,
@@ -62,7 +102,7 @@ async function handleSubscriptionUpdated(sub) {
   }));
   const validUntil = sub.current_period_end ? sub.current_period_end * 1000 : null;
   if (sub.status === 'active' || sub.status === 'trialing') {
-    subsModel.updateUserTier(row.user_id, row.tier, validUntil);
+    safeUpdateUserTier(row.user_id, row.tier, validUntil);
   } else if (sub.status === 'canceled' || sub.status === 'unpaid') {
     if (!hasSurvivingPaidSubscription(row.user_id, row.id)) {
       subsModel.setUserTierFree(row.user_id);
