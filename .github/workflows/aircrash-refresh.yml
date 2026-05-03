@@ -162,7 +162,19 @@ jobs:
           echo "before=$BEFORE"
           echo "after =$AFTER"
           if [ "$BEFORE" = "$AFTER" ]; then
-            echo "No new data — seed file unchanged. Exiting cleanly."
+            # Honest soft-failure mode. ALL three upstream sources currently
+            # block GitHub Actions IPs:
+            #   - Wikidata (WDQS): 403 on Azure IP range — anti-LLM defence
+            #     rolled out in 2023-24; we tested locally and the same
+            #     query returns 200, confirming IP not UA.
+            #   - ASN: Cloudflare JS-challenge silently returns empty page,
+            #     scraper sees no <tr> rows and saves zero records.
+            #   - B3A: same Cloudflare gate; also low-quality output per
+            #     code review (Cessna (B3A) placeholder rows).
+            # We surface this so the workflow doesn't pretend success.
+            # To actually refresh data, run the upstream scraper locally
+            # (see bin/aircrash-sidecar/README.md "Manual / local refresh").
+            echo "::warning::No new data after scrape — likely upstream IP block (Wikidata/Cloudflare). See workflow logs + scraper-logs artifact for confirmation. To refresh manually, run upstream Aviation-Safety-Explorer locally and PR the resulting accidents.db.seed."
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi

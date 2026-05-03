@@ -86,9 +86,39 @@ You can trigger the workflow ad-hoc from the Actions tab via the
 `workflow_dispatch` button (optional `asn_years_back` input lets you
 widen the ASN window if a refresh missed older data).
 
-### Manual / local refresh (fallback)
+### ⚠️ CI scraping is currently soft-broken
 
-If CI is unavailable or you need to backfill older years:
+Verified 2026-05-03: every weekly cron currently produces **zero new
+records** because all three upstream sources reject GitHub-hosted
+runner IPs:
+
+- **Wikidata SPARQL (WDQS)** returns HTTP 403 from the Azure IP range
+  the GitHub Actions runners use. Wikimedia rolled this out in 2023-24
+  to push back on LLM scrapers. We confirmed locally the same query
+  returns 200 with the same User-Agent — it's an IP-range block, not
+  a UA misconfiguration.
+- **Aviation Safety Network** sits behind Cloudflare. The go-rod
+  stealth plugin handles individual challenges fine, but Cloudflare's
+  CI-IP heuristics serve a JS challenge that the scraper silently
+  walks through without ever seeing a populated `<tr>` table — zero
+  rows extracted, zero saved.
+- **B3A** has the same Cloudflare gate plus the upstream code review
+  flagged its output as low-quality (`Cessna (B3A)` placeholder rows
+  with year-only fallback dates). Currently skipped in the CI pipeline.
+
+Until we either move the scraper to a residential-IP runner (e.g. a
+dedicated VPS we **don't** also serve himaxym.com from), pay for a
+proxy service like ScrapingBee or Bright Data, or find an aviation
+data source with no anti-bot stance, **the CI workflow will keep
+running on schedule but will never produce a refresh PR**. The
+workflow now emits a `::warning::` annotation in that case so it's
+visible in the Actions UI rather than failing silent-success.
+
+### Manual / local refresh (the working path)
+
+This is the realistic refresh flow until the IP-block situation
+changes. Runs from your laptop, where Wikidata and Cloudflare both
+behave normally.
 
 1. Run the upstream scraper locally (needs Chromium):
    ```sh
