@@ -20,3 +20,12 @@
 .operator-safety__link[rel="nofollow"] {
   color: #6b7280; font-size: 12px;
 }
+.operator-safety__row--global {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed #e5e7eb;
+  gap: 8px;
+}
+.operator-safety__link--global {
+  font-size: 12px; color: #6b7280;
+}

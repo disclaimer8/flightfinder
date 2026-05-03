@@ -282,6 +282,20 @@
   letter-spacing: 0.02em;
 }
 
+/* Low-prominence link to the aircraft landing page — surfaces the safety
+   record without crowding the card or implying a risk signal. */
+.aircraft-safety-link {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  text-decoration: none;
+  font-weight: 500;
+  width: fit-content;
+}
+.aircraft-safety-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
 .type-badge.type-jet        { background: #eef2ff; color: #4338ca; }
 .type-badge.type-wide-body  { background: #faf5ff; color: #7e22ce; }
 .type-badge.type-turboprop  { background: var(--green-bg); color: #065f46; }

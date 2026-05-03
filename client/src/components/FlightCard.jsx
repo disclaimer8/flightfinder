@@ -1,9 +1,11 @@
+import { Link } from 'react-router-dom';
 import { formatTime, formatDate } from '../utils/formatters';
 import EnrichedPanel from './EnrichedPanel';
 import AddToTripsButton from './AddToTripsButton';
 import OperatorSafetyBlock from './OperatorSafetyBlock';
 import { useClientConfig } from '../hooks/useClientConfig';
 import { amadeusToIcao } from '../utils/amadeusToIcao';
+import { aircraftDisplayToFamilySlug } from '../utils/flightUtils';
 import './FlightCard.css';
 
 function ItineraryRow({ itinerary, label }) {
@@ -144,6 +146,27 @@ function FlightCard({ flight }) {
       <div className="flight-footer">
         <div className="aircraft-block">
           <span className="aircraft-name">{aircraft?.name || flight.aircraftName || flight.aircraftCode}</span>
+          {/* Discreet cross-link to the aircraft landing page, which carries
+              the safety section with proper context (overview, operators,
+              fleet usage) — see UX rationale in the safety integration plan.
+              We deliberately avoid surfacing raw accident counts on the card:
+              counts without departure denominators mislead and inflate
+              perceived risk (Slovic 1987; FAA/IATA report safety as rate per
+              million departures, not absolute count). */}
+          {(() => {
+            const slug = aircraftDisplayToFamilySlug(
+              aircraft?.name || flight.aircraftName || flight.aircraftCode
+            );
+            return slug ? (
+              <Link
+                to={`/aircraft/${slug}`}
+                className="aircraft-safety-link"
+                rel="nofollow"
+              >
+                View aircraft safety record →
+              </Link>
+            ) : null;
+          })()}
           <span className={`type-badge type-${aircraft?.type || 'jet'}`}>
             {aircraft?.type || 'jet'}
           </span>
@@ -175,6 +198,7 @@ function FlightCard({ flight }) {
         <OperatorSafetyBlock
           airlineIata={flight.airlineIata || (flight.airline?.length === 2 ? flight.airline : null)}
           airlineIcao={flight.airlineIcao || (flight.airline?.length === 3 ? flight.airline : null)}
+          airlineName={flight.airline && flight.airline.length > 3 ? flight.airline : null}
         />
       )}
 

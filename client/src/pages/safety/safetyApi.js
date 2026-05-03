@@ -48,6 +48,47 @@ export async function fetchOperator(code, token) {
 
 export function _clearOperatorCache() { _operatorCache.clear(); }
 
+// ── Global safety dataset (AirCrash) helpers ─────────────────────────────────
+// One module-level fetch per session per endpoint. The "global" dataset is
+// read-only reference data refreshed weekly on the server, so a session-long
+// cache is appropriate. Errors evict the promise so a future caller can retry.
+let _globalOperatorsPromise = null;
+export function fetchGlobalOperatorsCached() {
+  if (_globalOperatorsPromise) return _globalOperatorsPromise;
+  _globalOperatorsPromise = fetch(`${API_BASE}/api/safety/global/stats/operators`)
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then(body => Array.isArray(body) ? body : [])
+    .catch(err => {
+      _globalOperatorsPromise = null;
+      throw err;
+    });
+  return _globalOperatorsPromise;
+}
+
+let _globalAircraftsPromise = null;
+export function fetchGlobalAircraftsCached() {
+  if (_globalAircraftsPromise) return _globalAircraftsPromise;
+  _globalAircraftsPromise = fetch(`${API_BASE}/api/safety/global/stats/aircrafts`)
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then(body => Array.isArray(body) ? body : [])
+    .catch(err => {
+      _globalAircraftsPromise = null;
+      throw err;
+    });
+  return _globalAircraftsPromise;
+}
+
+export function _clearGlobalSafetyCaches() {
+  _globalOperatorsPromise = null;
+  _globalAircraftsPromise = null;
+}
+
 export async function fetchAircraft(reg, token) {
   const r = await fetch(`${API_BASE}/api/safety/aircraft/${encodeURIComponent(reg)}`, {
     headers: { Authorization: `Bearer ${token}` },

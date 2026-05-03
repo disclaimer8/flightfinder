@@ -34,6 +34,23 @@
   color: var(--text-3);
 }
 
+/* Subtle cross-link to /safety/global. Lives in the results header alongside
+   the count; deliberately low-contrast so it doesn't compete with sort/filter
+   affordances. Risk-communication research (Slovic, Fischhoff & Lichtenstein
+   1980; Lee & See 2004) supports peripheral surfacing rather than alarmist
+   placement when context for the data is established elsewhere. */
+.results-safety-link {
+  font-size: 0.78rem;
+  color: var(--text-3);
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: auto;
+}
+.results-safety-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
 .source-badge {
   font-size: 0.75rem;
   font-weight: 600;

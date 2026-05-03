@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import FlightCard from './FlightCard';
 import FlightFilters from './FlightFilters';
 import { parseDurationMins, getTimeSlot } from '../utils/flightUtils';
@@ -192,6 +193,9 @@ function FlightResults({ flights, source, hasSearched, initialAirlines = [] }) {
                 <span className="hidden-count"> · {hiddenCount} filtered out</span>
               )}
             </span>
+            <Link to="/safety/global" className="results-safety-link" rel="nofollow">
+              Browse aviation safety data →
+            </Link>
             {IS_DEV && source && (
               <span className={`source-badge ${SOURCE_CLASSES[source] || ''}`}>
                 {SOURCE_LABELS[source] || source}
