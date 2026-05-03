@@ -182,6 +182,35 @@ jobs:
             rsync -a --delete /root/flightfinder/client/dist/assets/ /var/www/flightfinder/assets/
             chmod -R o+rX /var/www/flightfinder
             cp /root/flightfinder/nginx/himaxym.conf /etc/nginx/sites-enabled/flightfinder
+            # Cloudflare proxy — refresh the trusted-proxy IP list every deploy.
+            # Origin nginx receives every request from a CF edge IP; without
+            # set_real_ip_from + real_ip_header CF-Connecting-IP, the rate-
+            # limiter and Sentry would see the CF edge instead of the actual
+            # client. CF publishes both v4 and v6 ranges at /ips-v4 and /ips-v6.
+            # Falls back to an empty stub (no realip rewriting) when CF is
+            # unreachable, so deploys still succeed offline.
+            CF_FILE=/etc/nginx/conf.d/cloudflare-ips.conf
+            CF_TMP=$(mktemp)
+            {
+              echo "# Cloudflare proxy IPs — auto-refreshed by deploy.yml"
+              echo "# Source: https://www.cloudflare.com/ips/"
+              echo "# Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              if curl -fsS --max-time 8 https://www.cloudflare.com/ips-v4 -o /tmp/cf-v4 \
+                 && curl -fsS --max-time 8 https://www.cloudflare.com/ips-v6 -o /tmp/cf-v6; then
+                sed -e 's|^|set_real_ip_from |; s|$|;|' /tmp/cf-v4 /tmp/cf-v6
+                echo "real_ip_header CF-Connecting-IP;"
+                echo "real_ip_recursive on;"
+                rm -f /tmp/cf-v4 /tmp/cf-v6
+              else
+                echo "# (cloudflare.com unreachable at deploy time — stub only)"
+              fi
+            } > "$CF_TMP"
+            if ! cmp -s "$CF_TMP" "$CF_FILE" 2>/dev/null; then
+              mv "$CF_TMP" "$CF_FILE"
+              echo "[deploy] cloudflare-ips.conf refreshed"
+            else
+              rm "$CF_TMP"
+            fi
             # Ensure brotli nginx modules are installed. Ubuntu auto-enables them
             # from /etc/nginx/modules-enabled/ after install. If the packages
             # aren't available on this Ubuntu release, sed-strip the brotli
