@@ -100,31 +100,45 @@ type StatResult struct {
 // is dominated by U.S. general aviation (Cessna 172, Piper PA-18) — true
 // but irrelevant to a flight-search audience that only books on commercial
 // equipment. See migrate-commercial.py for the heuristic.
+//
+// Grouping is by aircraft_canonical (populated by migrate-canonical.py) so
+// "BOEING 737 800" / "BOEING 737-800" / "Boeing 737-800" — three free-text
+// variants of the same physical model — collapse into one row. The display
+// name comes from aircraft_display, which stores the most-frequent original
+// spelling per canonical group so the API returns something human readable.
 func GetAircraftStats(db *sql.DB, commercialOnly bool) ([]StatResult, error) {
-	where := "aircraft_model IS NOT NULL AND aircraft_model != ''"
+	where := "a.aircraft_canonical IS NOT NULL AND a.aircraft_canonical != ''"
 	if commercialOnly {
-		where += " AND is_commercial = 1"
+		where += " AND a.is_commercial = 1"
 	}
 	return runStat(db, `
-		SELECT aircraft_model, COUNT(id) AS c, SUM(CAST(fatalities AS INTEGER)) AS f
-		FROM accidents
+		SELECT COALESCE(d.display_name, a.aircraft_canonical) AS name,
+		       COUNT(a.id) AS c,
+		       SUM(CAST(a.fatalities AS INTEGER)) AS f
+		FROM accidents a
+		LEFT JOIN aircraft_display d ON d.canonical = a.aircraft_canonical
 		WHERE `+where+`
-		GROUP BY aircraft_model
+		GROUP BY a.aircraft_canonical
 		ORDER BY c DESC
 		LIMIT 10`)
 }
 
-// GetOperatorStats — top operators by accident count.
+// GetOperatorStats — top operators by accident count, grouped by
+// operator_canonical so e.g. "Delta Air Lines" / "DELTA AIR LINES INC" /
+// "Delta Air Lines, Inc." all collapse into a single row.
 func GetOperatorStats(db *sql.DB, commercialOnly bool) ([]StatResult, error) {
-	where := "operator IS NOT NULL AND operator != ''"
+	where := "a.operator_canonical IS NOT NULL AND a.operator_canonical != ''"
 	if commercialOnly {
-		where += " AND is_commercial = 1"
+		where += " AND a.is_commercial = 1"
 	}
 	return runStat(db, `
-		SELECT operator, COUNT(id) AS c, SUM(CAST(fatalities AS INTEGER)) AS f
-		FROM accidents
+		SELECT COALESCE(d.display_name, a.operator_canonical) AS name,
+		       COUNT(a.id) AS c,
+		       SUM(CAST(a.fatalities AS INTEGER)) AS f
+		FROM accidents a
+		LEFT JOIN operator_display d ON d.canonical = a.operator_canonical
 		WHERE `+where+`
-		GROUP BY operator
+		GROUP BY a.operator_canonical
 		ORDER BY c DESC
 		LIMIT 10`)
 }
@@ -192,8 +206,15 @@ func GetMapPoints(db *sql.DB, limit int, filters MapFilters) ([]MapPoint, error)
 		args = append(args, filters.Category)
 	}
 	if filters.Operator != "" {
-		where = append(where, "operator LIKE ? COLLATE NOCASE")
-		args = append(args, "%"+filters.Operator+"%")
+		// Match against operator_canonical (UPPER, suffix-stripped) so a
+		// query of "delta" finds rows whose original operator was
+		// "DELTA AIR LINES INC" without us having to enumerate all
+		// spelling variants. Falls back to a free-text LIKE on the
+		// original operator field if the canonical column is empty
+		// (legacy rows pre-migrate-canonical.py).
+		where = append(where, "(operator_canonical LIKE ? OR operator LIKE ? COLLATE NOCASE)")
+		upper := strings.ToUpper(filters.Operator)
+		args = append(args, "%"+upper+"%", "%"+filters.Operator+"%")
 	}
 	args = append(args, limit)
 
@@ -243,27 +264,30 @@ func GetMapPoints(db *sql.DB, limit int, filters MapFilters) ([]MapPoint, error)
 // 135 + brand-prefix-matched non-NTSB rows) so the suggestion list isn't
 // dominated by one-off GA flying clubs.
 //
-// The query is intentionally case-insensitive (COLLATE NOCASE) — operator
-// strings come from multiple scrapers and aren't normalised, so "Delta",
-// "DELTA AIR LINES INC", and "Delta Air Lines" should all match a query
-// of "delta".
+// Grouped by operator_canonical (populated by migrate-canonical.py) so the
+// dropdown shows distinct *carriers*, not five spellings of "Delta Air
+// Lines". The match is also against operator_canonical so "delta" matches
+// rows whose original spelling was uppercase, hyphenated, or otherwise
+// stylistically different. operator_canonical is uppercased + suffix-
+// stripped, so we uppercase the query for the LIKE comparison.
 func GetOperators(db *sql.DB, q string, commercialOnly bool, limit int) ([]string, error) {
-	where := []string{"operator IS NOT NULL", "operator != ''"}
+	where := []string{"a.operator_canonical IS NOT NULL", "a.operator_canonical != ''"}
 	args := []interface{}{}
 	if commercialOnly {
-		where = append(where, "is_commercial = 1")
+		where = append(where, "a.is_commercial = 1")
 	}
 	if q != "" {
-		where = append(where, "operator LIKE ? COLLATE NOCASE")
-		args = append(args, "%"+q+"%")
+		where = append(where, "a.operator_canonical LIKE ?")
+		args = append(args, "%"+strings.ToUpper(q)+"%")
 	}
 	args = append(args, limit)
 
 	query := `
-		SELECT operator
-		FROM accidents
+		SELECT COALESCE(d.display_name, a.operator_canonical) AS name
+		FROM accidents a
+		LEFT JOIN operator_display d ON d.canonical = a.operator_canonical
 		WHERE ` + strings.Join(where, " AND ") + `
-		GROUP BY operator
+		GROUP BY a.operator_canonical
 		ORDER BY COUNT(*) DESC
 		LIMIT ?`
 
