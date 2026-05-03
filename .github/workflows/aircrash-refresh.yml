@@ -57,7 +57,7 @@ jobs:
 
     steps:
       - name: Checkout flightfinder
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Need full history so we can push a branch and let the action's
           # GITHUB_TOKEN open a PR against main.
