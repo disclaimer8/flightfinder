@@ -84,12 +84,17 @@ func statsHandler(db *sql.DB, fetch func(*sql.DB) ([]StatResult, error)) http.Ha
 	}
 }
 
-// mapDataHandler — geocoded points for Leaflet markers. Hard-capped at 10000
-// rows; the dataset currently sits around 1300 geocoded entries but will
-// grow as the geocoder catches up to the scraped backlog.
+// mapDataHandler — geocoded points for Leaflet markers. Hard-capped at
+// 30 000 rows: the dataset jumped from ~2.3K to ~29.5K geocoded entries
+// after the NTSB CAROL bulk import (almost every NTSB record carries
+// lat/lon). 30K canvas circleMarkers stay smooth at world zoom; if we
+// ever push past that, switch to server-side spatial bucketing rather
+// than bumping this further. wire size at 30K ≈ 4 MB raw / 600 KB
+// brotli — acceptable for a once-per-page payload backed by the FE
+// era/severity/model filters that immediately cull most of it.
 func mapDataHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		points, err := GetMapPoints(db, 10000)
+		points, err := GetMapPoints(db, 30000)
 		if err != nil {
 			writeError(w, "fetch map_data", err)
 			return
