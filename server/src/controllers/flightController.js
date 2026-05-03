@@ -594,11 +594,13 @@ exports.exploreDestinations = async (req, res) => {
   const delay = ms => new Promise(r => setTimeout(r, ms));
 
   const results = [];
-  // Bumped from 4 → 10 after switching to Google sidecar — each destination
-  // takes ~3-5s through Google so a 54-destination fan-out at concurrency=4
-  // would push past nginx's 60s proxy_read_timeout. With 10 in flight we hit
-  // ~6 batches × 5s = ~30s, well under timeout.
-  const BATCH_SIZE = 10;
+  // Concurrency tuning. Google Flights soft-blocks the origin IP if we burst
+  // too many requests at once — the first time we ran 54 destinations at
+  // BATCH_SIZE=10 we triggered a multi-hour 502 storm. BATCH_SIZE=6 with
+  // 400ms inter-batch delay keeps us under the radar (~10 req/s peak) and
+  // still finishes 54 destinations in ~50s, comfortably inside nginx's 60s
+  // proxy_read_timeout. Cache hits make subsequent requests near-instant.
+  const BATCH_SIZE = 6;
 
   for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
     const batch = candidates.slice(i, i + BATCH_SIZE);
@@ -707,7 +709,7 @@ exports.exploreDestinations = async (req, res) => {
     });
 
     // Small pause between batches to respect API rate limits
-    if (i + BATCH_SIZE < candidates.length) await delay(100);
+    if (i + BATCH_SIZE < candidates.length) await delay(400);
   }
 
   cacheService.set(exploreCacheKey, results, cacheService.TTL.explore);
