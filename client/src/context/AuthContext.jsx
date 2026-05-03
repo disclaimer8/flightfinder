@@ -15,14 +15,24 @@ export function AuthProvider({ children }) {
       const res = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${tokenRef.current}` },
       });
-      if (!res.ok) { tokenRef.current = null; setUser(null); return null; }
-      const data = await res.json();
-      const next = data.user ?? data;
-      setUser(next);
-      return next;
+      if (res.ok) {
+        const data = await res.json();
+        const next = data.user ?? data;
+        setUser(next);
+        return next;
+      }
+      // Only clear auth state when /me explicitly says the token is invalid.
+      // 429 (rate-limited) and 5xx (server hiccup) are transient — preserving
+      // the existing user object lets the UI keep rendering Pro features
+      // until the next refresh succeeds. Without this, a single throttled
+      // /me on a long-lived session would silently log the user out.
+      if (res.status === 401 || res.status === 403) {
+        tokenRef.current = null;
+        setUser(null);
+      }
+      return null;
     } catch {
-      tokenRef.current = null;
-      setUser(null);
+      // Network error — also transient, keep state.
       return null;
     }
   }, []);
