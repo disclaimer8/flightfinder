@@ -40,9 +40,14 @@ async function enrichFlight(flight) {
   const co2 = computeCo2(flight);
   const am = amenities.getAmenities(flight.airline, flight.aircraft?.icaoType);
 
-  const tailInfo = flight.aircraft?.registration
-    ? fleet.getByRegistration(flight.aircraft.registration)
-    : null;
+  // Tail registration: prefer the value the caller passed in (from native
+  // flight tracking), else opportunistically take whatever airlabs returned
+  // alongside the gate info. Without this fallback /enriched.aircraft is
+  // always null for Google-Flights-sourced offers because Google never
+  // exposes tail numbers.
+  const registration =
+    flight.aircraft?.registration || gateInfo?.registration || null;
+  const tailInfo = registration ? fleet.getByRegistration(registration) : null;
 
   return {
     livery: livery ? { imageUrl: livery.image_url, attribution: livery.attribution } : null,
