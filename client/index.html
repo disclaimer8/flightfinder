@@ -51,9 +51,8 @@
     <!-- Preconnect / dns-prefetch: open TCP+TLS sockets to the origins we
          actually hit in the first 500ms so the browser doesn't serial-block
          on DNS + handshake once the first fetch fires. gtag fires on first
-         pageview; tile servers (carto) and Sentry ingest fire on interaction,
-         so preconnect buys roughly 200-400ms on cold loads for users outside
-         Europe. -->
+         pageview; tile servers (carto) fire on interaction. Preconnect
+         buys roughly 200-400ms on cold loads for users outside Europe. -->
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
     <link rel="preconnect" href="https://www.google-analytics.com" crossorigin />
     <link rel="preconnect" href="https://region1.google-analytics.com" crossorigin />
@@ -62,7 +61,6 @@
     <link rel="dns-prefetch" href="https://b.basemaps.cartocdn.com" />
     <link rel="dns-prefetch" href="https://c.basemaps.cartocdn.com" />
     <link rel="dns-prefetch" href="https://d.basemaps.cartocdn.com" />
-    <link rel="dns-prefetch" href="https://sentry.avs.io" />
 
     <!-- OG image is referenced via og:image meta tag above; crawlers fetch
          it directly when they parse the page. No need to preload it for

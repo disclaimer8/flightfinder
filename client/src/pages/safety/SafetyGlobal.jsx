@@ -11,6 +11,21 @@ const ERA_MIN     = 1980;
 const ERA_MAX     = new Date().getFullYear();
 const ERA_DEFAULT = [2000, ERA_MAX];
 
+// Aircraft categories — must match the buckets emitted by the sidecar
+// migrate-category.py. The server validates against this set; sending
+// an unknown value is silently ignored (returns the unfiltered map).
+const CATEGORIES = [
+  { value: '',            label: 'All' },
+  { value: 'wide-body',   label: 'Wide-body' },
+  { value: 'narrow-body', label: 'Narrow-body' },
+  { value: 'regional',    label: 'Regional' },
+  { value: 'turboprop',   label: 'Turboprop' },
+  { value: 'helicopter',  label: 'Helicopter' },
+  { value: 'ga',          label: 'General aviation' },
+  { value: 'other',       label: 'Other' },
+];
+const VALID_CATEGORIES = new Set(CATEGORIES.map(c => c.value).filter(Boolean));
+
 // Parse a fatalities string like "0", "15", "Unknown", "15+2" into a number.
 // Returns 0 for "Unknown" / NaN — used only to drive the "fatal" filter, so
 // erring towards "not fatal" on parse failure is the safe call.
@@ -55,6 +70,9 @@ export default function SafetyGlobal() {
   const fatal     = (searchParams.get('fatal')    ?? '1') !== '0';
   const nonFatal  = (searchParams.get('nonfatal') ?? '1') !== '0';
   const modelQuery = searchParams.get('aircraft') || '';
+  const categoryRaw = searchParams.get('cat') || '';
+  const category = VALID_CATEGORIES.has(categoryRaw) ? categoryRaw : '';
+  const operatorQuery = (searchParams.get('op') || '').slice(0, 80);
   const selectedId = (() => {
     const v = parseInt(searchParams.get('selected') || '', 10);
     return Number.isFinite(v) && v > 0 ? v : null;
@@ -95,15 +113,59 @@ export default function SafetyGlobal() {
     return () => { active = false; };
   }, [offset]);
 
-  // map_data fetched once on mount (filters cull client-side)
+  // Debounced operator query — used for the server-side filter, NOT for the
+  // typeahead suggestions (those come from /operators with their own debounce).
+  // Without this, every keystroke would trigger a /map_data fetch (~30K row
+  // baseline payload). 350ms is the conventional sweet spot — feels instant
+  // but skips the noisy intermediate strokes.
+  const [debouncedOperator, setDebouncedOperator] = useState(operatorQuery);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedOperator(operatorQuery), 350);
+    return () => clearTimeout(t);
+  }, [operatorQuery]);
+
+  // map_data is server-filtered by category + operator (if set) so the
+  // wire payload shrinks from ~30K to a few hundred when narrow-body or
+  // a specific airline is selected. Severity / era / model still cull
+  // client-side because they're cheap toggles that shouldn't refetch.
   useEffect(() => {
     let active = true;
-    fetch(`${GLOBAL_BASE}/map_data`)
+    setMapPoints(null);
+    setMapErr(null);
+    const qs = new URLSearchParams();
+    if (category) qs.set('category', category);
+    if (debouncedOperator) qs.set('operator', debouncedOperator);
+    const suffix = qs.toString() ? `?${qs}` : '';
+    fetch(`${GLOBAL_BASE}/map_data${suffix}`)
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(data => { if (active) setMapPoints(Array.isArray(data) ? data : []); })
       .catch(err => { if (active) setMapErr(err.message); });
     return () => { active = false; };
-  }, []);
+  }, [category, debouncedOperator]);
+
+  // Operator typeahead — top operators matching the in-progress query.
+  // Independent debounce (200ms) so the dropdown updates while the
+  // user is still typing, even before the map refetch fires.
+  const [operatorSuggestions, setOperatorSuggestions] = useState([]);
+  useEffect(() => {
+    if (!operatorQuery || operatorQuery.length < 2) {
+      setOperatorSuggestions([]);
+      return;
+    }
+    let active = true;
+    const t = setTimeout(() => {
+      const qs = new URLSearchParams({ q: operatorQuery, limit: '8' });
+      if (commercialOnly) qs.set('commercial', '1');
+      fetch(`${GLOBAL_BASE}/operators?${qs}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(data => { if (active) setOperatorSuggestions(Array.isArray(data) ? data : []); })
+        .catch(() => { /* typeahead failures are silent — non-critical UX */ });
+    }, 200);
+    return () => { active = false; clearTimeout(t); };
+    // commercialOnly is read inside; intentionally omitted from deps so the
+    // typeahead doesn't refire on commercial toggle while the user is typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operatorQuery]);
 
   // Stats refetch whenever commercialOnly toggles. After the NTSB CAROL
   // bulk import the default top-10 is U.S. general aviation (Cessna 172,
@@ -171,6 +233,8 @@ export default function SafetyGlobal() {
   const setFatal     = (v) => updateParams(sp => v ? sp.delete('fatal')    : sp.set('fatal', '0'));
   const setNonFatal  = (v) => updateParams(sp => v ? sp.delete('nonfatal') : sp.set('nonfatal', '0'));
   const setModelQuery = (v) => updateParams(sp => v ? sp.set('aircraft', v) : sp.delete('aircraft'));
+  const setCategory   = (v) => updateParams(sp => v ? sp.set('cat', v) : sp.delete('cat'));
+  const setOperatorQuery = (v) => updateParams(sp => v ? sp.set('op', v) : sp.delete('op'));
   const setEra = (lo, hi) => updateParams(sp => {
     if (lo === ERA_DEFAULT[0] && hi === ERA_DEFAULT[1]) sp.delete('era');
     else sp.set('era', `${lo}-${hi}`);
@@ -183,7 +247,7 @@ export default function SafetyGlobal() {
     if (safe === 0) sp.delete('offset'); else sp.set('offset', String(safe));
   });
   const resetFilters = () => updateParams(sp => {
-    ['fatal', 'nonfatal', 'aircraft', 'era', 'selected'].forEach(k => sp.delete(k));
+    ['fatal', 'nonfatal', 'aircraft', 'era', 'selected', 'cat', 'op'].forEach(k => sp.delete(k));
   });
 
   // ── Derived data ──────────────────────────────────────────────────
@@ -193,7 +257,8 @@ export default function SafetyGlobal() {
 
   const filtersDirty =
     !fatal || !nonFatal || modelQuery !== '' ||
-    eraMin !== ERA_DEFAULT[0] || eraMax !== ERA_DEFAULT[1];
+    eraMin !== ERA_DEFAULT[0] || eraMax !== ERA_DEFAULT[1] ||
+    category !== '' || operatorQuery !== '';
 
   const visibleRows = useMemo(() => {
     if (!accidents) return null;
@@ -304,7 +369,7 @@ export default function SafetyGlobal() {
         <h2>Geocoded accident locations</h2>
         <p className="safety-global__map-hint">
           {mapPoints
-            ? `Showing ${filteredPoints.length.toLocaleString()} of ${mapPoints.length.toLocaleString()} geocoded events. Coordinates are available for ~18% of records — the rest are pending geocoding.`
+            ? `Showing ${filteredPoints.length.toLocaleString()} of ${mapPoints.length.toLocaleString()} geocoded events${(category || debouncedOperator) ? ' (server-filtered)' : ''}. Coordinates are available for ~18% of records — the rest are pending geocoding.`
             : 'Loading…'}
         </p>
 
@@ -383,6 +448,39 @@ export default function SafetyGlobal() {
                     aria-label="Era end year"
                   />
                 </div>
+              </fieldset>
+
+              <fieldset className="safety-global__filter-group">
+                <legend>Aircraft category</legend>
+                <select
+                  className="safety-global__select"
+                  value={category}
+                  onChange={e => setCategory(e.target.value)}
+                  aria-label="Aircraft category"
+                >
+                  {CATEGORIES.map(c => (
+                    <option key={c.value || 'all'} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </fieldset>
+
+              <fieldset className="safety-global__filter-group">
+                <legend>Operator</legend>
+                <input
+                  type="search"
+                  className="safety-global__search"
+                  placeholder="e.g. Delta, Ryanair"
+                  value={operatorQuery}
+                  onChange={e => setOperatorQuery(e.target.value)}
+                  list="safety-operator-suggestions"
+                  aria-label="Operator search"
+                  maxLength={80}
+                />
+                <datalist id="safety-operator-suggestions">
+                  {operatorSuggestions.map(op => (
+                    <option key={op} value={op} />
+                  ))}
+                </datalist>
               </fieldset>
 
               <fieldset className="safety-global__filter-group">

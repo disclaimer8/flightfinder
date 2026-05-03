@@ -30,6 +30,7 @@ func NewServer(db *sql.DB, addr string) *http.Server {
 	mux.HandleFunc("/accidents", accidentsHandler(db))
 	mux.HandleFunc("/stats/aircrafts", statsHandler(db, GetAircraftStats))
 	mux.HandleFunc("/stats/operators", statsHandler(db, GetOperatorStats))
+	mux.HandleFunc("/operators", operatorsHandler(db))
 	mux.HandleFunc("/map_data", mapDataHandler(db))
 
 	return &http.Server{
@@ -96,16 +97,79 @@ func statsHandler(db *sql.DB, fetch func(*sql.DB, bool) ([]StatResult, error)) h
 // than bumping this further. wire size at 30K ≈ 4 MB raw / 600 KB
 // brotli — acceptable for a once-per-page payload backed by the FE
 // era/severity/model filters that immediately cull most of it.
+//
+// Optional ?operator=… (free-text contains, case-insensitive) and
+// ?category=… (exact match against aircraft_category column) narrow
+// the result server-side so the client doesn't ship 30K rows just to
+// drop 95% in the browser. Operator is clamped to 80 chars to keep
+// the LIKE pattern bounded; category must be one of the canonical
+// buckets (anything else is silently ignored).
 func mapDataHandler(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		points, err := GetMapPoints(db, 30000)
+	return func(w http.ResponseWriter, r *http.Request) {
+		filters := MapFilters{
+			Operator: clampString(r.URL.Query().Get("operator"), 80),
+			Category: validCategory(r.URL.Query().Get("category")),
+		}
+		points, err := GetMapPoints(db, 30000, filters)
 		if err != nil {
 			writeError(w, "fetch map_data", err)
 			return
 		}
+		// Operator filter prevents naive shared cache, so vary on it.
 		w.Header().Set("Cache-Control", "public, max-age=300")
+		w.Header().Set("Vary", "Accept-Encoding")
 		writeJSON(w, http.StatusOK, points)
 	}
+}
+
+// operatorsHandler — distinct operator names for the FE typeahead.
+// Returns top N by accident count so the suggestion list surfaces real
+// carriers instead of one-off scraped strings. Honors ?commercial=1 the
+// same way /stats/operators does, and ?q= for incremental filtering as
+// the user types (LIKE prefix, case-insensitive).
+func operatorsHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := clampString(r.URL.Query().Get("q"), 80)
+		commercialOnly := r.URL.Query().Get("commercial") == "1"
+		limit := clampInt(r.URL.Query().Get("limit"), 25, 1, 100)
+		ops, err := GetOperators(db, q, commercialOnly, limit)
+		if err != nil {
+			writeError(w, "fetch operators", err)
+			return
+		}
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		writeJSON(w, http.StatusOK, ops)
+	}
+}
+
+// validCategories enumerates the buckets emitted by migrate-category.py.
+// Anything not in this set is silently treated as no-filter to avoid
+// SQL injection or accidentally querying garbage.
+var validCategories = map[string]struct{}{
+	"wide-body":   {},
+	"narrow-body": {},
+	"regional":    {},
+	"turboprop":   {},
+	"helicopter":  {},
+	"ga":          {},
+	"other":       {},
+}
+
+func validCategory(s string) string {
+	if _, ok := validCategories[s]; ok {
+		return s
+	}
+	return ""
+}
+
+// clampString trims an optional query-string value and caps it at maxLen
+// runes. Empty becomes "" (no filter).
+func clampString(s string, maxLen int) string {
+	s = strings.TrimSpace(s)
+	if len(s) > maxLen {
+		s = s[:maxLen]
+	}
+	return s
 }
 
 // accidentByIDHandler — /accidents/:id detail endpoint that powers the

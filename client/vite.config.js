@@ -59,15 +59,14 @@ export default defineConfig({
     // and router-vendor (react-router-dom) are split out so first-paint
     // doesn't wait for them. Leaflet lands in its own chunk because it's
     // imported dynamically inside the map components (also lazy-loaded via
-    // React.lazy in App.jsx). Sentry is dynamic-imported in src/index.jsx
-    // (after first paint via requestIdleCallback), so rolldown auto-creates
-    // an async chunk for it and its @sentry/* deps without an explicit rule.
+    // React.lazy in App.jsx).
     //
     // The path matchers below use `node_modules/<pkg>/` (with both the
-    // leading and trailing slash) — without that anchoring `react-vendor`
-    // greedily caught `@sentry/react` because its path also contains
-    // `/react/`. The bug ballooned react-vendor from 189KB to 650KB raw
-    // when sentry was made async; tight matchers prevent recurrence.
+    // leading and trailing slash). We previously had `@sentry/react` here;
+    // the unanchored substring `/react/` greedily caught the Sentry SDK
+    // and ballooned react-vendor 189→650KB. The SDK has since been removed
+    // (replaced by src/errorReporter.js, no node_modules dep), but keep
+    // the anchored matchers as a defensive pattern for future deps.
     rollupOptions: {
       output: {
         entryFileNames:  'assets/[name]-[hash:16].js',
