@@ -48,4 +48,17 @@ module.exports = [
   // South America
   { code: 'GRU', city: 'São Paulo',    country: 'Brazil',          flag: '🇧🇷' },
   { code: 'EZE', city: 'Buenos Aires', country: 'Argentina',       flag: '🇦🇷' },
+  { code: 'LIM', city: 'Lima',         country: 'Peru',            flag: '🇵🇪' },
+  { code: 'BOG', city: 'Bogotá',       country: 'Colombia',        flag: '🇨🇴' },
+  { code: 'SCL', city: 'Santiago',     country: 'Chile',           flag: '🇨🇱' },
+  { code: 'MVD', city: 'Montevideo',   country: 'Uruguay',         flag: '🇺🇾' },
+  { code: 'UIO', city: 'Quito',        country: 'Ecuador',         flag: '🇪🇨' },
+  { code: 'GYE', city: 'Guayaquil',    country: 'Ecuador',         flag: '🇪🇨' },
+  { code: 'CCS', city: 'Caracas',      country: 'Venezuela',       flag: '🇻🇪' },
+  { code: 'ASU', city: 'Asunción',     country: 'Paraguay',        flag: '🇵🇾' },
+  // Caribbean & Central America
+  { code: 'HAV', city: 'Havana',       country: 'Cuba',            flag: '🇨🇺' },
+  { code: 'PUJ', city: 'Punta Cana',   country: 'Dominican Rep.',  flag: '🇩🇴' },
+  { code: 'SDQ', city: 'Santo Domingo',country: 'Dominican Rep.',  flag: '🇩🇴' },
+  { code: 'CUN', city: 'Cancún',       country: 'Mexico',          flag: '🇲🇽' },
 ];

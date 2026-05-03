@@ -99,14 +99,24 @@ exports.searchFlights = async (req, res) => {
     // Family filter — accepts slug ("a380") or display name ("Airbus A380").
     // Match against fam.family.codes (full Set including IATA-style "320"/"32N"
     // and ICAO "A320"); Duffel/Amadeus aircraftCode is 3-char IATA, not 4-char ICAO.
+    //
+    // Google Flights sidecar reports aircraftCode as a display name like
+    // "Boeing 787" or "Boeing 787-9" rather than an IATA/ICAO code, so the
+    // exact-set lookup never matches. Fall back to a prefix match on the
+    // family display name (fam.name = "Boeing 787") which lets "BOEING 787-9"
+    // and "BOEING 787" both qualify without false-positive matches across
+    // sibling families ("Boeing 737-800" never starts with "Boeing 787").
     if (familyName) {
       const fam = resolveFamily(familyName);
       const codes = fam?.family?.codes;
       if (codes && codes.size) {
         const allowed = new Set([...codes].map(c => String(c).toUpperCase()));
+        const famName = (fam.name || '').toUpperCase();
         flights = flights.filter(f => {
           const code = (f.aircraftCode || '').toUpperCase();
-          return code && allowed.has(code);
+          if (!code) return false;
+          if (allowed.has(code)) return true;
+          return famName && code.startsWith(famName);
         });
       } else {
         flights = [];
@@ -527,11 +537,18 @@ exports.exploreDestinations = async (req, res) => {
   // the same lookup; without it, /explore was silently ignoring familyName
   // and returning every flight (wrong-aircraft results) for filter-by-family
   // requests from the FE's "By aircraft" form.
-  const familyCodes = (() => {
+  const familyMatcher = (() => {
     if (!familyName) return null;
     const fam = resolveFamily(familyName);
-    if (!fam?.family?.codes?.size) return new Set();
-    return new Set([...fam.family.codes].map(c => String(c).toUpperCase()));
+    if (!fam?.family?.codes?.size) return { codes: new Set(), name: '' };
+    return {
+      codes: new Set([...fam.family.codes].map(c => String(c).toUpperCase())),
+      // Google Flights sidecar reports display names ("Boeing 787-9") in
+      // aircraftCode rather than IATA/ICAO; allow prefix match against the
+      // family name as a secondary check. See the search controller for the
+      // matching rationale.
+      name: (fam.name || '').toUpperCase(),
+    };
   })();
 
   // Use pre-sanitised cache key
@@ -547,40 +564,48 @@ exports.exploreDestinations = async (req, res) => {
   const delay = ms => new Promise(r => setTimeout(r, ms));
 
   const results = [];
-  const BATCH_SIZE = 4;
+  // Bumped from 4 → 10 after switching to Google sidecar — each destination
+  // takes ~3-5s through Google so a 54-destination fan-out at concurrency=4
+  // would push past nginx's 60s proxy_read_timeout. With 10 in flight we hit
+  // ~6 batches × 5s = ~30s, well under timeout.
+  const BATCH_SIZE = 10;
 
   for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
     const batch = candidates.slice(i, i + BATCH_SIZE);
 
     const batchResults = await Promise.allSettled(
       batch.map(async (dest) => {
-        const exploreApi = FLIGHT_API;
-        const segCacheKey = `raw:${exploreApi}:${depCode}:${dest.code}:${searchDate}:1:`;
         let primaryFailed = false;
         try {
-          const { data: raw } = await cacheService.getOrFetch(segCacheKey, () => {
-            const params = { departure_airport: depCode, arrival_airport: dest.code, departure_date: searchDate, passengers: 1 };
-            return exploreApi === 'duffel' && process.env.DUFFEL_API_KEY
-              ? duffelService.searchFlights(params)
-              : amadeusService.searchFlights(params);
+          // Use the same google → ita → travelpayouts orchestrator that powers
+          // /api/flights search. The previous Amadeus/Duffel-only path returned
+          // empty for most long-haul routes (Amadeus credentials are dead per
+          // memory; Duffel coverage is thin). Google sidecar has the actual
+          // schedule data — verified live: MAD→LIM returns 9 flights, 6 of
+          // them on Boeing 787, source=google.
+          const { flights } = await flightSearchOrchestrator.search({
+            departure: depCode,
+            arrival:   dest.code,
+            date:      searchDate,
+            passengers: 1,
           });
 
-          const flights = exploreApi === 'duffel' && process.env.DUFFEL_API_KEY
-            ? formatDuffelFlights(raw)
-            : formatAmadeusFlights(raw);
-
-          if (flights.length) {
-            // Enrich aircraft data
+          if (Array.isArray(flights) && flights.length) {
+            // Enrich aircraft data (looks up icaoType, type-class, etc.)
             await enrichWithAircraftData(flights, []);
 
             // Filter by aircraft criteria. familyName is checked first so the
             // FE's "By aircraft" mode (which sends familyName="Boeing 787")
-            // actually filters; previously this branch was missing and every
-            // flight matched, so the response was pages of wrong-aircraft
-            // results.
+            // actually filters. Falls back to display-name prefix because the
+            // Google source returns "Boeing 787" / "Boeing 787-9" rather than
+            // an IATA/ICAO code.
             const matching = flights.filter(f => {
               const code = (f.aircraftCode || '').toUpperCase();
-              if (familyCodes) return familyCodes.size > 0 && code && familyCodes.has(code);
+              if (familyMatcher) {
+                if (!code || familyMatcher.codes.size === 0) return false;
+                if (familyMatcher.codes.has(code)) return true;
+                return familyMatcher.name && code.startsWith(familyMatcher.name);
+              }
               if (aircraftModel) return code === aircraftModel.toUpperCase();
               if (aircraftType) return f.aircraft?.type === aircraftType.toLowerCase();
               return true;
@@ -600,13 +625,13 @@ exports.exploreDestinations = async (req, res) => {
                 aircraftType: best.aircraft?.type || 'jet',
                 departureTime: best.departureTime,
                 arrivalTime: best.arrivalTime,
-                source: exploreApi,
+                source: best.source || 'orchestrator',
               };
             }
           }
         } catch (err) {
           primaryFailed = true;
-          console.warn('[explore] primary failed: dep=%s dest=%s api=%s err=%s', depCode, dest.code, exploreApi, err.message);
+          console.warn('[explore] orchestrator failed: dep=%s dest=%s err=%s', depCode, dest.code, err.message);
         }
 
         // Aircraft filters can't be satisfied by price-only feeds, skip fallback in that case.
@@ -645,7 +670,7 @@ exports.exploreDestinations = async (req, res) => {
     });
 
     // Small pause between batches to respect API rate limits
-    if (i + BATCH_SIZE < candidates.length) await delay(200);
+    if (i + BATCH_SIZE < candidates.length) await delay(100);
   }
 
   cacheService.set(exploreCacheKey, results, cacheService.TTL.explore);
