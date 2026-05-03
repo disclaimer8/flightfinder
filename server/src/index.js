@@ -14,7 +14,6 @@ const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
 const rateLimit = require('express-rate-limit');
-const cookieParser = require('cookie-parser');
 const path    = require('path');
 
 const app  = express();
@@ -126,15 +125,18 @@ app.post(
 );
 
 app.use(express.json({ limit: '16kb' }));
-// cookieParser is used only for the httpOnly refresh-token cookie.
-// CSRF is mitigated by a layered defense:
+// cookieParser is intentionally NOT mounted globally. Only /api/auth/refresh
+// and /api/auth/logout read req.cookies; both attach cookieParser locally
+// (see routes/auth.js). Keeping it route-scoped means no other endpoint can
+// silently grow a cookie-based code path that bypasses our header-based
+// auth — CSRF surface stays minimal by construction.
+//
+// CSRF defense layers (still in place):
 //   1. sameSite: 'strict' on the refresh cookie (browser blocks cross-site submission)
 //   2. Access tokens sent via Authorization header (not cookies), not CSRF-vulnerable
-//   3. csrfOriginCheck middleware on the two cookie-reading endpoints
-//      (/api/auth/refresh, /api/auth/logout) validates the Origin/Referer header
+//   3. csrfOriginCheck middleware on /refresh and /logout validates Origin/Referer
 //      against ALLOWED_ORIGINS — see server/src/middleware/csrf.js
-// csurf (deprecated 2023) is intentionally NOT used — it is unsuitable for JWT REST APIs.
-app.use(cookieParser());
+// csurf (deprecated 2023) is intentionally NOT used — unsuitable for JWT REST APIs.
 
 // ─────────────────────────────────────────
 //  Rate limiting
