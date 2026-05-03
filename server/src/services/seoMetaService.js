@@ -173,6 +173,19 @@ function resolve(pathname) {
     };
   }
 
+  if (pathname === '/safety/global' || pathname === '/safety/global/') {
+    return {
+      title: 'Global aviation safety records — historical accidents worldwide | FlightFinder',
+      description: 'Worldwide aviation accident database aggregated from Aviation Safety Network, B3A, and Wikidata. 5,200+ records since 1980 with map visualisation and rankings by aircraft type and operator.',
+      canonical: `${BASE}/safety/global`,
+      h1: 'Global aviation safety',
+      subtitle: 'Historical accidents worldwide',
+      robots: 'index, follow',
+      ogType: 'website',
+      kind: 'safety-global',
+    };
+  }
+
   const safetyEventMatch = /^\/safety\/events\/([^/?#]+)\/?$/.exec(pathname);
   if (safetyEventMatch) {
     const id = safetyEventMatch[1];
