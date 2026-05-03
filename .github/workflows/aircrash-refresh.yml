@@ -64,7 +64,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Go 1.26
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           # Upstream go.mod declares `go 1.26.2`. Our sidecar fork pins 1.23,
           # but we are building the UPSTREAM parser here, not the sidecar.
