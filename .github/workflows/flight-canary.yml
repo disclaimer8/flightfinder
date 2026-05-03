@@ -5,6 +5,12 @@ on:
     - cron: '0 */6 * * *'   # every 6h
   workflow_dispatch: {}
 
+# Canary only curl's the public prod URL — no checkout, no commit, no
+# release, no PR. Drop the GITHUB_TOKEN to zero scopes so a future step
+# (or compromised dependency) can't quietly use it. CodeQL alert
+# "Workflow does not contain permissions" closed by this block.
+permissions: {}
+
 jobs:
   canary:
     runs-on: ubuntu-latest
