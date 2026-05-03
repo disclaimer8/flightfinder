@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -25,6 +26,7 @@ func NewServer(db *sql.DB, addr string) *http.Server {
 	// google-flights-sidecar convention of root-mounted handlers.
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/accidents/", accidentByIDHandler(db)) // /accidents/123 — must be registered before /accidents
 	mux.HandleFunc("/accidents", accidentsHandler(db))
 	mux.HandleFunc("/stats/aircrafts", statsHandler(db, GetAircraftStats))
 	mux.HandleFunc("/stats/operators", statsHandler(db, GetOperatorStats))
@@ -94,6 +96,46 @@ func mapDataHandler(db *sql.DB) http.HandlerFunc {
 		}
 		w.Header().Set("Cache-Control", "public, max-age=300")
 		writeJSON(w, http.StatusOK, points)
+	}
+}
+
+// accidentByIDHandler — /accidents/:id detail endpoint that powers the
+// side-panel popup on the safety map. Only matches numeric ids; anything
+// else is rejected as 404 to keep the endpoint signature tight (e.g.
+// `/accidents/foo` shouldn't fall through to the list handler at /accidents).
+//
+// Path parsing is hand-rolled because we use net/http (not Gin) and Go's
+// stdlib mux doesn't support path params. r.URL.Path will be e.g.
+// "/accidents/1445" — strip the prefix and Atoi the remainder.
+func accidentByIDHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const prefix = "/accidents/"
+		if !strings.HasPrefix(r.URL.Path, prefix) {
+			http.NotFound(w, r)
+			return
+		}
+		idStr := strings.TrimPrefix(r.URL.Path, prefix)
+		// Reject empty + paths with extra slashes (e.g. /accidents/1/foo).
+		if idStr == "" || strings.ContainsRune(idStr, '/') {
+			http.NotFound(w, r)
+			return
+		}
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			http.NotFound(w, r)
+			return
+		}
+		acc, err := GetAccidentByID(db, id)
+		if err == sql.ErrNoRows {
+			http.NotFound(w, r)
+			return
+		}
+		if err != nil {
+			writeError(w, "fetch accident by id", err)
+			return
+		}
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		writeJSON(w, http.StatusOK, acc)
 	}
 }
 

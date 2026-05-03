@@ -132,11 +132,15 @@ func runStat(db *sql.DB, query string) ([]StatResult, error) {
 	return out, rows.Err()
 }
 
-// MapPoint is a row in /api/map_data — only the fields a Leaflet marker needs.
+// MapPoint is a row in /map_data — only the fields a Leaflet marker needs.
+// `Year` is parsed from `normalized_date` so the FE era slider can filter
+// without an extra fetch; `null` when the upstream date couldn't be normalised
+// (records like "xx Oct 2024" that the parser left unchanged).
 type MapPoint struct {
 	ID         int     `json:"id"`
 	Model      string  `json:"model"`
 	Fatalities string  `json:"fatalities"`
+	Year       *int    `json:"year"`
 	Lat        float64 `json:"lat"`
 	Lon        float64 `json:"lon"`
 }
@@ -145,9 +149,18 @@ type MapPoint struct {
 // at most `limit` rows (the controller enforces an upper bound). The 0.000001
 // sentinel is used by the upstream geocoder to mark "tried, not found"; we
 // filter those out here so the map doesn't have a cluster pinned at (0, 0).
+//
+// `substr(normalized_date, 1, 4)` extracts the YYYY portion when the parser
+// successfully normalised the date; for unparseable strings normalized_date
+// echoes the original ("xx Oct 2024") and the cast fails, leaving year NULL.
 func GetMapPoints(db *sql.DB, limit int) ([]MapPoint, error) {
 	const query = `
-		SELECT id, aircraft_model, fatalities, lat, lon
+		SELECT id,
+		       aircraft_model,
+		       fatalities,
+		       CAST(NULLIF(substr(normalized_date, 1, 4), '') AS INTEGER) AS year,
+		       lat,
+		       lon
 		FROM accidents
 		WHERE lat IS NOT NULL AND lat != 0 AND lat != 0.000001
 		ORDER BY normalized_date DESC, id DESC
@@ -161,10 +174,39 @@ func GetMapPoints(db *sql.DB, limit int) ([]MapPoint, error) {
 	out := make([]MapPoint, 0, limit)
 	for rows.Next() {
 		var p MapPoint
-		if err := rows.Scan(&p.ID, &p.Model, &p.Fatalities, &p.Lat, &p.Lon); err != nil {
+		var year sql.NullInt64
+		if err := rows.Scan(&p.ID, &p.Model, &p.Fatalities, &year, &p.Lat, &p.Lon); err != nil {
 			continue
+		}
+		if year.Valid {
+			y := int(year.Int64)
+			// Reject obvious garbage (e.g. CAST returns 2024 for "2024-12-15"
+			// but also for "2024-bogus" — clamp to the dataset's plausible
+			// 1900-2100 window so the FE slider isn't poisoned).
+			if y >= 1900 && y <= 2100 {
+				p.Year = &y
+			}
 		}
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// GetAccidentByID returns one full accident record by primary key, or
+// (nil, sql.ErrNoRows) if not found. Used by the /accidents/:id detail
+// endpoint that powers the side-panel popup on the global safety map.
+func GetAccidentByID(db *sql.DB, id int) (*Accident, error) {
+	const query = `
+		SELECT id, date, aircraft_model, operator, fatalities, location, source_url,
+		       COALESCE(lat, 0), COALESCE(lon, 0)
+		FROM accidents
+		WHERE id = ?
+		LIMIT 1`
+	row := db.QueryRow(query, id)
+	var a Accident
+	if err := row.Scan(&a.ID, &a.Date, &a.AircraftModel, &a.Operator, &a.Fatalities,
+		&a.Location, &a.SourceURL, &a.Lat, &a.Lon); err != nil {
+		return nil, err
+	}
+	return &a, nil
 }
