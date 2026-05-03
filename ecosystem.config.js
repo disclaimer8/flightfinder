@@ -15,7 +15,16 @@ module.exports = {
       name: 'google-flights-sidecar',
       script: '/root/flightfinder/server/bin/google-flights-server',
       autorestart: true,
-      max_memory_restart: '300M',
+      // Bumped 300M → 800M after we caught the sidecar restart-storm
+      // (45 restarts/day in prod) that made /api/flights randomly
+      // return source:none for short-haul routes. The library buffers
+      // big JSON trees from Google in-flight; on a busy concurrent
+      // request the heap can spike past 300M briefly, PM2 kills the
+      // process mid-handler, and the caller gets EOF / empty body.
+      // 800M is well within Hetzner VPS budget and the steady-state
+      // resident set is still ~13M, so the cap only fires on real
+      // pathological growth.
+      max_memory_restart: '800M',
       env: {
         PORT: '5002',
         LOG_LEVEL: 'warn',
