@@ -1,5 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const validate = require('../middleware/validate');
@@ -35,11 +36,14 @@ router.post('/admin/verify-email', express.json(), authController.adminVerifyEma
 router.use(authLimiter);
 router.post('/register', validate.authBody.register, authController.register);
 router.post('/login',    validate.authBody.login,    authController.login);
-// /refresh and /logout read the httpOnly refresh-token cookie. Guard them
-// with an Origin/Referer check — CSRF token validation for CodeQL + real
-// defense-in-depth on top of sameSite:strict.
-router.post('/refresh',  csrfOriginCheck, authController.refresh);
-router.post('/logout',   csrfOriginCheck, authController.logout);
+// /refresh and /logout are the ONLY endpoints that read req.cookies (the
+// httpOnly refresh-token). cookieParser is mounted route-scoped here —
+// not globally in index.js — so the rest of the API can never accidentally
+// rely on cookie-based auth (CSRF surface stays minimal). csrfOriginCheck
+// then validates the Origin/Referer header against ALLOWED_ORIGINS as
+// defense-in-depth on top of sameSite:strict on the cookie itself.
+router.post('/refresh',  cookieParser(), csrfOriginCheck, authController.refresh);
+router.post('/logout',   cookieParser(), csrfOriginCheck, authController.logout);
 router.get('/me',        requireAuth, authController.me);
 
 module.exports = router;
