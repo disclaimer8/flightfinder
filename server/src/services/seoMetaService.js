@@ -99,6 +99,11 @@ function aircraftMeta(slug) {
     subtitle: `Every city pair operated by the ${label} worldwide. Live schedule data, recent safety events, and operator details.`,
     robots: 'index, follow',
     ogType: 'article',
+    // Generic "search by aircraft" share image — per-family PNGs would
+    // need 20+ assets and per-launch refresh. The default conveys the
+    // value prop ("search by aircraft type") well enough for social cards.
+    ogImage: `${BASE}/og/aircraft-default.png`,
+    ogImageAlt: `${label} flights and routes on FlightFinder`,
     kind: 'aircraft',
     slug,
     aircraftLabel: label,
@@ -175,6 +180,8 @@ function resolve(pathname) {
       subtitle: 'Daily updated feed from the official U.S. National Transportation Safety Board database',
       robots: 'index, follow',
       ogType: 'website',
+      ogImage: `${BASE}/og/safety-feed.png`,
+      ogImageAlt: 'NTSB recent aviation accidents feed',
       kind: 'safety-feed',
     };
   }
@@ -183,13 +190,15 @@ function resolve(pathname) {
     return {
       // 62 chars — fits Google mobile SERP without truncation, leads with
       // the number-of-records signal that wins keyword matches.
-      title: 'Aviation accident database — 5,200 records worldwide since 1980',
-      description: 'Searchable global aviation accident database: 5,200+ records since 1980 from Aviation Safety Network, B3A, Wikidata. Map and rankings by aircraft and operator.',
+      title: 'Aviation accident database — 35,000+ records worldwide since 1962',
+      description: 'Searchable global aviation accident database: 35,000+ records since 1962 from NTSB, Aviation Safety Network, B3A, Wikidata. Interactive map and rankings by aircraft and operator.',
       canonical: `${BASE}/safety/global`,
       h1: 'Global aviation safety',
       subtitle: 'Historical accidents worldwide',
       robots: 'index, follow',
       ogType: 'website',
+      ogImage: `${BASE}/og/safety-global.png`,
+      ogImageAlt: 'Global aviation safety database — interactive accident map',
       kind: 'safety-global',
     };
   }
