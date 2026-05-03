@@ -15,9 +15,21 @@ server/data/*.db-wal
 
 # Compiled Go sidecar (local dev build inside source dir)
 /bin/google-flights-sidecar/google-flights-server
+/bin/google-flights-sidecar/sidecar
+/bin/aircrash-sidecar/sidecar
 # Compiled Go sidecar (CI build output)
 /server/bin/google-flights-server
 
 # Playwright MCP captures (may contain session tokens, API keys)
 /.playwright-mcp/
 *.har
+
+# Local agent / IDE state (Claude Code worktrees, agent context, etc.)
+.claude/
+server/.claude/
+
+# Ad-hoc verification screenshots (Playwright + DevTools snapshots dropped at repo root)
+/*.png
+
+# Local superpowers planning docs (kept out of git; private to dev workflow)
+docs/superpowers/plans/
