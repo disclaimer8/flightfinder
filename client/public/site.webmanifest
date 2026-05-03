@@ -1,7 +1,7 @@
 {
   "name": "FlightFinder",
   "short_name": "FlightFinder",
-  "description": "Search flights worldwide filtered by aircraft type.",
+  "description": "Search flights worldwide filtered by aircraft type. Find routes operated by Boeing 737, Airbus A320, turboprops, wide-body jets and more.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A1228",

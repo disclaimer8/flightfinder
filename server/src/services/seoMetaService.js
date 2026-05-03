@@ -77,11 +77,17 @@ const MAP = {
 // Slugs we know about — any /aircraft/:other falls through to 404-style
 // metadata (noindex, home canonical) so we don't let garbage URLs into
 // the index via open-ended routing.
-const KNOWN_SLUGS = new Set(getFamilyList().map((f) => f.slug));
+//
+// Looked up live per call (not memoised at module load) so families
+// added by hot config reload immediately become indexable instead of
+// quietly returning notFoundMeta until the next pm2 restart.
+function knownSlugs() {
+  return new Set(getFamilyList().map((f) => f.slug));
+}
 
 /** /aircraft/:slug */
 function aircraftMeta(slug) {
-  if (!KNOWN_SLUGS.has(slug)) return notFoundMeta();
+  if (!knownSlugs().has(slug)) return notFoundMeta();
   const fam = getFamilyBySlug(slug);
   const label = fam?.family?.label || fam?.name || slug;
   const manufacturer = fam?.family?.manufacturer || '';
@@ -198,7 +204,13 @@ function resolve(pathname) {
       canonical: `${BASE}/safety/events/${id}`,
       h1: 'Aviation safety event',
       subtitle: 'NTSB record',
-      robots: 'index, follow',
+      // noindex until each event has unique narrative content — currently
+      // they're thin NTSB record dumps (date, severity, registration). Bing
+      // and Google flag thin content as a quality signal at the domain
+      // level, so it's better to keep them out of the index until we add
+      // value-add commentary or related-events context. follow stays on
+      // so PageRank still flows out to /safety/feed and /aircraft/:slug.
+      robots: 'noindex, follow',
       ogType: 'article',
       kind: 'safety-event',
       eventId: id,
@@ -431,6 +443,29 @@ function inject(html, meta) {
     out = out.replace(
       /<meta\s+property="og:type"\s+content="[^"]*"\s*\/?>/i,
       `<meta property="og:type" content="${esc(meta.ogType)}" />`
+    );
+  }
+  // Per-route OG / Twitter image. Falls back to the homepage banner when
+  // the route doesn't ship its own image. Set meta.ogImage in the
+  // resolver to override; meta.ogImageAlt for accessibility text.
+  if (meta.ogImage) {
+    const imgUrl = meta.ogImage;
+    const imgAlt = meta.ogImageAlt || meta.title;
+    out = out.replace(
+      /<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/i,
+      `<meta property="og:image" content="${esc(imgUrl)}" />`
+    );
+    out = out.replace(
+      /<meta\s+property="og:image:alt"\s+content="[^"]*"\s*\/?>/i,
+      `<meta property="og:image:alt" content="${esc(imgAlt)}" />`
+    );
+    out = out.replace(
+      /<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/?>/i,
+      `<meta name="twitter:image" content="${esc(imgUrl)}" />`
+    );
+    out = out.replace(
+      /<meta\s+name="twitter:image:alt"\s+content="[^"]*"\s*\/?>/i,
+      `<meta name="twitter:image:alt" content="${esc(imgAlt)}" />`
     );
   }
   out = out.replace(

@@ -324,6 +324,10 @@ if (!IS_DEV) {
       );
     }
     res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    // Vary: User-Agent — Slack/Discord/Twitter/LinkedIn OG bots fetch the
+    // same URL multiple times and choke on missing Vary, occasionally
+    // serving stale OG previews. Cheap defensive header.
+    res.setHeader('Vary', 'User-Agent');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     // Return a real 404 for unknown /aircraft/:slug and /routes/:pair URLs
     // so crawlers stop wasting budget on typos and bot-fuzz. The HTML body
