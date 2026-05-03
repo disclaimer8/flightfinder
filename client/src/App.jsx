@@ -142,6 +142,7 @@ function App() {
             </div>
             <div className="nav-right">
               {apiStatus && <APIStatus status={apiStatus} />}
+              <a className="nav-btn nav-btn-ghost" href="/safety/global">Safety</a>
               {!isNativeApp() && (
                 <a className="nav-btn nav-btn-ghost" href="/pricing">Pricing</a>
               )}
@@ -311,6 +312,31 @@ function App() {
             </>
           )}
         </main>
+
+        <footer className="site-footer">
+          <div className="site-footer-inner">
+            <div className="site-footer-col">
+              <div className="site-footer-heading">Explore</div>
+              <a href="/">Search flights</a>
+              <a href="/safety/global">Aviation safety database</a>
+              <a href="/safety/feed">NTSB safety feed</a>
+            </div>
+            <div className="site-footer-col">
+              <div className="site-footer-heading">Account</div>
+              <a href="/pricing">Pricing</a>
+              <a href="/trips">My Trips</a>
+            </div>
+            <div className="site-footer-col">
+              <div className="site-footer-heading">Legal</div>
+              <a href="/legal/terms">Terms</a>
+              <a href="/legal/privacy">Privacy</a>
+              <a href="/legal/attributions">Attributions</a>
+            </div>
+          </div>
+          <div className="site-footer-bottom">
+            © {new Date().getFullYear()} FlightFinder
+          </div>
+        </footer>
       </div>
     </FilterOptionsContext.Provider>
   );
