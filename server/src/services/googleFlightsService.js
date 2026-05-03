@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { airplaneToIcao } = require('./airplaneToIcao');
 
 const SIDECAR_URL = process.env.GOOGLE_SIDECAR_URL || 'http://127.0.0.1:5002';
 const TIMEOUT_MS  = parseInt(process.env.GOOGLE_SIDECAR_TIMEOUT_MS || '10000', 10);
@@ -25,6 +26,12 @@ function buildFlight(offer) {
     stopAirports: legs.slice(0, -1).map(l => l.ArrAirportCode),
     aircraftCode: first.Airplane || 'N/A',
     aircraftName: first.Airplane || 'N/A',
+    // Resolve the marketing string ("Airbus A320neo") to an ICAO type
+    // designator ("A20N") so the enrichment layer can key off it for livery,
+    // CO₂, amenities and fleet lookups. registration is null here — Google
+    // doesn't expose tail numbers — but enrichmentService backfills it from
+    // airlabs gate info when available.
+    aircraft: { icaoType: airplaneToIcao(first.Airplane), registration: null },
     airline: first.AirlineName || firstIata,
     airlineIata: firstIata,
     flightNumber: normalizeFlightNumber(first.FlightNumber),
@@ -40,6 +47,7 @@ function buildFlight(offer) {
         flightNumber: normalizeFlightNumber(l.FlightNumber),
         aircraftCode: l.Airplane || 'N/A',
         aircraftName: l.Airplane || 'N/A',
+        aircraft: { icaoType: airplaneToIcao(l.Airplane), registration: null },
         duration: minutesFromDuration(l.Duration),
       };
     }),
