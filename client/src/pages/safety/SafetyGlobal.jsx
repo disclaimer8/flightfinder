@@ -95,17 +95,31 @@ export default function SafetyGlobal() {
     return () => { active = false; };
   }, [offset]);
 
+  // map_data fetched once on mount (filters cull client-side)
   useEffect(() => {
     let active = true;
-
     fetch(`${GLOBAL_BASE}/map_data`)
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(data => { if (active) setMapPoints(Array.isArray(data) ? data : []); })
       .catch(err => { if (active) setMapErr(err.message); });
+    return () => { active = false; };
+  }, []);
 
+  // Stats refetch whenever commercialOnly toggles. After the NTSB CAROL
+  // bulk import the default top-10 is U.S. general aviation (Cessna 172,
+  // Piper PA-18) — true but irrelevant to a flight-search audience that
+  // only books commercial. The toggle flips between "all" and "commercial"
+  // (NTSB Part 121/125/129/135 + brand-prefix matched non-NTSB rows).
+  const commercialOnly = (searchParams.get('commercial') ?? '1') !== '0';
+  useEffect(() => {
+    let active = true;
+    setStatsErr(null);
+    setTopAircraft(null);
+    setTopOperators(null);
+    const qs = commercialOnly ? '?commercial=1' : '';
     Promise.all([
-      fetch(`${GLOBAL_BASE}/stats/aircrafts`).then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
-      fetch(`${GLOBAL_BASE}/stats/operators`).then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
+      fetch(`${GLOBAL_BASE}/stats/aircrafts${qs}`).then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
+      fetch(`${GLOBAL_BASE}/stats/operators${qs}`).then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
     ])
       .then(([air, ops]) => {
         if (!active) return;
@@ -113,9 +127,8 @@ export default function SafetyGlobal() {
         setTopOperators(Array.isArray(ops) ? ops : []);
       })
       .catch(err => { if (active) setStatsErr(err.message); });
-
     return () => { active = false; };
-  }, []);
+  }, [commercialOnly]);
 
   // Fetch detail for the selected event whenever the URL ?selected= changes.
   // Cached locally by id so re-clicking the same marker is instant.
@@ -152,6 +165,9 @@ export default function SafetyGlobal() {
     setSearchParams(sp);
   }, [searchParams, setSearchParams]);
 
+  const setCommercialOnly = (v) => updateParams(sp => {
+    if (v) sp.delete('commercial'); else sp.set('commercial', '0');
+  });
   const setFatal     = (v) => updateParams(sp => v ? sp.delete('fatal')    : sp.set('fatal', '0'));
   const setNonFatal  = (v) => updateParams(sp => v ? sp.delete('nonfatal') : sp.set('nonfatal', '0'));
   const setModelQuery = (v) => updateParams(sp => v ? sp.set('aircraft', v) : sp.delete('aircraft'));
@@ -209,6 +225,35 @@ export default function SafetyGlobal() {
           (IATA, 2024). The events below are the rare, recorded ones.
         </p>
       </header>
+
+      {/* Commercial-only toggle. Default ON because the alternative (full
+          dataset) is dominated by U.S. general aviation (Cessna 172, Piper
+          PA-18) which is true but irrelevant to a flight-search audience.
+          ?commercial=0 in the URL flips to the unfiltered view for
+          aviation researchers / curious browsers. */}
+      <div className="safety-global__stats-mode" role="group" aria-label="Stats scope">
+        <button
+          type="button"
+          className={`safety-global__mode-btn ${commercialOnly ? 'is-active' : ''}`}
+          aria-pressed={commercialOnly}
+          onClick={() => setCommercialOnly(true)}
+        >
+          Commercial only
+        </button>
+        <button
+          type="button"
+          className={`safety-global__mode-btn ${!commercialOnly ? 'is-active' : ''}`}
+          aria-pressed={!commercialOnly}
+          onClick={() => setCommercialOnly(false)}
+        >
+          All aviation
+        </button>
+        <span className="safety-global__mode-hint">
+          {commercialOnly
+            ? 'Boeing/Airbus/Embraer + scheduled/charter operators. Reflects what flight-search users actually fly on.'
+            : 'Full dataset including U.S. general aviation (private Cessnas, Pipers, helicopters).'}
+        </span>
+      </div>
 
       <section className="safety-global__stats" aria-label="Top accident statistics">
         <div className="safety-stat-card">

@@ -515,3 +515,39 @@
   color: #64748b;
 }
 .safety-global__error { color: #b91c1c; }
+
+/* ── Commercial-only stats mode toggle ──────────────────────── */
+.safety-global__stats-mode {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.safety-global__mode-btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: transparent;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.safety-global__mode-btn:hover { background: #f1f5f9; }
+.safety-global__mode-btn.is-active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #f8fafc;
+}
+.safety-global__mode-hint {
+  flex: 1 1 100%;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+@media (min-width: 700px) {
+  .safety-global__mode-hint { flex-basis: auto; margin-top: 0; margin-left: 8px; }
+}

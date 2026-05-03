@@ -71,10 +71,14 @@ func accidentsHandler(db *sql.DB) http.HandlerFunc {
 }
 
 // statsHandler — generic top-N aggregator, parameterized by the stats query
-// fn so /api/stats/aircrafts and /api/stats/operators share a single body.
-func statsHandler(db *sql.DB, fetch func(*sql.DB) ([]StatResult, error)) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		stats, err := fetch(db)
+// fn so /stats/aircrafts and /stats/operators share a single body. Forwards
+// the ?commercial=1 query param so the FE can flip between "all accidents"
+// (default — GA-dominated, useful for honest stats) and commercial-only
+// (Boeing/Airbus/Embraer — what flight-search users actually fly on).
+func statsHandler(db *sql.DB, fetch func(*sql.DB, bool) ([]StatResult, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		commercialOnly := r.URL.Query().Get("commercial") == "1"
+		stats, err := fetch(db, commercialOnly)
 		if err != nil {
 			writeError(w, "fetch stats", err)
 			return
