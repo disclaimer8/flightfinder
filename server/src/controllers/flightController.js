@@ -513,6 +513,7 @@ exports.exploreDestinations = async (req, res) => {
   const date         = vq.date         || req.query.date;
   const aircraftType = vq.aircraftType || req.query.aircraftType;
   const aircraftModel = vq.aircraftModel || req.query.aircraftModel;
+  const familyName   = vq.familyName   || req.query.familyName;
 
   if (!departure) {
     return res.status(400).json({ success: false, message: 'departure is required' });
@@ -521,8 +522,20 @@ exports.exploreDestinations = async (req, res) => {
   const depCode    = departure;
   const searchDate = date || getNextDate();
 
+  // Resolve familyName → set of aircraft IATA/ICAO codes, e.g. "Boeing 787" →
+  // {787, 788, 789, 78X, B788, B789, B78X, ...}. The /search controller uses
+  // the same lookup; without it, /explore was silently ignoring familyName
+  // and returning every flight (wrong-aircraft results) for filter-by-family
+  // requests from the FE's "By aircraft" form.
+  const familyCodes = (() => {
+    if (!familyName) return null;
+    const fam = resolveFamily(familyName);
+    if (!fam?.family?.codes?.size) return new Set();
+    return new Set([...fam.family.codes].map(c => String(c).toUpperCase()));
+  })();
+
   // Use pre-sanitised cache key
-  const exploreCacheKey = `explore:${vq.sanitisedCacheKey || `${depCode}:${searchDate}:${aircraftType || ''}:${aircraftModel || ''}`}`;
+  const exploreCacheKey = `explore:${vq.sanitisedCacheKey || `${depCode}:${searchDate}:${aircraftType || ''}:${aircraftModel || ''}:${familyName || ''}`}`;
   const cachedExplore = cacheService.get(exploreCacheKey);
   if (cachedExplore) {
     return res.json({ success: true, count: cachedExplore.length, data: cachedExplore, fromCache: true });
@@ -560,9 +573,15 @@ exports.exploreDestinations = async (req, res) => {
             // Enrich aircraft data
             await enrichWithAircraftData(flights, []);
 
-            // Filter by aircraft criteria
+            // Filter by aircraft criteria. familyName is checked first so the
+            // FE's "By aircraft" mode (which sends familyName="Boeing 787")
+            // actually filters; previously this branch was missing and every
+            // flight matched, so the response was pages of wrong-aircraft
+            // results.
             const matching = flights.filter(f => {
-              if (aircraftModel) return f.aircraftCode === aircraftModel.toUpperCase();
+              const code = (f.aircraftCode || '').toUpperCase();
+              if (familyCodes) return familyCodes.size > 0 && code && familyCodes.has(code);
+              if (aircraftModel) return code === aircraftModel.toUpperCase();
               if (aircraftType) return f.aircraft?.type === aircraftType.toLowerCase();
               return true;
             });
@@ -591,7 +610,7 @@ exports.exploreDestinations = async (req, res) => {
         }
 
         // Aircraft filters can't be satisfied by price-only feeds, skip fallback in that case.
-        if (aircraftType || aircraftModel) return null;
+        if (aircraftType || aircraftModel || familyName) return null;
 
         // Fallback: Travelpayouts cheap-prices feed. Far lower rate-limit, works when
         // Duffel/Amadeus throttles or returns empty sets for unpopular routes.

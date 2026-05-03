@@ -103,7 +103,7 @@ function searchQuery(req, res, next) {
  * Validate GET /api/flights/explore  query params
  */
 function exploreQuery(req, res, next) {
-  const { departure, date, aircraftType, aircraftModel } = req.query;
+  const { departure, date, aircraftType, aircraftModel, familyName } = req.query;
 
   if (!departure) return bad(res, 'departure is required');
 
@@ -126,12 +126,21 @@ function exploreQuery(req, res, next) {
     return bad(res, 'aircraftModel must be 1–6 alphanumeric characters');
   }
 
+  // familyName is a free-form display name or slug (e.g. "Boeing 787" or
+  // "boeing-787") that the controller resolves via aircraftFamilies. Cap
+  // length and reject control characters so it can't smuggle into the
+  // cache key or downstream regex.
+  if (familyName && (familyName.length > 64 || /[\x00-\x1f]/.test(familyName))) {
+    return bad(res, 'familyName invalid');
+  }
+
   req.validatedQuery = {
     departure:    dep,
     date:         date || null,
     aircraftType: aircraftType?.toLowerCase() || null,
     aircraftModel: aircraftModel?.toUpperCase() || null,
-    sanitisedCacheKey: `${dep}:${sanitiseKey(date)}:${sanitiseKey(aircraftType)}:${sanitiseKey(aircraftModel)}`,
+    familyName:   (familyName && familyName.trim()) || null,
+    sanitisedCacheKey: `${dep}:${sanitiseKey(date)}:${sanitiseKey(aircraftType)}:${sanitiseKey(aircraftModel)}:${sanitiseKey(familyName)}`,
   };
 
   next();
