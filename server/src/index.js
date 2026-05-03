@@ -28,6 +28,24 @@ const BIND_HOST = process.env.BIND_HOST || (IS_DEV ? '0.0.0.0' : '127.0.0.1');
 // Trust nginx reverse proxy (needed for express-rate-limit + X-Forwarded-For)
 app.set('trust proxy', 1);
 
+// Hardened query parser — every req.query value is guaranteed to be a string
+// (or undefined). The default Node `querystring.parse` returns arrays for
+// repeated keys (?x=a&x=b → ['a','b']) and the legacy 'extended' parser also
+// allows nested objects (?x[y]=1 → {y:'1'}); both create type-confusion
+// vectors when validators do `value.length` / regex.test(value) without a
+// typeof guard. CodeQL flagged middleware/validate.js:133 (familyName) for
+// exactly this. URLSearchParams returns only string values; we keep the
+// first occurrence on duplicates so an attacker can't use `?x=safe&x=evil`
+// to route past a string check that ran on the first value.
+app.set('query parser', (str) => {
+  const out = Object.create(null);
+  if (!str) return out;
+  for (const [k, v] of new URLSearchParams(str)) {
+    if (!(k in out)) out[k] = v;
+  }
+  return out;
+});
+
 // ─────────────────────────────────────────
 //  Security headers
 // ─────────────────────────────────────────
