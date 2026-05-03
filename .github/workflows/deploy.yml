@@ -164,6 +164,36 @@ jobs:
             mv -f /root/flightfinder/server/bin/google-flights-server.new \
                   /root/flightfinder/server/bin/google-flights-server
             test -x /root/flightfinder/server/bin/google-flights-server
+            # Build aircrash sidecar — same staging-then-swap pattern. CGO is
+            # required for github.com/mattn/go-sqlite3; build-essential ships
+            # gcc, install once if missing.
+            command -v gcc >/dev/null 2>&1 || apt-get install -y build-essential
+            cd /root/flightfinder/bin/aircrash-sidecar
+            if [ -x /root/flightfinder/server/bin/aircrash-sidecar ]; then
+              cp /root/flightfinder/server/bin/aircrash-sidecar \
+                 /root/flightfinder/server/bin/aircrash-sidecar.previous
+            fi
+            CGO_ENABLED=1 go build -o /root/flightfinder/server/bin/aircrash-sidecar.new .
+            mv -f /root/flightfinder/server/bin/aircrash-sidecar.new \
+                  /root/flightfinder/server/bin/aircrash-sidecar
+            test -x /root/flightfinder/server/bin/aircrash-sidecar
+            # Seed the accidents DB into a persistent location outside the git
+            # checkout so a future redeploy doesn't blow away whatever the
+            # local geocoder enriched. The seed only refreshes when the file
+            # in the repo actually changed (sha256 compare). PM2 reload below
+            # picks up the new file because aircrash-sidecar holds a single
+            # SQLite read handle and reload re-execs it.
+            mkdir -p /root/flightfinder/data
+            SEED=/root/flightfinder/bin/aircrash-sidecar/accidents.db.seed
+            LIVE=/root/flightfinder/data/accidents.db
+            if [ ! -f "$LIVE" ]; then
+              echo "[deploy] first-deploy: seeding accidents.db from repo"
+              cp "$SEED" "$LIVE"
+            elif ! cmp -s "$SEED" "$LIVE" 2>/dev/null && [ "$(sha256sum < "$SEED")" != "$(sha256sum < "$LIVE")" ]; then
+              echo "[deploy] seed accidents.db hash changed — replacing"
+              cp "$SEED" "$LIVE.new"
+              mv -f "$LIVE.new" "$LIVE"
+            fi
             cd /root/flightfinder/server
             # pngquant is needed by client/scripts/optimize-images.mjs (postbuild
             # hook). Install idempotently; apt-get is fast when already present.
@@ -241,10 +271,11 @@ jobs:
               ! pm2 describe flightfinder | grep -q "ecosystem.config.js" && \
               pm2 delete flightfinder || true
             pm2 startOrReload ecosystem.config.js --update-env
-            # Wait for both apps to come up
+            # Wait for all three apps to come up
             for i in 1 2 3 4 5 6 7 8 9 10; do
               curl -fsS http://127.0.0.1:5001/api/health >/dev/null 2>&1 && \
-              curl -fsS http://127.0.0.1:5002/health >/dev/null 2>&1 && break
+              curl -fsS http://127.0.0.1:5002/health >/dev/null 2>&1 && \
+              curl -fsS http://127.0.0.1:5003/health >/dev/null 2>&1 && break
               sleep 1
             done
             # Final assert
@@ -252,6 +283,8 @@ jobs:
               || (echo "[deploy] flightfinder health check failed"; pm2 logs flightfinder --lines 50 --nostream; exit 1)
             curl -fsS http://127.0.0.1:5002/health >/dev/null \
               || (echo "[deploy] sidecar health check failed"; pm2 logs google-flights-sidecar --lines 50 --nostream; exit 1)
+            curl -fsS http://127.0.0.1:5003/health >/dev/null \
+              || (echo "[deploy] aircrash-sidecar health check failed"; pm2 logs aircrash-sidecar --lines 50 --nostream; exit 1)
             pm2 save
             # nginx reload last — only flip routes after both apps are healthy
             nginx -t && systemctl reload nginx
