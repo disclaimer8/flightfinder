@@ -1,0 +1,269 @@
+name: AirCrash Data Refresh
+
+# Weekly cron that runs the upstream AirCrash scrapers on a GitHub-hosted
+# runner and opens a PR with the refreshed bin/aircrash-sidecar/accidents.db.seed.
+#
+# WHY THIS LIVES IN CI AND NOT ON THE VPS:
+#   The production VPS hosts the live app. We previously had a Google Flights
+#   soft-block from running a scraper too aggressively from that IP. Headless
+#   Chrome + Cloudflare-bypass traffic also enlarges the attack surface on a
+#   server that already serves real users. CI runners are ephemeral and use
+#   shared egress IPs — a much safer place to do this work.
+#
+# WHAT IT DOES (high-level):
+#   1. Clone upstream Aviation-Safety-Explorer at HEAD into a temp sibling dir.
+#   2. Pre-seed it with our committed accidents.db.seed so dedup works.
+#   3. Run Wikidata pass (cheap, no anti-bot risk) + a 2-year ASN pass.
+#   4. Skip B3A entirely (code review flagged it as low quality).
+#   5. Diff hashes; if changed open a PR with the updated seed for human review.
+#
+# WHAT IT DOES NOT DO:
+#   - Auto-merge. Humans review for garbage rows / bad model names.
+#   - Run B3A. Output is too noisy ("Cessna (B3A)" placeholders).
+#   - Touch deploy.yml. The existing seed-hash compare picks up the new file
+#     once the PR is merged to main.
+
+on:
+  schedule:
+    # Sundays 03:00 UTC — low traffic, leaves a full day for human review
+    # before the Monday EU/US workweek.
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      asn_years_back:
+        description: 'How many years of ASN history to scrape (1 = current year only).'
+        required: false
+        default: '1'
+
+permissions:
+  contents: write       # create branch + commit
+  pull-requests: write  # open PR
+
+concurrency:
+  group: aircrash-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      UPSTREAM_REPO: https://github.com/disclaimer8/Aviation-Safety-Explorer.git
+      # Rod respects ROD_BROWSER_BIN as the path to the Chromium executable.
+      # We set it explicitly so launcher.LookPath() can't fall back to a
+      # bundled download (which would hang on first run in CI).
+      ROD_BROWSER_BIN: /usr/bin/chromium-browser
+
+    steps:
+      - name: Checkout flightfinder
+        uses: actions/checkout@v4
+        with:
+          # Need full history so we can push a branch and let the action's
+          # GITHUB_TOKEN open a PR against main.
+          fetch-depth: 0
+
+      - name: Set up Go 1.26
+        uses: actions/setup-go@v5
+        with:
+          # Upstream go.mod declares `go 1.26.2`. Our sidecar fork pins 1.23,
+          # but we are building the UPSTREAM parser here, not the sidecar.
+          go-version: '1.26'
+          cache: false
+
+      - name: Install Chromium + sqlite3
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            chromium-browser \
+            sqlite3 \
+            jq
+          # Sanity check — fail fast if the package didn't land where we expect.
+          test -x "$ROD_BROWSER_BIN" || {
+            echo "Chromium not at $ROD_BROWSER_BIN — falling back to which()"
+            which chromium-browser || which chromium || exit 1
+          }
+          "$ROD_BROWSER_BIN" --version
+
+      - name: Clone upstream Aviation-Safety-Explorer
+        run: |
+          # Sibling dir to avoid go workspace / module-graph confusion with
+          # the flightfinder checkout.
+          git clone --depth 1 "$UPSTREAM_REPO" "$RUNNER_TEMP/aircrash"
+          cd "$RUNNER_TEMP/aircrash"
+          echo "Upstream HEAD: $(git rev-parse HEAD)"
+          echo "UPSTREAM_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Build upstream scraper binary
+        working-directory: ${{ runner.temp }}/aircrash
+        run: |
+          go mod tidy
+          go build -o aircrash-parser .
+          ls -la aircrash-parser
+
+      - name: Pre-seed scraper DB with current committed seed
+        run: |
+          # Copy the committed seed into the upstream working dir so the
+          # scraper's dedup logic (db.go InsertAccident — fuzzy match on
+          # date + first-word-of-model) skips records we already have.
+          cp bin/aircrash-sidecar/accidents.db.seed "$RUNNER_TEMP/aircrash/accidents.db"
+          BEFORE_COUNT=$(sqlite3 "$RUNNER_TEMP/aircrash/accidents.db" \
+            "SELECT COUNT(*) FROM accidents;")
+          echo "Seed row count before refresh: $BEFORE_COUNT"
+          echo "BEFORE_COUNT=$BEFORE_COUNT" >> "$GITHUB_ENV"
+          sha256sum "$RUNNER_TEMP/aircrash/accidents.db" \
+            | awk '{print $1}' > "$RUNNER_TEMP/before.sha256"
+
+      - name: Run Wikidata scraper
+        id: wikidata
+        working-directory: ${{ runner.temp }}/aircrash
+        continue-on-error: true
+        run: |
+          # Wikidata is plain SPARQL HTTP — cheapest, cleanest source.
+          # Hard timeout protects CI minutes if the endpoint hangs.
+          timeout 600 ./aircrash-parser --wikidata --asn=false \
+            2>&1 | tee -a "$RUNNER_TEMP/scraper.log"
+
+      - name: Run ASN scraper (last N years only)
+        id: asn
+        working-directory: ${{ runner.temp }}/aircrash
+        continue-on-error: true
+        run: |
+          # Limit ASN to a narrow recent window to:
+          #   1. cap CI runtime
+          #   2. minimize Cloudflare-bypass exposure (each year-page is a
+          #      stealth-mode rod navigation; fewer pages = less risk)
+          #   3. let the human reviewer eyeball a small delta
+          YEARS_BACK="${{ github.event.inputs.asn_years_back }}"
+          YEARS_BACK="${YEARS_BACK:-1}"
+          CURRENT_YEAR=$(date -u +%Y)
+          START=$((CURRENT_YEAR - YEARS_BACK))
+          echo "ASN scrape window: $START..$CURRENT_YEAR"
+          timeout 1500 ./aircrash-parser \
+              --asn \
+              --start="$START" \
+              --end="$CURRENT_YEAR" \
+            2>&1 | tee -a "$RUNNER_TEMP/scraper.log"
+
+      - name: Upload scraper logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-logs-${{ github.run_id }}
+          path: ${{ runner.temp }}/scraper.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Compare hashes + decide whether to PR
+        id: diff
+        run: |
+          BEFORE=$(cat "$RUNNER_TEMP/before.sha256")
+          AFTER=$(sha256sum "$RUNNER_TEMP/aircrash/accidents.db" | awk '{print $1}')
+          echo "before=$BEFORE"
+          echo "after =$AFTER"
+          if [ "$BEFORE" = "$AFTER" ]; then
+            echo "No new data — seed file unchanged. Exiting cleanly."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          AFTER_COUNT=$(sqlite3 "$RUNNER_TEMP/aircrash/accidents.db" \
+            "SELECT COUNT(*) FROM accidents;")
+          DELTA=$((AFTER_COUNT - BEFORE_COUNT))
+          echo "Row count: $BEFORE_COUNT -> $AFTER_COUNT (delta $DELTA)"
+          echo "changed=true"      >> "$GITHUB_OUTPUT"
+          echo "after_count=$AFTER_COUNT" >> "$GITHUB_OUTPUT"
+          echo "delta=$DELTA"      >> "$GITHUB_OUTPUT"
+
+      - name: Build PR body (if changed)
+        if: steps.diff.outputs.changed == 'true'
+        id: body
+        run: |
+          DB="$RUNNER_TEMP/aircrash/accidents.db"
+
+          # Per-source counts (source_url is comma-separated when dedup
+          # merged multiple sources — match on substring).
+          WD_COUNT=$(sqlite3 "$DB" \
+            "SELECT COUNT(*) FROM accidents WHERE source_url LIKE '%wikidata%' OR source_url LIKE '%wikipedia%';")
+          ASN_COUNT=$(sqlite3 "$DB" \
+            "SELECT COUNT(*) FROM accidents WHERE source_url LIKE '%aviation-safety%';")
+
+          # 3 newest rows for sanity-check in the PR body.
+          SAMPLE=$(sqlite3 -separator ' | ' "$DB" \
+            "SELECT date, aircraft_model, operator, location FROM accidents \
+             ORDER BY normalized_date DESC, id DESC LIMIT 3;")
+
+          {
+            echo "## Weekly AirCrash data refresh"
+            echo ""
+            echo "Automated PR generated by \`.github/workflows/aircrash-refresh.yml\`."
+            echo ""
+            echo "### Delta"
+            echo "- Rows before: **${BEFORE_COUNT}**"
+            echo "- Rows after:  **${{ steps.diff.outputs.after_count }}**"
+            echo "- Net new:     **${{ steps.diff.outputs.delta }}**"
+            echo ""
+            echo "### Source counts (post-merge)"
+            echo "- Wikidata / Wikipedia: ${WD_COUNT}"
+            echo "- Aviation Safety Network: ${ASN_COUNT}"
+            echo "- B3A: skipped by design (low quality)"
+            echo ""
+            echo "### 3 newest records"
+            echo '```'
+            echo "$SAMPLE"
+            echo '```'
+            echo ""
+            echo "### Upstream"
+            echo "- Repo: \`disclaimer8/Aviation-Safety-Explorer\`"
+            echo "- HEAD: \`${UPSTREAM_SHA}\`"
+            echo ""
+            echo "### Reviewer checklist"
+            echo "- [ ] Sample rows above look like real accidents (not Cloudflare error pages)"
+            echo "- [ ] Aircraft models aren't \`Cessna (B3A)\` / \`Unknown\` placeholders"
+            echo "- [ ] Dates look real (not all 1980-01-01 fallback)"
+            echo "- [ ] Delta is plausible (a few to a few hundred rows — not 50k)"
+            echo ""
+            echo "Once merged, \`deploy.yml\` will redeploy the seed via its existing"
+            echo "sha256-compare path on the next push to \`main\`."
+          } > "$RUNNER_TEMP/pr_body.md"
+
+          cat "$RUNNER_TEMP/pr_body.md"
+
+      - name: Open PR with refreshed seed
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BRANCH="aircrash-refresh/$(date -u +%Y-%m-%d)"
+
+          # Copy refreshed DB into the seed location.
+          cp "$RUNNER_TEMP/aircrash/accidents.db" \
+             bin/aircrash-sidecar/accidents.db.seed
+
+          git config user.name  "aircrash-refresh-bot"
+          git config user.email "aircrash-refresh-bot@users.noreply.github.com"
+
+          # If a previous run on the same date left the branch behind,
+          # reset it locally before pushing.
+          git checkout -B "$BRANCH"
+          git add bin/aircrash-sidecar/accidents.db.seed
+          git commit -m "chore(aircrash): weekly data refresh — ${{ steps.diff.outputs.delta }} new records"
+          git push --force-with-lease origin "$BRANCH"
+
+          # Create labels if they don't exist yet — gh swallows the error
+          # if they already exist.
+          gh label create data-refresh --color BFD4F2 --description "Automated dataset refresh" 2>/dev/null || true
+          gh label create automated     --color EDEDED --description "Opened by a workflow"        2>/dev/null || true
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore(aircrash): weekly data refresh — ${{ steps.diff.outputs.delta }} new records" \
+            --body-file "$RUNNER_TEMP/pr_body.md" \
+            --label data-refresh \
+            --label automated
+
+      - name: Summary (no changes)
+        if: steps.diff.outputs.changed != 'true'
+        run: |
+          echo "::notice::No new accident records since last refresh — nothing to commit."

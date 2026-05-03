@@ -6,6 +6,56 @@ import './AircraftLandingPage.css';
 
 const AircraftRouteMap = lazy(() => import('./AircraftRouteMap'));
 
+// Module-level promise cache for the global safety dataset. Avoids re-fetching
+// 200 accident rows every time the user navigates between aircraft landing
+// pages in the same session. The endpoint returns up to ~5K rows so this
+// noticeably reduces redundant network traffic on browse-flows.
+let _globalAccidentsPromise = null;
+function fetchGlobalAccidentsCached() {
+  if (_globalAccidentsPromise) return _globalAccidentsPromise;
+  _globalAccidentsPromise = fetch(`${API_BASE}/api/safety/global/accidents?limit=200`)
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then(body => Array.isArray(body?.data) ? body.data : [])
+    .catch(err => {
+      // Evict on error so a future visit can retry.
+      _globalAccidentsPromise = null;
+      throw err;
+    });
+  return _globalAccidentsPromise;
+}
+
+// Build a regex that matches the family stem at the start of aircraft_model.
+// Slug "boeing-737" → /^Boeing 737/i, "airbus-a320" → /^Airbus A320/i.
+function familyMatchRegex(slug) {
+  if (!slug) return null;
+  const stem = slug
+    .split('-')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+  return new RegExp(`^${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
+}
+
+// Best-effort sort by date string. The backend ships the original spelling
+// (e.g. "12 Feb 2024", "xx Oct 2024") — we use Date.parse and fall back to 0
+// for unparseable strings, treating those as oldest. Works "good enough" to
+// surface the top 5 most recent.
+function bestEffortDate(s) {
+  if (!s) return 0;
+  // Replace 'xx' day with '01' so months-only strings still parse.
+  const cleaned = String(s).replace(/^xx\s+/i, '01 ');
+  const t = Date.parse(cleaned);
+  return Number.isFinite(t) ? t : 0;
+}
+
+function firstUrl(raw) {
+  if (!raw) return null;
+  const first = String(raw).split(',')[0].trim();
+  return first || null;
+}
+
 // Per-slug landing copy lives in client/public/content/landing/aircraft/<slug>.json
 // — split out of the bundle in batch 4 so the AircraftLandingPage chunk dropped
 // from ~50KB raw to ~5KB. The JSON is fetched in parallel with /api/aircraft/families
@@ -19,6 +69,10 @@ export default function AircraftLandingPage() {
   const [error, setError] = useState(null);
   // Top observed city pairs for this family (cross-linking to /routes/:pair).
   const [topRoutes, setTopRoutes] = useState([]);
+  // Recent safety events for this aircraft type (from global safety dataset).
+  // null = loading, [] = none found, [event,...] = matched.
+  const [safetyEvents, setSafetyEvents] = useState(null);
+  const [safetyError, setSafetyError]   = useState(null);
 
   useEffect(() => {
     // Fetch the full family list once — we need it to resolve slug → display
@@ -68,6 +122,30 @@ export default function AircraftLandingPage() {
       .catch(() => { /* non-critical — cross-links just won't render */ });
     return () => { cancelled = true; };
   }, [fam]);
+
+  // Pull recent safety events for this aircraft type from the global dataset.
+  // We filter client-side because the backend doesn't expose a model filter,
+  // and the cached promise means subsequent aircraft pages reuse this fetch.
+  useEffect(() => {
+    if (!slug) return;
+    let cancelled = false;
+    setSafetyEvents(null);
+    setSafetyError(null);
+
+    const re = familyMatchRegex(slug);
+    fetchGlobalAccidentsCached()
+      .then(rows => {
+        if (cancelled) return;
+        const matched = re
+          ? rows.filter(r => r.aircraft_model && re.test(r.aircraft_model))
+          : [];
+        matched.sort((a, b) => bestEffortDate(b.date) - bestEffortDate(a.date));
+        setSafetyEvents(matched.slice(0, 5));
+      })
+      .catch(err => { if (!cancelled) setSafetyError(err.message); });
+
+    return () => { cancelled = true; };
+  }, [slug]);
 
   if (error === 'unknown-family') {
     return (
@@ -127,6 +205,62 @@ export default function AircraftLandingPage() {
           )}
         </section>
       )}
+
+      <section className="landing-safety">
+        <h2>Recent safety events for the {fam.label}</h2>
+        {safetyError && (
+          <p className="landing-safety-empty">
+            Couldn&rsquo;t load safety records right now.
+          </p>
+        )}
+        {!safetyError && safetyEvents === null && (
+          <p className="landing-safety-empty">Loading safety records…</p>
+        )}
+        {!safetyError && safetyEvents && safetyEvents.length === 0 && (
+          <p className="landing-safety-empty">
+            No accidents on file for this aircraft type. That&rsquo;s a good sign.
+          </p>
+        )}
+        {!safetyError && safetyEvents && safetyEvents.length > 0 && (
+          <ul className="landing-safety-list">
+            {safetyEvents.map(ev => {
+              const url = firstUrl(ev.source_url);
+              return (
+                <li key={ev.id} className="landing-safety-item">
+                  <span className="landing-safety-date">{ev.date || '—'}</span>
+                  <div className="landing-safety-body">
+                    <div className="landing-safety-meta">
+                      <strong>{ev.operator || 'Operator unknown'}</strong>
+                      {ev.location && <span> · {ev.location}</span>}
+                      {ev.fatalities && ev.fatalities !== '0' && (
+                        <span className="landing-safety-fatal">
+                          {ev.fatalities} fatalities
+                        </span>
+                      )}
+                    </div>
+                    {url && (
+                      <a
+                        className="landing-safety-link"
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Source report →
+                      </a>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {safetyEvents && safetyEvents.length > 0 && (
+          <p className="landing-safety-hint">
+            Source: <Link to="/safety/global">global aviation safety dataset</Link>{' '}
+            (Aviation Safety Network, B3A, Wikidata).
+          </p>
+        )}
+      </section>
 
       <section className="landing-map">
         <h2>Where does the {fam.label} fly?</h2>

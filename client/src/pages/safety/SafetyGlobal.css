@@ -1,0 +1,235 @@
+/* SafetyGlobal — light theme aligned with index.css design tokens.
+ * Mirrors AircraftLandingPage / SafetyFeed conventions. */
+.safety-global {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+  color: #0f172a;
+}
+
+.safety-global__header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.safety-global__header p {
+  margin: 0 0 24px;
+  color: #475569;
+  font-size: 16px;
+  line-height: 1.55;
+  max-width: 720px;
+}
+
+/* ── Stats cards ───────────────────────────────────────────── */
+.safety-global__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+@media (max-width: 720px) {
+  .safety-global__stats { grid-template-columns: 1fr; }
+}
+
+.safety-stat-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px 18px 8px;
+}
+.safety-stat-card h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #0f172a;
+}
+.safety-stat-card ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.safety-stat-card li {
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+}
+.safety-stat-card li:last-child { border-bottom: 0; }
+.safety-stat-rank   { color: #94a3b8; font-weight: 600; }
+.safety-stat-name   { color: #0f172a; font-weight: 500; }
+.safety-stat-count  {
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+.safety-stat-fatal  {
+  color: #991b1b;
+  background: #fee2e2;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Map ───────────────────────────────────────────────────── */
+.safety-global__map-section { margin-bottom: 32px; }
+.safety-global__map-section h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+.safety-global__map-hint {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+.safety-global__map {
+  width: 100%;
+  height: 480px;
+  background: #0b1220;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+@media (max-width: 600px) {
+  .safety-global__map { height: 360px; }
+}
+
+/* ── Table ─────────────────────────────────────────────────── */
+.safety-global__table-section h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #0f172a;
+}
+.safety-global__filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.safety-global__filter-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #334155;
+  cursor: pointer;
+  user-select: none;
+}
+.safety-global__count {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.safety-global__table-wrap {
+  overflow-x: auto;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+.safety-global__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 640px;
+}
+.safety-global__table thead {
+  background: #f8fafc;
+  text-align: left;
+}
+.safety-global__table th {
+  padding: 10px 14px;
+  font-weight: 600;
+  color: #475569;
+  font-size: 13px;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+.safety-global__table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+  color: #0f172a;
+}
+.safety-global__table tr:last-child td { border-bottom: 0; }
+.safety-global__table td a {
+  color: #4f46e5;
+  text-decoration: none;
+}
+.safety-global__table td a:hover { text-decoration: underline; }
+.safety-global__fatal {
+  color: #991b1b;
+  background: #fee2e2;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+.safety-global__zero {
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* ── Pagination ───────────────────────────────────────────── */
+.safety-global__pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 16px 0 24px;
+  flex-wrap: wrap;
+}
+.safety-global__pager-info {
+  color: #475569;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.safety-global__pager-btns { display: flex; gap: 8px; }
+.safety-global__pager-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  color: #0f172a;
+  cursor: pointer;
+}
+.safety-global__pager-btn:hover:not(:disabled) {
+  background: #eef2ff;
+  border-color: #6366f1;
+}
+.safety-global__pager-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Honesty footer ───────────────────────────────────────── */
+.safety-global__honesty {
+  margin-top: 24px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* ── Loading / error states ──────────────────────────────── */
+.safety-global__loading,
+.safety-global__error {
+  padding: 32px 0;
+  text-align: center;
+  color: #64748b;
+}
+.safety-global__error { color: #b91c1c; }

@@ -17,12 +17,18 @@ import (
 // proxies only `/api/safety/global/*` to this binary, so even if a
 // compromised origin existed, no HTML is reachable.
 func NewServer(db *sql.DB, addr string) *http.Server {
+	// Routes are at root (no /api/ prefix). nginx mounts this sidecar under
+	// /api/safety/global/ via `proxy_pass http://127.0.0.1:5003/`, so the
+	// internal `/accidents` becomes the public `/api/safety/global/accidents`.
+	// Avoiding a duplicate /api/ in the public URL ("/api/safety/global/api/
+	// accidents") keeps the contract clean and matches the existing
+	// google-flights-sidecar convention of root-mounted handlers.
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/api/accidents", accidentsHandler(db))
-	mux.HandleFunc("/api/stats/aircrafts", statsHandler(db, GetAircraftStats))
-	mux.HandleFunc("/api/stats/operators", statsHandler(db, GetOperatorStats))
-	mux.HandleFunc("/api/map_data", mapDataHandler(db))
+	mux.HandleFunc("/accidents", accidentsHandler(db))
+	mux.HandleFunc("/stats/aircrafts", statsHandler(db, GetAircraftStats))
+	mux.HandleFunc("/stats/operators", statsHandler(db, GetOperatorStats))
+	mux.HandleFunc("/map_data", mapDataHandler(db))
 
 	return &http.Server{
 		Addr:              addr,

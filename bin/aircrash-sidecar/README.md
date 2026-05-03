@@ -1,7 +1,9 @@
 # aircrash-sidecar
 
-Read-only HTTP sidecar serving the global aviation accidents dataset at
-`/api/*` (proxied by nginx as `/api/safety/global/*` on himaxym.com).
+Read-only HTTP sidecar serving the global aviation accidents dataset.
+nginx mounts it under `/api/safety/global/` (e.g. /accidents,
+/stats/aircrafts, /map_data, /health), with the prefix stripped so the
+sidecar's internal routes stay short.
 
 ## Architecture
 
@@ -15,10 +17,10 @@ pattern: single-package Go module, built once at deploy, run under PM2.
 ## Endpoints (loopback only)
 
 - `GET /health` — `{"status":"ok"}` (PM2 / nginx healthcheck)
-- `GET /api/accidents?limit=100&offset=0` — paginated raw rows
-- `GET /api/stats/aircrafts` — top 10 aircraft by accident count
-- `GET /api/stats/operators` — top 10 operators by accident count
-- `GET /api/map_data` — geocoded points (≤ 10000) for Leaflet
+- `GET /accidents?limit=100&offset=0` — paginated raw rows
+- `GET /stats/aircrafts` — top 10 aircraft by accident count
+- `GET /stats/operators` — top 10 operators by accident count
+- `GET /map_data` — geocoded points (≤ 10000) for Leaflet
 
 `limit` is clamped to `[1, 500]`; `offset` to `[0, 1_000_000]`. Any error
 returns `{"error":"internal"}` and logs the detail server-side.
@@ -45,7 +47,48 @@ so PM2's `cwd` doesn't silently change behaviour.
 
 ## Refreshing the database
 
-The DB itself is a snapshot — scraping happens out-of-band:
+The DB itself is a snapshot — scraping happens out-of-band. There are
+two refresh paths: an automated weekly CI workflow (preferred) and a
+manual local fallback.
+
+### How the seed gets refreshed (automated, preferred)
+
+`.github/workflows/aircrash-refresh.yml` runs every Sunday at 03:00 UTC
+on a GitHub-hosted `ubuntu-latest` runner:
+
+1. Clones the upstream `disclaimer8/Aviation-Safety-Explorer` repo at HEAD.
+2. Builds the upstream `aircrash-parser` binary (Go 1.26, Chromium from apt).
+3. Pre-seeds the scraper's working DB with our committed
+   `accidents.db.seed` so `InsertAccident`'s fuzzy dedup (date +
+   first-word-of-model) skips records we already have.
+4. Runs **Wikidata** (cheap SPARQL) and **ASN for the last ~1 year**
+   (narrow window keeps Cloudflare-bypass exposure low). **B3A is
+   skipped** — code review flagged its output as low-quality
+   (`Cessna (B3A)` placeholders).
+5. If the DB hash changed, opens a labelled PR (`data-refresh`,
+   `automated`) against `main` with the new seed and a row-delta
+   summary. **The PR is never auto-merged** — humans review for
+   garbage rows before approving.
+
+Once merged, `deploy.yml` picks up the new seed via its existing
+sha256-compare path and copies it to
+`/root/flightfinder/data/accidents.db` on the next deploy.
+
+The scraper is **never** run on the VPS:
+
+- Headless Chrome plus Cloudflare-bypass plugins enlarge the attack
+  surface on a server already serving real users.
+- We previously triggered a Google Flights soft-block by running an
+  unrelated scraper too aggressively from the production IP — running
+  another scraper there is asking for a repeat.
+
+You can trigger the workflow ad-hoc from the Actions tab via the
+`workflow_dispatch` button (optional `asn_years_back` input lets you
+widen the ASN window if a refresh missed older data).
+
+### Manual / local refresh (fallback)
+
+If CI is unavailable or you need to backfill older years:
 
 1. Run the upstream scraper locally (needs Chromium):
    ```sh
@@ -57,10 +100,5 @@ The DB itself is a snapshot — scraping happens out-of-band:
    ```sh
    cp ~/AirCrash/accidents.db ~/FLIGHT/bin/aircrash-sidecar/accidents.db.seed
    ```
-3. Commit and deploy. `deploy.yml` copies the seed to
-   `/root/flightfinder/data/accidents.db` only on first deploy or when
-   the seed file's hash changes — restart-only deploys preserve any
-   live geocoder enrichment that happened on the server.
-
-Production never runs the scraper; the headless-Chrome attack surface
-is too large to host alongside the main app.
+3. Open a PR (do **not** push directly to main) so a human can review
+   the delta the same way the automated path is reviewed.
