@@ -37,27 +37,37 @@ export function useEnrichedCard(flight) {
       }).toString();
       const teaserUrl   = `${API_BASE}/api/flights/${encodeURIComponent(flight.id)}/enriched/teaser`;
       const enrichedUrl = `${API_BASE}/api/flights/${encodeURIComponent(flight.id)}/enriched?${qs}`;
-      // Pro users hit /enriched with their bearer; if the token is stale or
-      // the subscription has been downgraded server-side, the API returns
-      // 401/403. Rather than surfacing a generic "Could not load extra info"
-      // banner, transparently fall back to /teaser so the user still sees
-      // blurred placeholders instead of a broken UI. A page rendering 30+
-      // FlightCards fans out 30+ teaser fetches; if rate-limiter (429) or
-      // upstream timeout makes that endpoint unhappy, treat it the same way:
-      // return a tier:'free'/data:null shape so the card renders blurred
-      // teasers without an angry red banner.
+      // Pro users hit /enriched with their bearer; if the token is stale,
+      // the subscription has been downgraded server-side, the rate-limiter
+      // is hot, or the enrichment service blew up on a third-party call
+      // (livery / weather / airlabs gate / NOAA METAR — any one of them
+      // can throw and bubble up as 500), we transparently fall back to
+      // /teaser so the user still sees blurred placeholders instead of
+      // a generic "Could not load extra info" banner. A page rendering
+      // 30+ FlightCards fans out 30+ teaser fetches; if rate-limiter
+      // (429) or upstream timeout makes that endpoint unhappy, treat it
+      // the same way: return a tier:'free'/data:null shape so the card
+      // renders blurred teasers without an angry red banner.
       const SOFT_FAIL = { success: true, tier: 'free', data: null };
       const fetchWithFallback = async () => {
         if (isPro && token) {
           try {
             const r = await fetch(enrichedUrl, { headers: { Authorization: `Bearer ${token}` } });
-            if (r.status !== 401 && r.status !== 403 && r.status !== 429) return r.json();
-          } catch { /* fall through to teaser */ }
+            if (r.ok) {
+              const j = await r.json().catch(() => null);
+              // Only trust the body if it really did succeed; a 200 with
+              // success:false (or non-JSON) drops to the teaser fallback.
+              if (j && j.success) return j;
+            }
+            // Any non-2xx, JSON-parse error, or success:false: fall through.
+          } catch { /* network / fetch threw — fall through to teaser */ }
         }
         try {
           const r2 = await fetch(teaserUrl);
-          if (r2.status === 429 || !r2.ok) return SOFT_FAIL;
-          return r2.json();
+          if (!r2.ok) return SOFT_FAIL;
+          const j2 = await r2.json().catch(() => null);
+          if (!j2 || !j2.success) return SOFT_FAIL;
+          return j2;
         } catch {
           return SOFT_FAIL;
         }
