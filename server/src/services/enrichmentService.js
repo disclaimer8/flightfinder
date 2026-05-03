@@ -49,14 +49,36 @@ async function enrichFlight(flight) {
     flight.aircraft?.registration || gateInfo?.registration || null;
   const tailInfo = registration ? fleet.getByRegistration(registration) : null;
 
-  return {
-    livery: livery ? { imageUrl: livery.image_url, attribution: livery.attribution } : null,
-    aircraft: tailInfo ? {
+  // Build the Aircraft block with whatever we know, gracefully degrading
+  // through three coverage tiers:
+  //   1. Full tail data: airlabs returned a registration AND we have it
+  //      in our fleet table → registration + ICAO type + build year + age.
+  //   2. Just the type: Google's airplane string mapped to ICAO via
+  //      airplaneToIcao in googleFlightsService → at least show type.
+  //   3. Nothing — return null and the UI renders "—".
+  // Before this fallback the Aircraft field was empty for ~95% of cards
+  // because Google never gives tails and airlabs only knows actively-
+  // tracked flights for the next 7 days.
+  let aircraftBlock = null;
+  if (tailInfo) {
+    aircraftBlock = {
       registration: tailInfo.registration,
       icaoType: tailInfo.icao_type,
       buildYear: tailInfo.build_year,
       ageYears: tailInfo.build_year ? new Date().getFullYear() - tailInfo.build_year : null,
-    } : null,
+    };
+  } else if (flight.aircraft?.icaoType || gateInfo?.aircraftIcao) {
+    aircraftBlock = {
+      registration: registration || null,
+      icaoType: flight.aircraft?.icaoType || gateInfo?.aircraftIcao || null,
+      buildYear: null,
+      ageYears: null,
+    };
+  }
+
+  return {
+    livery: livery ? { imageUrl: livery.image_url, attribution: livery.attribution } : null,
+    aircraft: aircraftBlock,
     onTime,
     delayForecast: prediction,
     co2,
