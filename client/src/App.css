@@ -11,6 +11,7 @@
      The decorative ::before / ::after pseudo-elements use pointer-events: none
      so they don't need clipping to be safe. */
   overflow: visible;
+  min-height: 60vh;
 }
 
 .hero::before {
@@ -153,18 +154,26 @@
 }
 
 .hero-title {
-  font-size: clamp(1.75rem, 4vw, 2.6rem);
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  margin-bottom: 0.6rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 48px;
+  line-height: 1.1;
+  color: white;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 768px) {
+  .hero-title { font-size: 32px; }
 }
 
 .hero-subtitle {
-  font-size: 1rem;
+  font: 400 18px/1.5 var(--font-ui);
   color: rgba(255,255,255,0.75);
-  font-weight: 400;
+  max-width: 56ch;
+}
+
+@media (max-width: 768px) {
+  .hero-subtitle { font-size: 16px; }
 }
 
 /* ─────────────────────────────────────────

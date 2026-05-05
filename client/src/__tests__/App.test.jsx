@@ -52,8 +52,8 @@ describe('App', () => {
   it('mounts without crashing', async () => {
     mockFetch(okResponse(FILTER_OPTIONS));
     renderApp();
-    // Hero title is always present
-    expect(screen.getByText(/find flights by aircraft type/i)).toBeInTheDocument();
+    // Hero title is always present (fallback copy when home.json is unavailable)
+    expect(screen.getByText(/aircraft.*safety-aware flight search engine/i)).toBeInTheDocument();
   });
 
   it('shows search form after filter-options load', async () => {

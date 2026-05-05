@@ -15,10 +15,23 @@ import { useFlightSearch } from './hooks/useFlightSearch';
 import { useFilterOptions } from './hooks/useFilterOptions';
 import { FilterOptionsContext } from './context/FilterOptionsContext';
 import SiteLayout from './components/SiteLayout';
+import SampleCards from './components/SampleCards';
+import RecentSafetyEvents from './components/RecentSafetyEvents';
 import { API_BASE } from './utils/api';
 import './App.css';
 
 function App() {
+  const [homeContent, setHomeContent] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/content/landing/home.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(json => { if (active) setHomeContent(json); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   const { filterOptions, error: filterOptionsError } = useFilterOptions();
   const [searchParams] = useSearchParams();
 
@@ -141,8 +154,12 @@ function App() {
           )}
 
           <div className="hero-content">
-            <h1 className="hero-title">Find flights by aircraft type</h1>
-            <p className="hero-subtitle">Search routes worldwide, filtered by aircraft model</p>
+            <h1 className="hero-title">
+              {homeContent?.hero?.h1 ?? 'The aircraft- and safety-aware flight search engine'}
+            </h1>
+            <p className="hero-subtitle">
+              {homeContent?.hero?.subhead ?? 'See which airline, which aircraft, and what its safety record looks like — before you book.'}
+            </p>
           </div>
 
           {filterOptionsError && (
@@ -203,6 +220,8 @@ function App() {
           )}
         </section>
 
+        <SampleCards />
+
         <section className="results-section">
           {searchMode === 'map' ? (
             <ErrorBoundary>
@@ -251,6 +270,8 @@ function App() {
                   <FlightResults flights={flights} source={apiSource} hasSearched={hasSearched} initialAirlines={searchedAirlines} />
                 </ErrorBoundary>
               )}
+
+              {!hasSearched && exploreResults === null && <RecentSafetyEvents />}
             </>
           )}
         </section>
