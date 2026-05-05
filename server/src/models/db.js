@@ -309,6 +309,15 @@ const stmts = {
     WHERE dep_iata = ? AND arr_iata = ? AND seen_at >= ?
     ORDER BY seen_at DESC
   `),
+  observedOperatorsByRoute: db.prepare(`
+    SELECT airline_iata, COUNT(*) AS count
+    FROM observed_routes
+    WHERE dep_iata = ? AND arr_iata = ? AND seen_at >= ?
+      AND airline_iata IS NOT NULL AND airline_iata != ''
+    GROUP BY airline_iata
+    ORDER BY count DESC
+    LIMIT ?
+  `),
   observedDestinationsFromDep: db.prepare(`
     SELECT DISTINCT arr_iata FROM observed_routes
     WHERE dep_iata = ? AND seen_at >= ?
@@ -386,6 +395,8 @@ module.exports = {
   },
   observedAircraftByRoute: (depIata, arrIata, sinceMs) =>
     stmts.observedAircraftByRoute.all(depIata, arrIata, sinceMs),
+  observedOperatorsByRoute: (depIata, arrIata, sinceMs, limit = 5) =>
+    stmts.observedOperatorsByRoute.all(depIata, arrIata, sinceMs, limit),
   observedDestinationsFromDep: (depIata, sinceMs) =>
     stmts.observedDestinationsFromDep.all(depIata, sinceMs).map(r => r.arr_iata),
   observedStats: () => stmts.observedStats.get(),
