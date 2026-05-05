@@ -78,7 +78,7 @@ function ItineraryRow({ itinerary, label }) {
   );
 }
 
-function FlightCard({ flight }) {
+function FlightCard({ flight, showProTeaser = false }) {
   const { aircraft } = flight;
   const { enrichedCardEnabled = true, tripsEnabled = true } = useClientConfig();
 
@@ -223,6 +223,7 @@ function FlightCard({ flight }) {
               registration: aircraft?.registration || null,
             },
           }}
+          showProTeaser={showProTeaser}
         />
       )}
     </div>

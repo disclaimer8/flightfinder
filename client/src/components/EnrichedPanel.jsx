@@ -1,9 +1,26 @@
 import { useState } from 'react';
 import { useEnrichedCard } from '../hooks/useEnrichedCard';
+import { useAuth } from '../context/AuthContext';
+import EnrichedTeaser from './EnrichedTeaser';
+import { isNativeApp } from '../utils/platform';
 import UpgradeModal from './UpgradeModal';
 import './EnrichedPanel.css';
 
-export default function EnrichedPanel({ flight }) {
+export default function EnrichedPanel({ flight, showProTeaser = false }) {
+  const { user } = useAuth();
+  const isPro = !!user?.subscription_tier?.startsWith('pro_');
+
+  // Free users: show teaser only on the first card (anti-fatigue) and never
+  // in the native app (Pricing isn't reachable in the WebView).
+  if (!isPro) {
+    if (showProTeaser && !isNativeApp()) return <EnrichedTeaser />;
+    return null;
+  }
+
+  return <EnrichedPanelPro flight={flight} />;
+}
+
+function EnrichedPanelPro({ flight }) {
   const { loading, data, tier, error } = useEnrichedCard(flight);
   const [upgrade, setUpgrade] = useState({ open: false, reason: '' });
   const isFree = tier === 'free';

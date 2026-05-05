@@ -225,8 +225,8 @@ function FlightResults({ flights, source, hasSearched, initialAirlines = [] }) {
             </div>
           ) : (
             <div className="flights-list">
-              {displayed.map(flight => (
-                <FlightCard key={flight.id} flight={flight} />
+              {displayed.map((flight, i) => (
+                <FlightCard key={flight.id} flight={flight} showProTeaser={i === 0} />
               ))}
             </div>
           )}
