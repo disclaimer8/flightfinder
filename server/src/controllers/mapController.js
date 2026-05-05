@@ -6,6 +6,7 @@ const amadeusService = require('../services/amadeusService');
 const cacheService   = require('../services/cacheService');
 const routesService  = require('../services/routesService');
 const db             = require('../models/db');
+const safety         = require('../models/safetyEvents');
 
 // ─── GET /api/map/airports ───────────────────────────────────────────────────
 // Returns all known airports in compact format to minimise payload.
@@ -221,5 +222,64 @@ exports.getFlightDates = async (req, res) => {
       return res.json({ origin: orig, destination: dest, calendar: [] });
     }
     res.status(502).json({ error: 'Failed to fetch flight dates', detail: err.message });
+  }
+};
+
+// ─── GET /api/map/route-operators?dep=LHR&arr=JFK ────────────────────────────
+// Returns up to 5 operators observed on the route in the last 90 days,
+// each enriched with airline name (via openFlightsService) and 90-day safety
+// event count (via safety.countByOperator). Used by RouteLandingPage to
+// surface "Operators on this route" with safety summary.
+//
+// Response shape:
+//   {
+//     success, dep, arr, windowDays,
+//     operators: [{ iata, icao, name, count, safetyCount90d }]
+//   }
+exports.getRouteOperators = (req, res) => {
+  const dep = String(req.query.dep || '').toUpperCase();
+  const arr = String(req.query.arr || '').toUpperCase();
+  if (!/^[A-Z]{3}$/.test(dep) || !/^[A-Z]{3}$/.test(arr) || dep === arr) {
+    return res.status(400).json({
+      success: false,
+      message: 'dep and arr IATA codes required (3 letters, distinct)',
+    });
+  }
+
+  const windowDays = 90;
+  const cacheKey = `map:route-operators:${dep}:${arr}:${windowDays}`;
+  const cached = cacheService.get(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const sinceMs = Date.now() - windowDays * 86400000;
+    const rows = db.observedOperatorsByRoute(dep, arr, sinceMs, 5) || [];
+
+    const operators = rows.map(r => {
+      const iata = r.airline_iata;
+      const meta = openFlights.getAirline(iata) || {};
+      const safetyCount = safety.countByOperator({
+        iata,
+        icao: meta.icao || null,
+        sinceMs,
+      });
+      // countByOperator returns { fatal, hull_loss, serious_incident, incident, minor, unknown, total }
+      const safetyCount90d = (typeof safetyCount === 'number')
+        ? safetyCount
+        : (safetyCount?.total ?? 0);
+      return {
+        iata,
+        icao: meta.icao || null,
+        name: meta.name || null,
+        count: r.count,
+        safetyCount90d,
+      };
+    });
+
+    const payload = { success: true, dep, arr, windowDays, operators };
+    cacheService.set(cacheKey, payload, 30 * 60 * 1000);
+    res.json(payload);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

@@ -22,4 +22,7 @@ router.get('/flight-dates', ctrl.getFlightDates);
 // GET /api/map/route-aircraft  — aircraft families observed on a city pair
 router.get('/route-aircraft', ctrl.getRouteAircraft);
 
+// GET /api/map/route-operators — operators observed on a city pair (last 90d)
+router.get('/route-operators', ctrl.getRouteOperators);
+
 module.exports = router;
