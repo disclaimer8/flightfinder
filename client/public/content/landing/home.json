@@ -1,0 +1,33 @@
+{
+  "hero": {
+    "h1": "The aircraft- and safety-aware flight search engine",
+    "subhead": "See which airline, which aircraft, and what its safety record looks like — before you book."
+  },
+  "sampleCards": [
+    {
+      "eyebrow": "FOR AVGEEKS",
+      "headline": "Where does the Boeing 787 fly?",
+      "body": "See every route, every airline.",
+      "cta": "View routes",
+      "href": "/aircraft/boeing-787"
+    },
+    {
+      "eyebrow": "FOR TRAVELERS",
+      "headline": "Know what aircraft you'll fly",
+      "body": "Filter your search by aircraft type before you book.",
+      "cta": "Search flights",
+      "href": "/?mode=search"
+    },
+    {
+      "eyebrow": "FOR RESEARCHERS",
+      "headline": "Browse 5,200+ historical accidents",
+      "body": "NTSB + Aviation Safety Network — searchable.",
+      "cta": "Open database",
+      "href": "/safety/global"
+    }
+  ],
+  "browseAllAircraft": {
+    "label": "Browse all aircraft",
+    "href": "/by-aircraft"
+  }
+}
