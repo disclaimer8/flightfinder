@@ -1,0 +1,28 @@
+.site-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-layout-main {
+  flex: 1 0 auto;
+}
+
+.site-layout-sentinel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.site-layout--transparent-over-hero .site-header {
+  background: transparent;
+  box-shadow: none;
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+
+.site-layout--transparent-over-hero[data-over-hero="false"] .site-header {
+  background: var(--navy);
+  box-shadow: var(--shadow);
+}
