@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import SearchForm from './components/SearchForm';
 import FlightResults from './components/FlightResults';
 import ExploreResults from './components/ExploreResults';
@@ -19,8 +20,41 @@ import './App.css';
 
 function App() {
   const { filterOptions, error: filterOptionsError } = useFilterOptions();
-  const [prefillArrival, setPrefillArrival] = useState(null);
-  const [searchMode, setSearchMode] = useState('search'); // 'search' | 'by-aircraft' | 'map'
+  const [searchParams] = useSearchParams();
+
+  // Parse on first render only
+  const [initialMode] = useState(() => {
+    const m = searchParams.get('mode');
+    return ['search', 'by-aircraft', 'map'].includes(m) ? m : 'search';
+  });
+  const [initialFamily] = useState(() => searchParams.get('family') || null);
+  const [initialFrom]   = useState(() => searchParams.get('from')   || null);
+  const [initialTo]     = useState(() => searchParams.get('to')     || null);
+
+  // Wrap setter to mirror state into URL via replaceState
+  const [searchMode, setSearchModeState] = useState(initialMode);
+  const setSearchMode = (next) => {
+    setSearchModeState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === 'search') {
+      params.delete('mode');
+    } else {
+      params.set('mode', next);
+    }
+    // Drop family/from/to when switching modes — they're stale
+    params.delete('family');
+    params.delete('from');
+    params.delete('to');
+    const qs = params.toString();
+    window.history.replaceState({}, '', qs ? `/?${qs}` : '/');
+  };
+
+  const [prefillDeparture, setPrefillDeparture] = useState(
+    initialFrom ? { code: initialFrom, autoSearch: Boolean(initialFrom && initialTo) } : null
+  );
+  const [prefillArrival, setPrefillArrival] = useState(
+    initialTo ? { code: initialTo, autoSearch: Boolean(initialFrom && initialTo) } : null
+  );
   const [acQuery, setAcQuery] = useState(null); // { familyName, origin, date, passengers }
   // Email verification via URL: ?action=verify&token=...
   const [verifyState, setVerifyState] = useState(null); // null | 'pending' | 'success' | 'error'
@@ -145,13 +179,15 @@ function App() {
                   onSearch={handleSearch}
                   onExplore={handleExplore}
                   loading={loading}
+                  prefillDeparture={prefillDeparture}
                   prefillArrival={prefillArrival}
-                  onPrefillUsed={() => setPrefillArrival(null)}
+                  onPrefillUsed={() => { setPrefillDeparture(null); setPrefillArrival(null); }}
                 />
               )}
 
               {searchMode === 'by-aircraft' && !acQuery && (
                 <AircraftSearchForm
+                  initialFamily={initialFamily}
                   onSearch={handleAircraftSearch}
                   loading={loading}
                   onCancel={clearError}

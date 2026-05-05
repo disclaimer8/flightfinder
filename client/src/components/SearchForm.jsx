@@ -4,7 +4,7 @@ import './SearchForm.css';
 import DatePicker from './DatePicker';
 import AirlineSelector from './AirlineSelector';
 
-function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUsed }) {
+function SearchForm({ onSearch, onExplore, loading, prefillDeparture, prefillArrival, onPrefillUsed }) {
   const filterOptions = useFilterOptions();
   const [mode, setMode] = useState('search'); // 'search' | 'explore'
   const [tripType, setTripType] = useState('one-way');
@@ -26,19 +26,25 @@ function SearchForm({ onSearch, onExplore, loading, prefillArrival, onPrefillUse
   }, []);
 
   useEffect(() => {
-    if (!prefillArrival) return;
-    const code = prefillArrival.code ?? prefillArrival;
-    const auto = prefillArrival.autoSearch ?? false;
+    if (!prefillDeparture && !prefillArrival) return;
     setMode('search');
     setFilters(prev => {
-      const next = { ...prev, arrival: code };
-      if (auto && next.departure && next.date) {
+      const next = { ...prev };
+      if (prefillDeparture?.code) {
+        next.departure = prefillDeparture.code;
+      }
+      if (prefillArrival) {
+        next.arrival = prefillArrival.code ?? prefillArrival;
+      }
+      const autoSearch =
+        (prefillDeparture?.autoSearch || prefillArrival?.autoSearch) ?? false;
+      if (autoSearch && next.departure && next.arrival && next.date) {
         setPendingAutoSearch({ ...next, returnDate: '' });
       }
       return next;
     });
     onPrefillUsed?.();
-  }, [prefillArrival]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [prefillDeparture, prefillArrival]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!pendingAutoSearch) return;
