@@ -74,7 +74,7 @@ function AirportField({ id, label, value, onChange, placeholder }) {
   );
 }
 
-export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
+export default function AircraftSearchForm({ initialFamily, onSearch, loading, onCancel }) {
   const [families, setFamilies]     = useState([]);
   const [familyName, setFamilyName] = useState('');
   const [from, setFrom]             = useState(null); // { label, iata, name }
@@ -88,11 +88,17 @@ export default function AircraftSearchForm({ onSearch, loading, onCancel }) {
       .then(d => {
         if (d.success && d.families) {
           setFamilies(d.families);
-          setFamilyName(d.families[0]?.name || '');
+          // If initialFamily is provided, try to match it; otherwise use first family
+          if (initialFamily) {
+            const found = d.families.find(f => f.name === initialFamily || f.label === initialFamily || f.slug === initialFamily);
+            setFamilyName(found?.name || d.families[0]?.name || '');
+          } else {
+            setFamilyName(d.families[0]?.name || '');
+          }
         }
       })
       .catch(() => {});
-  }, []);
+  }, [initialFamily]);
 
   const grouped = families.reduce((acc, f) => {
     (acc[f.manufacturer] = acc[f.manufacturer] || []).push(f);
