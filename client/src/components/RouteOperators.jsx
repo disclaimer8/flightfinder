@@ -22,7 +22,18 @@ export default function RouteOperators({ from, to }) {
     return () => { active = false; };
   }, [from, to]);
 
-  if (error) return null;
+  if (error || (ops && ops.length === 0)) {
+    return (
+      <section className="route-ops" aria-label="Operators on this route">
+        <div className="route-ops__head">
+          <span className="route-ops__eyebrow">OPERATORS ON THIS ROUTE</span>
+        </div>
+        <p className="route-ops__empty">
+          No carrier data observed on this city pair yet. We refresh weekly from live ADS-B.
+        </p>
+      </section>
+    );
+  }
   if (!ops) {
     return (
       <section className="route-ops" aria-busy="true">
@@ -38,6 +49,13 @@ export default function RouteOperators({ from, to }) {
         <span className="route-ops__sub">Last 90 days · top {ops.length}</span>
       </div>
       <table className="route-ops__table">
+        <thead>
+          <tr>
+            <th className="route-ops__th-carrier">Carrier</th>
+            <th className="route-ops__th-flights">Flights / 90d</th>
+            <th className="route-ops__th-safety">Safety events</th>
+          </tr>
+        </thead>
         <tbody>
           {ops.map(op => {
             const code = op.iata || op.icao;
