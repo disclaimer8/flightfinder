@@ -1,0 +1,31 @@
+.data-card {
+  border-top: 2px solid var(--text);
+  padding-top: 16px;
+}
+
+.data-card__list { margin: 0; padding: 0; }
+
+.data-card__row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-light);
+  gap: 16px;
+}
+
+.data-card__row:last-child { border-bottom: none; }
+
+.data-card__label {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.data-card__value {
+  font: 500 14px var(--font-mono);
+  color: var(--text);
+  text-align: right;
+  margin: 0;
+}
