@@ -10,7 +10,9 @@ const MAX_PAGES         = 20;                     // 1000 records/cycle ceiling
 
 async function runCycle() {
   const sinceDays = Number(process.env.SAFETY_INGEST_DAYS || 30);
-  let totalIn = 0, totalUpserted = 0;
+  let totalIn = 0, totalUpserted = 0, totalEnriched = 0;
+
+  ntsb.resetDetailCircuitBreaker();
 
   for (let page = 0; page < MAX_PAGES; page++) {
     let pageOut;
@@ -26,11 +28,21 @@ async function runCycle() {
     const observedAt = Date.now();
     const mapped = pageOut.rows.map(r => ntsb.mapToSafetyEvent(r, observedAt));
     const valid  = mapped.filter(Boolean);
-    totalUpserted += safety.upsertMany(valid);
+
+    // Per-event detail-view enrichment (no-op when SAFETY_DETAIL_ENRICHMENT_ENABLED != '1')
+    const enriched = [];
+    for (const event of valid) {
+      const beforeOperator = event.operator_iata;
+      const result = await ntsb.enrichWithDetail(event);
+      if (result.operator_iata && !beforeOperator) totalEnriched += 1;
+      enriched.push(result);
+    }
+
+    totalUpserted += safety.upsertMany(enriched);
 
     if (!pageOut.hasMore) break;
   }
-  console.log(`[safetyIngest] cycle done in=${totalIn} upserted=${totalUpserted}`);
+  console.log(`[safetyIngest] cycle done in=${totalIn} upserted=${totalUpserted} enriched=${totalEnriched}`);
 }
 
 exports.startSafetyIngestionWorker = () => {

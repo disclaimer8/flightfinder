@@ -154,6 +154,118 @@ function mapToSafetyEvent(raw, observedAt) {
   };
 }
 
+// ─── Detail-view enrichment ──────────────────────────────────────────────────
+// NTSB Carol v2 list-view dropped operator and CICTT category fields. The
+// WCMS detail endpoint still serves them. Discovered via Playwright inspection
+// of web.ntsb.gov: GET https://api.ntsb.gov/wcms/api/WCMS/v1/GetCaseWithSafetyRecommendations?ntsbNumber=<id>
+// Uses a separate Azure APIM subscription key (826801ea745143e4816ec7be43ea6417)
+// visible in web.ntsb.gov bundle. Referer must be https://web.ntsb.gov/.
+//
+// Response shape (relevant paths):
+//   [0].case.aircrafts[0].ownerOperators[0].operatorName   → operator display name
+//   [0].case.aircrafts[0].ownerOperators[0].operatorDesignatorCode → IATA/ICAO (null for GA)
+//   [0].case.aircrafts[0].events[].cicttPhaseSOEGroup (where isDefiningEvent=true) → CICTT
+//   [0].case.eventLatitude / eventLongitude → lat/lon
+//   [0].case.onboardFatal / onboardSerious / onboardMinor  → injury counts
+//   [0].case.aircrafts[0].aircraftAccidents[0].damageLevel → hull_loss proxy
+
+const WCMS_DETAIL_ENDPOINT = 'https://api.ntsb.gov/wcms/api/WCMS/v1/GetCaseWithSafetyRecommendations';
+// Separate subscription key used by web.ntsb.gov (not my.ntsb.gov).
+const WCMS_SUBSCRIPTION_KEY = process.env.NTSB_WCMS_API_KEY || '826801ea745143e4816ec7be43ea6417';
+const RATE_LIMIT_MS   = 200;
+const FAIL_THRESHOLD  = 3;
+
+let consecutiveDetailFails = 0;
+
+const DETAIL_ENRICHMENT_ENABLED =
+  String(process.env.SAFETY_DETAIL_ENRICHMENT_ENABLED || '') === '1';
+
+/**
+ * Fetch operator + CICTT detail for a single NTSB event.
+ * Returns { operator_iata, operator_icao, operator_name, cictt_category,
+ *           location_lat, location_lon, fatalities, injuries, hull_loss }
+ * with any unavailable field as null. Throws on network error / non-200.
+ */
+async function fetchEventDetail(sourceEventId) {
+  const res = await axios.get(WCMS_DETAIL_ENDPOINT, {
+    params: { ntsbNumber: sourceEventId },
+    headers: {
+      'Accept': 'application/json',
+      'Ocp-Apim-Subscription-Key': WCMS_SUBSCRIPTION_KEY,
+      'Origin': 'https://web.ntsb.gov',
+      'Referer': 'https://web.ntsb.gov/',
+    },
+    timeout: 15_000,
+    validateStatus: () => true,
+  });
+  if (res.status !== 200) throw new Error(`NTSB WCMS detail ${res.status}`);
+
+  const item = Array.isArray(res.data) ? res.data[0] : null;
+  if (!item || !item.case) throw new Error('NTSB WCMS detail: unexpected shape');
+
+  const c        = item.case;
+  const aircraft = Array.isArray(c.aircrafts) ? c.aircrafts[0] : null;
+  const owOp     = aircraft && Array.isArray(aircraft.ownerOperators) ? aircraft.ownerOperators[0] : null;
+
+  // CICTT: use the defining event's cicttPhaseSOEGroup (e.g. "Maneuvering", "LandingRollout")
+  const defEvent = aircraft && Array.isArray(aircraft.events)
+    ? aircraft.events.find(e => e.isDefiningEvent) || aircraft.events[0]
+    : null;
+
+  // hull_loss: 'Destroyed' → 1, anything else → 0, null if no damage info
+  const damageLevel = aircraft && Array.isArray(aircraft.aircraftAccidents) && aircraft.aircraftAccidents[0]
+    ? aircraft.aircraftAccidents[0].damageLevel
+    : null;
+
+  return {
+    operator_iata:  owOp?.operatorDesignatorCode || null,
+    operator_icao:  owOp?.operatorDesignatorCode || null, // WCMS gives one code, no IATA/ICAO split
+    operator_name:  owOp?.operatorName && owOp.operatorName !== 'On File' ? owOp.operatorName : null,
+    cictt_category: defEvent?.cicttPhaseSOEGroup || null,
+    location_lat:   typeof c.eventLatitude  === 'number' ? c.eventLatitude  : null,
+    location_lon:   typeof c.eventLongitude === 'number' ? c.eventLongitude : null,
+    fatalities:     typeof c.onboardFatal   === 'number' ? c.onboardFatal   : null,
+    injuries:       typeof c.onboardSerious === 'number' ? c.onboardSerious : null,
+    hull_loss:      damageLevel === 'Destroyed' ? 1 : damageLevel !== null ? 0 : null,
+  };
+}
+
+/**
+ * Best-effort enrichment. Returns the event with detail fields merged in
+ * when the fetch succeeds; returns the original event unchanged when the
+ * feature flag is off, the circuit breaker has tripped, or the fetch failed.
+ */
+async function enrichWithDetail(event) {
+  if (!DETAIL_ENRICHMENT_ENABLED) return event;
+  if (consecutiveDetailFails >= FAIL_THRESHOLD) return event;
+
+  try {
+    await new Promise(r => setTimeout(r, RATE_LIMIT_MS));
+    // Reference via module.exports so tests can stub fetchEventDetail with jest.spyOn:
+    const detail = await module.exports.fetchEventDetail(event.source_event_id);
+    consecutiveDetailFails = 0;
+    return {
+      ...event,
+      operator_iata:  detail.operator_iata  ?? event.operator_iata,
+      operator_icao:  detail.operator_icao  ?? event.operator_icao,
+      operator_name:  detail.operator_name  ?? event.operator_name,
+      cictt_category: detail.cictt_category ?? event.cictt_category,
+      location_lat:   detail.location_lat   ?? event.location_lat,
+      location_lon:   detail.location_lon   ?? event.location_lon,
+      fatalities:     detail.fatalities     ?? event.fatalities,
+      injuries:       detail.injuries       ?? event.injuries,
+      hull_loss:      detail.hull_loss      ?? event.hull_loss,
+    };
+  } catch (err) {
+    consecutiveDetailFails += 1;
+    return event;
+  }
+}
+
+function resetDetailCircuitBreaker() {
+  consecutiveDetailFails = 0;
+}
+
 /**
  * Fetch one page from new NTSB Carol v2 API.
  * @returns {Promise<{rows: Array, hasMore: boolean}>}
@@ -210,4 +322,14 @@ async function fetchPage({ sinceDays = 30, page = 0, pageSize = 50 }) {
   return { rows: list, hasMore };
 }
 
-module.exports = { fetchPage, mapToSafetyEvent, parseVehicleDetails, parseLocation, parseUSDate, severityFromNew };
+module.exports = {
+  fetchPage,
+  mapToSafetyEvent,
+  parseVehicleDetails,
+  parseLocation,
+  parseUSDate,
+  severityFromNew,
+  fetchEventDetail,
+  enrichWithDetail,
+  resetDetailCircuitBreaker,
+};

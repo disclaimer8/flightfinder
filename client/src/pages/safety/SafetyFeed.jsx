@@ -12,8 +12,20 @@ const SEVERITIES = [
   { code: 'minor',             label: 'Minor' },
 ];
 
+const SEVERITY_DOT_CLASS = {
+  fatal:            'sf-dot--fatal',
+  hull_loss:        'sf-dot--hull',
+  serious_incident: 'sf-dot--hull',
+  incident:         'sf-dot--incident',
+  minor:            'sf-dot--incident',
+};
+
 function formatDate(ms) {
   return new Date(ms).toISOString().slice(0, 10);
+}
+
+function dash(v) {
+  return v == null || v === '' ? '—' : v;
 }
 
 export default function SafetyFeed() {
@@ -61,29 +73,48 @@ export default function SafetyFeed() {
       )}
 
       {events && events.length > 0 && (
-        <ul className="safety-feed__list">
-          {events.map(e => (
-            <li key={e.id} className={`safety-card safety-card--${e.severity}`}>
-              <Link to={`/safety/events/${e.id}`} className="safety-card__link">
-                <div className="safety-card__head">
-                  <span className={`safety-badge safety-badge--${e.severity}`}>{e.severityLabel}</span>
-                  <span className="safety-card__date">{formatDate(e.occurredAt)}</span>
-                </div>
-                <h2 className="safety-card__title">
-                  {e.cicttLabel}
-                  {e.route.dep && e.route.arr && (
-                    <span className="safety-card__route">&nbsp;&nbsp;{e.route.dep} &rarr; {e.route.arr}</span>
+        <table className="safety-feed__table">
+          <thead>
+            <tr>
+              <th className="sf-col-date">Date</th>
+              <th className="sf-col-severity">Severity</th>
+              <th className="sf-col-aircraft">Aircraft</th>
+              <th className="sf-col-route">Route / Location</th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map(e => (
+              <tr
+                key={e.id}
+                className={`safety-feed__row safety-feed__row--${e.severity}`}
+              >
+                <td className="sf-col-date">{formatDate(e.occurredAt)}</td>
+                <td className="sf-col-severity">
+                  <span className={`safety-feed__dot ${SEVERITY_DOT_CLASS[e.severity] || 'sf-dot--incident'}`} aria-hidden="true" />
+                  <span className="safety-feed__sev-label">{e.severityLabel}</span>
+                </td>
+                <td className="sf-col-aircraft">
+                  {dash(e.aircraft.icaoType)}
+                  {e.aircraft.registration && (
+                    <span className="safety-feed__reg"> {e.aircraft.registration}</span>
                   )}
-                </h2>
-                <p className="safety-card__meta">
-                  {e.operator.name || e.operator.icao || e.operator.iata || 'Operator unknown'}
-                  {e.aircraft.registration ? `  ${e.aircraft.registration}` : ''}
-                  {e.fatalities > 0 ? `  ${e.fatalities} fatalities` : ''}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                </td>
+                <td className="sf-col-route">
+                  <span>{dash(e.route.dep)}</span>
+                  <span className="safety-feed__arrow"> → </span>
+                  <span>{e.route.arr || e.location.country || '—'}</span>
+                  <Link
+                    to={`/safety/events/${e.id}`}
+                    className="safety-feed__row-link"
+                    aria-label={`View event ${e.id}`}
+                  >
+                    <span className="visually-hidden">View event</span>
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </main>
   );

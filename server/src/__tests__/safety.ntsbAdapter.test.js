@@ -7,7 +7,12 @@ const {
   parseLocation,
   parseUSDate,
   severityFromNew,
+  fetchEventDetail,
+  enrichWithDetail,
+  resetDetailCircuitBreaker,
 } = require('../services/safety/ntsbAdapter');
+
+const adapter = require('../services/safety/ntsbAdapter');
 
 const FIXTURE = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'fixtures/ntsb-sample.json'), 'utf8')
@@ -192,5 +197,97 @@ describe('fetchPage (network — mocked)', () => {
     const { fetchPage } = require('../services/safety/ntsbAdapter');
     await expect(fetchPage({ sinceDays: 30, page: 0, pageSize: 50 }))
       .rejects.toThrow(/Carol v2/);
+  });
+});
+
+describe('enrichWithDetail', () => {
+  let originalFlag;
+  let testAdapter;
+
+  beforeEach(() => {
+    originalFlag = process.env.SAFETY_DETAIL_ENRICHMENT_ENABLED;
+    process.env.SAFETY_DETAIL_ENRICHMENT_ENABLED = '1';
+    jest.resetModules();
+    testAdapter = require('../services/safety/ntsbAdapter');
+    testAdapter.resetDetailCircuitBreaker();
+  });
+
+  afterEach(() => {
+    if (originalFlag === undefined) delete process.env.SAFETY_DETAIL_ENRICHMENT_ENABLED;
+    else process.env.SAFETY_DETAIL_ENRICHMENT_ENABLED = originalFlag;
+    jest.restoreAllMocks();
+  });
+
+  test('returns original event unchanged when feature flag is off', async () => {
+    process.env.SAFETY_DETAIL_ENRICHMENT_ENABLED = '0';
+    jest.resetModules();
+    const freshAdapter = require('../services/safety/ntsbAdapter');
+    const event = { source_event_id: 'X', operator_iata: null, cictt_category: null };
+    const result = await freshAdapter.enrichWithDetail(event);
+    expect(result).toEqual(event);
+  });
+
+  test('merges detail fields into event when fetch succeeds', async () => {
+    const mockDetail = {
+      operator_iata: 'BA',
+      operator_icao: 'BAW',
+      operator_name: 'British Airways',
+      cictt_category: 'F-NI',
+      location_lat: null,
+      location_lon: null,
+      fatalities: null,
+      injuries: null,
+      hull_loss: null,
+    };
+    jest.spyOn(testAdapter, 'fetchEventDetail').mockResolvedValue(mockDetail);
+    const event = {
+      source_event_id: 'X',
+      operator_iata: null,
+      operator_icao: null,
+      operator_name: null,
+      cictt_category: null,
+      location_lat: null,
+      location_lon: null,
+      fatalities: 0,
+      injuries: 0,
+      hull_loss: 0,
+    };
+    const result = await testAdapter.enrichWithDetail(event);
+    expect(result.operator_iata).toBe('BA');
+    expect(result.operator_name).toBe('British Airways');
+    expect(result.cictt_category).toBe('F-NI');
+  });
+
+  test('returns original event when detail fetch throws', async () => {
+    jest.spyOn(testAdapter, 'fetchEventDetail').mockRejectedValue(new Error('500'));
+    const event = { source_event_id: 'X', operator_iata: null };
+    const result = await testAdapter.enrichWithDetail(event);
+    expect(result).toEqual(event);
+  });
+
+  test('skips remaining fetches after 3 consecutive failures', async () => {
+    const fetchSpy = jest.spyOn(testAdapter, 'fetchEventDetail').mockRejectedValue(new Error('500'));
+    await testAdapter.enrichWithDetail({ source_event_id: '1' });
+    await testAdapter.enrichWithDetail({ source_event_id: '2' });
+    await testAdapter.enrichWithDetail({ source_event_id: '3' });
+    fetchSpy.mockClear();
+    await testAdapter.enrichWithDetail({ source_event_id: '4' });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test('resetDetailCircuitBreaker clears the failure counter', async () => {
+    const fetchSpy = jest.spyOn(testAdapter, 'fetchEventDetail').mockRejectedValue(new Error('500'));
+    for (let i = 0; i < 3; i++) {
+      await testAdapter.enrichWithDetail({ source_event_id: String(i) });
+    }
+    testAdapter.resetDetailCircuitBreaker();
+    fetchSpy.mockResolvedValueOnce({
+      operator_iata: 'BA', operator_icao: null, operator_name: null, cictt_category: null,
+      location_lat: null, location_lon: null, fatalities: null, injuries: null, hull_loss: null,
+    });
+    fetchSpy.mockClear();
+    const result = await testAdapter.enrichWithDetail({ source_event_id: 'after-reset', operator_iata: null, location_lat: null, location_lon: null, fatalities: 0, injuries: 0, hull_loss: 0 });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(result.operator_iata).toBe('BA');
   });
 });

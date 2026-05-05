@@ -26,6 +26,21 @@ const CATEGORIES = [
 ];
 const VALID_CATEGORIES = new Set(CATEGORIES.map(c => c.value).filter(Boolean));
 
+function summarizeFilters({ fatal, nonFatal, category, operatorQuery, eraMin, eraMax }) {
+  const parts = [];
+  if (category) {
+    const catLabel = CATEGORIES.find(c => c.value === category)?.label;
+    if (catLabel) parts.push(catLabel);
+  }
+  if (operatorQuery) parts.push(operatorQuery);
+  if (eraMin !== ERA_DEFAULT[0] || eraMax !== ERA_DEFAULT[1]) {
+    parts.push(`${eraMin}–${eraMax}`);
+  }
+  if (!fatal && nonFatal) parts.push('Non-fatal only');
+  if (fatal && !nonFatal) parts.push('Fatal only');
+  return parts.length ? parts.join(' · ') : 'All';
+}
+
 // Parse a fatalities string like "0", "15", "Unknown", "15+2" into a number.
 // Returns 0 for "Unknown" / NaN — used only to drive the "fatal" filter, so
 // erring towards "not fatal" on parse failure is the safe call.
@@ -98,6 +113,15 @@ export default function SafetyGlobal() {
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [selectedErr, setSelectedErr] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false); // mobile bottom sheet
+  const [filtersCollapsed, setFiltersCollapsed] = useState(true); // mobile collapsible toolbar
+
+  // Auto-collapse on mobile when filter changes (good UX: tap filter → drawer closes → see updated map)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia('(max-width: 640px)').matches) {
+      setFiltersCollapsed(true);
+    }
+  }, [fatal, nonFatal, category, operatorQuery, eraMin, eraMax]);
 
   // Table page (independent of map filters per UX spec).
   const [fatalOnly, setFatalOnly] = useState(false);
@@ -391,109 +415,136 @@ export default function SafetyGlobal() {
               />
             </Suspense>
 
-            {/* Filters overlay (desktop = always visible; mobile = bottom sheet via filtersOpen) */}
-            <div className={`safety-global__filters ${filtersOpen ? 'is-open' : ''}`}>
-              <div className="safety-global__filters-head">
-                <strong>Filters</strong>
-                {filtersDirty && (
-                  <button type="button" className="safety-global__reset-btn" onClick={resetFilters}>
-                    Reset
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="safety-global__filters-close"
-                  onClick={() => setFiltersOpen(false)}
-                  aria-label="Close filters"
-                >×</button>
-              </div>
-
-              <fieldset className="safety-global__filter-group">
-                <legend>Severity</legend>
-                <label className="safety-global__chip">
-                  <input type="checkbox" checked={fatal} onChange={e => setFatal(e.target.checked)} />
-                  <span><span className="dot dot--fatal" /> Fatal</span>
-                </label>
-                <label className="safety-global__chip">
-                  <input type="checkbox" checked={nonFatal} onChange={e => setNonFatal(e.target.checked)} />
-                  <span><span className="dot dot--nonfatal" /> Non-fatal</span>
-                </label>
-              </fieldset>
-
-              <fieldset className="safety-global__filter-group">
-                <legend>Era: {eraMin}–{eraMax}</legend>
-                <div className="safety-global__era-row">
-                  <input
-                    type="range"
-                    min={ERA_MIN}
-                    max={ERA_MAX}
-                    step={1}
-                    value={eraMin}
-                    onChange={e => {
-                      const lo = Math.min(parseInt(e.target.value, 10), eraMax);
-                      setEra(lo, eraMax);
-                    }}
-                    aria-label="Era start year"
-                  />
-                  <input
-                    type="range"
-                    min={ERA_MIN}
-                    max={ERA_MAX}
-                    step={1}
-                    value={eraMax}
-                    onChange={e => {
-                      const hi = Math.max(parseInt(e.target.value, 10), eraMin);
-                      setEra(eraMin, hi);
-                    }}
-                    aria-label="Era end year"
-                  />
-                </div>
-              </fieldset>
-
-              <fieldset className="safety-global__filter-group">
-                <legend>Aircraft category</legend>
-                <select
-                  className="safety-global__select"
-                  value={category}
-                  onChange={e => setCategory(e.target.value)}
-                  aria-label="Aircraft category"
+            {/* Filters overlay (desktop = always visible; mobile = collapsible toolbar) */}
+            <div
+              className={`safety-global__filters ${filtersOpen ? 'is-open' : ''}`}
+              data-collapsed={filtersCollapsed ? 'true' : 'false'}
+            >
+              <button
+                className="safety-global__filters-toggle"
+                type="button"
+                onClick={() => setFiltersCollapsed(c => !c)}
+                aria-expanded={!filtersCollapsed}
+                aria-controls="safety-global-filter-controls"
+              >
+                <span className="safety-global__filters-icon" aria-hidden="true">⚙</span>
+                <span className="safety-global__filters-label">
+                  Filters · {summarizeFilters({ fatal, nonFatal, category, operatorQuery, eraMin, eraMax })}
+                </span>
+                <span
+                  className={`safety-global__filters-chevron${filtersCollapsed ? '' : ' safety-global__filters-chevron--open'}`}
+                  aria-hidden="true"
                 >
-                  {CATEGORIES.map(c => (
-                    <option key={c.value || 'all'} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
-              </fieldset>
+                  ▼
+                </span>
+              </button>
 
-              <fieldset className="safety-global__filter-group">
-                <legend>Operator</legend>
-                <input
-                  type="search"
-                  className="safety-global__search"
-                  placeholder="e.g. Delta, Ryanair"
-                  value={operatorQuery}
-                  onChange={e => setOperatorQuery(e.target.value)}
-                  list="safety-operator-suggestions"
-                  aria-label="Operator search"
-                  maxLength={80}
-                />
-                <datalist id="safety-operator-suggestions">
-                  {operatorSuggestions.map(op => (
-                    <option key={op} value={op} />
-                  ))}
-                </datalist>
-              </fieldset>
+              <div
+                id="safety-global-filter-controls"
+                className="safety-global__filter-controls"
+              >
+                <div className="safety-global__filters-head">
+                  <strong>Filters</strong>
+                  {filtersDirty && (
+                    <button type="button" className="safety-global__reset-btn" onClick={resetFilters}>
+                      Reset
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="safety-global__filters-close"
+                    onClick={() => setFiltersOpen(false)}
+                    aria-label="Close filters"
+                  >×</button>
+                </div>
 
-              <fieldset className="safety-global__filter-group">
-                <legend>Aircraft model</legend>
-                <input
-                  type="search"
-                  className="safety-global__search"
-                  placeholder="e.g. 737, A320, Cessna"
-                  value={modelQuery}
-                  onChange={e => setModelQuery(e.target.value)}
-                  aria-label="Aircraft model search"
-                />
-              </fieldset>
+                <fieldset className="safety-global__filter-group">
+                  <legend>Severity</legend>
+                  <label className="safety-global__chip">
+                    <input type="checkbox" checked={fatal} onChange={e => setFatal(e.target.checked)} />
+                    <span><span className="dot dot--fatal" /> Fatal</span>
+                  </label>
+                  <label className="safety-global__chip">
+                    <input type="checkbox" checked={nonFatal} onChange={e => setNonFatal(e.target.checked)} />
+                    <span><span className="dot dot--nonfatal" /> Non-fatal</span>
+                  </label>
+                </fieldset>
+
+                <fieldset className="safety-global__filter-group">
+                  <legend>Era: {eraMin}–{eraMax}</legend>
+                  <div className="safety-global__era-row">
+                    <input
+                      type="range"
+                      min={ERA_MIN}
+                      max={ERA_MAX}
+                      step={1}
+                      value={eraMin}
+                      onChange={e => {
+                        const lo = Math.min(parseInt(e.target.value, 10), eraMax);
+                        setEra(lo, eraMax);
+                      }}
+                      aria-label="Era start year"
+                    />
+                    <input
+                      type="range"
+                      min={ERA_MIN}
+                      max={ERA_MAX}
+                      step={1}
+                      value={eraMax}
+                      onChange={e => {
+                        const hi = Math.max(parseInt(e.target.value, 10), eraMin);
+                        setEra(eraMin, hi);
+                      }}
+                      aria-label="Era end year"
+                    />
+                  </div>
+                </fieldset>
+
+                <fieldset className="safety-global__filter-group">
+                  <legend>Aircraft category</legend>
+                  <select
+                    className="safety-global__select"
+                    value={category}
+                    onChange={e => setCategory(e.target.value)}
+                    aria-label="Aircraft category"
+                  >
+                    {CATEGORIES.map(c => (
+                      <option key={c.value || 'all'} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </fieldset>
+
+                <fieldset className="safety-global__filter-group">
+                  <legend>Operator</legend>
+                  <input
+                    type="search"
+                    className="safety-global__search"
+                    placeholder="e.g. Delta, Ryanair"
+                    value={operatorQuery}
+                    onChange={e => setOperatorQuery(e.target.value)}
+                    list="safety-operator-suggestions"
+                    aria-label="Operator search"
+                    maxLength={80}
+                  />
+                  <datalist id="safety-operator-suggestions">
+                    {operatorSuggestions.map(op => (
+                      <option key={op} value={op} />
+                    ))}
+                  </datalist>
+                </fieldset>
+
+                <fieldset className="safety-global__filter-group">
+                  <legend>Aircraft model</legend>
+                  <input
+                    type="search"
+                    className="safety-global__search"
+                    placeholder="e.g. 737, A320, Cessna"
+                    value={modelQuery}
+                    onChange={e => setModelQuery(e.target.value)}
+                    aria-label="Aircraft model search"
+                  />
+                </fieldset>
+              </div>
             </div>
 
             {/* Mobile-only floating button to open the filter sheet */}
