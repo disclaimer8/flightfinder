@@ -64,6 +64,21 @@ function firstUrl(raw) {
   return first || null;
 }
 
+// Builds a minimal copy object for aircraft slugs that have no bespoke JSON.
+// Field names match the resolvedCopy shape consumed by the JSX below
+// (hint, overview, operators, faq).
+function buildFallbackCopy(fam) {
+  if (!fam) return null;
+  const typeText = (fam.type || '').replace('-', ' ');
+  const rangeText = fam.maxRange ? `${fam.maxRange.toLocaleString()} nm` : 'unspecified range';
+  return {
+    hint: `The ${fam.label} is a ${typeText} aircraft built by ${fam.manufacturer}, with a typical range of ${rangeText}.`,
+    overview: `${fam.label} is a ${typeText} aircraft built by ${fam.manufacturer}, with a typical range of ${rangeText}.`,
+    operators: null,
+    faq: null,
+  };
+}
+
 // Per-slug landing copy lives in client/public/content/landing/aircraft/<slug>.json
 // — split out of the bundle in batch 4 so the AircraftLandingPage chunk dropped
 // from ~50KB raw to ~5KB. The JSON is fetched in parallel with /api/aircraft/families
@@ -77,6 +92,9 @@ export default function AircraftLandingPage() {
   const [error, setError] = useState(null);
   // Top observed city pairs for this family (cross-linking to /routes/:pair).
   const [topRoutes, setTopRoutes] = useState([]);
+  // Total routes count from the same fetch — used to show empty-state when 0.
+  // null = loading/unknown, number = resolved.
+  const [routesCount, setRoutesCount] = useState(null);
   // Recent safety events for this aircraft type (from global safety dataset).
   // null = loading, [] = none found, [event,...] = matched.
   const [safetyEvents, setSafetyEvents] = useState(null);
@@ -100,34 +118,46 @@ export default function AircraftLandingPage() {
       .catch(() => setError('fetch-failed'));
   }, [slug]);
 
-  // Load landing copy for this slug. 404 → fall through to the generic copy
-  // assembled in the render branch below (slugs without bespoke copy still
-  // render, just with a templated hint and empty overview/operators/faq).
+  // Load landing copy for this slug. 404 → apply buildFallbackCopy so slugs
+  // without bespoke JSON still render a meaningful overview paragraph instead
+  // of an empty page. fam is in the dependency array so the fallback computes
+  // correctly once the family resolves (the fetch itself is fast/cached for
+  // the 404 case, but the fallback needs fam data).
   useEffect(() => {
     let cancelled = false;
     setCopy(null);
     fetch(`/content/landing/aircraft/${slug}.json`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (!cancelled) setCopy(data); })
-      .catch(() => { /* render falls through to generic copy */ });
+      .then((data) => {
+        if (!cancelled) setCopy(data ?? buildFallbackCopy(fam));
+      })
+      .catch(() => {
+        if (!cancelled) setCopy(buildFallbackCopy(fam));
+      });
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, fam]);
 
   // Pull top observed routes for this family (global, all origins) so we can
   // render a cross-link rail to /routes/:pair landing pages. Independent of
   // the AircraftRouteMap fetch because that component takes an `origins` prop
-  // and we want the absolute top globally.
+  // and we want the absolute top globally. Also drives routesCount for the
+  // map empty-state guard.
   useEffect(() => {
     if (!fam) return;
     let cancelled = false;
+    setRoutesCount(null);
     fetch(`${API_BASE}/api/aircraft/routes?family=${encodeURIComponent(fam.slug)}`)
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        const routes = Array.isArray(data?.routes) ? data.routes.slice(0, 12) : [];
-        setTopRoutes(routes);
+        const all = Array.isArray(data?.routes) ? data.routes : [];
+        setRoutesCount(all.length);
+        setTopRoutes(all.slice(0, 12));
       })
-      .catch(() => { /* non-critical — cross-links just won't render */ });
+      .catch(() => {
+        if (!cancelled) setRoutesCount(0);
+        /* non-critical — cross-links just won't render */
+      });
     return () => { cancelled = true; };
   }, [fam]);
 
@@ -286,16 +316,25 @@ export default function AircraftLandingPage() {
                 Click any destination to see flights.
               </p>
               <div className="landing-map-frame">
-                <Suspense fallback={<SkeletonResults message="Loading route map…" />}>
-                  <AircraftRouteMap
-                    familyName={fam.label}
-                    family={fam.name}
-                    date={null}
-                    passengers={1}
-                    originIatas={[]}
-                    onBack={null}
-                  />
-                </Suspense>
+                {routesCount === null || routesCount > 0 ? (
+                  <Suspense fallback={<SkeletonResults message="Loading route map…" />}>
+                    <AircraftRouteMap
+                      embedded={true}
+                      familyName={fam.label}
+                      family={fam.name}
+                      date={null}
+                      passengers={1}
+                      originIatas={[]}
+                      onBack={null}
+                    />
+                  </Suspense>
+                ) : (
+                  <p className="landing-empty">
+                    This aircraft has no live route observations in the past 14 days. Try popular families like the
+                    {' '}<Link to="/aircraft/boeing-787">Boeing 787</Link> or{' '}
+                    <Link to="/aircraft/airbus-a320">Airbus A320</Link>.
+                  </p>
+                )}
               </div>
             </div>
             {topRoutes.length > 0 && (
