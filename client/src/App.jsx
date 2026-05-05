@@ -2,10 +2,8 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import SearchForm from './components/SearchForm';
 import FlightResults from './components/FlightResults';
 import ExploreResults from './components/ExploreResults';
-import APIStatus from './components/APIStatus';
 import ErrorBoundary from './components/ErrorBoundary';
 import SkeletonResults from './components/SkeletonResults';
-import AuthModal from './components/AuthModal';
 import AircraftSearchForm from './components/AircraftSearchForm';
 // Map components pull Leaflet (~150KB gz) + their own code. Lazy-load them
 // so the home page ships without the map runtime — users who never click
@@ -13,19 +11,14 @@ import AircraftSearchForm from './components/AircraftSearchForm';
 const AircraftRouteMap = lazy(() => import('./components/AircraftRouteMap'));
 const RouteMap         = lazy(() => import('./components/RouteMap'));
 import { useFlightSearch } from './hooks/useFlightSearch';
+import { useFilterOptions } from './hooks/useFilterOptions';
 import { FilterOptionsContext } from './context/FilterOptionsContext';
-import { useAuth } from './context/AuthContext';
+import SiteLayout from './components/SiteLayout';
 import { API_BASE } from './utils/api';
-import { isNativeApp } from './utils/platform';
 import './App.css';
 
 function App() {
-  const { user, logout } = useAuth();
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState('login');
-  const [filterOptions, setFilterOptions] = useState(null);
-  const [filterOptionsError, setFilterOptionsError] = useState(false);
-  const [apiStatus, setApiStatus] = useState(null);
+  const { filterOptions, error: filterOptionsError } = useFilterOptions();
   const [prefillArrival, setPrefillArrival] = useState(null);
   const [searchMode, setSearchMode] = useState('search'); // 'search' | 'by-aircraft' | 'map'
   const [acQuery, setAcQuery] = useState(null); // { familyName, origin, date, passengers }
@@ -85,19 +78,6 @@ function App() {
       });
   }, []);
 
-  useEffect(() => {
-    fetch(`${API_BASE}/api/flights/filter-options`)
-      .then(res => {
-        if (!res.ok) throw new Error(res.statusText);
-        return res.json();
-      })
-      .then(data => {
-        setFilterOptions(data);
-        if (data.apiStatus) setApiStatus(data.apiStatus);
-      })
-      .catch(() => setFilterOptionsError(true));
-  }, []);
-
   const handleSelectDestination = (destinationCode) => {
     setPrefillArrival({ code: destinationCode, autoSearch: true });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -105,77 +85,8 @@ function App() {
 
   return (
     <FilterOptionsContext.Provider value={filterOptions}>
-      <div className="app">
+      <SiteLayout variant="transparent-over-hero">
         <section className="hero">
-          <nav className="nav">
-            <div className="nav-brand">
-              {/*
-                Inline brand mark — geometry mirrors /public/logo.svg. Inlined
-                (not <img>) so it renders without an extra HTTP request and
-                scales with font-size. aria-hidden because the wordmark that
-                follows is the accessible name.
-              */}
-              <svg
-                className="brand-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 512 512"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <defs>
-                  <linearGradient id="ff-brand-bg" x1="86" y1="21" x2="426" y2="491" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#3B8BFF" />
-                    <stop offset="100%" stopColor="#0A42B5" />
-                  </linearGradient>
-                </defs>
-                <circle cx="256" cy="256" r="240" fill="url(#ff-brand-bg)" />
-                <circle cx="256" cy="256" r="222" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="6" />
-                <g transform="translate(256,256) rotate(35) scale(2.0) translate(-100,-99)" fill="white">
-                  <ellipse cx="100" cy="99" rx="9" ry="88" />
-                  <path d="M91 76 C80 80, 42 94, 10 114 C7 118, 8 123, 12 124 C17 122, 42 106, 91 100 Z" />
-                  <path d="M109 76 C120 80, 158 94, 190 114 C193 118, 192 123, 188 124 C183 122, 158 106, 109 100 Z" />
-                  <path d="M91 160 C78 165, 60 175, 58 181 C57 184, 60 186, 63 185 C68 183, 80 177, 91 170 Z" />
-                  <path d="M109 160 C122 165, 140 175, 142 181 C143 184, 140 186, 137 185 C132 183, 120 177, 109 170 Z" />
-                </g>
-              </svg>
-              <span className="brand-name">FlightFinder</span>
-            </div>
-            <div className="nav-right">
-              {apiStatus && <APIStatus status={apiStatus} />}
-              <a className="nav-btn nav-btn-ghost" href="/safety/global">Safety</a>
-              {!isNativeApp() && (
-                <a className="nav-btn nav-btn-ghost" href="/pricing">Pricing</a>
-              )}
-              {user ? (
-                <div className="nav-user">
-                  <a className="nav-btn nav-btn-ghost" href="/trips">My Trips</a>
-                  <span className="nav-user-email" title={user.email}>{user.email}</span>
-                  <button className="nav-btn nav-btn-ghost" onClick={logout}>
-                    Sign out
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <button
-                    className="nav-btn nav-btn-ghost"
-                    onClick={() => { setAuthModalTab('login'); setAuthModalOpen(true); }}
-                  >
-                    Sign in
-                  </button>
-                  <button
-                    className="nav-btn nav-btn-primary"
-                    onClick={() => { setAuthModalTab('register'); setAuthModalOpen(true); }}
-                  >
-                    Sign up
-                  </button>
-                </>
-              )}
-            </div>
-          </nav>
-          {authModalOpen && (
-            <AuthModal onClose={() => setAuthModalOpen(false)} initialTab={authModalTab} />
-          )}
-
           {verifyState && verifyState !== 'pending' && (
             <div
               className={`verify-banner verify-banner--${verifyState}`}
@@ -183,12 +94,7 @@ function App() {
             >
               <span>{verifyMessage}</span>
               {verifyState === 'success' && (
-                <button
-                  className="nav-btn nav-btn-primary verify-banner-cta"
-                  onClick={() => { setVerifyState(null); setAuthModalOpen(true); }}
-                >
-                  Sign in
-                </button>
+                <span className="verify-banner-hint">Use the Sign in button above.</span>
               )}
               <button
                 className="error-dismiss"
@@ -261,7 +167,7 @@ function App() {
           )}
         </section>
 
-        <main className="results-section">
+        <section className="results-section">
           {searchMode === 'map' ? (
             <ErrorBoundary>
               <Suspense fallback={<SkeletonResults message="Loading map…" />}>
@@ -311,33 +217,8 @@ function App() {
               )}
             </>
           )}
-        </main>
-
-        <footer className="site-footer">
-          <div className="site-footer-inner">
-            <div className="site-footer-col">
-              <div className="site-footer-heading">Explore</div>
-              <a href="/">Search flights</a>
-              <a href="/safety/global">Aviation safety database</a>
-              <a href="/safety/feed">NTSB safety feed</a>
-            </div>
-            <div className="site-footer-col">
-              <div className="site-footer-heading">Account</div>
-              <a href="/pricing">Pricing</a>
-              <a href="/trips">My Trips</a>
-            </div>
-            <div className="site-footer-col">
-              <div className="site-footer-heading">Legal</div>
-              <a href="/legal/terms">Terms</a>
-              <a href="/legal/privacy">Privacy</a>
-              <a href="/legal/attributions">Attributions</a>
-            </div>
-          </div>
-          <div className="site-footer-bottom">
-            © {new Date().getFullYear()} FlightFinder
-          </div>
-        </footer>
-      </div>
+        </section>
+      </SiteLayout>
     </FilterOptionsContext.Provider>
   );
 }

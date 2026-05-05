@@ -1,8 +1,3 @@
-.app {
-  min-height: 100vh;
-  background: var(--bg);
-}
-
 /* ─────────────────────────────────────────
    HERO
 ───────────────────────────────────────── */
@@ -262,6 +257,13 @@
   flex-shrink: 0;
   font-size: 0.82rem;
   padding: 0.35rem 0.9rem;
+}
+
+.verify-banner-hint {
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  opacity: 0.8;
+  font-style: italic;
 }
 
 @keyframes fade-in {
