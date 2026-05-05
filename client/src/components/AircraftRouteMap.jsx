@@ -4,6 +4,7 @@ import { geodesicPoints, ORIGIN_PALETTE } from './mapArcHelpers';
 import { useAircraftSearch } from '../hooks/useAircraftSearch';
 import AircraftSearchResults from './AircraftSearchResults';
 import AircraftFlightCard from './AircraftFlightCard';
+import RouteDotPopover from './RouteDotPopover';
 import { API_BASE } from '../utils/api';
 import './RouteMap.css';
 import './AircraftRouteMap.css';
@@ -42,11 +43,16 @@ export default function AircraftRouteMap({
   originIatas,
   directOnly = false,
   onBack,
+  embedded = false,
 }) {
   const containerRef  = useRef(null);
   const mapRef        = useRef(null);
   const arcCanvasRef  = useRef(null);    // { canvas, redraw, remove }
   const dotsCanvasRef = useRef(null);    // { canvas, redraw, hitTest, remove }
+
+  // Ref so the Leaflet async click handler always reads the latest embedded value.
+  const embeddedRef = useRef(embedded);
+  useEffect(() => { embeddedRef.current = embedded; }, [embedded]);
 
   const [data, setData]         = useState(null);   // backend response
   const [loading, setLoading]   = useState(true);
@@ -72,6 +78,7 @@ export default function AircraftRouteMap({
   // UI state
   const [filteredOrigin, setFilteredOrigin] = useState(null); // IATA or null
   const [panel, setPanel]                   = useState(null); // { dep, arr, depName, arrName } or null
+  const [popover, setPopover]               = useState(null); // { dep, arr } — embedded mode only
   const [legendOpen, setLegendOpen]         = useState(false);
   const [drawerOpen, setDrawerOpen]         = useState(false);
   const [isMobile, setIsMobile]             = useState(
@@ -360,7 +367,6 @@ export default function AircraftRouteMap({
           // Toggle origin filter.
           setFilteredOrigin(prev => (prev === hit.iata ? null : hit.iata));
         } else if (hit.type === 'dest') {
-          // Open the side panel / bottom sheet for this dest.
           // Pick a representative origin — if a filter is active, use it;
           // otherwise fall back to the first origin that has a route to
           // this destination.
@@ -372,6 +378,14 @@ export default function AircraftRouteMap({
             dep = r?.dep;
           }
           if (!dep) return;
+
+          // Embedded mode: show lightweight popover instead of SSE panel.
+          if (embeddedRef.current) {
+            setPopover({ dep, arr: hit.iata });
+            return;
+          }
+
+          // Non-embedded: open the side panel / bottom sheet for this dest.
           const depOrig = originByIataRef.current.get(dep);
           setPanel({
             dep,
@@ -525,6 +539,7 @@ export default function AircraftRouteMap({
   }
 
   return (
+    <>
     <div className="arm-root">
       <div ref={containerRef} className="rm-map" />
 
@@ -791,6 +806,14 @@ export default function AircraftRouteMap({
         />
       )}
     </div>
+    {popover && (
+      <RouteDotPopover
+        dep={popover.dep}
+        arr={popover.arr}
+        onClose={() => setPopover(null)}
+      />
+    )}
+    </>
   );
 }
 
