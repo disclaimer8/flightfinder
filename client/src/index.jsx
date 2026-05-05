@@ -3,11 +3,13 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
+import SiteLayout from './components/SiteLayout';
 import { AuthProvider } from './context/AuthContext';
 import './index.css';
 
 const AircraftLandingPage = lazy(() => import('./components/AircraftLandingPage'));
 const RouteLandingPage    = lazy(() => import('./components/RouteLandingPage'));
+const AircraftIndex       = lazy(() => import('./pages/AircraftIndex'));
 const MyTrips = lazy(() => import('./pages/MyTrips'));
 const Pricing = lazy(() => import('./pages/Pricing'));
 const SubscribeReturn = lazy(() => import('./pages/SubscribeReturn'));
@@ -25,17 +27,20 @@ root.render(
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/aircraft/:slug" element={<Suspense fallback={null}><AircraftLandingPage /></Suspense>} />
-            <Route path="/routes/:pair" element={<Suspense fallback={null}><RouteLandingPage /></Suspense>} />
-            <Route path="/trips" element={<Suspense fallback={null}><MyTrips /></Suspense>} />
-            <Route path="/pricing" element={<Suspense fallback={null}><Pricing /></Suspense>} />
-            <Route path="/subscribe/return" element={<Suspense fallback={null}><SubscribeReturn /></Suspense>} />
-            <Route path="/legal/terms" element={<Suspense fallback={null}><Terms /></Suspense>} />
-            <Route path="/legal/privacy" element={<Suspense fallback={null}><Privacy /></Suspense>} />
-            <Route path="/legal/attributions" element={<Suspense fallback={null}><Attributions /></Suspense>} />
-            <Route path="/safety/feed"        element={<Suspense fallback={null}><SafetyFeed /></Suspense>} />
-            <Route path="/safety/events/:id"  element={<Suspense fallback={null}><SafetyEventDetail /></Suspense>} />
-            <Route path="/safety/global"      element={<Suspense fallback={null}><SafetyGlobal /></Suspense>} />
+            <Route element={<SiteLayout />}>
+              <Route path="/aircraft/:slug"     element={<Suspense fallback={null}><AircraftLandingPage /></Suspense>} />
+              <Route path="/routes/:pair"       element={<Suspense fallback={null}><RouteLandingPage /></Suspense>} />
+              <Route path="/by-aircraft"        element={<Suspense fallback={null}><AircraftIndex /></Suspense>} />
+              <Route path="/trips"              element={<Suspense fallback={null}><MyTrips /></Suspense>} />
+              <Route path="/pricing"            element={<Suspense fallback={null}><Pricing /></Suspense>} />
+              <Route path="/subscribe/return"   element={<Suspense fallback={null}><SubscribeReturn /></Suspense>} />
+              <Route path="/legal/terms"        element={<Suspense fallback={null}><Terms /></Suspense>} />
+              <Route path="/legal/privacy"      element={<Suspense fallback={null}><Privacy /></Suspense>} />
+              <Route path="/legal/attributions" element={<Suspense fallback={null}><Attributions /></Suspense>} />
+              <Route path="/safety/feed"        element={<Suspense fallback={null}><SafetyFeed /></Suspense>} />
+              <Route path="/safety/events/:id"  element={<Suspense fallback={null}><SafetyEventDetail /></Suspense>} />
+              <Route path="/safety/global"      element={<Suspense fallback={null}><SafetyGlobal /></Suspense>} />
+            </Route>
             <Route path="*" element={<App />} />
           </Routes>
         </BrowserRouter>
