@@ -61,10 +61,10 @@
   display: inline-block;
   margin-top: 16px;
   font: 500 14px var(--font-ui);
-  color: rgba(255,255,255,0.85);
+  color: var(--link);
   text-decoration: none;
   text-align: center;
   width: 100%;
 }
 
-.sample-cards-browse:hover { color: white; }
+.sample-cards-browse:hover { color: var(--primary); }
