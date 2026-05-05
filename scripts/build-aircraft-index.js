@@ -59,7 +59,7 @@ function loadTagline(slug) {
     const summary = data.summary || data.tagline || data.hint || data.overview;
     if (typeof summary !== 'string') return '';
     const firstSentence = summary.split(/(?<=[.!?])\s+/)[0];
-    return firstSentence.length > 140 ? firstSentence.slice(0, 137) + '…' : firstSentence;
+    return firstSentence.length > 90 ? firstSentence.slice(0, 87) + '…' : firstSentence;
   } catch {
     return '';
   }
