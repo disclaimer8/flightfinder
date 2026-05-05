@@ -110,7 +110,7 @@ export default function RouteLandingPage() {
         <h1 className="landing-h1">{from.city} to {to.city} flights</h1>
         <p className="landing-sub">
           Direct and connecting flights from {from.name} ({from.iata}) to {to.name} ({to.iata}).
-          Compare airlines, aircraft types, and fares on one page — or run a full search for specific dates below.
+          Compare airlines, aircraft types, and fares on one page.
         </p>
         <div className="landing-cta-row">
           <button
