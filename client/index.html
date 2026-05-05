@@ -132,9 +132,10 @@
     }
     </script>
 
-    <!-- Google Fonts: Inter Tight (UI), Source Serif 4 (display), IBM Plex Mono (code) -->
+    <!-- Google Fonts: Inter Tight (UI), Source Serif 4 (display), IBM Plex Mono (code).
+         fonts.gstatic.com preconnect already exists higher up in <head>; only adding the
+         googleapis.com origin here to cover the stylesheet request. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="preload"
       as="font"
