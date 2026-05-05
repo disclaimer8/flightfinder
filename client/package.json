@@ -14,6 +14,7 @@
   },
   "scripts": {
     "start": "vite",
+    "prebuild": "node ../scripts/build-aircraft-index.js",
     "build": "vite build",
     "postbuild": "node scripts/optimize-images.mjs",
     "build:android": "vite build --mode android && npx cap sync android",
