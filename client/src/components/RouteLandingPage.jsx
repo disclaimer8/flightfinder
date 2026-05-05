@@ -21,6 +21,19 @@ function interpolate(tpl, from, to) {
     .replace(/\{to\.iata\}/g, to.iata);
 }
 
+function formatBlockTime(minutes) {
+  if (!minutes) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}h ${m}m`;
+}
+
+function formatFare(fare) {
+  if (!fare || fare.amount == null) return '—';
+  const symbols = { GBP: '£', USD: '$', EUR: '€' };
+  return `${symbols[fare.currency] ?? fare.currency}${fare.amount}`;
+}
+
 // /routes/:pair where :pair is "lhr-jfk" (IATA, lowercase). We resolve
 // city names via the same /api/aircraft/airports/search endpoint the
 // main form uses, so we don't duplicate the airport catalogue client-
@@ -33,6 +46,7 @@ export default function RouteLandingPage() {
   // cross-link rail back to /aircraft/:slug landing pages.
   const [aircraft, setAircraft] = useState([]);
   const [routeCopy, setRouteCopy] = useState(null);
+  const [routeBrief, setRouteBrief] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +98,17 @@ export default function RouteLandingPage() {
     return () => { cancelled = true; };
   }, [pair]);
 
+  useEffect(() => {
+    if (state.status !== 'ok') return;
+    if (!state.from?.iata || !state.to?.iata) return;
+    let active = true;
+    fetch(`${API_BASE}/api/map/route-brief?dep=${state.from.iata}&arr=${state.to.iata}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(body => { if (active) setRouteBrief(body); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [state.status, state.from?.iata, state.to?.iata]);
+
   if (state.status === 'loading') return <SkeletonResults message="Loading route…" />;
   if (state.status === 'invalid') {
     return (
@@ -113,6 +138,24 @@ export default function RouteLandingPage() {
           Direct and connecting flights from {from.name} ({from.iata}) to {to.name} ({to.iata}).
           Compare airlines, aircraft types, and fares on one page.
         </p>
+        {routeBrief && (
+          <div className="route-stat-strip">
+            <div className="route-stat">
+              <span className="route-stat__label">TYPICAL</span>
+              <span className="route-stat__value">{formatBlockTime(routeBrief.blockTimeMinutes)}</span>
+            </div>
+            <div className="route-stat">
+              <span className="route-stat__label">FREQUENCY</span>
+              <span className="route-stat__value">
+                {routeBrief.frequencyDaily ? `${routeBrief.frequencyDaily}/day` : '—'}
+              </span>
+            </div>
+            <div className="route-stat">
+              <span className="route-stat__label">FROM</span>
+              <span className="route-stat__value">{formatFare(routeBrief.cheapestFare)}</span>
+            </div>
+          </div>
+        )}
         <div className="landing-cta-row">
           <button
             type="button"

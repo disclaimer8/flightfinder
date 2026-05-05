@@ -349,3 +349,31 @@
   top: 88px;
   align-self: start;
 }
+
+.route-stat-strip {
+  display: flex;
+  gap: 32px;
+  margin: 16px 0 24px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.route-stat { display: flex; flex-direction: column; gap: 4px; }
+
+.route-stat__label {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+
+.route-stat__value {
+  font: 500 18px var(--font-mono);
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .route-stat-strip { gap: 16px; flex-wrap: wrap; }
+  .route-stat__value { font-size: 16px; }
+}
