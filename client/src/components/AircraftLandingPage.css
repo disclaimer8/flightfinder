@@ -324,3 +324,28 @@
   transform: translateY(-1px);
   box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
 }
+
+.aircraft-landing-grid {
+  display: grid;
+  grid-template-columns: 8fr 4fr;
+  gap: 48px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 1024px) {
+  .aircraft-landing-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .aircraft-landing-grid .data-card {
+    position: static;
+  }
+}
+
+.aircraft-landing-grid .data-card {
+  position: sticky;
+  top: 88px;
+  align-self: start;
+}

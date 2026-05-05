@@ -2,6 +2,8 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
 import SkeletonResults from './SkeletonResults';
+import SectionHeader from './SectionHeader';
+import DataCard from './DataCard';
 import './AircraftLandingPage.css';
 
 const AircraftRouteMap = lazy(() => import('./AircraftRouteMap'));
@@ -198,138 +200,166 @@ export default function AircraftLandingPage() {
         </div>
       </header>
 
-      {resolvedCopy.overview && (
-        <section className="landing-prose">
-          <h2>About the {fam.label}</h2>
-          <p>{resolvedCopy.overview}</p>
-          {resolvedCopy.operators && (
-            <>
-              <h3>Who flies it?</h3>
-              <p>{resolvedCopy.operators}</p>
-            </>
+      <div className="aircraft-landing-grid">
+        <main className="aircraft-landing-main">
+          {resolvedCopy.overview && (
+            <section className="landing-section">
+              <SectionHeader number="01" label="OVERVIEW" />
+              <div className="landing-prose">
+                <h2>About the {fam.label}</h2>
+                <p>{resolvedCopy.overview}</p>
+                {resolvedCopy.operators && (
+                  <>
+                    <h3>Who flies it?</h3>
+                    <p>{resolvedCopy.operators}</p>
+                  </>
+                )}
+              </div>
+            </section>
           )}
-        </section>
-      )}
 
-      <section className="landing-safety">
-        <h2>Recent safety events for the {fam.label}</h2>
-        {safetyError && (
-          <p className="landing-safety-empty">
-            Couldn&rsquo;t load safety records right now.
-          </p>
-        )}
-        {!safetyError && safetyEvents === null && (
-          <p className="landing-safety-empty">Loading safety records…</p>
-        )}
-        {!safetyError && safetyEvents && safetyEvents.length === 0 && (
-          <p className="landing-safety-empty">
-            No accidents on file for this aircraft type. That&rsquo;s a good sign.
-          </p>
-        )}
-        {!safetyError && safetyEvents && safetyEvents.length > 0 && (
-          <ul className="landing-safety-list">
-            {safetyEvents.map(ev => {
-              const url = firstUrl(ev.source_url);
-              return (
-                <li key={ev.id} className="landing-safety-item">
-                  <span className="landing-safety-date">{ev.date || '—'}</span>
-                  <div className="landing-safety-body">
-                    <div className="landing-safety-meta">
-                      <strong>{ev.operator || 'Operator unknown'}</strong>
-                      {ev.location && <span> · {ev.location}</span>}
-                      {ev.fatalities && ev.fatalities !== '0' && (
-                        <span className="landing-safety-fatal">
-                          {ev.fatalities} fatalities
-                        </span>
-                      )}
-                    </div>
-                    {url && (
-                      <a
-                        className="landing-safety-link"
-                        href={url}
-                        target="_blank"
-                        rel="nofollow noopener noreferrer"
-                      >
-                        Read the {ev.operator || 'operator'} {ev.date || ''} report →
-                      </a>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {safetyEvents && safetyEvents.length > 0 && (
-          <p className="landing-safety-hint">
-            Source: <Link to="/safety/global">global aviation safety dataset</Link>{' '}
-            (Aviation Safety Network, B3A, Wikidata).
-          </p>
-        )}
-      </section>
+          <section className="landing-section">
+            <SectionHeader number={resolvedCopy.overview ? '02' : '01'} label="SAFETY" />
+            <div className="landing-safety">
+              <h2>Recent safety events for the {fam.label}</h2>
+              {safetyError && (
+                <p className="landing-safety-empty">
+                  Couldn&rsquo;t load safety records right now.
+                </p>
+              )}
+              {!safetyError && safetyEvents === null && (
+                <p className="landing-safety-empty">Loading safety records…</p>
+              )}
+              {!safetyError && safetyEvents && safetyEvents.length === 0 && (
+                <p className="landing-safety-empty">
+                  No accidents on file for this aircraft type. That&rsquo;s a good sign.
+                </p>
+              )}
+              {!safetyError && safetyEvents && safetyEvents.length > 0 && (
+                <ul className="landing-safety-list">
+                  {safetyEvents.map(ev => {
+                    const url = firstUrl(ev.source_url);
+                    return (
+                      <li key={ev.id} className="landing-safety-item">
+                        <span className="landing-safety-date">{ev.date || '—'}</span>
+                        <div className="landing-safety-body">
+                          <div className="landing-safety-meta">
+                            <strong>{ev.operator || 'Operator unknown'}</strong>
+                            {ev.location && <span> · {ev.location}</span>}
+                            {ev.fatalities && ev.fatalities !== '0' && (
+                              <span className="landing-safety-fatal">
+                                {ev.fatalities} fatalities
+                              </span>
+                            )}
+                          </div>
+                          {url && (
+                            <a
+                              className="landing-safety-link"
+                              href={url}
+                              target="_blank"
+                              rel="nofollow noopener noreferrer"
+                            >
+                              Read the {ev.operator || 'operator'} {ev.date || ''} report →
+                            </a>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {safetyEvents && safetyEvents.length > 0 && (
+                <p className="landing-safety-hint">
+                  Source: <Link to="/safety/global">global aviation safety dataset</Link>{' '}
+                  (Aviation Safety Network, B3A, Wikidata).
+                </p>
+              )}
+            </div>
+          </section>
 
-      <section className="landing-map">
-        <h2>Where does the {fam.label} fly?</h2>
-        <p className="landing-map-hint">
-          Live map of every city pair we&rsquo;ve observed the {fam.label} serving in the last 14 days.
-          Click any destination to see flights.
-        </p>
-        <div className="landing-map-frame">
-          <Suspense fallback={<SkeletonResults message="Loading route map…" />}>
-            <AircraftRouteMap
-              familyName={fam.label}
-              family={fam.name}
-              date={null}
-              passengers={1}
-              originIatas={[]}
-              onBack={null}
-            />
-          </Suspense>
-        </div>
-      </section>
+          <section className="landing-section">
+            <SectionHeader number={resolvedCopy.overview ? '03' : '02'} label="ROUTES" />
+            <div className="landing-map">
+              <h2>Where does the {fam.label} fly?</h2>
+              <p className="landing-map-hint">
+                Live map of every city pair we&rsquo;ve observed the {fam.label} serving in the last 14 days.
+                Click any destination to see flights.
+              </p>
+              <div className="landing-map-frame">
+                <Suspense fallback={<SkeletonResults message="Loading route map…" />}>
+                  <AircraftRouteMap
+                    familyName={fam.label}
+                    family={fam.name}
+                    date={null}
+                    passengers={1}
+                    originIatas={[]}
+                    onBack={null}
+                  />
+                </Suspense>
+              </div>
+            </div>
+            {topRoutes.length > 0 && (
+              <div className="landing-top-routes">
+                <h2>Top routes flown by the {fam.label}</h2>
+                <p className="landing-map-hint">
+                  City pairs we&rsquo;ve observed most often in the last 14 days. Click any route to see flights.
+                </p>
+                <ul className="landing-siblings-list">
+                  {topRoutes.map((r) => (
+                    <li key={`${r.dep}-${r.arr}`}>
+                      <Link to={`/routes/${r.dep.toLowerCase()}-${r.arr.toLowerCase()}`}>
+                        {r.dep} &rarr; {r.arr}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
 
-      {topRoutes.length > 0 && (
-        <section className="landing-top-routes">
-          <h2>Top routes flown by the {fam.label}</h2>
-          <p className="landing-map-hint">
-            City pairs we&rsquo;ve observed most often in the last 14 days. Click any route to see flights.
-          </p>
-          <ul className="landing-siblings-list">
-            {topRoutes.map((r) => (
-              <li key={`${r.dep}-${r.arr}`}>
-                <Link to={`/routes/${r.dep.toLowerCase()}-${r.arr.toLowerCase()}`}>
-                  {r.dep} &rarr; {r.arr}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+          {Array.isArray(resolvedCopy.faq) && resolvedCopy.faq.length > 0 && (
+            <section className="landing-section">
+              <SectionHeader number={resolvedCopy.overview ? '04' : '03'} label="FAQ" />
+              <div className="landing-faq">
+                <h2>Frequently asked questions about the {fam.label}</h2>
+                {resolvedCopy.faq.map((qa, i) => (
+                  <details key={i} className="landing-faq-item" open={i === 0}>
+                    <summary>{qa.q}</summary>
+                    <p>{qa.a}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
 
-      {Array.isArray(resolvedCopy.faq) && resolvedCopy.faq.length > 0 && (
-        <section className="landing-faq">
-          <h2>Frequently asked questions about the {fam.label}</h2>
-          {resolvedCopy.faq.map((qa, i) => (
-            <details key={i} className="landing-faq-item" open={i === 0}>
-              <summary>{qa.q}</summary>
-              <p>{qa.a}</p>
-            </details>
-          ))}
-        </section>
-      )}
+          <section className="landing-section">
+            <SectionHeader number={resolvedCopy.overview ? '05' : '04'} label="RELATED AIRCRAFT" />
+            <div className="landing-siblings">
+              <h2>Other aircraft you can search</h2>
+              <ul className="landing-siblings-list">
+                {families
+                  .filter((f) => f.slug !== slug)
+                  .slice(0, 12)
+                  .map((f) => (
+                    <li key={f.slug}>
+                      <Link to={`/aircraft/${f.slug}`}>{f.label}</Link>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          </section>
+        </main>
 
-      <section className="landing-siblings">
-        <h2>Other aircraft you can search</h2>
-        <ul className="landing-siblings-list">
-          {families
-            .filter((f) => f.slug !== slug)
-            .slice(0, 12)
-            .map((f) => (
-              <li key={f.slug}>
-                <Link to={`/aircraft/${f.slug}`}>{f.label}</Link>
-              </li>
-            ))}
-        </ul>
-      </section>
+        <DataCard rows={[
+          ['Manufacturer', fam.manufacturer],
+          ['Type',         (fam.type || '').replace('-', ' ')],
+          ['Engines',      fam.engines],
+          ['Range',        fam.maxRange ? `${fam.maxRange.toLocaleString()} nm` : null],
+          ['Capacity',     fam.capacity],
+          ['First flight', fam.firstFlight],
+          ['Status',       fam.status],
+        ]} />
+      </div>
     </div>
   );
 }
