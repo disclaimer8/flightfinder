@@ -347,6 +347,16 @@ const stmts = {
     WHERE dep_iata = ? AND arr_iata = ? AND observed_at >= ?
   `),
 
+  routesByAircraftCode: db.prepare(`
+    SELECT DISTINCT dep_iata, arr_iata FROM observed_routes
+    WHERE aircraft_icao = ? AND seen_at >= ?
+  `),
+  operatorsByAircraftCode: db.prepare(`
+    SELECT DISTINCT airline_iata FROM observed_routes
+    WHERE aircraft_icao = ? AND seen_at >= ?
+      AND airline_iata IS NOT NULL AND airline_iata != ''
+  `),
+
   getAircraftByHex: db.prepare('SELECT hex, icao_type, reg FROM aircraft_db WHERE hex = ?'),
   upsertAircraft:   db.prepare(`
     INSERT INTO aircraft_db (hex, icao_type, reg, updated_at)
@@ -505,6 +515,23 @@ module.exports = {
 
   countDistinctFlightsByRoute: (dep, arr, sinceMs) =>
     stmts.countDistinctFlightsByRoute.get(dep, arr, sinceMs)?.n ?? 0,
+
+  countRoutesByAircraft: (codes, sinceMs) => {
+    const seen = new Set();
+    for (const code of codes) {
+      const rows = stmts.routesByAircraftCode.all(code, sinceMs);
+      for (const r of rows) seen.add(`${r.dep_iata}-${r.arr_iata}`);
+    }
+    return seen.size;
+  },
+  countOperatorsByAircraft: (codes, sinceMs) => {
+    const seen = new Set();
+    for (const code of codes) {
+      const rows = stmts.operatorsByAircraftCode.all(code, sinceMs);
+      for (const r of rows) seen.add(r.airline_iata);
+    }
+    return seen.size;
+  },
 
   getAircraftByHex: (hex) => {
     if (!hex) return null;

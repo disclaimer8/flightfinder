@@ -1,9 +1,10 @@
 const aircraftData = require('../models/aircraftData');
-const { resolveFamily, slugify } = require('../models/aircraftFamilies');
+const { resolveFamily, slugify, families: famDict, getFamilyList } = require('../models/aircraftFamilies');
 const openFlights  = require('../services/openFlightsService');
 const geocoding    = require('../services/geocodingService');
 const cacheService = require('../services/cacheService');
 const db           = require('../models/db');
+const safety       = require('../models/safetyEvents');
 
 exports.getAllAircraft = (req, res) => {
   const aircraft = Object.entries(aircraftData).map(([code, data]) => ({
@@ -172,7 +173,7 @@ exports.getAircraftRoutes = async (req, res) => {
 
 exports.getAircraftByType = (req, res) => {
   const { type } = req.params;
-  
+
   const filtered = Object.entries(aircraftData)
     .filter(([, data]) => data.type === type.toLowerCase())
     .map(([code, data]) => ({
@@ -185,4 +186,43 @@ exports.getAircraftByType = (req, res) => {
     count: filtered.length,
     data: filtered
   });
+};
+
+exports.getIndexStats = (_req, res) => {
+  const cacheKey = 'aircraft:index-stats';
+  const cached = cacheService.get(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const sinceMs90d = Date.now() - 90 * 86400000;
+    const sinceMs14d = Date.now() - 14 * 86400000;
+    const list = getFamilyList();
+    const stats = {};
+    const popularRaw = [];
+
+    for (const fam of list) {
+      const fd = famDict[fam.label] || famDict[fam.name] || {};
+      const codes = fd.codes ? Array.from(fd.codes) : [];
+      if (codes.length === 0) continue;
+
+      const routeCount     = db.countRoutesByAircraft(codes, sinceMs90d);
+      const operatorCount  = db.countOperatorsByAircraft(codes, sinceMs90d);
+      const safetyCount90d = safety.countByAircraftCodes(codes, sinceMs90d);
+      const routes14d      = db.countRoutesByAircraft(codes, sinceMs14d);
+
+      stats[fam.slug] = { routeCount, operatorCount, safetyCount90d };
+      popularRaw.push({ slug: fam.slug, label: fam.label, routes14d });
+    }
+
+    const popular = popularRaw
+      .filter(p => p.routes14d > 0)
+      .sort((a, b) => b.routes14d - a.routes14d)
+      .slice(0, 8);
+
+    const payload = { success: true, stats, popular };
+    cacheService.set(cacheKey, payload, 60 * 60 * 1000);
+    res.json(payload);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
