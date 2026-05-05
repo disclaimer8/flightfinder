@@ -66,18 +66,20 @@ export default function AircraftIndex() {
         </section>
       )}
 
-      <nav className={styles.tabs} aria-label="Filter by category">
-        {CATEGORIES.map(c => (
-          <button
-            key={c.value}
-            type="button"
-            className={`${styles.tab}${c.value === category ? ' ' + styles.tabActive : ''}`}
-            onClick={() => setCategory(c.value)}
-          >
-            {c.label}
-          </button>
-        ))}
-      </nav>
+      <div className={styles.tabsWrap}>
+        <nav className={styles.tabs} aria-label="Filter by category">
+          {CATEGORIES.map(c => (
+            <button
+              key={c.value}
+              type="button"
+              className={`${styles.tab}${c.value === category ? ' ' + styles.tabActive : ''}`}
+              onClick={() => setCategory(c.value)}
+            >
+              {c.label}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {error && (
         <div className={styles.fallback}>
