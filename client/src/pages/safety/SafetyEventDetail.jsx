@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchEvent } from './safetyApi';
+import { loadFamilies, findFamilySlugForModel } from '../../utils/aircraftFamilies';
 import './SafetyEventDetail.css';
 
 export default function SafetyEventDetail() {
   const { id } = useParams();
   const [event, setEvent] = useState(undefined); // undefined = loading; null = 404
   const [error, setError] = useState(null);
+  const [familySlug, setFamilySlug] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -16,6 +18,16 @@ export default function SafetyEventDetail() {
       .catch(err => { if (active) setError(err.message); });
     return () => { active = false; };
   }, [id]);
+
+  useEffect(() => {
+    if (!event?.aircraft?.icaoType) return;
+    let active = true;
+    loadFamilies().then(list => {
+      if (!active) return;
+      setFamilySlug(findFamilySlugForModel(event.aircraft.icaoType, list));
+    });
+    return () => { active = false; };
+  }, [event?.aircraft?.icaoType]);
 
   if (error) return <main className="safety-detail"><p>Error: {error}</p></main>;
   if (event === undefined) return <main className="safety-detail"><p>Loading…</p></main>;
@@ -39,7 +51,31 @@ export default function SafetyEventDetail() {
 
       <dl className="safety-detail__grid">
         <div><dt>Date</dt><dd>{new Date(event.occurredAt).toUTCString()}</dd></div>
-        <div><dt>Operator</dt><dd>{event.operator.name || event.operator.icao || '—'}</dd></div>
+        <div>
+          <dt>Operator</dt>
+          <dd>
+            {event.operator.name || event.operator.icao || '—'}
+            {(event.operator.iata || event.operator.icao) && (
+              <Link
+                to={`/safety/global?op=${encodeURIComponent(event.operator.iata || event.operator.icao)}`}
+                className="safety-detail__crosslink"
+              >
+                All events from this operator →
+              </Link>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Aircraft</dt>
+          <dd>
+            {event.aircraft.icaoType || '—'}
+            {familySlug && (
+              <Link to={`/aircraft/${familySlug}`} className="safety-detail__crosslink">
+                View aircraft history →
+              </Link>
+            )}
+          </dd>
+        </div>
         <div><dt>Registration</dt><dd>{event.aircraft.registration || '—'}</dd></div>
         <div><dt>Phase</dt><dd>{event.phaseOfFlight}</dd></div>
         <div><dt>Route</dt><dd>{event.route.dep || '—'} → {event.route.arr || '—'}</dd></div>
