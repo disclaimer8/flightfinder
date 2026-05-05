@@ -1,0 +1,52 @@
+.rse {
+  max-width: 1080px;
+  margin: 48px auto 32px;
+  padding: 0 24px;
+}
+
+.rse-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.rse-eyebrow {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+}
+
+.rse-all {
+  font: 500 14px var(--font-ui);
+  color: var(--link);
+  text-decoration: none;
+}
+
+.rse-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 13px var(--font-ui);
+}
+
+.rse-table tr { border-bottom: 1px solid var(--border-light); }
+.rse-table tr:last-child { border-bottom: 0; }
+.rse-table td { padding: 12px 8px; vertical-align: middle; color: var(--text); }
+
+.rse-date  { font-family: var(--font-mono); color: var(--text-2); width: 110px; }
+.rse-tail  { font-family: var(--font-mono); color: var(--text-2); }
+.rse-route { font-family: var(--font-mono); color: var(--text-2); white-space: nowrap; }
+.rse-arrow { color: var(--text-3); padding: 0 4px; }
+.rse-sev   { font-weight: 500; }
+
+.rse-sev.sev-fatal    { color: var(--sev-fatal); }
+.rse-sev.sev-hull     { color: var(--sev-hull); }
+.rse-sev.sev-incident { color: var(--sev-incident); }
+
+.rse-loading { color: var(--text-2); padding: 16px 0; }
+
+@media (max-width: 768px) {
+  .rse-table { font-size: 12px; }
+  .rse-date { width: auto; }
+  .rse-aircraft { display: none; }
+}

@@ -87,7 +87,7 @@ export default function OperatorSafetyBlock({ airlineIata, airlineIcao, airlineN
           {globalMatch.count}
         </span>
         <Link
-          to="/safety/global"
+          to={`/safety/global?op=${encodeURIComponent(code || '')}`}
           className="operator-safety__link operator-safety__link--global"
           rel="nofollow"
         >

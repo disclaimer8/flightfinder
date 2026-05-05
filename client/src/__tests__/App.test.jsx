@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 import { AuthProvider } from '../context/AuthContext';
+import { _resetForTests } from '../hooks/useFilterOptions';
 
 const FILTER_OPTIONS = {
   cities: [
@@ -25,27 +27,24 @@ function okResponse(data) {
   };
 }
 
-function errorResponse() {
-  return {
-    ok: false,
-    statusText: 'Internal Server Error',
-    json: () => Promise.reject(new Error('parse error')),
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
+  // Reset the useFilterOptions singleton so each test gets a fresh fetch
+  _resetForTests();
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  _resetForTests();
 });
 
 function renderApp() {
   return render(
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <MemoryRouter>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </MemoryRouter>
   );
 }
 
@@ -53,16 +52,20 @@ describe('App', () => {
   it('mounts without crashing', async () => {
     mockFetch(okResponse(FILTER_OPTIONS));
     renderApp();
-    // Hero title is always present
-    expect(screen.getByText(/find flights by aircraft type/i)).toBeInTheDocument();
+    // Hero title is always present (fallback copy when home.json is unavailable)
+    expect(screen.getByText(/aircraft.*safety-aware flight search engine/i)).toBeInTheDocument();
   });
 
   it('shows search form after filter-options load', async () => {
     mockFetch(okResponse(FILTER_OPTIONS));
     renderApp();
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /search flights/i })).toBeInTheDocument()
-    );
+    // After filter-options load, the search mode tabs appear.
+    // Use getAllByRole because there are two buttons matching "search flights":
+    // the mode tab and the form submit button.
+    await waitFor(() => {
+      const buttons = screen.getAllByRole('button', { name: /search flights/i });
+      expect(buttons.length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it('shows error banner when filter-options request fails', async () => {
@@ -76,6 +79,7 @@ describe('App', () => {
   it('shows Sign in button in nav when logged out', async () => {
     mockFetch(okResponse(FILTER_OPTIONS));
     renderApp();
+    // Sign in button is now rendered by SiteHeader inside SiteLayout
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 });

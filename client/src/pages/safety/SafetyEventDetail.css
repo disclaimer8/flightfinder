@@ -20,3 +20,14 @@
 .safety-badge--fatal     { background: #fee2e2; color: #991b1b; }
 .safety-badge--hull_loss { background: #ffedd5; color: #9a3412; }
 .safety-badge--serious_incident { background: #fef3c7; color: #92400e; }
+.safety-detail__crosslink {
+  display: block;
+  margin-top: 4px;
+  font: 500 13px var(--font-ui);
+  color: var(--link);
+  text-decoration: none;
+}
+
+.safety-detail__crosslink:hover {
+  text-decoration: underline;
+}

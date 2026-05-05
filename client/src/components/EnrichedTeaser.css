@@ -1,0 +1,61 @@
+.enriched-teaser {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  background: var(--card);
+  margin-top: 12px;
+}
+
+.enriched-teaser__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.enriched-teaser__eyebrow {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+}
+
+.enriched-teaser__badge {
+  font: 500 10px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--primary);
+  color: white;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+}
+
+.enriched-teaser__list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.enriched-teaser__list li {
+  font: 400 14px/1.5 var(--font-ui);
+  color: var(--text);
+  padding: 4px 0;
+  position: relative;
+  padding-left: 16px;
+}
+
+.enriched-teaser__list li::before {
+  content: '·';
+  position: absolute;
+  left: 4px;
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.enriched-teaser__cta {
+  display: inline-block;
+  font: 500 14px var(--font-ui);
+  color: var(--link);
+  text-decoration: none;
+}
+
+.enriched-teaser__cta:hover { text-decoration: underline; }

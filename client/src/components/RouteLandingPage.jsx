@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
 import SkeletonResults from './SkeletonResults';
+import RouteOperators from './RouteOperators';
 import './AircraftLandingPage.css';
 
 // Route landing copy (FAQ + tips template) lives in
@@ -110,7 +111,7 @@ export default function RouteLandingPage() {
         <h1 className="landing-h1">{from.city} to {to.city} flights</h1>
         <p className="landing-sub">
           Direct and connecting flights from {from.name} ({from.iata}) to {to.name} ({to.iata}).
-          Compare airlines, aircraft types, and fares on one page — or run a full search for specific dates below.
+          Compare airlines, aircraft types, and fares on one page.
         </p>
         <div className="landing-cta-row">
           <button
@@ -145,6 +146,8 @@ export default function RouteLandingPage() {
           </ul>
         </section>
       )}
+
+      <RouteOperators from={from.iata} to={to.iata} />
 
       {Array.isArray(routeCopy?.faq) && routeCopy.faq.length > 0 && (
         <section className="landing-faq">
