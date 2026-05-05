@@ -10,7 +10,15 @@ const FIXTURE = [
 ];
 
 beforeEach(() => {
-  vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => FIXTURE });
+  vi.spyOn(global, 'fetch').mockImplementation(url => {
+    if (typeof url === 'string' && url.includes('aircraft-index.json')) {
+      return Promise.resolve({ ok: true, json: async () => FIXTURE });
+    }
+    if (typeof url === 'string' && url.includes('/api/aircraft/index-stats')) {
+      return Promise.resolve({ ok: true, json: async () => ({ stats: {}, popular: [] }) });
+    }
+    return Promise.resolve({ ok: false });
+  });
 });
 
 describe('AircraftIndex', () => {
