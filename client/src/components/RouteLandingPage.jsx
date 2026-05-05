@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
 import SkeletonResults from './SkeletonResults';
+import RouteOperators from './RouteOperators';
 import './AircraftLandingPage.css';
 
 // Route landing copy (FAQ + tips template) lives in
@@ -145,6 +146,8 @@ export default function RouteLandingPage() {
           </ul>
         </section>
       )}
+
+      <RouteOperators from={from.iata} to={to.iata} />
 
       {Array.isArray(routeCopy?.faq) && routeCopy.faq.length > 0 && (
         <section className="landing-faq">
