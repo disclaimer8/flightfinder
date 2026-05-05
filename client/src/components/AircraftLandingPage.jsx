@@ -189,13 +189,12 @@ export default function AircraftLandingPage() {
         <h1 className="landing-h1">{fam.label} flights and routes</h1>
         <p className="landing-sub">{resolvedCopy.hint}</p>
         <div className="landing-cta-row">
-          <button
-            type="button"
+          <Link
+            to={`/?mode=by-aircraft&family=${slug}`}
             className="landing-cta"
-            onClick={() => navigate('/by-aircraft')}
           >
             Search flights on the {fam.label}
-          </button>
+          </Link>
         </div>
       </header>
 
