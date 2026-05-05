@@ -7,6 +7,47 @@ const cacheService   = require('../services/cacheService');
 const routesService  = require('../services/routesService');
 const db             = require('../models/db');
 const safety         = require('../models/safetyEvents');
+const travelpayouts  = require('../services/travelpayoutsService');
+const { families: famDict, getFamilyList } = require('../models/aircraftFamilies');
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function haversineNm(lat1, lon1, lat2, lon2) {
+  const toRad = d => (d * Math.PI) / 180;
+  const R = 3440.065;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function computeAircraftMix(rows) {
+  const list = getFamilyList();
+  const icaoToFamily = new Map();
+  for (const fam of list) {
+    const fd = famDict[fam.name] || {};
+    if (!fd.codes) continue;
+    for (const code of fd.codes) {
+      if (!icaoToFamily.has(code)) icaoToFamily.set(code, fam);
+    }
+  }
+  const counts = new Map();
+  for (const r of rows) {
+    const icao = (r.aircraft_icao || '').toUpperCase();
+    const fam = icaoToFamily.get(icao);
+    if (!fam) continue;
+    counts.set(fam.slug, (counts.get(fam.slug) || 0) + 1);
+  }
+  const total = [...counts.values()].reduce((s, n) => s + n, 0);
+  if (total === 0) return [];
+  return [...counts.entries()]
+    .map(([slug, count]) => {
+      const fam = list.find(f => f.slug === slug);
+      return { slug, label: fam?.label ?? slug, count, share: count / total };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+}
 
 // ─── GET /api/map/airports ───────────────────────────────────────────────────
 // Returns all known airports in compact format to minimise payload.
@@ -277,6 +318,75 @@ exports.getRouteOperators = (req, res) => {
     });
 
     const payload = { success: true, dep, arr, windowDays, operators };
+    cacheService.set(cacheKey, payload, 30 * 60 * 1000);
+    res.json(payload);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ─── GET /api/map/route-brief?dep=LHR&arr=JFK ────────────────────────────────
+// Returns hero-stat data for /routes/<pair>: typical block time (great-circle
+// distance estimate), daily frequency (last 7 days), best-effort cheapest fare
+// (Travelpayouts, 1.5s timeout), and top-5 aircraft-mix breakdown.
+exports.getRouteBrief = async (req, res) => {
+  const dep = String(req.query.dep || '').toUpperCase();
+  const arr = String(req.query.arr || '').toUpperCase();
+  if (!/^[A-Z]{3}$/.test(dep) || !/^[A-Z]{3}$/.test(arr) || dep === arr) {
+    return res.status(400).json({
+      success: false,
+      message: 'dep and arr IATA codes required (3 letters, distinct)',
+    });
+  }
+
+  const cacheKey = `map:route-brief:${dep}:${arr}`;
+  const cached = cacheService.get(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const depAirport = openFlights.getAirport(dep);
+    const arrAirport = openFlights.getAirport(arr);
+    let blockTimeMinutes = null;
+    if (depAirport?.lat != null && arrAirport?.lat != null) {
+      const distNm = haversineNm(depAirport.lat, depAirport.lon, arrAirport.lat, arrAirport.lon);
+      blockTimeMinutes = Math.round(distNm * 0.014 + 30);
+    }
+
+    const sinceMs7d = Date.now() - 7 * 86400000;
+    const flights7d = db.countDistinctFlightsByRoute(dep, arr, sinceMs7d);
+    const frequencyDaily = flights7d > 0 ? Math.round(flights7d / 7) : null;
+
+    const sinceMs90d = Date.now() - 90 * 86400000;
+    const mixRaw = db.observedAircraftByRoute(dep, arr, sinceMs90d) || [];
+    const aircraftMix = computeAircraftMix(mixRaw);
+
+    let cheapestFare = null;
+    if (typeof travelpayouts.isConfigured === 'function' && travelpayouts.isConfigured()) {
+      try {
+        const result = await Promise.race([
+          travelpayouts.getCheapest({ origin: dep, destination: arr, currency: 'usd' }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 1500)),
+        ]);
+        // getCheapest returns { price: String, currency: String, ... } or null
+        if (result && result.price != null) {
+          const amount = parseFloat(result.price);
+          if (!isNaN(amount)) {
+            cheapestFare = { amount, currency: result.currency || 'USD' };
+          }
+        }
+      } catch {
+        // best-effort: leave null
+      }
+    }
+
+    const payload = {
+      success: true,
+      dep, arr, windowDays: 90,
+      blockTimeMinutes,
+      frequencyDaily,
+      cheapestFare,
+      aircraftMix,
+    };
     cacheService.set(cacheKey, payload, 30 * 60 * 1000);
     res.json(payload);
   } catch (err) {

@@ -341,6 +341,12 @@ const stmts = {
     LIMIT ?
   `),
 
+  countDistinctFlightsByRoute: db.prepare(`
+    SELECT COUNT(DISTINCT airline_iata || '|' || flight_number) AS n
+    FROM flight_observations
+    WHERE dep_iata = ? AND arr_iata = ? AND observed_at >= ?
+  `),
+
   getAircraftByHex: db.prepare('SELECT hex, icao_type, reg FROM aircraft_db WHERE hex = ?'),
   upsertAircraft:   db.prepare(`
     INSERT INTO aircraft_db (hex, icao_type, reg, updated_at)
@@ -496,6 +502,9 @@ module.exports = {
     const row = db.prepare(sql).get(...icaoList, origin, cutoffMs);
     return row?.n || 0;
   },
+
+  countDistinctFlightsByRoute: (dep, arr, sinceMs) =>
+    stmts.countDistinctFlightsByRoute.get(dep, arr, sinceMs)?.n ?? 0,
 
   getAircraftByHex: (hex) => {
     if (!hex) return null;
