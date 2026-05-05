@@ -20,39 +20,101 @@
 .safety-pill--active {
   background: #1f2937; color: white; border-color: #1f2937;
 }
-.safety-feed__list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
-.safety-card {
-  background: white; border: 1px solid #e5e7eb;
-  border-left: 4px solid #9ca3af;
-  border-radius: 8px;
-}
-.safety-card--fatal     { border-left-color: #dc2626; }
-.safety-card--hull_loss { border-left-color: #ea580c; }
-.safety-card--serious_incident { border-left-color: #d97706; }
-.safety-card--incident  { border-left-color: #f59e0b; }
-.safety-card--minor     { border-left-color: #6b7280; }
 
-.safety-card__link {
-  display: block; padding: 14px 16px; color: inherit; text-decoration: none;
+.safety-feed__table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 14px var(--font-ui);
+  margin-top: 16px;
 }
-.safety-card__head {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 6px; font-size: 13px;
+
+.safety-feed__table thead th {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  text-align: left;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--border-light);
 }
-.safety-badge {
-  font-weight: 600; padding: 2px 8px; border-radius: 4px;
-  background: #f3f4f6; color: #1f2937;
+
+.safety-feed__row {
+  border-bottom: 1px solid var(--border-light);
+  position: relative;
+  transition: background 100ms ease;
 }
-.safety-badge--fatal     { background: #fee2e2; color: #991b1b; }
-.safety-badge--hull_loss { background: #ffedd5; color: #9a3412; }
-.safety-badge--serious_incident { background: #fef3c7; color: #92400e; }
-.safety-card__date  { color: #6b7280; }
-.safety-card__title {
-  margin: 0; font-size: 16px; font-weight: 600; color: #111827;
+
+.safety-feed__row:hover {
+  background: var(--primary-light);
 }
-.safety-card__route { color: #4b5563; font-weight: 500; margin-left: 4px; }
-.safety-card__meta  { margin: 4px 0 0; color: #6b7280; font-size: 14px; }
+
+.safety-feed__row td {
+  padding: 12px 8px;
+  vertical-align: middle;
+  color: var(--text);
+}
+
+.sf-col-date     { width: 110px; font-family: var(--font-mono); color: var(--text-2); white-space: nowrap; }
+.sf-col-severity { width: 200px; }
+.sf-col-route    { width: 220px; font-family: var(--font-mono); color: var(--text-2); white-space: nowrap; }
+
+.safety-feed__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.sf-dot--fatal    { background: var(--sev-fatal); }
+.sf-dot--hull     { background: var(--sev-hull); }
+.sf-dot--incident { background: var(--sev-incident); }
+
+.safety-feed__sev-label {
+  font: 500 14px var(--font-ui);
+  vertical-align: middle;
+}
+
+.safety-feed__row--fatal .safety-feed__sev-label { font-weight: 600; }
+
+.safety-feed__reg {
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  margin-left: 4px;
+}
+
+.safety-feed__arrow { color: var(--text-3); padding: 0 4px; }
+
+.safety-feed__row-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
 .safety-feed__loading, .safety-feed__error, .safety-feed__empty {
   padding: 40px 0; text-align: center; color: #6b7280;
 }
 .safety-feed__error { color: #b91c1c; }
+
+@media (max-width: 640px) {
+  .safety-feed__table thead { display: none; }
+  .safety-feed__row { display: block; padding: 12px 0; }
+  .safety-feed__row td { display: block; padding: 2px 8px; border: 0; }
+  .safety-feed__row td.sf-col-date,
+  .safety-feed__row td.sf-col-severity {
+    display: inline-block;
+    padding-bottom: 4px;
+  }
+  .safety-feed__row td.sf-col-severity { margin-left: 12px; }
+  .sf-col-aircraft { padding-top: 0 !important; padding-left: 24px !important; }
+  .sf-col-route    { padding-top: 0 !important; padding-left: 24px !important; width: auto; }
+}
