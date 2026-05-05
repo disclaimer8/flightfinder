@@ -13,6 +13,9 @@ router.get('/families', (req, res) => {
   res.json({ success: true, families: getFamilyList() });
 });
 
+// GET /api/aircraft/index-stats — per-family route/operator/safety counts for AircraftIndex
+router.get('/index-stats', aircraftController.getIndexStats);
+
 // GET /api/aircraft/airports/search?q=London&limit=8
 router.get('/airports/search', acSearchController.searchAirports);
 

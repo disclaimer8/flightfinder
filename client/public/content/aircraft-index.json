@@ -4,35 +4,35 @@
     "label": "Airbus A220 (C Series)",
     "manufacturer": "Airbus",
     "category": "regional",
-    "tagline": "The Airbus A220 (ex-Bombardier CSeries) is a clean-sheet narrow-body that Delta, airBaltic, and Swiss use for regional and thin mid-range…"
+    "tagline": "The Airbus A220 (ex-Bombardier CSeries) is a clean-sheet narrow-body that Delta, airBal…"
   },
   {
     "slug": "airbus-a319",
     "label": "Airbus A319",
     "manufacturer": "Airbus",
     "category": "narrow-body",
-    "tagline": "The Airbus A319 is the shortest A320-family variant — common on regional European routes and North American LCC fleets."
+    "tagline": "The Airbus A319 is the shortest A320-family variant — common on regional European route…"
   },
   {
     "slug": "airbus-a320",
     "label": "Airbus A320 (all variants)",
     "manufacturer": "Airbus",
     "category": "narrow-body",
-    "tagline": "The Airbus A320 is the universal narrow-body standard — operated by almost every major airline worldwide, from low-cost to legacy."
+    "tagline": "The Airbus A320 is the universal narrow-body standard — operated by almost every major …"
   },
   {
     "slug": "airbus-a320-family",
     "label": "Airbus A320 family (A319/A320/A321)",
     "manufacturer": "Airbus",
     "category": "narrow-body",
-    "tagline": "The A320 family covers the A318, A319, A320, and A321 — the most-flown narrow-body family in commercial aviation."
+    "tagline": "The A320 family covers the A318, A319, A320, and A321 — the most-flown narrow-body fami…"
   },
   {
     "slug": "airbus-a321",
     "label": "Airbus A321 (all variants)",
     "manufacturer": "Airbus",
     "category": "narrow-body",
-    "tagline": "The Airbus A321 (and the neo / LR / XLR variants) extends the A320 family to transatlantic range on a single-aisle airframe."
+    "tagline": "The Airbus A321 (and the neo / LR / XLR variants) extends the A320 family to transatlan…"
   },
   {
     "slug": "airbus-a330",
@@ -46,97 +46,97 @@
     "label": "Airbus A340 (all variants)",
     "manufacturer": "Airbus",
     "category": "wide-body",
-    "tagline": "The Airbus A340 is a four-engine long-hauler nearly retired from major carriers — Lufthansa, SWISS, and a few others still operate a shri…"
+    "tagline": "The Airbus A340 is a four-engine long-hauler nearly retired from major carriers — Lufth…"
   },
   {
     "slug": "airbus-a350",
     "label": "Airbus A350",
     "manufacturer": "Airbus",
     "category": "wide-body",
-    "tagline": "The Airbus A350 XWB is the newest long-haul wide-body — used by Qatar, Singapore, Cathay, and ANA on ultra-long routes like Auckland to D…"
+    "tagline": "The Airbus A350 XWB is the newest long-haul wide-body — used by Qatar, Singapore, Catha…"
   },
   {
     "slug": "airbus-a380",
     "label": "Airbus A380",
     "manufacturer": "Airbus",
     "category": "wide-body",
-    "tagline": "The Airbus A380 is the double-deck super-jumbo — Emirates, British Airways, Qantas, Singapore Airlines, and Lufthansa still fly it on sel…"
+    "tagline": "The Airbus A380 is the double-deck super-jumbo — Emirates, British Airways, Qantas, Sin…"
   },
   {
     "slug": "atr-42-72",
     "label": "ATR 42/72",
     "manufacturer": "ATR",
     "category": "turboprop",
-    "tagline": "The ATR 42/72 are Franco-Italian turboprops that dominate island-hopping, short regional, and sub-400 nautical mile markets worldwide."
+    "tagline": "The ATR 42/72 are Franco-Italian turboprops that dominate island-hopping, short regiona…"
   },
   {
     "slug": "boeing-737",
     "label": "Boeing 737 (all variants)",
     "manufacturer": "Boeing",
     "category": "narrow-body",
-    "tagline": "The Boeing 737 is the world's best-selling narrow-body — from the MAX 8 on short-haul hops to the 737-800 workhorses that still anchor mo…"
+    "tagline": "The Boeing 737 is the world's best-selling narrow-body — from the MAX 8 on short-haul h…"
   },
   {
     "slug": "boeing-747",
     "label": "Boeing 747",
     "manufacturer": "Boeing",
     "category": "wide-body",
-    "tagline": "The Boeing 747 — Queen of the Skies — is being retired from passenger service worldwide but still flies select routes with Lufthansa and …"
+    "tagline": "The Boeing 747 — Queen of the Skies — is being retired from passenger service worldwide…"
   },
   {
     "slug": "boeing-757",
     "label": "Boeing 757",
     "manufacturer": "Boeing",
     "category": "narrow-body",
-    "tagline": "The Boeing 757 is the transatlantic narrow-body: long legs, steep-climb performance, and the last US-built single-aisle jet for charter a…"
+    "tagline": "The Boeing 757 is the transatlantic narrow-body: long legs, steep-climb performance, an…"
   },
   {
     "slug": "boeing-767",
     "label": "Boeing 767",
     "manufacturer": "Boeing",
     "category": "wide-body",
-    "tagline": "The Boeing 767 is a mid-size wide-body still common on transatlantic and freight routes, slowly being replaced by the 787."
+    "tagline": "The Boeing 767 is a mid-size wide-body still common on transatlantic and freight routes…"
   },
   {
     "slug": "boeing-777",
     "label": "Boeing 777 (all variants)",
     "manufacturer": "Boeing",
     "category": "wide-body",
-    "tagline": "The Boeing 777 is the long-haul backbone of most legacy carriers — the 777-300ER carries 300+ passengers across any ocean in the world."
+    "tagline": "The Boeing 777 is the long-haul backbone of most legacy carriers — the 777-300ER carrie…"
   },
   {
     "slug": "boeing-787",
     "label": "Boeing 787 Dreamliner",
     "manufacturer": "Boeing",
     "category": "wide-body",
-    "tagline": "The Boeing 787 Dreamliner is the modern long-haul choice: lower cabin altitude, larger windows, and routes that open city pairs the 747 n…"
+    "tagline": "The Boeing 787 Dreamliner is the modern long-haul choice: lower cabin altitude, larger …"
   },
   {
     "slug": "bombardier-crj",
     "label": "Bombardier CRJ (all variants)",
     "manufacturer": "Bombardier",
     "category": "regional",
-    "tagline": "The Bombardier CRJ family (CRJ-200, 700, 900, 1000) serves short-haul regional routes across North America and Europe."
+    "tagline": "The Bombardier CRJ family (CRJ-200, 700, 900, 1000) serves short-haul regional routes a…"
   },
   {
     "slug": "bombardier-dash-8",
     "label": "Bombardier Dash 8 / Q400",
     "manufacturer": "Bombardier",
     "category": "turboprop",
-    "tagline": "The Dash 8 (especially the Q400) is a fuel-efficient turboprop used by regional carriers on sub-1-hour hops."
+    "tagline": "The Dash 8 (especially the Q400) is a fuel-efficient turboprop used by regional carrier…"
   },
   {
     "slug": "embraer-e170-e175",
     "label": "Embraer E170/E175",
     "manufacturer": "Embraer",
     "category": "regional",
-    "tagline": "The Embraer E170/E175 is the regional jet workhorse of US major carriers and European regional subsidiaries."
+    "tagline": "The Embraer E170/E175 is the regional jet workhorse of US major carriers and European r…"
   },
   {
     "slug": "embraer-e190-e195",
     "label": "Embraer E190/E195",
     "manufacturer": "Embraer",
     "category": "regional",
-    "tagline": "The Embraer E190/E195 is a larger regional or small-mainline jet used by airBaltic, KLM Cityhopper, and Helvetic on secondary routes."
+    "tagline": "The Embraer E190/E195 is a larger regional or small-mainline jet used by airBaltic, KLM…"
   }
 ]

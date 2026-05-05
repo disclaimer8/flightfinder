@@ -14,6 +14,10 @@ const families = {
     maxRange: 6570, // MAX 9 — use widest range in family
     // ICAO: B737/B738/B739 (classic/NG), B38M/B39M (MAX 8/9). IATA: 737/738/739/73x/7Mx.
     codes: new Set(['B737','B738','B739','B38M','B39M','737','738','739','73H','73G','73J','73C','73W','7M7','7M8','7M9']),
+    engines: '2 × turbofan',
+    capacity: '85-230 pax',
+    firstFlight: '1967-04',
+    status: 'In production (MAX)',
   },
   'Boeing 757': {
     label: 'Boeing 757',
@@ -21,6 +25,10 @@ const families = {
     type: 'jet',
     maxRange: 7600,
     codes: new Set(['752','753','B752','B753']),
+    engines: '2 × turbofan',
+    capacity: '200-295 pax',
+    firstFlight: '1982-02',
+    status: 'Out of production',
   },
   'Boeing 767': {
     label: 'Boeing 767',
@@ -28,6 +36,10 @@ const families = {
     type: 'wide-body',
     maxRange: 11093,
     codes: new Set(['763','764','B763','B764']),
+    engines: '2 × turbofan',
+    capacity: '181-375 pax',
+    firstFlight: '1981-09',
+    status: 'In production (freighter only)',
   },
   'Boeing 777': {
     label: 'Boeing 777 (all variants)',
@@ -36,6 +48,10 @@ const families = {
     maxRange: 13649,
     // ICAO: B772/B773/B77W/B77L/B778/B779. IATA: 777/772/773/77W/779.
     codes: new Set(['B777','B772','B773','B77W','B77L','B778','B779','772','773','77W','779']),
+    engines: '2 × turbofan',
+    capacity: '301-396 pax',
+    firstFlight: '1994-06',
+    status: 'In production (777X)',
   },
   'Boeing 787': {
     label: 'Boeing 787 Dreamliner',
@@ -44,6 +60,10 @@ const families = {
     maxRange: 14140,
     // ICAO: B788/B789/B78X (−8/−9/−10). IATA: 787/788/789/78J/78X.
     codes: new Set(['B788','B789','B78X','787','788','789','78J','78X']),
+    engines: '2 × turbofan',
+    capacity: '248-336 pax',
+    firstFlight: '2009-12',
+    status: 'In production',
   },
   'Boeing 747': {
     label: 'Boeing 747',
@@ -51,6 +71,10 @@ const families = {
     type: 'wide-body',
     maxRange: 14816,
     codes: new Set(['744','748','B744','B748']),
+    engines: '4 × turbofan',
+    capacity: '410-524 pax',
+    firstFlight: '1969-02',
+    status: 'Out of production',
   },
 
   // ── Airbus ────────────────────────────────────────────────────────────────
@@ -60,6 +84,10 @@ const families = {
     type: 'wide-body',
     maxRange: 13700,
     codes: new Set(['340','342','343','345','346','A340','A342','A343','A345','A346']),
+    engines: '4 × turbofan',
+    capacity: '210-440 pax',
+    firstFlight: '1991-10',
+    status: 'Out of production',
   },
   'Airbus A220': {
     label: 'Airbus A220 (C Series)',
@@ -67,6 +95,10 @@ const families = {
     type: 'regional',
     maxRange: 6300,
     codes: new Set(['221','223','BCS1','BCS3','CS1','CS3']),
+    engines: '2 × turbofan',
+    capacity: '108-160 pax',
+    firstFlight: '2013-09',
+    status: 'In production',
   },
   'Airbus A319': {
     label: 'Airbus A319',
@@ -75,6 +107,10 @@ const families = {
     maxRange: 6300,
     // ICAO: A319 (ceo), A19N (neo). IATA: 319/31A.
     codes: new Set(['A319','A19N','319','31A']),
+    engines: '2 × turbofan',
+    capacity: '124-156 pax',
+    firstFlight: '1995-08',
+    status: 'In production (neo)',
   },
   'Airbus A320': {
     label: 'Airbus A320 (all variants)',
@@ -83,6 +119,10 @@ const families = {
     maxRange: 6300,
     // ICAO: A320 (ceo), A20N (neo). IATA: 320/32A/32B/32N/32Q.
     codes: new Set(['A320','A20N','320','32A','32B','32N','32Q']),
+    engines: '2 × turbofan',
+    capacity: '140-180 pax',
+    firstFlight: '1987-02',
+    status: 'In production (neo)',
   },
   'Airbus A321': {
     label: 'Airbus A321 (all variants)',
@@ -91,6 +131,10 @@ const families = {
     maxRange: 8700,
     // ICAO: A321 (ceo), A21N (neo). IATA: 321/32S/32T/31X.
     codes: new Set(['A321','A21N','321','32S','32T','31X']),
+    engines: '2 × turbofan',
+    capacity: '185-244 pax',
+    firstFlight: '1993-03',
+    status: 'In production (neo, XLR)',
   },
   'Airbus A320 family': {
     label: 'Airbus A320 family (A319/A320/A321)',
@@ -103,6 +147,10 @@ const families = {
       'A19N','A20N','A21N',
       '319','320','321','31A','32A','32B','32N','32Q','32S','32T','31X',
     ]),
+    engines: '2 × turbofan',
+    capacity: '124-244 pax',
+    firstFlight: '1987-02',
+    status: 'In production (neo)',
   },
   'Airbus A330': {
     label: 'Airbus A330 (all variants)',
@@ -110,6 +158,10 @@ const families = {
     type: 'wide-body',
     maxRange: 15090,
     codes: new Set(['330','332','333','33E','338','339','A330','A332','A333','A338','A339']),
+    engines: '2 × turbofan',
+    capacity: '247-440 pax',
+    firstFlight: '1992-11',
+    status: 'In production (neo)',
   },
   'Airbus A350': {
     label: 'Airbus A350',
@@ -117,6 +169,10 @@ const families = {
     type: 'wide-body',
     maxRange: 16100,
     codes: new Set(['A350','350','351','359','A359','A35K']),
+    engines: '2 × turbofan',
+    capacity: '300-410 pax',
+    firstFlight: '2013-06',
+    status: 'In production',
   },
   'Airbus A380': {
     label: 'Airbus A380',
@@ -124,6 +180,10 @@ const families = {
     type: 'wide-body',
     maxRange: 15200,
     codes: new Set(['A380','380','388','A388']),
+    engines: '4 × turbofan',
+    capacity: '525-853 pax',
+    firstFlight: '2005-04',
+    status: 'Out of production',
   },
 
   // ── Embraer ───────────────────────────────────────────────────────────────
@@ -133,6 +193,10 @@ const families = {
     type: 'regional',
     maxRange: 4260,
     codes: new Set(['ERJ','ER7','E70','E75','E7W','E75L','ERD']),
+    engines: '2 × turbofan',
+    capacity: '70-88 pax',
+    firstFlight: '2002-02',
+    status: 'In production (E175)',
   },
   'Embraer E190/E195': {
     label: 'Embraer E190/E195',
@@ -140,6 +204,10 @@ const families = {
     type: 'regional',
     maxRange: 5278,
     codes: new Set(['ER9','E90','E95','E9W','E9X']),
+    engines: '2 × turbofan',
+    capacity: '96-146 pax',
+    firstFlight: '2004-03',
+    status: 'In production (E2)',
   },
 
   // ── Bombardier ────────────────────────────────────────────────────────────
@@ -149,6 +217,10 @@ const families = {
     type: 'regional',
     maxRange: 4650,
     codes: new Set(['CRJ1','CRJ2','CRJ7','CRJ9','CR1','CR2','CR9','CRK']),
+    engines: '2 × turbofan',
+    capacity: '50-104 pax',
+    firstFlight: '1991-05',
+    status: 'Out of production',
   },
   'Bombardier Dash 8': {
     label: 'Bombardier Dash 8 / Q400',
@@ -156,6 +228,10 @@ const families = {
     type: 'turboprop',
     maxRange: 4400,
     codes: new Set(['Q400','DH4','DH8']),
+    engines: '2 × turboprop',
+    capacity: '37-90 pax',
+    firstFlight: '1983-06',
+    status: 'In production (Q400)',
   },
 
   // ── ATR ───────────────────────────────────────────────────────────────────
@@ -165,6 +241,10 @@ const families = {
     type: 'turboprop',
     maxRange: 2750,
     codes: new Set(['ATR','AT7','AT4']),
+    engines: '2 × turboprop',
+    capacity: '48-78 pax',
+    firstFlight: '1984-08',
+    status: 'In production',
   },
 };
 
@@ -277,6 +357,10 @@ function getFamilyList() {
     manufacturer: families[name].manufacturer,
     type: families[name].type,
     maxRange: families[name].maxRange,
+    engines: families[name].engines,
+    capacity: families[name].capacity,
+    firstFlight: families[name].firstFlight,
+    status: families[name].status,
   }));
 }
 

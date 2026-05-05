@@ -43,18 +43,18 @@ describe('RouteOperators', () => {
     expect(link.textContent).toMatch(/1 safety event/);
   });
 
-  it('returns null when API returns empty operators', async () => {
+  it('renders explicit empty state when API returns empty operators', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({ success: true, operators: [] }),
     });
-    const { container } = render(<MemoryRouter><RouteOperators from="LHR" to="JFK" /></MemoryRouter>);
-    await waitFor(() => expect(container.querySelector('.route-ops')).toBeNull());
+    render(<MemoryRouter><RouteOperators from="LHR" to="JFK" /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText(/no carrier data observed/i)).toBeInTheDocument());
   });
 
-  it('returns null on fetch failure', async () => {
+  it('renders explicit empty state on fetch failure', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({ ok: false });
-    const { container } = render(<MemoryRouter><RouteOperators from="LHR" to="JFK" /></MemoryRouter>);
-    await waitFor(() => expect(container.querySelector('.route-ops')).toBeNull());
+    render(<MemoryRouter><RouteOperators from="LHR" to="JFK" /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText(/no carrier data observed/i)).toBeInTheDocument());
   });
 });

@@ -76,6 +76,10 @@ const stmts = {
     GROUP BY severity
   `),
   countTotal: db.prepare('SELECT COUNT(*) AS n FROM safety_events'),
+  countByAircraftCode: db.prepare(`
+    SELECT COUNT(*) AS n FROM safety_events
+    WHERE aircraft_icao_type = ? AND occurred_at >= ?
+  `),
 };
 
 const upsertMany = db.transaction((rows) => {
@@ -129,4 +133,12 @@ module.exports = {
   },
 
   getStats() { return { total: stmts.countTotal.get().n }; },
+
+  countByAircraftCodes(codes, sinceMs) {
+    let total = 0;
+    for (const code of codes) {
+      total += stmts.countByAircraftCode.get(code, sinceMs)?.n ?? 0;
+    }
+    return total;
+  },
 };

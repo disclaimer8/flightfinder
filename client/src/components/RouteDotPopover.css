@@ -1,0 +1,86 @@
+.route-dot-popover {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.route-dot-popover__panel {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  max-width: 360px;
+  width: 100%;
+  position: relative;
+  box-shadow: var(--shadow-lg);
+}
+
+.route-dot-popover__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: 0;
+  font-size: 28px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  color: var(--text-3);
+}
+
+.route-dot-popover__close:hover { color: var(--text); }
+
+.route-dot-popover__eyebrow {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.route-dot-popover__title {
+  font: 600 22px var(--font-display);
+  color: var(--text);
+  margin: 0 0 16px;
+}
+
+.route-dot-popover__iata {
+  font-family: var(--font-mono);
+}
+
+.route-dot-popover__arrow {
+  color: var(--text-3);
+  padding: 0 4px;
+}
+
+.route-dot-popover__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.route-dot-popover__cta {
+  display: block;
+  padding: 10px 16px;
+  background: var(--navy);
+  color: white;
+  text-decoration: none;
+  font: 500 14px var(--font-ui);
+  border-radius: var(--r);
+  text-align: center;
+}
+
+.route-dot-popover__cta:hover { background: var(--navy-2); }
+
+.route-dot-popover__cta--secondary {
+  background: transparent;
+  color: var(--link);
+  border: 1px solid var(--border);
+}
+
+.route-dot-popover__cta--secondary:hover { background: var(--primary-light); color: var(--link); }

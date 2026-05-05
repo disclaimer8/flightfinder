@@ -25,4 +25,7 @@ router.get('/route-aircraft', ctrl.getRouteAircraft);
 // GET /api/map/route-operators — operators observed on a city pair (last 90d)
 router.get('/route-operators', ctrl.getRouteOperators);
 
+// GET /api/map/route-brief     — hero stats for a city pair (block time, frequency, fare, aircraft mix)
+router.get('/route-brief', ctrl.getRouteBrief);
+
 module.exports = router;

@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
 import SkeletonResults from './SkeletonResults';
 import RouteOperators from './RouteOperators';
+import SectionHeader from './SectionHeader';
+import AircraftMix from './AircraftMix';
 import './AircraftLandingPage.css';
 
 // Route landing copy (FAQ + tips template) lives in
@@ -21,6 +23,19 @@ function interpolate(tpl, from, to) {
     .replace(/\{to\.iata\}/g, to.iata);
 }
 
+function formatBlockTime(minutes) {
+  if (!minutes) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}h ${m}m`;
+}
+
+function formatFare(fare) {
+  if (!fare || fare.amount == null) return '—';
+  const symbols = { GBP: '£', USD: '$', EUR: '€' };
+  return `${symbols[fare.currency] ?? fare.currency}${fare.amount}`;
+}
+
 // /routes/:pair where :pair is "lhr-jfk" (IATA, lowercase). We resolve
 // city names via the same /api/aircraft/airports/search endpoint the
 // main form uses, so we don't duplicate the airport catalogue client-
@@ -29,10 +44,8 @@ export default function RouteLandingPage() {
   const { pair } = useParams();
   const navigate = useNavigate();
   const [state, setState] = useState({ status: 'loading' });
-  // Aircraft families observed on this city pair (last 90 days). Drives the
-  // cross-link rail back to /aircraft/:slug landing pages.
-  const [aircraft, setAircraft] = useState([]);
   const [routeCopy, setRouteCopy] = useState(null);
+  const [routeBrief, setRouteBrief] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,24 +78,16 @@ export default function RouteLandingPage() {
     });
   }, [pair]);
 
-  // Fetch observed aircraft families for cross-linking. Independent of
-  // the airport-name lookup so the page header isn't blocked.
   useEffect(() => {
-    const m = /^([a-z]{3})-([a-z]{3})$/i.exec(pair || '');
-    if (!m) return;
-    const dep = m[1].toUpperCase();
-    const arr = m[2].toUpperCase();
-    let cancelled = false;
-    fetch(`${API_BASE}/api/map/route-aircraft?dep=${dep}&arr=${arr}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return;
-        const list = Array.isArray(data?.families) ? data.families : [];
-        setAircraft(list);
-      })
-      .catch(() => { /* non-critical — cross-links just won't render */ });
-    return () => { cancelled = true; };
-  }, [pair]);
+    if (state.status !== 'ok') return;
+    if (!state.from?.iata || !state.to?.iata) return;
+    let active = true;
+    fetch(`${API_BASE}/api/map/route-brief?dep=${state.from.iata}&arr=${state.to.iata}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(body => { if (active) setRouteBrief(body); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [state.status, state.from?.iata, state.to?.iata]);
 
   if (state.status === 'loading') return <SkeletonResults message="Loading route…" />;
   if (state.status === 'invalid') {
@@ -113,6 +118,24 @@ export default function RouteLandingPage() {
           Direct and connecting flights from {from.name} ({from.iata}) to {to.name} ({to.iata}).
           Compare airlines, aircraft types, and fares on one page.
         </p>
+        {routeBrief && (
+          <div className="route-stat-strip">
+            <div className="route-stat">
+              <span className="route-stat__label">TYPICAL</span>
+              <span className="route-stat__value">{formatBlockTime(routeBrief.blockTimeMinutes)}</span>
+            </div>
+            <div className="route-stat">
+              <span className="route-stat__label">FREQUENCY</span>
+              <span className="route-stat__value">
+                {routeBrief.frequencyDaily ? `${routeBrief.frequencyDaily}/day` : '—'}
+              </span>
+            </div>
+            <div className="route-stat">
+              <span className="route-stat__label">FROM</span>
+              <span className="route-stat__value">{formatFare(routeBrief.cheapestFare)}</span>
+            </div>
+          </div>
+        )}
         <div className="landing-cta-row">
           <button
             type="button"
@@ -125,32 +148,25 @@ export default function RouteLandingPage() {
       </header>
 
       {routeCopy?.tipsBlurb && (
-        <section className="landing-prose">
+        <section className="landing-section">
+          <SectionHeader number="01" label="OVERVIEW" />
           <h2>Booking tips for {from.city} &rarr; {to.city}</h2>
           <p>{interpolate(routeCopy.tipsBlurb, from, to)}</p>
         </section>
       )}
 
-      {aircraft.length > 0 && (
-        <section className="landing-top-routes">
-          <h2>Aircraft flying {from.iata} &rarr; {to.iata}</h2>
-          <p className="landing-map-hint">
-            Families observed on this city pair in the last 90 days. Click any aircraft to see its global route map.
-          </p>
-          <ul className="landing-siblings-list">
-            {aircraft.map((f) => (
-              <li key={f.slug}>
-                <Link to={`/aircraft/${f.slug}`}>{f.label}</Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <section className="landing-section">
+        <RouteOperators from={from.iata} to={to.iata} />
+      </section>
 
-      <RouteOperators from={from.iata} to={to.iata} />
+      <section className="landing-section">
+        <SectionHeader number="03" label="AIRCRAFT MIX" />
+        <AircraftMix items={routeBrief?.aircraftMix} />
+      </section>
 
       {Array.isArray(routeCopy?.faq) && routeCopy.faq.length > 0 && (
-        <section className="landing-faq">
+        <section className="landing-section">
+          <SectionHeader number="04" label="FAQ" />
           <h2>Frequently asked questions about {from.iata} &rarr; {to.iata}</h2>
           {routeCopy.faq.map((qa, i) => (
             <details key={i} className="landing-faq-item" open={i === 0}>
@@ -161,8 +177,8 @@ export default function RouteLandingPage() {
         </section>
       )}
 
-      <section className="landing-siblings">
-        <h2>Explore more</h2>
+      <section className="landing-section">
+        <SectionHeader number="05" label="EXPLORE MORE" />
         <ul className="landing-siblings-list">
           <li><Link to={`/routes/${to.iata.toLowerCase()}-${from.iata.toLowerCase()}`}>{to.iata} &rarr; {from.iata} (return)</Link></li>
           <li><Link to="/">Search other routes</Link></li>

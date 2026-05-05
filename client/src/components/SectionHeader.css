@@ -1,0 +1,30 @@
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.section-header__eyebrow {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section-header__number {
+  color: var(--text-3);
+}
+
+.section-header__sep {
+  color: var(--border);
+}
+
+.section-header__label {
+  color: var(--text-2);
+}
+
+.section-header__accessory {
+  font: 400 12px var(--font-mono);
+  color: var(--text-3);
+}
