@@ -54,6 +54,19 @@
   --amber-bg:   #fffbeb;
   --amber-border: #fde68a;
 
+  /* Type system */
+  --font-display: 'Source Serif 4', Charter, Georgia, serif;
+  --font-ui:      'Inter Tight', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:    'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Indigo split: --primary stays for CTAs / active states; --link for text links */
+  --link: #4f46e5;
+
+  /* Severity (aliases existing red/orange/text-3 with safety semantics) */
+  --sev-fatal:    var(--red);
+  --sev-hull:     var(--orange);
+  --sev-incident: var(--text-3);
+
   /*
    * Breakpoints (for reference — not usable in @media as custom props):
    * sm:  480px   — phones landscape
@@ -98,7 +111,7 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-ui);
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
