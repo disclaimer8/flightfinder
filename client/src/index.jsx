@@ -7,8 +7,9 @@ import SiteLayout from './components/SiteLayout';
 import { AuthProvider } from './context/AuthContext';
 import './index.css';
 
-const AircraftLandingPage = lazy(() => import('./components/AircraftLandingPage'));
-const RouteLandingPage    = lazy(() => import('./components/RouteLandingPage'));
+const AircraftLandingPage  = lazy(() => import('./components/AircraftLandingPage'));
+const RouteLandingPage     = lazy(() => import('./components/RouteLandingPage'));
+const AircraftRouteLanding = lazy(() => import('./components/AircraftRouteLanding'));
 const AircraftIndex       = lazy(() => import('./pages/AircraftIndex'));
 const MyTrips = lazy(() => import('./pages/MyTrips'));
 const Pricing = lazy(() => import('./pages/Pricing'));
@@ -30,7 +31,8 @@ root.render(
           <Routes>
             <Route element={<SiteLayout />}>
               <Route path="/aircraft/:slug"     element={<Suspense fallback={null}><AircraftLandingPage /></Suspense>} />
-              <Route path="/routes/:pair"       element={<Suspense fallback={null}><RouteLandingPage /></Suspense>} />
+              <Route path="/routes/:pair"            element={<Suspense fallback={null}><RouteLandingPage /></Suspense>} />
+              <Route path="/routes/:pair/:aircraftSlug" element={<Suspense fallback={null}><AircraftRouteLanding /></Suspense>} />
               <Route path="/by-aircraft"        element={<Suspense fallback={null}><AircraftIndex /></Suspense>} />
               <Route path="/trips"              element={<Suspense fallback={null}><MyTrips /></Suspense>} />
               <Route path="/pricing"            element={<Suspense fallback={null}><Pricing /></Suspense>} />

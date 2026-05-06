@@ -1,0 +1,112 @@
+.ar-landing {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+  line-height: 1.6;
+}
+
+.ar-landing__breadcrumb {
+  font: 400 13px var(--font-mono);
+  color: var(--text-3);
+  margin-bottom: 16px;
+}
+
+.ar-landing__breadcrumb a {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 2px;
+}
+
+.ar-landing__breadcrumb a:hover {
+  text-decoration-color: var(--link);
+}
+
+.ar-landing__loading {
+  font: 400 14px var(--font-ui);
+  color: var(--text-3);
+  margin-top: 24px;
+}
+
+.ar-landing__intro {
+  font: 400 16px/1.6 var(--font-ui);
+  color: var(--text-2);
+  max-width: 60ch;
+  margin: 0 0 32px;
+}
+
+.ar-landing__operators,
+.ar-landing__cross {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+}
+
+.ar-landing__operators h2,
+.ar-landing__cross h2 {
+  margin: 0 0 16px;
+}
+
+.ar-landing__operator-list,
+.ar-landing__sibling-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ar-landing__operator-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+
+.ar-landing__operator-list strong {
+  font: 600 15px var(--font-ui);
+  color: var(--text);
+}
+
+.ar-landing__operator-list span {
+  font: 400 13px var(--font-mono);
+  color: var(--text-3);
+}
+
+.ar-landing__sibling-list li {
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+
+.ar-landing__sibling-list a {
+  color: var(--link);
+  text-decoration: none;
+  font: 500 14px var(--font-ui);
+}
+
+.ar-landing__sibling-list a:hover {
+  text-decoration: underline;
+}
+
+.ar-landing__cross p {
+  font: 400 14px/1.5 var(--font-ui);
+  color: var(--text-2);
+  margin: 8px 0;
+}
+
+.ar-landing__cross p a {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+.ar-landing__empty {
+  font: 400 14px var(--font-ui);
+  color: var(--text-3);
+  padding: 16px 0;
+}
