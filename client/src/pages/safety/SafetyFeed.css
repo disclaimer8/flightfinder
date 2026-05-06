@@ -13,7 +13,7 @@
   background: #f3f4f6;
   border: 1px solid #e5e7eb;
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 10px 16px; /* bumped from 6px 14px; ~42px height meets ≥36px filter-pill threshold */
   font-size: 14px;
   cursor: pointer;
 }

@@ -501,7 +501,7 @@
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 8px 14px;
+  padding: 14px 18px; /* bumped from 8px 14px; 14+22+14=50px meets ≥44px primary nav target */
   font-size: 14px;
   color: #0f172a;
   cursor: pointer;
@@ -545,7 +545,7 @@
   margin: 0 0 16px;
 }
 .safety-global__mode-btn {
-  padding: 6px 14px;
+  padding: 10px 16px; /* bumped from 6px 14px; ~42px height meets ≥36px filter-pill threshold */
   border-radius: 999px;
   border: 1px solid #cbd5e1;
   background: transparent;
