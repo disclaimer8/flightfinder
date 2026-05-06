@@ -10,6 +10,26 @@ const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Maintenance pragmas — tuned 2026-05-06 after observing 645MB DB file with
+// only 70MB live data (89% bloat from FAA + aircraft_db monthly refresh
+// DELETE+INSERT cycles) and a 579MB WAL that wasn't auto-checkpointing.
+//
+// wal_autocheckpoint=100 — checkpoint every 100 pages (~400KB) instead of
+// the default 1000 (~4MB). Refresh workers do bulk writes that overwhelm
+// the default; lower threshold keeps WAL bounded.
+//
+// auto_vacuum=INCREMENTAL — frees pages on demand via incremental_vacuum
+// instead of accumulating bloat until manual VACUUM. Setting this on an
+// existing DB requires one-time `VACUUM` to reformat (run via maintenance
+// worker, see below). Has no effect on :memory: DBs (used in tests).
+db.pragma('wal_autocheckpoint = 100');
+if (process.env.NODE_ENV !== 'test') {
+  // auto_vacuum can only be set before the database is populated, so the
+  // first time we apply it on an existing populated DB, it's a no-op until
+  // a full VACUUM rewrites the file. The maintenance worker handles that.
+  try { db.pragma('auto_vacuum = INCREMENTAL'); } catch { /* may fail on already-populated DB; harmless */ }
+}
+
 // Schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
