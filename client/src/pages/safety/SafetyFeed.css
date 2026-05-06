@@ -118,3 +118,11 @@
   .sf-col-aircraft { padding-top: 0 !important; padding-left: 24px !important; }
   .sf-col-route    { padding-top: 0 !important; padding-left: 24px !important; width: auto; }
 }
+
+.methodology-note {
+  font: 400 13px var(--font-mono);
+  color: var(--text-3);
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}

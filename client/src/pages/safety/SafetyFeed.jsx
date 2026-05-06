@@ -117,6 +117,10 @@ export default function SafetyFeed() {
           </tbody>
         </table>
       )}
+
+      <p className="methodology-note">
+        Methodology last reviewed 2026-05-06. See <Link to="/about">/about</Link> for data sources and editorial policy.
+      </p>
     </main>
   );
 }

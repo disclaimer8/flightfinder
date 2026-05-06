@@ -31,6 +31,9 @@ export default function Attributions() {
         official source.
       </p>
       <p>
+        Software licenses are listed above; data source attributions and refresh cadence are also documented at <Link to="/about">/about</Link>.
+      </p>
+      <p>
         See also: <Link to="/legal/privacy">Privacy</Link> · <Link to="/legal/terms">Terms</Link>
       </p>
     </article>

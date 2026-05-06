@@ -10,6 +10,7 @@ export default function SiteFooter() {
           <a href="/by-aircraft">Browse aircraft</a>
           <a href="/safety/global">Aviation safety database</a>
           <a href="/safety/feed">NTSB safety feed</a>
+          <a href="/about">About</a>
         </div>
         <div className="site-footer-col">
           <div className="site-footer-heading">Account</div>

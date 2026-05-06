@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { API_BASE } from '../../utils/api';
 import './SafetyGlobal.css';
 
@@ -744,6 +744,10 @@ export default function SafetyGlobal() {
         records — the rest are pending geocoding and don&rsquo;t appear on the
         map yet. Counts may differ slightly from the original sources because
         we deduplicate cross-listed events.
+      </p>
+
+      <p className="methodology-note">
+        Methodology last reviewed 2026-05-06. See <Link to="/about">/about</Link> for data sources and editorial policy.
       </p>
     </main>
   );
