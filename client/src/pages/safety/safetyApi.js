@@ -19,6 +19,13 @@ export async function fetchEvent(id) {
   return body.data;
 }
 
+export async function fetchEventRelated(id) {
+  const r = await fetch(`${API_BASE}/api/safety/events/${encodeURIComponent(id)}/related`);
+  if (!r.ok) throw new Error(`fetchEventRelated ${id}: HTTP ${r.status}`);
+  const json = await r.json();
+  return json.data || { sameAircraftType: [], sameOperator: [], sameAirport: [] };
+}
+
 // Promise-level cache prevents thundering-herd when N FlightCards mount with
 // the same airline (e.g. 10 LHR→JFK flights × 3 airlines = 30 identical calls
 // before cache hit). Keyed by "code|hasToken" so Pro users (who get extended
