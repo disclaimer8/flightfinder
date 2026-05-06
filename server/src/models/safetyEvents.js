@@ -223,6 +223,19 @@ module.exports = {
     return out;
   },
 
+  getByAircraftCodes(codes, { limit = 100 } = {}) {
+    if (!Array.isArray(codes) || codes.length === 0) return [];
+    const upper = codes.map((c) => String(c).toUpperCase());
+    const placeholders = upper.map(() => '?').join(',');
+    const sql = `
+      SELECT * FROM safety_events
+      WHERE aircraft_icao_type IN (${placeholders})
+      ORDER BY occurred_at DESC
+      LIMIT ?
+    `;
+    return db.prepare(sql).all(...upper, Math.min(Math.max(Number(limit) || 100, 1), 500));
+  },
+
   getRelatedEventsCount(eventId) {
     const ev = stmts.byId.get(eventId);
     if (!ev) return 0;

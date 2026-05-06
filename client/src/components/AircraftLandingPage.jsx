@@ -101,6 +101,8 @@ export default function AircraftLandingPage() {
   // null = loading, [] = none found, [event,...] = matched.
   const [safetyEvents, setSafetyEvents] = useState(null);
   const [safetyError, setSafetyError]   = useState(null);
+  // Top operators for this aircraft type (from pillar service, 90d window).
+  const [topOperators, setTopOperators] = useState([]);
 
   useEffect(() => {
     // Fetch the full family list once — we need it to resolve slug → display
@@ -162,6 +164,17 @@ export default function AircraftLandingPage() {
       });
     return () => { cancelled = true; };
   }, [fam]);
+
+  // Pull top operators for this aircraft type from the pillar service endpoint.
+  useEffect(() => {
+    if (!slug) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/aircraft/${slug}/airlines`)
+      .then((r) => (r.ok ? r.json() : { data: [] }))
+      .then((j) => { if (!cancelled) setTopOperators((j.data || []).slice(0, 5)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [slug]);
 
   // Pull recent safety events for this aircraft type from the global dataset.
   // We filter client-side because the backend doesn't expose a model filter,
@@ -244,6 +257,9 @@ export default function AircraftLandingPage() {
                   </>
                 )}
               </div>
+              <Link to={`/aircraft/${slug}/specs`} className="pillar-cta">
+                View full specifications &#8594;
+              </Link>
             </section>
           )}
 
@@ -304,6 +320,9 @@ export default function AircraftLandingPage() {
                 </p>
               )}
             </div>
+            <Link to={`/aircraft/${slug}/safety`} className="pillar-cta">
+              View full safety record &#8594;
+            </Link>
           </section>
 
           <section className="landing-section">
@@ -353,7 +372,26 @@ export default function AircraftLandingPage() {
                 </ul>
               </div>
             )}
+            <Link to={`/aircraft/${slug}/routes`} className="pillar-cta">
+              View all routes flown by the {fam.label} &#8594;
+            </Link>
           </section>
+
+          {topOperators.length > 0 && (
+            <section className="landing-section">
+              <SectionHeader number={resolvedCopy.overview ? '04' : '03'} label="OPERATORS" />
+              <div className="landing-prose">
+                <h2>Top operators of the {fam.label}</h2>
+                <p>
+                  {topOperators.map((o) => o.airline_name).join(', ')}
+                  {topOperators.length === 5 && ' and more'}
+                </p>
+              </div>
+              <Link to={`/aircraft/${slug}/airlines`} className="pillar-cta">
+                View all operators &#8594;
+              </Link>
+            </section>
+          )}
 
           {Array.isArray(resolvedCopy.faq) && resolvedCopy.faq.length > 0 && (
             <section className="landing-section">

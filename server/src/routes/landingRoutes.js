@@ -4,10 +4,17 @@
  *
  * GET /api/routes/:pair/aircraft/:slug  — main detail endpoint
  * GET /api/routes/:pair/aircraft-list   — sibling discovery for cross-linking
+ *
+ * Aircraft pillar sub-page endpoints (Spec D):
+ * GET /api/aircraft/:slug/airlines
+ * GET /api/aircraft/:slug/routes
+ * GET /api/aircraft/:slug/safety
+ * GET /api/aircraft/:slug/specs
  */
 const express = require('express');
 const router = express.Router();
 const aircraftRouteSvc = require('../services/aircraftRouteService');
+const aircraftPillarService = require('../services/aircraftPillarService');
 
 // Aircraft × Route programmatic landing — main detail
 router.get('/routes/:pair/aircraft/:slug', (req, res) => {
@@ -41,6 +48,29 @@ router.get('/routes/:pair/aircraft-list', (req, res) => {
   const toIata = m[2].toLowerCase();
   const list = aircraftRouteSvc.getTopFamiliesForPair(fromIata, toIata, { limit: 8 });
   res.json({ success: true, data: list });
+});
+
+// Aircraft pillar sub-page endpoints
+router.get('/aircraft/:slug/airlines', (req, res) => {
+  const slug = String(req.params.slug || '').toLowerCase();
+  res.json({ success: true, data: aircraftPillarService.getOperatorsForAircraft(slug) });
+});
+
+router.get('/aircraft/:slug/routes', (req, res) => {
+  const slug = String(req.params.slug || '').toLowerCase();
+  res.json({ success: true, data: aircraftPillarService.getRoutesForAircraft(slug) });
+});
+
+router.get('/aircraft/:slug/safety', (req, res) => {
+  const slug = String(req.params.slug || '').toLowerCase();
+  res.json({ success: true, data: aircraftPillarService.getSafetyForAircraft(slug) });
+});
+
+router.get('/aircraft/:slug/specs', (req, res) => {
+  const slug = String(req.params.slug || '').toLowerCase();
+  const data = aircraftPillarService.getSpecsForSlug(slug);
+  if (!data) return res.status(404).json({ success: false, message: 'specs not available' });
+  res.json({ success: true, data });
 });
 
 module.exports = router;

@@ -127,6 +127,23 @@ router.get('/sitemap.xml', async (_req, res) => {
     console.warn('[seo] aircraft-route grid unavailable for sitemap:', err.message);
   }
 
+  // Aircraft pillar sub-pages — 4 per family × 19 families = 76 URLs.
+  try {
+    const { getFamilyList: getPillarFamilies } = require('../models/aircraftFamilies');
+    for (const fam of getPillarFamilies()) {
+      for (const sub of ['airlines', 'routes', 'safety', 'specs']) {
+        urls.push({
+          loc: `${BASE}/aircraft/${fam.slug}/${sub}`,
+          changefreq: 'monthly',
+          priority: '0.6',
+          lastmod: deployDay,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[seo] aircraft pillar sub-pages unavailable for sitemap:', err.message);
+  }
+
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',

@@ -114,6 +114,86 @@ function aircraftMeta(slug) {
   };
 }
 
+/** /aircraft/:slug/airlines */
+function aircraftAirlinesMeta(slug) {
+  const fam = getFamilyBySlug(slug);
+  if (!fam) return notFoundMeta();
+  const label = fam.family?.label || fam.name || slug;
+  return {
+    title: `Airlines that operate the ${label} | FlightFinder`,
+    description: `Airlines worldwide operating the ${label}: route count per carrier, model variants flown, last observed dates. Sourced from open ADS-B data, refreshed nightly.`,
+    canonical: `${BASE}/aircraft/${slug}/airlines`,
+    h1: `Airlines that operate the ${label}`,
+    subtitle: `Operators of the ${label} worldwide`,
+    robots: 'index, follow',
+    ogType: 'article',
+    ogImage: `${BASE}/og/aircraft-default.png`,
+    kind: 'aircraft-airlines',
+    slug,
+    aircraftLabel: label,
+  };
+}
+
+/** /aircraft/:slug/routes */
+function aircraftRoutesMeta(slug) {
+  const fam = getFamilyBySlug(slug);
+  if (!fam) return notFoundMeta();
+  const label = fam.family?.label || fam.name || slug;
+  return {
+    title: `Top routes flown by the ${label} | FlightFinder`,
+    description: `Top 50 city pairs operated by the ${label} worldwide: which airlines fly each route, how many model variants observed. Sourced from open ADS-B data.`,
+    canonical: `${BASE}/aircraft/${slug}/routes`,
+    h1: `Top routes flown by the ${label}`,
+    subtitle: `City pairs the ${label} operates worldwide`,
+    robots: 'index, follow',
+    ogType: 'article',
+    ogImage: `${BASE}/og/aircraft-default.png`,
+    kind: 'aircraft-routes',
+    slug,
+    aircraftLabel: label,
+  };
+}
+
+/** /aircraft/:slug/safety */
+function aircraftSafetyMeta(slug) {
+  const fam = getFamilyBySlug(slug);
+  if (!fam) return notFoundMeta();
+  const label = fam.family?.label || fam.name || slug;
+  return {
+    title: `${label} safety record — accidents and incidents | FlightFinder`,
+    description: `Aviation safety events involving the ${label}: hull losses, fatal accidents, and serious incidents from NTSB CAROL, Aviation Safety Network, B3A, and Wikidata.`,
+    canonical: `${BASE}/aircraft/${slug}/safety`,
+    h1: `${label} safety record`,
+    subtitle: `Accidents and incidents from public aviation safety datasets`,
+    robots: 'index, follow',
+    ogType: 'article',
+    ogImage: `${BASE}/og/aircraft-default.png`,
+    kind: 'aircraft-safety',
+    slug,
+    aircraftLabel: label,
+  };
+}
+
+/** /aircraft/:slug/specs */
+function aircraftSpecsMeta(slug) {
+  const fam = getFamilyBySlug(slug);
+  if (!fam) return notFoundMeta();
+  const label = fam.family?.label || fam.name || slug;
+  return {
+    title: `${label} specifications — range, capacity, engines | FlightFinder`,
+    description: `${label} technical specifications: range, passenger capacity, maximum takeoff weight, wingspan, length, height, max speed, ceiling, engine options, variants.`,
+    canonical: `${BASE}/aircraft/${slug}/specs`,
+    h1: `${label} specifications`,
+    subtitle: `Range, capacity, engines, dimensions`,
+    robots: 'index, follow',
+    ogType: 'article',
+    ogImage: `${BASE}/og/aircraft-default.png`,
+    kind: 'aircraft-specs',
+    slug,
+    aircraftLabel: label,
+  };
+}
+
 /** /routes/:from-:to   (e.g. lhr-jfk) */
 function routeMeta(pair) {
   const m = /^([a-z]{3})-([a-z]{3})$/.exec(pair || '');
@@ -196,6 +276,18 @@ function resolve(pathname) {
   if (!pathname || pathname === '/' || pathname === '') return HOME;
   if (pathname === '/by-aircraft' || pathname === '/by-aircraft/') return BY_AIRCRAFT;
   if (pathname === '/map' || pathname === '/map/') return MAP;
+
+  const acAirlinesMatch = /^\/aircraft\/([^/?#]+)\/airlines\/?$/.exec(pathname);
+  if (acAirlinesMatch) return aircraftAirlinesMeta(acAirlinesMatch[1].toLowerCase());
+
+  const acRoutesPillarMatch = /^\/aircraft\/([^/?#]+)\/routes\/?$/.exec(pathname);
+  if (acRoutesPillarMatch) return aircraftRoutesMeta(acRoutesPillarMatch[1].toLowerCase());
+
+  const acSafetyMatch = /^\/aircraft\/([^/?#]+)\/safety\/?$/.exec(pathname);
+  if (acSafetyMatch) return aircraftSafetyMeta(acSafetyMatch[1].toLowerCase());
+
+  const acSpecsMatch = /^\/aircraft\/([^/?#]+)\/specs\/?$/.exec(pathname);
+  if (acSpecsMatch) return aircraftSpecsMeta(acSpecsMatch[1].toLowerCase());
 
   const acMatch = /^\/aircraft\/([^/?#]+)\/?$/.exec(pathname);
   if (acMatch) return aircraftMeta(acMatch[1].toLowerCase());
@@ -699,6 +791,38 @@ function structuredData(meta) {
         mainEntityOfPage: { '@type': 'WebPage', '@id': meta.canonical },
       });
     }
+  } else if (
+    meta.kind === 'aircraft-airlines'
+    || meta.kind === 'aircraft-routes'
+    || meta.kind === 'aircraft-safety'
+    || meta.kind === 'aircraft-specs'
+  ) {
+    const subPageName = {
+      'aircraft-airlines': 'Airlines',
+      'aircraft-routes':   'Routes',
+      'aircraft-safety':   'Safety',
+      'aircraft-specs':    'Specifications',
+    }[meta.kind];
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home',        item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: 'By aircraft', item: `${BASE}/by-aircraft` },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: meta.aircraftLabel,
+          item: `${BASE}/aircraft/${meta.slug}`,
+        },
+        { '@type': 'ListItem', position: 4, name: subPageName, item: meta.canonical },
+      ],
+    });
+    graph.push({
+      '@type': 'Vehicle',
+      name: meta.aircraftLabel,
+      vehicleConfiguration: 'Commercial aircraft',
+      url: meta.canonical,
+    });
   } else if (meta.kind === 'home') {
     graph.push({
       '@type': 'FAQPage',

@@ -227,4 +227,18 @@ module.exports = {
   getByPairAndFamily,
   listQualifyingCombos,
   topFamiliesForPair,
+
+  getRowsByAircraftCodes(codes, sinceMs) {
+    if (!Array.isArray(codes) || codes.length === 0) return [];
+    const upper = codes.map((c) => String(c).toUpperCase());
+    const placeholders = upper.map(() => '?').join(',');
+    const sql = `
+      SELECT dep_iata, arr_iata, aircraft_icao, airline_iata, seen_at, first_seen_at
+      FROM observed_routes
+      WHERE UPPER(aircraft_icao) IN (${placeholders})
+        AND seen_at >= ?
+      ORDER BY seen_at DESC
+    `;
+    return db.prepare(sql).all(...upper, Number(sinceMs) || 0);
+  },
 };
