@@ -2,7 +2,7 @@ const axios = require('axios');
 const cacheService = require('./cacheService');
 const db = require('../models/db');
 
-const AIRLABS_API_URL = 'https://airlabs.co/api/v9'; // Note: AirLabs often uses /fleets or /aircraft_types for specs
+const AIRLABS_API_URL = 'https://airlabs.co/api/v9';
 const AIRLABS_API_KEY = process.env.AIRLABS_API_KEY;
 
 if (!AIRLABS_API_KEY) {
@@ -10,6 +10,53 @@ if (!AIRLABS_API_KEY) {
 }
 
 const airlabsClient = axios.create({ baseURL: AIRLABS_API_URL, timeout: 15000 });
+
+// ── Aircraft type DB cache (/aircrafts endpoint, ~2700 rows) ─────────────────
+// AirLabs /aircraft_types does not exist — real endpoint is /aircrafts.
+// The ?icao_code= filter is unreliable (probe: B789 returned wrong aircraft).
+// Strategy: cache full DB in memory (paginated, up to 6000 rows) at first
+// call; subsequent lookups are O(1) Map lookups. 30-day TTL — type catalogue
+// barely changes.
+let _aircraftDb = null;
+let _aircraftDbFetchedAt = 0;
+const AIRCRAFT_DB_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+async function loadAircraftDb() {
+  if (_aircraftDb && (Date.now() - _aircraftDbFetchedAt) < AIRCRAFT_DB_TTL_MS) {
+    return _aircraftDb;
+  }
+  const apiKey = process.env.AIRLABS_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const map = new Map();
+    let offset = 0;
+    const LIMIT = 1000;
+    const MAX_PAGES = 6; // 6000 rows ceiling (actual catalogue is ~2700)
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const r = await airlabsClient.get('/aircrafts', {
+        params: { api_key: apiKey, limit: LIMIT, offset },
+      });
+      const rows = Array.isArray(r.data?.response) ? r.data.response : [];
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        if (row.icao) map.set(String(row.icao).toUpperCase(), row);
+        if (row.iata) map.set(String(row.iata).toUpperCase(), row);
+      }
+      if (rows.length < LIMIT) break;
+      offset += LIMIT;
+    }
+    _aircraftDb = map;
+    _aircraftDbFetchedAt = Date.now();
+    console.log(`[airlabs] /aircrafts DB loaded: ${map.size} entries`);
+    return map;
+  } catch (err) {
+    console.warn('[airlabs] /aircrafts DB load failed:', err.message);
+    return null;
+  }
+}
+
+/** Exposed for tests only */
+exports._clearAircraftDb = () => { _aircraftDb = null; _aircraftDbFetchedAt = 0; };
 
 /**
  * Long-lived cache lookup with split TTLs: hits live for 30 days, misses for 24h.
@@ -25,34 +72,34 @@ async function cachedLookup(key, fetchFn) {
 }
 
 /**
- * Get detailed aircraft information by IATA code
- * @param {string} iata - Aircraft IATA code (e.g., B737, A320)
+ * Get detailed aircraft information by ICAO or IATA type code.
+ *
+ * Previously called /aircraft_types which returns "Method not allowed" on the
+ * Developer tier. Real endpoint is /aircrafts (different name, same purpose).
+ * The ?icao_code= filter is unreliable (returns wrong results for some codes),
+ * so we cache the full ~2700-row DB at first call and do client-side lookups.
+ *
+ * @param {string} codeRaw - Aircraft ICAO code (e.g. "B789") or IATA code (e.g. "789")
  */
-exports.getAircraftInfo = async (iata) => {
-  const code = String(iata || '').toUpperCase();
+exports.getAircraftInfo = async (codeRaw) => {
+  const code = String(codeRaw || '').toUpperCase();
   if (!code) return null;
   return cachedLookup(`airlabs:aircraft:${code}`, async () => {
-    try {
-      const response = await airlabsClient.get('/aircraft_types', {
-        params: { iata_code: code, api_key: AIRLABS_API_KEY },
-      });
-      const aircraft = response.data?.response?.[0];
-      if (!aircraft) return null;
-      return {
-        iata: aircraft.iata_code,
-        icao: aircraft.icao_code,
-        name: aircraft.model_name || aircraft.name,
-        manufacturer: aircraft.manufacturer,
-        type: classifyAircraftType(aircraft.model_name || ''),
-        capacity: aircraft.capacity || null,
-        range: aircraft.range || null,
-        cruiseSpeed: aircraft.cruise_speed || null,
-        categories: [],
-      };
-    } catch (error) {
-      console.error('AirLabs API Error:', error.message);
-      return null;
-    }
+    const db = await loadAircraftDb();
+    if (!db) return null;
+    const row = db.get(code);
+    if (!row) return null;
+    return {
+      iata: row.iata || null,
+      icao: row.icao || null,
+      name: row.model || null,
+      manufacturer: row.manufacturer || null,
+      type: classifyAircraftType(row.model || ''),
+      capacity: null,    // /aircrafts does not provide seat capacity
+      range: null,       // /aircrafts does not provide range
+      cruiseSpeed: null, // /aircrafts does not provide cruise speed
+      categories: row.category_name ? [row.category_name] : [],
+    };
   });
 };
 
