@@ -91,7 +91,7 @@
   transition: background 150ms ease;
 }
 
-.trip-actions button:hover { background: var(--accent-soft); }
+.trip-actions button:hover { background: var(--primary-light); }
 
 .trip-actions__delete:hover {
   background: var(--red-bg);
@@ -109,7 +109,7 @@
 
 .trip-live, .trip-pred, .trip-inbound {
   padding: 8px 12px;
-  background: var(--accent-soft);
+  background: var(--primary-light);
   border-radius: var(--r-sm);
 }
 

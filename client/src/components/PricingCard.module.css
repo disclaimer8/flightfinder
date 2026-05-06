@@ -52,7 +52,7 @@
   color: var(--text-3);
   margin: 0;
   padding: 4px 8px;
-  background: var(--accent-soft);
+  background: var(--primary-light);
   border-radius: var(--r-sm);
   text-align: center;
 }
