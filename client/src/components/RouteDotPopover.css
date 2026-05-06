@@ -34,15 +34,6 @@
 
 .route-dot-popover__close:hover { color: var(--text); }
 
-.route-dot-popover__eyebrow {
-  font: 500 11px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-3);
-  display: block;
-  margin-bottom: 4px;
-}
-
 .route-dot-popover__title {
   font: 600 22px var(--font-display);
   color: var(--text);

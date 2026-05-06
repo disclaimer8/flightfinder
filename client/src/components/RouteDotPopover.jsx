@@ -17,7 +17,7 @@ export default function RouteDotPopover({ dep, arr, onClose }) {
       <div className="route-dot-popover__panel" onClick={e => e.stopPropagation()}>
         <button className="route-dot-popover__close" type="button" onClick={onClose} aria-label="Close">×</button>
         <div className="route-dot-popover__head">
-          <span className="route-dot-popover__eyebrow">ROUTE</span>
+          <span className="eyebrow" style={{ display: 'block', marginBottom: '4px' }}>ROUTE</span>
           <h3 className="route-dot-popover__title">
             <span className="route-dot-popover__iata">{dep}</span>
             <span className="route-dot-popover__arrow"> → </span>

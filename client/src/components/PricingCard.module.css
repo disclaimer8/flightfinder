@@ -28,13 +28,6 @@
   border-radius: var(--r-sm);
 }
 
-.eyebrow {
-  font: 500 11px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-2);
-}
-
 .priceRow {
   display: flex;
   align-items: baseline;

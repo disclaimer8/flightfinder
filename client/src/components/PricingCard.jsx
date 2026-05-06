@@ -21,7 +21,7 @@ export function PricingCard({
       aria-label={title}
     >
       {highlight && <span className={styles.recommendedRibbon}>RECOMMENDED</span>}
-      <div className={styles.eyebrow}>{eyebrow}</div>
+      <div className="eyebrow eyebrow--strong">{eyebrow}</div>
       <div className={styles.priceRow}>
         <span className={styles.price}>{price}</span>
         {cadence && <span className={styles.cadence}>{cadence}</span>}
