@@ -106,6 +106,37 @@ exports.getOperator = (req, res) => {
   res.json(payload);
 };
 
+exports.getEventRelated = (req, res) => {
+  const { id } = req.validatedParams;
+  const ev = safety.getById(id);
+  if (!ev) return res.status(404).json({ success: false, message: 'Event not found' });
+  const { buildEventSlug } = require('../utils/eventSlug');
+  const result = {
+    sameAircraftType: ev.aircraft_icao_type
+      ? safety.getByAircraftType(ev.aircraft_icao_type, { exclude: id, limit: 5 }).map(shapeEvent)
+      : [],
+    sameOperator: (ev.operator_icao || ev.operator_iata)
+      ? safety.getByOperator({
+          icao: ev.operator_icao,
+          iata: ev.operator_iata,
+          sinceMs: 0, // all-time
+        }).filter(r => r.id !== id).slice(0, 5).map(shapeEvent)
+      : [],
+    sameAirport: (ev.dep_iata || ev.arr_iata)
+      ? safety.getByAirport(ev.dep_iata || ev.arr_iata, { exclude: id, limit: 5 }).map(shapeEvent)
+      : [],
+  };
+  // Augment each related event with slug for client routing.
+  // Re-fetch raw row for slug construction (≤15 lookups/page load — acceptable cost).
+  for (const list of [result.sameAircraftType, result.sameOperator, result.sameAirport]) {
+    for (const e of list) {
+      const raw = safety.getById(e.id);
+      if (raw) e.slug = buildEventSlug(raw);
+    }
+  }
+  res.json({ success: true, data: result });
+};
+
 exports.getAircraft = (req, res) => {
   const { registration } = req.validatedParams;
   const events = safety.getByRegistration(registration, Date.now() - 10 * ONE_YEAR_MS);

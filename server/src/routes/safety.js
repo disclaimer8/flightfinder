@@ -41,6 +41,7 @@ function optionalAuth(req, res, next) {
 // Free, public — feed
 router.get('/events',          validate.safetyEventsQuery,     controller.listEvents);
 router.get('/events/:id',      validate.safetyEventIdParam,    controller.getEvent);
+router.get('/events/:id/related', validate.safetyEventIdParam, controller.getEventRelated);
 
 // Free counts; Pro adds breakdowns. optionalAuth lets isPro() branch.
 router.get('/operators/:code', validate.safetyOperatorParam,   optionalAuth, controller.getOperator);
