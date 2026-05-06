@@ -64,6 +64,35 @@ function EnrichedPanelPro({ flight }) {
           onLockedClick={() => askUpgrade('See the exact tail and age of the plane flying your route.')}
         />
 
+        {!isFree && !loading && data?.aircraft?.buildYear != null && (
+          <div className="enriched-field flight-card__tail">
+            <span className="eyebrow eyebrow--strong enriched-label">Aircraft tail</span>
+            <dl className="flight-card__tail-grid">
+              {data.aircraft.registration && (
+                <div>
+                  <dt>Registration</dt>
+                  <dd>{data.aircraft.registration}</dd>
+                </div>
+              )}
+              {data.aircraft.buildYear && (
+                <div>
+                  <dt>Built</dt>
+                  <dd>
+                    {data.aircraft.buildYear}
+                    {data.aircraft.ageYears != null ? ` (${data.aircraft.ageYears}y old)` : ''}
+                  </dd>
+                </div>
+              )}
+              {data.aircraft.operator && (
+                <div>
+                  <dt>Operator</dt>
+                  <dd>{data.aircraft.operator}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        )}
+
         <Field
           label="Amenities"
           value={data?.amenities ? <Amenities am={data.amenities} /> : null}

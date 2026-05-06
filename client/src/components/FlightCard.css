@@ -422,3 +422,33 @@
   .route-path { display: none; }
   .endpoint.end { align-items: flex-start; }
 }
+
+/* ── Aircraft tail block (rendered inside EnrichedPanel for Pro users) ──────── */
+.flight-card__tail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+.flight-card__tail .eyebrow {
+  display: block;
+  margin-bottom: 6px;
+}
+.flight-card__tail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+.flight-card__tail-grid dt {
+  font: 400 11px var(--font-mono, monospace);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+.flight-card__tail-grid dd {
+  font: 500 14px var(--font-ui, system-ui);
+  color: var(--text);
+  margin: 0;
+}
