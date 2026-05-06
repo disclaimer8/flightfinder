@@ -8,6 +8,7 @@ import styles from './Pricing.module.css';
 const TIERS = [
   {
     tier: 'pro_monthly',
+    eyebrow: 'PRO MONTHLY',
     title: 'Pro Monthly',
     price: '$4.99',
     cadence: '/month',
@@ -20,6 +21,7 @@ const TIERS = [
   },
   {
     tier: 'pro_annual',
+    eyebrow: 'PRO ANNUAL',
     title: 'Pro Annual',
     price: '$39',
     cadence: '/year',
@@ -32,6 +34,7 @@ const TIERS = [
   },
   {
     tier: 'pro_lifetime',
+    eyebrow: 'PRO LIFETIME',
     title: 'Pro Lifetime',
     price: '$99',
     cadence: 'once',

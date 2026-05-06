@@ -5,6 +5,7 @@ import { PricingCard } from '../components/PricingCard.jsx';
 describe('PricingCard', () => {
   const base = {
     tier: 'pro_monthly',
+    eyebrow: 'PRO MONTHLY',
     title: 'Pro Monthly',
     price: '$4.99',
     cadence: '/month',
@@ -12,9 +13,10 @@ describe('PricingCard', () => {
     onSelect: () => {},
   };
 
-  it('renders price, title, features', () => {
+  it('renders price, eyebrow, features, accessible title', () => {
     render(<PricingCard {...base} />);
-    expect(screen.getByText('Pro Monthly')).toBeInTheDocument();
+    expect(screen.getByText('PRO MONTHLY')).toBeInTheDocument();
+    expect(screen.getByLabelText('Pro Monthly')).toBeInTheDocument();
     expect(screen.getByText('$4.99')).toBeInTheDocument();
     expect(screen.getByText('Enriched card')).toBeInTheDocument();
   });

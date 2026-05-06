@@ -1,22 +1,162 @@
-.mytrips { max-width: 900px; margin: 24px auto; padding: 0 16px; }
-.mytrips h1 { margin: 0 0 16px; }
-.trip-list { list-style: none; padding: 0; display: grid; gap: 12px; }
-.trip-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; background: #fff; }
-.trip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.trip-title { font-weight: 600; }
-.trip-when { color: #6b7280; font-size: 14px; }
-.trip-actions { margin-top: 10px; display: flex; gap: 8px; }
-.trip-actions button {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #f9fafb;
-  cursor: pointer;
-  font-size: 13px;
+.mytrips {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
 }
-.trip-actions button:hover { background: #f3f4f6; }
-.trip-status { margin-top: 10px; font-size: 13px; color: #374151; display: grid; gap: 4px; }
-.trip-live, .trip-pred, .trip-inbound { padding: 6px 8px; background: #f9fafb; border-radius: 4px; }
-.mytrips-empty { text-align: center; padding: 48px 16px; color: #6b7280; }
-.mytrips-loading { padding: 48px 16px; color: #6b7280; text-align: center; }
-.mytrips-error { padding: 24px 16px; color: #b91c1c; background: #fee2e2; border-radius: 6px; }
+
+.mytrips h1 {
+  font: 600 36px/1.15 var(--font-display);
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.mytrips__lede {
+  font: 400 16px/1.5 var(--font-ui);
+  color: var(--text-2);
+  margin: 0 0 32px;
+  max-width: 56ch;
+}
+
+@media (max-width: 768px) {
+  .mytrips h1 { font-size: 28px; }
+}
+
+.trip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.trip-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 20px;
+  background: var(--card);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  position: relative;
+}
+
+.trip-card:hover {
+  border-color: var(--text-3);
+  box-shadow: var(--shadow-sm);
+}
+
+.trip-card--delay-warn { border-left: 3px solid var(--orange); padding-left: 17px; }
+.trip-card--delay-crit { border-left: 3px solid var(--red);    padding-left: 17px; }
+
+.trip-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.trip-flightnum {
+  font: 600 16px var(--font-mono);
+  color: var(--text);
+}
+
+.trip-route {
+  font: 500 14px var(--font-mono);
+  color: var(--text-2);
+}
+
+.trip-route__arrow {
+  color: var(--text-3);
+  padding: 0 4px;
+}
+
+.trip-when {
+  font: 400 13px var(--font-mono);
+  color: var(--text-2);
+}
+
+.trip-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.trip-actions button {
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  font: 500 13px var(--font-ui);
+  transition: background 150ms ease;
+}
+
+.trip-actions button:hover { background: var(--accent-soft); }
+
+.trip-actions__delete:hover {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.trip-status {
+  margin-top: 12px;
+  font: 400 13px/1.5 var(--font-ui);
+  color: var(--text-2);
+  display: grid;
+  gap: 4px;
+}
+
+.trip-live, .trip-pred, .trip-inbound {
+  padding: 8px 12px;
+  background: var(--accent-soft);
+  border-radius: var(--r-sm);
+}
+
+.trip-live--good { background: var(--green-bg); color: var(--green); }
+.trip-live--warn { background: var(--orange-bg); color: var(--orange); }
+.trip-live--bad  { background: var(--red-bg);    color: var(--red); }
+
+.mytrips-empty,
+.mytrips-loading {
+  text-align: center;
+  padding: 64px 24px;
+  font: 400 16px/1.5 var(--font-ui);
+  color: var(--text-2);
+}
+
+.mytrips-empty h2 {
+  font: 600 24px/1.3 var(--font-display);
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.mytrips-empty__hint {
+  font-size: 14px;
+  color: var(--text-3);
+  max-width: 48ch;
+  margin: 8px auto 0;
+}
+
+.mytrips-empty__cta {
+  display: inline-block;
+  margin-top: 24px;
+  padding: 10px 20px;
+  background: var(--navy);
+  color: white;
+  border-radius: var(--r);
+  text-decoration: none;
+  font: 500 14px var(--font-ui);
+  transition: background 150ms ease;
+}
+
+.mytrips-empty__cta:hover { background: var(--navy-2); }
+
+.mytrips-error {
+  padding: 16px 20px;
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid var(--red);
+  border-radius: var(--r);
+  font: 500 14px var(--font-ui);
+}

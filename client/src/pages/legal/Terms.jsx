@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
+import MetaLine from '../../components/MetaLine';
 import styles from './legal.module.css';
 
 export default function Terms() {
   return (
     <article className={styles.page}>
       <h1>Terms of Service</h1>
-      <p className={styles.meta}>Effective: 2026-04-22. Last updated: 2026-04-22.</p>
+      <MetaLine effective="2026-04-22" lastUpdated="2026-04-22" />
 
       <h2>1. Who we are</h2>
       <p>

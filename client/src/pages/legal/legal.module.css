@@ -1,10 +1,72 @@
 .page {
-  max-width: 760px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 48px 16px;
+  padding: 48px 24px 80px;
   line-height: 1.7;
 }
-.page h1 { font-size: 2rem; margin-top: 0; }
-.page h2 { margin-top: 32px; font-size: 1.25rem; }
-.page ul { padding-left: 24px; }
-.meta { color: var(--muted, #6b7280); font-size: 0.875rem; }
+
+.page h1 {
+  font: 600 36px/1.15 var(--font-display);
+  color: var(--text);
+  margin: 0 0 12px;
+}
+
+@media (max-width: 768px) {
+  .page h1 { font-size: 28px; }
+}
+
+.page h2 {
+  font: 600 20px/1.3 var(--font-display);
+  color: var(--text);
+  margin: 40px 0 12px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+}
+
+.page h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.page p,
+.page li {
+  font: 400 16px/1.7 var(--font-ui);
+  color: var(--text);
+  margin: 0 0 12px;
+}
+
+.page ul {
+  padding-left: 24px;
+  margin-bottom: 16px;
+}
+
+.page a {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 150ms ease;
+}
+
+.page a:hover {
+  text-decoration-color: var(--link);
+}
+
+.page strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.page code {
+  font: 400 14px var(--font-mono);
+  background: var(--accent-soft);
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: var(--text);
+}
+
+.meta {
+  font: 400 12px var(--font-mono);
+  color: var(--text-3);
+  margin-bottom: 24px;
+}

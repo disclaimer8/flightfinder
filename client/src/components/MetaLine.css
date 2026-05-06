@@ -1,0 +1,22 @@
+.meta-line {
+  font: 400 12px var(--font-mono);
+  color: var(--text-3);
+  margin: 0 0 32px;
+  letter-spacing: 0.02em;
+}
+
+.meta-line__label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  margin-right: 6px;
+}
+
+.meta-line__value {
+  color: var(--text-2);
+}
+
+.meta-line__sep {
+  color: var(--border);
+  padding: 0 4px;
+}
