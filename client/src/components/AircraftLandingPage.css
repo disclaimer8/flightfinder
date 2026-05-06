@@ -64,22 +64,6 @@
   max-width: 60ch;
 }
 .landing-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
-.landing-cta {
-  background: var(--navy);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  font: 500 15px var(--font-ui);
-  border-radius: var(--r);
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  transition: background 150ms ease;
-}
-
-.landing-cta:hover {
-  background: var(--navy-2);
-}
 
 .landing p,
 .landing li {

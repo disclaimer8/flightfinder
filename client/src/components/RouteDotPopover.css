@@ -64,23 +64,3 @@
   gap: 8px;
 }
 
-.route-dot-popover__cta {
-  display: block;
-  padding: 10px 16px;
-  background: var(--navy);
-  color: white;
-  text-decoration: none;
-  font: 500 14px var(--font-ui);
-  border-radius: var(--r);
-  text-align: center;
-}
-
-.route-dot-popover__cta:hover { background: var(--navy-2); }
-
-.route-dot-popover__cta--secondary {
-  background: transparent;
-  color: var(--link);
-  border: 1px solid var(--border);
-}
-
-.route-dot-popover__cta--secondary:hover { background: var(--primary-light); color: var(--link); }

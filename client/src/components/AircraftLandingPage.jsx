@@ -5,6 +5,7 @@ import SkeletonResults from './SkeletonResults';
 import SectionHeader from './SectionHeader';
 import DataCard from './DataCard';
 import EmptyState from './EmptyState';
+import Button from './Button';
 import './AircraftLandingPage.css';
 
 const AircraftRouteMap = lazy(() => import('./AircraftRouteMap'));
@@ -191,7 +192,7 @@ export default function AircraftLandingPage() {
       <div className="landing landing--not-found">
         <h1>Aircraft not found</h1>
         <p>We don&rsquo;t have route data for <code>{slug}</code>. Try one of these instead:</p>
-        <Link to="/by-aircraft" className="landing-cta">Browse all aircraft</Link>
+        <Button to="/by-aircraft" variant="primary">Browse all aircraft</Button>
       </div>
     );
   }
@@ -222,12 +223,9 @@ export default function AircraftLandingPage() {
         <h1 className="landing-h1">{fam.label} flights and routes</h1>
         <p className="landing-sub">{resolvedCopy.hint}</p>
         <div className="landing-cta-row">
-          <Link
-            to={`/?mode=by-aircraft&family=${slug}`}
-            className="landing-cta"
-          >
+          <Button to={`/?mode=by-aircraft&family=${slug}`} variant="primary">
             Search flights on the {fam.label}
-          </Link>
+          </Button>
         </div>
       </header>
 

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
+import Button from './Button';
 import './RouteDotPopover.css';
 
 export default function RouteDotPopover({ dep, arr, onClose }) {
@@ -25,8 +26,8 @@ export default function RouteDotPopover({ dep, arr, onClose }) {
           </h3>
         </div>
         <div className="route-dot-popover__actions">
-          <Link to={`/routes/${depLow}-${arrLow}`} className="route-dot-popover__cta">View route page →</Link>
-          <Link to={`/?mode=search&from=${dep}&to=${arr}`} className="route-dot-popover__cta route-dot-popover__cta--secondary">Search flights →</Link>
+          <Button to={`/routes/${depLow}-${arrLow}`} variant="primary">View route page →</Button>
+          <Button to={`/?mode=search&from=${dep}&to=${arr}`} variant="secondary">Search flights →</Button>
         </div>
       </div>
     </div>
