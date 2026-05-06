@@ -10,17 +10,6 @@
   margin-bottom: 12px;
 }
 
-.route-ops__eyebrow {
-  font: 500 11px var(--font-mono);
-  letter-spacing: 0.08em;
-  color: var(--text-2);
-}
-
-.route-ops__sub {
-  font: 400 12px var(--font-mono);
-  color: var(--text-3);
-}
-
 .route-ops__table {
   width: 100%;
   border-collapse: collapse;
@@ -38,12 +27,6 @@
 }
 
 .route-ops__th-flights, .route-ops__th-safety { text-align: right; }
-
-.route-ops__empty {
-  font: 400 14px/1.5 var(--font-ui);
-  color: var(--text-3);
-  padding: 16px 0;
-}
 
 .route-ops__table tbody tr { border-bottom: 1px solid var(--border-light); }
 .route-ops__table tr:last-child { border-bottom: 0; }

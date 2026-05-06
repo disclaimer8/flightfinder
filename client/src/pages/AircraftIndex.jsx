@@ -51,7 +51,7 @@ export default function AircraftIndex() {
       {popular.length > 0 && (
         <section className={styles.popularStrip} aria-label="Most flown aircraft, last 14 days">
           <div className={styles.popularStripHead}>
-            <span className={styles.popularStripEyebrow}>MOST FLOWN · LAST 14 DAYS</span>
+            <span className="eyebrow" style={{ display: 'block', marginBottom: '12px' }}>MOST FLOWN · LAST 14 DAYS</span>
           </div>
           <ul className={styles.popularStripRail}>
             {popular.map(p => (
@@ -96,7 +96,7 @@ export default function AircraftIndex() {
           {filtered.map(item => (
             <li key={item.slug}>
               <Link to={`/aircraft/${item.slug}`} className={styles.tile}>
-                <div className={styles.eyebrow}>{item.manufacturer.toUpperCase()}</div>
+                <div className="eyebrow eyebrow--strong">{item.manufacturer.toUpperCase()}</div>
                 <h2 className={styles.familyName}>{item.label}</h2>
                 {item.tagline && <p className={styles.tagline}>{item.tagline}</p>}
                 <div className={styles.statStrip}>

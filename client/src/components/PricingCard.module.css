@@ -28,13 +28,6 @@
   border-radius: var(--r-sm);
 }
 
-.eyebrow {
-  font: 500 11px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-2);
-}
-
 .priceRow {
   display: flex;
   align-items: baseline;
@@ -59,7 +52,7 @@
   color: var(--text-3);
   margin: 0;
   padding: 4px 8px;
-  background: var(--accent-soft);
+  background: var(--primary-light);
   border-radius: var(--r-sm);
   text-align: center;
 }
@@ -93,17 +86,3 @@
   color: var(--text-3);
   font-weight: 700;
 }
-
-.cta {
-  background: var(--navy);
-  color: white;
-  border: 0;
-  padding: 12px 20px;
-  font: 500 15px var(--font-ui);
-  border-radius: var(--r);
-  cursor: pointer;
-  transition: background 150ms ease;
-}
-
-.cta:hover { background: var(--navy-2); }
-.cta:disabled { background: var(--text-3); cursor: not-allowed; }

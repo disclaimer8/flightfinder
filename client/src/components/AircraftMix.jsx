@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
+import EmptyState from './EmptyState';
 import './AircraftMix.css';
 
 export default function AircraftMix({ items }) {
   if (!items || items.length === 0) {
     return (
-      <p className="aircraft-mix__empty">
+      <EmptyState>
         No aircraft observations yet on this route. Live ADS-B data populates within 7-14 days of first observation.
-      </p>
+      </EmptyState>
     );
   }
   return (

@@ -5,6 +5,7 @@ import SkeletonResults from './SkeletonResults';
 import RouteOperators from './RouteOperators';
 import SectionHeader from './SectionHeader';
 import AircraftMix from './AircraftMix';
+import Button from './Button';
 import './AircraftLandingPage.css';
 
 // Route landing copy (FAQ + tips template) lives in
@@ -95,7 +96,7 @@ export default function RouteLandingPage() {
       <div className="landing landing--not-found">
         <h1>Route not found</h1>
         <p>The URL should look like <code>/routes/lhr-jfk</code> — three-letter IATA codes separated by a dash.</p>
-        <Link to="/" className="landing-cta">Go to search</Link>
+        <Button to="/" variant="primary">Go to search</Button>
       </div>
     );
   }
@@ -137,13 +138,12 @@ export default function RouteLandingPage() {
           </div>
         )}
         <div className="landing-cta-row">
-          <button
-            type="button"
-            className="landing-cta"
+          <Button
+            variant="primary"
             onClick={() => navigate(`/?from=${from.iata}&to=${to.iata}`)}
           >
             Search {from.iata} &rarr; {to.iata} flights
-          </button>
+          </Button>
         </div>
       </header>
 

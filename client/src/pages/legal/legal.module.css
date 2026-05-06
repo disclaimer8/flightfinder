@@ -59,7 +59,7 @@
 
 .page code {
   font: 400 14px var(--font-mono);
-  background: var(--accent-soft);
+  background: var(--primary-light);
   padding: 1px 6px;
   border-radius: 3px;
   color: var(--text);

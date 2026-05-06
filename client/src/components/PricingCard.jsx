@@ -1,4 +1,5 @@
 import styles from './PricingCard.module.css';
+import Button from './Button';
 
 export function PricingCard({
   tier,
@@ -20,7 +21,7 @@ export function PricingCard({
       aria-label={title}
     >
       {highlight && <span className={styles.recommendedRibbon}>RECOMMENDED</span>}
-      <div className={styles.eyebrow}>{eyebrow}</div>
+      <div className="eyebrow eyebrow--strong">{eyebrow}</div>
       <div className={styles.priceRow}>
         <span className={styles.price}>{price}</span>
         {cadence && <span className={styles.cadence}>{cadence}</span>}
@@ -34,14 +35,13 @@ export function PricingCard({
           <li key={f}>{f}</li>
         ))}
       </ul>
-      <button
-        type="button"
-        className={styles.cta}
+      <Button
+        variant="primary"
         disabled={disabled}
         onClick={() => onSelect(tier)}
       >
         {loading ? 'Redirecting…' : soldOut ? 'Sold out' : 'Subscribe'}
-      </button>
+      </Button>
     </article>
   );
 }

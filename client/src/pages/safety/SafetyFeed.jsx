@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchEvents } from './safetyApi';
+import EmptyState from '../../components/EmptyState';
 import './SafetyFeed.css';
 
 const SEVERITIES = [
@@ -69,7 +70,7 @@ export default function SafetyFeed() {
       {!events && !error && <p className="safety-feed__loading">Loading…</p>}
 
       {events && events.length === 0 && (
-        <p className="safety-feed__empty">No events match this filter.</p>
+        <EmptyState>No events match this filter.</EmptyState>
       )}
 
       {events && events.length > 0 && (

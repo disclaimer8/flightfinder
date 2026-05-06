@@ -12,7 +12,7 @@ export default function EnrichedTeaser() {
   return (
     <div className="enriched-teaser" role="region" aria-label="Pro features preview">
       <div className="enriched-teaser__head">
-        <span className="enriched-teaser__eyebrow">ENRICHED FLIGHT DATA</span>
+        <span className="eyebrow eyebrow--strong">ENRICHED FLIGHT DATA</span>
         <span className="enriched-teaser__badge">Pro</span>
       </div>
       <ul className="enriched-teaser__list">

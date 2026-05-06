@@ -22,7 +22,7 @@ export default function SampleCards() {
         {data.sampleCards.map(card => (
           <li key={card.headline}>
             <Link to={card.href} className="sample-card">
-              <div className="sample-card-eyebrow">{card.eyebrow}</div>
+              <div className="eyebrow eyebrow--strong">{card.eyebrow}</div>
               <h3 className="sample-card-headline">{card.headline}</h3>
               <p className="sample-card-body">{card.body}</p>
               <span className="sample-card-cta">{card.cta} →</span>

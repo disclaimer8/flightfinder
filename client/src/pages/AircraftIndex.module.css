@@ -71,12 +71,6 @@
   transform: translateY(-2px);
 }
 
-.eyebrow {
-  font: 500 11px var(--font-mono);
-  letter-spacing: 0.08em;
-  color: var(--text-2);
-}
-
 .familyName {
   font: 600 22px/1.25 var(--font-display);
   color: var(--text);
@@ -122,15 +116,6 @@
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border-light);
-}
-
-.popularStripEyebrow {
-  font: 500 11px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-3);
-  display: block;
-  margin-bottom: 12px;
 }
 
 .popularStripRail {

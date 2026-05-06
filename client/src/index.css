@@ -16,7 +16,6 @@
 
   --navy:   #0c1427;
   --navy-2: #152040;
-  --navy-3: #1e2d52;
 
   --bg:     #f8fafc;
   --card:   #ffffff;
@@ -123,3 +122,28 @@ body {
   width: 100%;
   min-height: 100vh;
 }
+
+/* ─── Utility: .eyebrow ──────────────────────────────────────────
+ * Small uppercase mono label with letter-spacing. Used across:
+ * section headers, card eyebrows, table column labels, ribbons.
+ *
+ * Default: 11px, letter-spaced, muted (--text-3).
+ * --md: 12px (slightly larger).
+ * --sm: 10px, tighter letter-spacing (compact contexts: tile stat strips, badges).
+ * --strong: stronger color (--text-2) for primary section labels.
+ */
+.eyebrow {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.eyebrow--md { font-size: 12px; }
+
+.eyebrow--sm {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.eyebrow--strong { color: var(--text-2); }

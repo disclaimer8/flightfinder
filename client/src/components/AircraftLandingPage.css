@@ -64,22 +64,6 @@
   max-width: 60ch;
 }
 .landing-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
-.landing-cta {
-  background: var(--navy);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  font: 500 15px var(--font-ui);
-  border-radius: var(--r);
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  transition: background 150ms ease;
-}
-
-.landing-cta:hover {
-  background: var(--navy-2);
-}
 
 .landing p,
 .landing li {
@@ -300,29 +284,6 @@
   border-top: none;
   padding-top: 0;
   margin-top: 0;
-}
-
-.landing-empty {
-  font: 400 14px/1.5 var(--font-ui);
-  color: var(--text-3);
-  padding: 16px 0;
-}
-
-.route-landing-cta {
-  display: inline-flex;
-  align-items: center;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  font: 500 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  text-decoration: none;
-  border-radius: 10px;
-  transition: transform 150ms ease, box-shadow 150ms ease;
-}
-
-.route-landing-cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
 }
 
 .aircraft-landing-grid {

@@ -100,7 +100,7 @@
   clip: rect(0,0,0,0);
   border: 0;
 }
-.safety-feed__loading, .safety-feed__error, .safety-feed__empty {
+.safety-feed__loading, .safety-feed__error {
   padding: 40px 0; text-align: center; color: #6b7280;
 }
 .safety-feed__error { color: #b91c1c; }
