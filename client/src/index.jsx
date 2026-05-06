@@ -8,6 +8,10 @@ import { AuthProvider } from './context/AuthContext';
 import './index.css';
 
 const AircraftLandingPage  = lazy(() => import('./components/AircraftLandingPage'));
+const AircraftAirlines     = lazy(() => import('./components/AircraftAirlines'));
+const AircraftRoutes       = lazy(() => import('./components/AircraftRoutes'));
+const AircraftSafety       = lazy(() => import('./components/AircraftSafety'));
+const AircraftSpecs        = lazy(() => import('./components/AircraftSpecs'));
 const RouteLandingPage     = lazy(() => import('./components/RouteLandingPage'));
 const AircraftRouteLanding = lazy(() => import('./components/AircraftRouteLanding'));
 const AircraftIndex       = lazy(() => import('./pages/AircraftIndex'));
@@ -30,6 +34,10 @@ root.render(
         <BrowserRouter>
           <Routes>
             <Route element={<SiteLayout />}>
+              <Route path="/aircraft/:slug/airlines" element={<Suspense fallback={null}><AircraftAirlines /></Suspense>} />
+              <Route path="/aircraft/:slug/routes"   element={<Suspense fallback={null}><AircraftRoutes /></Suspense>} />
+              <Route path="/aircraft/:slug/safety"   element={<Suspense fallback={null}><AircraftSafety /></Suspense>} />
+              <Route path="/aircraft/:slug/specs"    element={<Suspense fallback={null}><AircraftSpecs /></Suspense>} />
               <Route path="/aircraft/:slug"     element={<Suspense fallback={null}><AircraftLandingPage /></Suspense>} />
               <Route path="/routes/:pair"            element={<Suspense fallback={null}><RouteLandingPage /></Suspense>} />
               <Route path="/routes/:pair/:aircraftSlug" element={<Suspense fallback={null}><AircraftRouteLanding /></Suspense>} />
