@@ -5,6 +5,7 @@ const aerodatabox      = require('./aerodataboxService');
 const openWeather      = require('./openWeatherService');      // defineDataSource
 const aviationWeather  = require('./aviationWeatherService');  // Plan 6 — METAR primary
 const airlabs          = require('./airlabsService');           // Plan 7 — gate/status primary
+const airlabsFleet     = require('./airlabsFleetService');     // worldwide tail lookup via /fleets
 const liveries         = require('./wikimediaLiveryService');  // defineDataSource
 const amenities        = require('./amenitiesService');
 const fleet            = require('../models/fleet');
@@ -49,10 +50,32 @@ async function enrichFlight(flight) {
     flight.aircraft?.registration || gateInfo?.registration || null;
   const tailInfo = registration ? fleet.getByRegistration(registration) : null;
 
+  // AirLabs fallback for non-US tails (FAA fleet only covers US-registered aircraft).
+  // Pro feature: only Pro users get worldwide fallback. Free users see whatever
+  // local FAA fleet returned (or null for non-US tails).
+  //
+  // TODO: _isProUser must be propagated by the enrichment controller (flightController.js).
+  // Until that wiring is in place, gate via ENRICHED_FLEET_ENABLED env var for safe rollout:
+  //   ENRICHED_FLEET_ENABLED=true enables worldwide tail enrichment for all enrichment calls.
+  //   When the controller propagates _isProUser, remove the env-var gate and use isProUser only.
+  let airlabsFleetData = null;
+  const isProUser = flight._isProUser === true;
+  const fleetEnvEnabled = process.env.ENRICHED_FLEET_ENABLED === 'true';
+  if (!tailInfo && (registration || flight.aircraft?.hex) && (isProUser || fleetEnvEnabled)) {
+    try {
+      airlabsFleetData = await airlabsFleet.getFleetRecord({
+        hex: flight.aircraft?.hex,
+        reg: registration,
+      });
+    } catch (err) {
+      console.warn('[enrich] airlabs fleet fallback failed:', err.message);
+    }
+  }
+
   // Build the Aircraft block with whatever we know, gracefully degrading
-  // through three coverage tiers:
-  //   1. Full tail data: airlabs returned a registration AND we have it
-  //      in our fleet table → registration + ICAO type + build year + age.
+  // through four coverage tiers:
+  //   1. Full tail data: local FAA fleet hit (US-registered aircraft).
+  //   1.5 AirLabs worldwide fleet hit (Pro/env-gated, non-US tails).
   //   2. Just the type: Google's airplane string mapped to ICAO via
   //      airplaneToIcao in googleFlightsService → at least show type.
   //   3. Nothing — return null and the UI renders "—".
@@ -61,13 +84,26 @@ async function enrichFlight(flight) {
   // tracked flights for the next 7 days.
   let aircraftBlock = null;
   if (tailInfo) {
+    // Tier 1: local FAA fleet hit — full tail data for US-registered aircraft.
     aircraftBlock = {
       registration: tailInfo.registration,
       icaoType: tailInfo.icao_type,
       buildYear: tailInfo.build_year,
       ageYears: tailInfo.build_year ? new Date().getFullYear() - tailInfo.build_year : null,
     };
+  } else if (airlabsFleetData) {
+    // Tier 1.5: AirLabs worldwide fleet hit (Pro only).
+    aircraftBlock = {
+      registration: airlabsFleetData.reg_number,
+      icaoType: flight.aircraft?.icaoType || airlabsFleetData.icao_type,
+      buildYear: airlabsFleetData.build_year,
+      ageYears: airlabsFleetData.age_years,
+      operator: airlabsFleetData.airline_name,
+      model: airlabsFleetData.model,
+      source: 'airlabs',
+    };
   } else if (flight.aircraft?.icaoType || gateInfo?.aircraftIcao) {
+    // Tier 2: type-only fallback.
     aircraftBlock = {
       registration: registration || null,
       icaoType: flight.aircraft?.icaoType || gateInfo?.aircraftIcao || null,
