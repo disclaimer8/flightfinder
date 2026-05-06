@@ -89,6 +89,27 @@ router.get('/sitemap.xml', async (_req, res) => {
     console.warn('[seo] hub-network edges unavailable for sitemap:', err.message);
   }
 
+  // Indexable safety events — fatal/hull_loss with narrative or ≥3 related events.
+  // Capped at 500 for sitemap hygiene; excess events still get unique meta when accessed.
+  try {
+    const safetyModel = require('../models/safetyEvents');
+    const { buildEventSlug } = require('../utils/eventSlug');
+    const indexable = safetyModel.listIndexable({ limit: 500 });
+    for (const ev of indexable) {
+      urls.push({
+        loc: `${BASE}/safety/events/${buildEventSlug(ev)}`,
+        changefreq: 'monthly',
+        priority: '0.5',
+        lastmod: new Date(ev.updated_at || ev.occurred_at).toISOString().slice(0, 10),
+      });
+    }
+    if (indexable.length > 0) {
+      console.log(`[seo] ${indexable.length} indexable safety events added to sitemap`);
+    }
+  } catch (err) {
+    console.warn('[seo] indexable safety events unavailable for sitemap:', err.message);
+  }
+
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',

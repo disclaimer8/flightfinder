@@ -23,6 +23,8 @@
 const { getFamilyBySlug, getFamilyList } = require('../models/aircraftFamilies');
 const openFlightsService = require('./openFlightsService');
 const { AIRCRAFT_FAQ, ROUTE_FAQ, interpolate } = require('../content/landingFaq');
+const safety = require('../models/safetyEvents');
+const { buildEventSlug, parseEventIdFromSlug } = require('../utils/eventSlug');
 
 const BASE = 'https://himaxym.com';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
@@ -267,24 +269,41 @@ function resolve(pathname) {
 
   const safetyEventMatch = /^\/safety\/events\/([^/?#]+)\/?$/.exec(pathname);
   if (safetyEventMatch) {
-    const id = safetyEventMatch[1];
-    if (!/^\d+$/.test(id)) return notFoundMeta();
+    const slug = safetyEventMatch[1];
+    const id = parseEventIdFromSlug(slug);
+    if (!id) return notFoundMeta();
+
+    const ev = safety.getById(id);
+    if (!ev) return notFoundMeta();
+
+    const canonicalSlug = buildEventSlug(ev);
+    const canonical = `${BASE}/safety/events/${canonicalSlug}`;
+    const isLegacy = slug !== canonicalSlug;
+
+    // Quality gate — index only fatal/hull_loss with narrative or ≥3 related.
+    const isHighSeverity = ev.severity === 'fatal' || ev.hull_loss === 1;
+    const hasNarrative = !!(ev.narrative && ev.narrative.length > 50);
+    const relatedCount = safety.getRelatedEventsCount(id);
+    const indexable = isHighSeverity && (hasNarrative || relatedCount >= 3);
+
+    const date = new Date(ev.occurred_at).toISOString().slice(0, 10);
+    const op = ev.operator_name || ev.operator_icao || 'Unknown operator';
+    const ac = ev.aircraft_icao_type || 'unknown aircraft';
+    const ap = ev.dep_iata || ev.location_country || '';
+    const sev = ev.severity === 'fatal' ? 'Fatal' : ev.hull_loss === 1 ? 'Hull loss' : 'Incident';
+
     return {
-      title: 'Aviation safety event — NTSB record | FlightFinder',
-      description: 'Detailed view of an NTSB aviation accident or incident report.',
-      canonical: `${BASE}/safety/events/${id}`,
-      h1: 'Aviation safety event',
-      subtitle: 'NTSB record',
-      // noindex until each event has unique narrative content — currently
-      // they're thin NTSB record dumps (date, severity, registration). Bing
-      // and Google flag thin content as a quality signal at the domain
-      // level, so it's better to keep them out of the index until we add
-      // value-add commentary or related-events context. follow stays on
-      // so PageRank still flows out to /safety/feed and /aircraft/:slug.
-      robots: 'noindex, follow',
+      title: `${sev} accident: ${op} ${ac}${ap ? ` at ${ap}` : ''} — ${date} | FlightFinder`,
+      description: `${sev} aviation accident on ${date}: ${op} operating a ${ac}${ap ? ` near ${ap}` : ''}. Aggregated from ${ev.source === 'ntsb' ? 'NTSB CAROL' : 'Aviation Safety Network / Wikidata'}.`,
+      canonical,
+      h1: `${sev} accident: ${op} ${ac}`,
+      subtitle: `${date}${ap ? ` · ${ap}` : ''}`,
+      robots: indexable ? 'index, follow' : 'noindex, follow',
+      redirectFromLegacy: isLegacy ? canonical : null,
       ogType: 'article',
       kind: 'safety-event',
       eventId: id,
+      eventData: ev,
     };
   }
 
@@ -549,6 +568,41 @@ function structuredData(meta) {
         ],
       },
     });
+  } else if (meta.kind === 'safety-event') {
+    const ev = meta.eventData;
+    if (ev) {
+      graph.push({
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+          { '@type': 'ListItem', position: 2, name: 'Safety', item: `${BASE}/safety/global` },
+          { '@type': 'ListItem', position: 3, name: 'NTSB feed', item: `${BASE}/safety/feed` },
+          { '@type': 'ListItem', position: 4, name: meta.h1, item: meta.canonical },
+        ],
+      });
+      graph.push({
+        '@type': 'Article',
+        headline: meta.title.replace(' | FlightFinder', ''),
+        description: meta.description,
+        url: meta.canonical,
+        datePublished: new Date(ev.occurred_at).toISOString(),
+        dateModified: new Date(ev.updated_at || ev.occurred_at).toISOString(),
+        author: { '@type': 'Organization', name: 'FlightFinder', url: BASE },
+        publisher: {
+          '@type': 'Organization',
+          name: 'FlightFinder',
+          url: BASE,
+          logo: { '@type': 'ImageObject', url: `${BASE}/og-image.png` },
+        },
+        isBasedOn: ev.report_url
+          || (ev.source === 'ntsb' && ev.source_event_id
+            ? `https://www.ntsb.gov/safety/Pages/safety-overview.aspx?ev=${ev.source_event_id}`
+            : ev.source_event_id
+              ? `https://www.wikidata.org/wiki/${ev.source_event_id}`
+              : undefined),
+        mainEntityOfPage: { '@type': 'WebPage', '@id': meta.canonical },
+      });
+    }
   } else if (meta.kind === 'home') {
     graph.push({
       '@type': 'FAQPage',
