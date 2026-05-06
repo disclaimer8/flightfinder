@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
+import MetaLine from '../../components/MetaLine';
 import styles from './legal.module.css';
 
 export default function Privacy() {
   return (
     <article className={styles.page}>
       <h1>Privacy Policy</h1>
-      <p className={styles.meta}>Effective: 2026-04-22.</p>
+      <MetaLine effective="2026-04-22" />
 
       <h2>1. What we collect</h2>
       <ul>
