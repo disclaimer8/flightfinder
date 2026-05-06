@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
+import EmptyState from './EmptyState';
 import './RouteOperators.css';
 
 export default function RouteOperators({ from, to }) {
@@ -28,9 +29,9 @@ export default function RouteOperators({ from, to }) {
         <div className="route-ops__head">
           <span className="route-ops__eyebrow">OPERATORS ON THIS ROUTE</span>
         </div>
-        <p className="route-ops__empty">
+        <EmptyState>
           No carrier data observed on this city pair yet. We refresh weekly from live ADS-B.
-        </p>
+        </EmptyState>
       </section>
     );
   }

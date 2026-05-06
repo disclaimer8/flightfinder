@@ -4,6 +4,7 @@ import { API_BASE } from '../utils/api';
 import SkeletonResults from './SkeletonResults';
 import SectionHeader from './SectionHeader';
 import DataCard from './DataCard';
+import EmptyState from './EmptyState';
 import './AircraftLandingPage.css';
 
 const AircraftRouteMap = lazy(() => import('./AircraftRouteMap'));
@@ -329,11 +330,11 @@ export default function AircraftLandingPage() {
                     />
                   </Suspense>
                 ) : (
-                  <p className="landing-empty">
+                  <EmptyState>
                     This aircraft has no live route observations in the past 14 days. Try popular families like the
                     {' '}<Link to="/aircraft/boeing-787">Boeing 787</Link> or{' '}
                     <Link to="/aircraft/airbus-a320">Airbus A320</Link>.
-                  </p>
+                  </EmptyState>
                 )}
               </div>
             </div>

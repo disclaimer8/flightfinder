@@ -38,12 +38,6 @@
   text-align: right;
 }
 
-.aircraft-mix__empty {
-  font: 400 14px/1.5 var(--font-ui);
-  color: var(--text-3);
-  padding: 16px 0;
-}
-
 @media (max-width: 640px) {
   .aircraft-mix__row { grid-template-columns: 1fr; gap: 4px; }
 }
