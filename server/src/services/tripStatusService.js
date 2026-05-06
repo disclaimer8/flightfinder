@@ -8,11 +8,11 @@ async function compute(trip) {
   const [live, inbound, prediction] = await Promise.all([
     safeLive(trip),
     safeInbound(trip),
-    predictDelay({
+    Promise.resolve(predictDelay({
       airline: trip.airline_iata,
       flightNumber: trip.flight_number,
       dep: trip.dep_iata, arr: trip.arr_iata,
-    }),
+    })),
   ]);
 
   return {
