@@ -162,14 +162,63 @@ function resolve(pathname) {
   const rtMatch = /^\/routes\/([^/?#]+)\/?$/.exec(pathname);
   if (rtMatch) return routeMeta(rtMatch[1].toLowerCase());
 
-  // Subscription pivot routes — indexable SPA pages served with 200 + generic
-  // home-style meta (their real content is rendered client-side by React Router).
-  if (pathname === '/pricing'         || pathname === '/pricing/')         return { ...HOME, kind: 'pricing',  canonical: `${BASE}/pricing` };
-  if (pathname === '/trips'           || pathname === '/trips/')           return { ...HOME, kind: 'trips',    canonical: `${BASE}/trips`, robots: 'noindex, follow' };
-  if (pathname === '/subscribe/return')                                    return { ...HOME, kind: 'subscribe', canonical: `${BASE}/pricing`, robots: 'noindex, nofollow' };
-  if (pathname === '/legal/terms'     || pathname === '/legal/terms/')     return { ...HOME, kind: 'legal',    canonical: `${BASE}/legal/terms` };
-  if (pathname === '/legal/privacy'   || pathname === '/legal/privacy/')   return { ...HOME, kind: 'legal',    canonical: `${BASE}/legal/privacy` };
-  if (pathname === '/legal/attributions' || pathname === '/legal/attributions/') return { ...HOME, kind: 'legal', canonical: `${BASE}/legal/attributions` };
+  // Subscription pivot routes — indexable SPA pages with per-route meta so
+  // Google doesn't dedupe them with the home title (they share an index.html
+  // shell, but each surface needs a unique <title> + description).
+  if (pathname === '/pricing' || pathname === '/pricing/') {
+    return {
+      title: 'FlightFinder Pro — $4.99/mo, $39/yr, or $99 lifetime',
+      description: 'Unlock the enriched flight card (livery, on-time stats, CO₂, amenities), delay predictions, and My Trips with web-push alerts. Cancel anytime. Lifetime is capped at 500 founders.',
+      canonical: `${BASE}/pricing`,
+      h1: 'Choose your plan',
+      subtitle: 'Unlock enriched flight data, delay predictions, and My Trips.',
+      robots: 'index, follow',
+      ogType: 'website',
+      kind: 'pricing',
+    };
+  }
+  if (pathname === '/trips' || pathname === '/trips/') {
+    return { ...HOME, kind: 'trips', canonical: `${BASE}/trips`, robots: 'noindex, follow' };
+  }
+  if (pathname === '/subscribe/return') {
+    return { ...HOME, kind: 'subscribe', canonical: `${BASE}/pricing`, robots: 'noindex, nofollow' };
+  }
+  if (pathname === '/legal/terms' || pathname === '/legal/terms/') {
+    return {
+      title: 'Terms of Service | FlightFinder',
+      description: 'FlightFinder terms of service — subscription tiers, billing and tax handling, refunds, cancellation, EU 14-day right of withdrawal, acceptable use, and termination policy.',
+      canonical: `${BASE}/legal/terms`,
+      h1: 'Terms of Service',
+      subtitle: 'How FlightFinder works — billing, refunds, acceptable use.',
+      robots: 'index, follow',
+      ogType: 'article',
+      kind: 'legal',
+    };
+  }
+  if (pathname === '/legal/privacy' || pathname === '/legal/privacy/') {
+    return {
+      title: 'Privacy Policy | FlightFinder',
+      description: 'FlightFinder privacy policy — what we collect, how we use it, what we share, and your rights under GDPR and CCPA. Stripe handles payment data; we do not store card numbers.',
+      canonical: `${BASE}/legal/privacy`,
+      h1: 'Privacy Policy',
+      subtitle: 'What we collect, how we use it, and your rights.',
+      robots: 'index, follow',
+      ogType: 'article',
+      kind: 'legal',
+    };
+  }
+  if (pathname === '/legal/attributions' || pathname === '/legal/attributions/') {
+    return {
+      title: 'Data sources and attributions | FlightFinder',
+      description: 'FlightFinder uses public aviation datasets — adsb.lol (ADS-B observed routes), AeroDataBox and Travelpayouts (schedules and fares), Wikidata, NTSB, OpenFlights, OurAirports, and OpenWeather.',
+      canonical: `${BASE}/legal/attributions`,
+      h1: 'Data sources and attributions',
+      subtitle: 'Open and licensed datasets that power FlightFinder.',
+      robots: 'index, follow',
+      ogType: 'article',
+      kind: 'legal',
+    };
+  }
 
   if (pathname === '/safety/feed' || pathname === '/safety/feed/') {
     return {
@@ -368,6 +417,96 @@ function structuredData(meta) {
       isAccessibleForFree: true,
       creator: { '@type': 'Organization', name: 'FlightFinder', url: BASE },
       spatialCoverage: { '@type': 'Country', name: 'United States' },
+    });
+  } else if (meta.kind === 'pricing') {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: 'Pricing', item: meta.canonical },
+      ],
+    });
+    // Product + per-tier Offer schema — opens pricing snippets in SERP and
+    // is required for Google Merchant validation if we ever ingest into Shopping.
+    graph.push({
+      '@type': 'Product',
+      name: 'FlightFinder Pro',
+      description: 'Pro subscription unlocks enriched flight cards (livery, on-time stats, CO₂, amenities), delay predictions, and My Trips with push alerts.',
+      brand: { '@type': 'Organization', name: 'FlightFinder', url: BASE },
+      url: meta.canonical,
+      offers: [
+        {
+          '@type': 'Offer',
+          name: 'Pro Monthly',
+          price: '4.99',
+          priceCurrency: 'USD',
+          priceSpecification: {
+            '@type': 'UnitPriceSpecification',
+            price: '4.99',
+            priceCurrency: 'USD',
+            billingDuration: 'P1M',
+          },
+          availability: 'https://schema.org/InStock',
+          url: `${BASE}/pricing`,
+        },
+        {
+          '@type': 'Offer',
+          name: 'Pro Annual',
+          price: '39',
+          priceCurrency: 'USD',
+          priceSpecification: {
+            '@type': 'UnitPriceSpecification',
+            price: '39',
+            priceCurrency: 'USD',
+            billingDuration: 'P1Y',
+          },
+          availability: 'https://schema.org/InStock',
+          url: `${BASE}/pricing`,
+        },
+        {
+          '@type': 'Offer',
+          name: 'Pro Lifetime',
+          price: '99',
+          priceCurrency: 'USD',
+          availability: 'https://schema.org/LimitedAvailability',
+          // Lifetime is a one-time payment — no priceSpecification needed,
+          // schema.org defaults a plain Offer to one-time billing.
+          url: `${BASE}/pricing`,
+          eligibleQuantity: { '@type': 'QuantitativeValue', maxValue: 500 },
+        },
+      ],
+    });
+  } else if (meta.kind === 'by-aircraft') {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: 'By aircraft', item: meta.canonical },
+      ],
+    });
+    // ItemList — every aircraft family we ship a landing page for. Helps
+    // Google understand the index page is a curated list, not a thin shell.
+    const families = getFamilyList();
+    if (families.length > 0) {
+      graph.push({
+        '@type': 'ItemList',
+        name: 'Aircraft families with dedicated landing pages',
+        numberOfItems: families.length,
+        itemListElement: families.map((fam, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          url: `${BASE}/aircraft/${fam.slug}`,
+          name: fam.family?.label || fam.name || fam.slug,
+        })),
+      });
+    }
+  } else if (meta.kind === 'legal') {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: 'Legal', item: meta.canonical },
+      ],
     });
   } else if (meta.kind === 'home') {
     graph.push({
