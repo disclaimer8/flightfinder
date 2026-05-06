@@ -344,7 +344,7 @@ exports.getFlight = async (flightIata) => {
       cacheService.set(cacheKey, null, cacheService.TTL.negative);
       return null;
     }
-    cacheService.set(cacheKey, f, cacheService.TTL.liveFlights); // 10 min
+    cacheService.set(cacheKey, f, cacheService.TTL.flightStatus); // 30 min — per-flight gate/terminal info
     return f;
   } catch (err) {
     console.warn(`[airlabs] getFlight failed for ${key}: ${err?.response?.status ?? err.message}`);

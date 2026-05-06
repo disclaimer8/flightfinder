@@ -1,16 +1,26 @@
 const NodeCache = require('node-cache');
 
-// TTL values in seconds
+// TTL values in seconds.
+//
+// Tuned 2026-05-06 to maximize AirLabs API budget usage on Developer tier
+// (25K calls/month). Volume-heavy AirLabs endpoints (/flights, /flight,
+// /schedules) get longer TTLs since the underlying data tolerates staleness
+// and observed_routes accumulation isn't time-critical at the per-call level.
 const TTL = {
-  flights: 10 * 60,             // 10 min — flight prices
+  flights: 10 * 60,             // 10 min — flight prices (Google Flights / Travelpayouts; their freshness expectation)
   explore: 30 * 60,             // 30 min — explore destinations (expensive fan-out)
   aircraft: 24 * 60 * 60,       // 24h — legacy, kept for callers still using it
   staticRef: 30 * 24 * 60 * 60, // 30 days — aircraft specs, airline metadata (effectively static)
   negative: 24 * 60 * 60,       // 24h — remember "not found" results so we stop hammering the API
   tpPrice: 30 * 60,             // 30 min — Travelpayouts cheap-price lookup
   tpCalendar: 60 * 60,          // 1h — Travelpayouts monthly price calendar
-  schedules: 12 * 60 * 60,      // 12h — AirLabs /schedules per airport (stable for the day)
-  liveFlights: 10 * 60,         // 10 min — AirLabs /flights live airborne snapshot
+
+  // AirLabs endpoints — bumped 2026-05-06 to halve API spend on the
+  // hot path. Observed_routes upsert still fires on every cache miss
+  // (refresh from /flights), so accumulation continues at the new pace.
+  schedules: 24 * 60 * 60,      // 24h (was 12h) — /schedules is "today's departures", stable for the day
+  liveFlights: 30 * 60,         // 30 min (was 10 min) — /flights live snapshot; aircraft assignments rarely flip mid-day
+  flightStatus: 30 * 60,        // 30 min (NEW) — /flight per-flight status; gate/terminal info stable enough
 };
 
 const cache = new NodeCache({ useClones: false });
