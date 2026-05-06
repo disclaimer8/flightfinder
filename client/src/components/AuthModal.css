@@ -261,38 +261,6 @@
   margin-top: 1px;
 }
 
-/* ─────────────────────────────────────────
-   SUBMIT BUTTON
-───────────────────────────────────────── */
-.auth-submit {
-  padding: 0.8rem 1.5rem;
-  background: var(--primary);
-  color: #fff;
-  border: none;
-  border-radius: var(--r);
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s, transform 0.1s, opacity 0.15s;
-  letter-spacing: -0.01em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
-}
-
-.auth-submit:hover:not(:disabled) {
-  background: var(--primary-dark);
-  box-shadow: 0 4px 14px rgba(99,102,241,0.38);
-  transform: translateY(-1px);
-}
-
-.auth-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 /* Spinner inside button */
 .auth-btn-spinner {
   width: 16px;

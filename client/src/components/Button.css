@@ -10,8 +10,8 @@
   text-align: center;
 }
 
-.btn--md { padding: 12px 20px; font-size: 15px; }
-.btn--sm { padding: 10px 20px; font-size: 14px; }
+.btn--md { padding: 13px 20px; font-size: 15px; }
+.btn--sm { padding: 12px 20px; font-size: 14px; }
 
 .btn--primary {
   background: var(--navy);

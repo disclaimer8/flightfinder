@@ -595,7 +595,7 @@
   border-radius: 12px;
   margin-top: 4px;
 }
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .arm-cards-wrap { padding: 12px; border-radius: 10px; }
 }
 
@@ -651,23 +651,39 @@
   margin-left: auto;
 }
 
-/* Mobile polish */
-@media (max-width: 600px) {
+/* Mobile polish — header stacks vertically on narrow phones */
+@media (max-width: 480px) {
   .arm-root { height: 78vh; border-radius: 12px; }
-  .arm-badge { padding: 6px 8px; }
+
+  /* Stack header controls vertically — back / view-toggle / refresh
+     all overflow on narrow phones. */
+  .arm-header,
+  .arm-toolbar,
+  .arm-controls,
+  .arm-badge {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .arm-badge {
+    padding: 6px 8px;
+    flex-basis: 100%;
+    justify-content: center;
+  }
   .arm-badge-label { font-size: 12px; }
   .arm-badge-family { font-size: 10px; }
+
+  .arm-view-toggle { margin-left: 0; }
+  .arm-view-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    min-height: 26px;
+  }
 
   .arm-fallback-banner {
     top: 56px;
     padding: 6px 10px;
     font-size: 11px;
     border-radius: 12px;
-  }
-
-  .arm-view-btn {
-    padding: 4px 10px;
-    font-size: 11px;
-    min-height: 26px;
   }
 }

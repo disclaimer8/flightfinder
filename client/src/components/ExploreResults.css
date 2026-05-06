@@ -293,10 +293,10 @@
   color: #fff;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) /* md */ {
   .destination-grid { grid-template-columns: 1fr 1fr; }
 }
 
-@media (max-width: 400px) {
+@media (max-width: 480px) /* sm */ {
   .destination-grid { grid-template-columns: 1fr; }
 }

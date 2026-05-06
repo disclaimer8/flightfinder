@@ -200,7 +200,7 @@
 .ac-btn-cancel:hover { background: #fdecea; }
 
 /* Mobile */
-@media (max-width: 600px) {
+@media (max-width: 768px) /* md */ {
   .ac-search-row--route { gap: 8px; }
   .ac-swap-btn { width: 40px; flex: 0 0 40px; }
   .ac-btn { width: 100%; }

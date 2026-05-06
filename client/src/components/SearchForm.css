@@ -419,7 +419,7 @@
 /* ─────────────────────────────────────────
    RESPONSIVE
 ───────────────────────────────────────── */
-@media (max-width: 640px) {
+@media (max-width: 768px) /* md */ {
   .search-form-container {
     padding: 1.25rem 1.25rem 1.25rem;
     border-radius: var(--r-lg);

@@ -7,13 +7,14 @@
   height: 64px;
   display: flex;
   align-items: center;
-  padding-top: var(--safe-top);
+  padding-top: max(0px, env(safe-area-inset-top));
   box-shadow: var(--shadow);
 }
 
 .site-header[data-variant="transparent"]:not([data-scrolled="true"]) {
   background: transparent;
   box-shadow: none;
+  padding-top: max(12px, env(safe-area-inset-top));
 }
 
 .site-header-inner {
@@ -128,7 +129,7 @@
   background: white;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) /* md */ {
   .site-header-nav, .site-header-actions { display: none; }
   .site-header-burger { display: flex; margin-left: auto; }
 }

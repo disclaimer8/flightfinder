@@ -1,3 +1,6 @@
+@import './styles/breakpoints.css';
+@import './styles/typography.css';
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -147,3 +150,16 @@ body {
 }
 
 .eyebrow--strong { color: var(--text-2); }
+
+/* ─── Touch targets: form inputs ─────────────────────────────────
+ * Ensure form controls meet WCAG 2.5.5 ≥44×44 hot-zone touch target.
+ * `min-height: 44px` is a floor; component-level rules may set
+ * larger heights via padding/font-size — this rule never makes
+ * them smaller. Excludes checkbox/radio/range which have their own
+ * intrinsic sizing model.
+ */
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+select,
+textarea {
+  min-height: 44px;
+}

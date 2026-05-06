@@ -55,7 +55,7 @@
   color: var(--text-2);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) /* md */ {
   .route-ops__safety { width: auto; }
   .route-ops__count { width: auto; }
 }
