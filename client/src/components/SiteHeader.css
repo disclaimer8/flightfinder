@@ -128,7 +128,7 @@
   background: white;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) /* md */ {
   .site-header-nav, .site-header-actions { display: none; }
   .site-header-burger { display: flex; margin-left: auto; }
 }

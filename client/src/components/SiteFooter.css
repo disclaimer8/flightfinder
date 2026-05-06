@@ -54,7 +54,7 @@
   text-align: center;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) /* md */ {
   .site-footer-inner {
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;

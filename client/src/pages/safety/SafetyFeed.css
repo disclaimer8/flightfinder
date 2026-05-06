@@ -105,7 +105,7 @@
 }
 .safety-feed__error { color: #b91c1c; }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) /* md */ {
   .safety-feed__table thead { display: none; }
   .safety-feed__row { display: block; padding: 12px 0; }
   .safety-feed__row td { display: block; padding: 2px 8px; border: 0; }

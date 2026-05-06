@@ -197,7 +197,7 @@
 }
 
 /* Mobile */
-@media (max-width: 500px) {
+@media (max-width: 480px) /* sm */ {
   .vc-months { grid-template-columns: 1fr 1fr; gap: 12px; }
   .vc-iata { font-size: 18px; }
   .vc-cities { display: none; }

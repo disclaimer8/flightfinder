@@ -125,7 +125,7 @@
   cursor: pointer;
 }
 
-@media (max-width: 400px) {
+@media (max-width: 480px) /* sm */ {
   .rm-slider { width: 120px; }
 }
 
@@ -223,7 +223,7 @@
 }
 
 /* Mobile */
-@media (max-width: 600px) {
+@media (max-width: 768px) /* md */ {
   .rm-root { height: 60vh; border-radius: 12px; }
   .rm-info { bottom: 12px; padding: 10px 14px; }
   .rm-info-iata { font-size: 18px; }
@@ -271,6 +271,6 @@
 }
 .rm-legend-dot--baseline   { background: rgba(148,163,184,0.15); }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) /* md */ {
   .rm-legend { bottom: 12px; right: 8px; }
 }

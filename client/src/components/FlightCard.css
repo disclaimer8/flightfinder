@@ -394,7 +394,7 @@
   margin-top: 1px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) /* md */ {
   .airport-code { font-size: 1.2rem; }
   .price { font-size: 1.3rem; }
   .specs { gap: 0.5rem; }
@@ -406,7 +406,7 @@
   .flight-header { flex-wrap: wrap; gap: 0.5rem; }
 }
 
-@media (max-width: 400px) {
+@media (max-width: 480px) /* sm */ {
   /* On very small screens stack the route endpoints vertically */
   .route-line {
     grid-template-columns: 1fr;

@@ -38,6 +38,6 @@
   text-align: right;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) /* md */ {
   .aircraft-mix__row { grid-template-columns: 1fr; gap: 4px; }
 }
