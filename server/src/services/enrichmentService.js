@@ -30,7 +30,7 @@ async function enrichFlight(flight) {
     arr: flight.arrival?.code,
   });
 
-  const prediction = predictDelay({
+  const prediction = await predictDelay({
     airline: flight.airline,
     flightNumber: flight.flightNumber,
     dep: flight.departure?.code,
