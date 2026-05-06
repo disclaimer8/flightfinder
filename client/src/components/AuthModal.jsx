@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../utils/api';
+import Button from './Button';
 import './AuthModal.css';
 
 // Eye / EyeOff icons (inline SVG — no extra dependency needed)
@@ -356,17 +357,18 @@ export default function AuthModal({ onClose, initialTab = 'login' }) {
               </div>
 
               {/* Submit */}
-              <button
+              <Button
                 type="submit"
-                className="auth-submit"
+                variant="primary"
                 disabled={submitting}
                 aria-busy={submitting}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', marginTop: '0.25rem' }}
               >
                 {submitting && <span className="auth-btn-spinner" aria-hidden="true" />}
                 {submitting
                   ? tab === 'login' ? 'Signing in…' : 'Creating account…'
                   : tab === 'login' ? 'Sign in' : 'Create account'}
-              </button>
+              </Button>
 
               {/* Footer switch */}
               <p className="auth-switch">
