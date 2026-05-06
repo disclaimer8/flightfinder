@@ -1,4 +1,5 @@
 import styles from './PricingCard.module.css';
+import Button from './Button';
 
 export function PricingCard({
   tier,
@@ -34,14 +35,13 @@ export function PricingCard({
           <li key={f}>{f}</li>
         ))}
       </ul>
-      <button
-        type="button"
-        className={styles.cta}
+      <Button
+        variant="primary"
         disabled={disabled}
         onClick={() => onSelect(tier)}
       >
         {loading ? 'Redirecting…' : soldOut ? 'Sold out' : 'Subscribe'}
-      </button>
+      </Button>
     </article>
   );
 }
