@@ -47,6 +47,7 @@ export default function RouteLandingPage() {
   const [state, setState] = useState({ status: 'loading' });
   const [routeCopy, setRouteCopy] = useState(null);
   const [routeBrief, setRouteBrief] = useState(null);
+  const [topAircraft, setTopAircraft] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +78,16 @@ export default function RouteLandingPage() {
         to:   { iata: to,   city: toAp?.city   || to,   name: toAp?.name   || to,   country: toAp?.country   || '' },
       });
     });
+  }, [pair]);
+
+  useEffect(() => {
+    if (!pair) return;
+    let active = true;
+    fetch(`${API_BASE}/api/routes/${pair}/aircraft-list`)
+      .then((r) => (r.ok ? r.json() : { data: [] }))
+      .then((j) => { if (active) setTopAircraft(j.data || []); })
+      .catch(() => {});
+    return () => { active = false; };
   }, [pair]);
 
   useEffect(() => {
@@ -174,6 +185,22 @@ export default function RouteLandingPage() {
               <p>{interpolate(qa.a, from, to)}</p>
             </details>
           ))}
+        </section>
+      )}
+
+      {topAircraft.length > 0 && (
+        <section className="landing-section route-landing__aircraft-grid">
+          <h2 className="eyebrow eyebrow--strong">Aircraft on this route</h2>
+          <ul>
+            {topAircraft.slice(0, 8).map((a) => (
+              <li key={a.slug}>
+                <Link to={`/routes/${pair}/${a.slug}`}>
+                  {a.label}
+                  <span>({a.combo_count} model variant{a.combo_count === 1 ? '' : 's'} observed)</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

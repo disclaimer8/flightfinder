@@ -345,7 +345,7 @@ export default function AircraftLandingPage() {
                 <ul className="landing-siblings-list">
                   {topRoutes.map((r) => (
                     <li key={`${r.dep}-${r.arr}`}>
-                      <Link to={`/routes/${r.dep.toLowerCase()}-${r.arr.toLowerCase()}`}>
+                      <Link to={`/routes/${r.dep.toLowerCase()}-${r.arr.toLowerCase()}/${slug}`}>
                         {r.dep} &rarr; {r.arr}
                       </Link>
                     </li>

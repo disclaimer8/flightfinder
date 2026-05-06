@@ -337,3 +337,41 @@
   .route-stat-strip { gap: 16px; flex-wrap: wrap; }
   .route-stat__value { font-size: 16px; }
 }
+
+/* ─── Route Landing: Aircraft-on-this-route grid ─── */
+.route-landing__aircraft-grid {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+}
+.route-landing__aircraft-grid h2 {
+  margin: 0 0 16px;
+}
+.route-landing__aircraft-grid ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.route-landing__aircraft-grid li {
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+.route-landing__aircraft-grid a {
+  color: var(--text);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.route-landing__aircraft-grid a:hover {
+  text-decoration: underline;
+}
+.route-landing__aircraft-grid span {
+  font: 400 12px var(--font-mono);
+  color: var(--text-3);
+}
