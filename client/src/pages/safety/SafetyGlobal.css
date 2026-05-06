@@ -625,3 +625,11 @@
     border-radius: var(--r, 10px);
   }
 }
+
+.methodology-note {
+  font: 400 13px var(--font-mono);
+  color: var(--text-3);
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}

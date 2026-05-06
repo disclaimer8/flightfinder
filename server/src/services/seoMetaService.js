@@ -220,6 +220,19 @@ function resolve(pathname) {
     };
   }
 
+  if (pathname === '/about' || pathname === '/about/') {
+    return {
+      title: 'About FlightFinder — flight search built around aircraft type',
+      description: 'FlightFinder is a flight search engine optimized for aircraft type, with a global aviation safety database aggregated from NTSB, Wikidata, B3A and ADS-B sources.',
+      canonical: `${BASE}/about`,
+      h1: 'About FlightFinder',
+      subtitle: 'Flight search built around aircraft type, with public aviation safety data.',
+      robots: 'index, follow',
+      ogType: 'website',
+      kind: 'about',
+    };
+  }
+
   if (pathname === '/safety/feed' || pathname === '/safety/feed/') {
     return {
       title: 'NTSB recent aviation accidents — daily feed (United States) | FlightFinder',
@@ -507,6 +520,34 @@ function structuredData(meta) {
         { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
         { '@type': 'ListItem', position: 2, name: 'Legal', item: meta.canonical },
       ],
+    });
+  } else if (meta.kind === 'about') {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: 'About', item: meta.canonical },
+      ],
+    });
+    graph.push({
+      '@type': 'AboutPage',
+      url: meta.canonical,
+      name: 'About FlightFinder',
+      mainEntity: {
+        '@type': 'Organization',
+        name: 'FlightFinder',
+        url: BASE,
+        description: 'Flight search engine built around aircraft type, with a global aviation safety database aggregated from public sources.',
+        email: 'support@himaxym.com',
+        sameAs: [BASE],
+        knowsAbout: [
+          'Aviation',
+          'Flight schedules',
+          'Aircraft types',
+          'Aviation safety',
+          'ADS-B',
+        ],
+      },
     });
   } else if (meta.kind === 'home') {
     graph.push({
