@@ -321,6 +321,11 @@ if (!IS_DEV) {
 
   const spaFallback = (req, res) => {
     const meta = seoMeta.resolve(req.path);
+
+    if (meta.redirectFromLegacy) {
+      return res.redirect(301, meta.redirectFromLegacy);
+    }
+
     let html = seoMeta.inject(readIndexHtml(), meta);
     const q = req.query || {};
     // Query-string variants collapse to the route's canonical — otherwise
