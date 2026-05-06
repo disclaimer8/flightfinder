@@ -13,12 +13,6 @@
   margin-bottom: 12px;
 }
 
-.enriched-teaser__eyebrow {
-  font: 500 11px var(--font-mono);
-  letter-spacing: 0.08em;
-  color: var(--text-2);
-}
-
 .enriched-teaser__badge {
   font: 500 10px var(--font-mono);
   text-transform: uppercase;

@@ -27,7 +27,7 @@ export default function RouteOperators({ from, to }) {
     return (
       <section className="route-ops" aria-label="Operators on this route">
         <div className="route-ops__head">
-          <span className="route-ops__eyebrow">OPERATORS ON THIS ROUTE</span>
+          <span className="eyebrow eyebrow--strong">OPERATORS ON THIS ROUTE</span>
         </div>
         <EmptyState>
           No carrier data observed on this city pair yet. We refresh weekly from live ADS-B.
@@ -46,8 +46,8 @@ export default function RouteOperators({ from, to }) {
   return (
     <section className="route-ops" aria-label="Operators on this route">
       <div className="route-ops__head">
-        <span className="route-ops__eyebrow">OPERATORS ON THIS ROUTE</span>
-        <span className="route-ops__sub">Last 90 days · top {ops.length}</span>
+        <span className="eyebrow eyebrow--strong">OPERATORS ON THIS ROUTE</span>
+        <span className="eyebrow eyebrow--md">Last 90 days · top {ops.length}</span>
       </div>
       <table className="route-ops__table">
         <thead>

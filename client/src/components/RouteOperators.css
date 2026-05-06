@@ -10,17 +10,6 @@
   margin-bottom: 12px;
 }
 
-.route-ops__eyebrow {
-  font: 500 11px var(--font-mono);
-  letter-spacing: 0.08em;
-  color: var(--text-2);
-}
-
-.route-ops__sub {
-  font: 400 12px var(--font-mono);
-  color: var(--text-3);
-}
-
 .route-ops__table {
   width: 100%;
   border-collapse: collapse;

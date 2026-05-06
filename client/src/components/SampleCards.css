@@ -34,13 +34,6 @@
   transform: translateY(-2px);
 }
 
-.sample-card-eyebrow {
-  font: 500 11px var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-2);
-}
-
 .sample-card-headline {
   font: 600 22px/1.25 var(--font-display);
   color: var(--text);

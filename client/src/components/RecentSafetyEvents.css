@@ -11,12 +11,6 @@
   margin-bottom: 12px;
 }
 
-.rse-eyebrow {
-  font: 500 11px var(--font-mono);
-  letter-spacing: 0.08em;
-  color: var(--text-2);
-}
-
 .rse-all {
   font: 500 14px var(--font-ui);
   color: var(--link);

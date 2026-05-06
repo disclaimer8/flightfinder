@@ -43,7 +43,7 @@ export default function RecentSafetyEvents() {
     return (
       <section className="rse">
         <div className="rse-head">
-          <span className="rse-eyebrow">RECENT SAFETY EVENTS</span>
+          <span className="eyebrow eyebrow--strong">RECENT SAFETY EVENTS</span>
           <Link to="/safety/global" className="rse-all">Browse the full safety database →</Link>
         </div>
       </section>
@@ -54,7 +54,7 @@ export default function RecentSafetyEvents() {
     return (
       <section className="rse">
         <div className="rse-head">
-          <span className="rse-eyebrow">RECENT SAFETY EVENTS</span>
+          <span className="eyebrow eyebrow--strong">RECENT SAFETY EVENTS</span>
         </div>
         <div className="rse-loading">Loading…</div>
       </section>
@@ -64,7 +64,7 @@ export default function RecentSafetyEvents() {
   return (
     <section className="rse">
       <div className="rse-head">
-        <span className="rse-eyebrow">RECENT SAFETY EVENTS</span>
+        <span className="eyebrow eyebrow--strong">RECENT SAFETY EVENTS</span>
         <Link to="/safety/global" className="rse-all">View all events →</Link>
       </div>
       <table className="rse-table">
