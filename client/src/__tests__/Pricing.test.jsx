@@ -23,11 +23,11 @@ describe('Pricing page', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders all three tier headings', async () => {
+  it('renders all three tier cards with accessible names', async () => {
     render(<MemoryRouter><Pricing /></MemoryRouter>);
-    expect(await screen.findByRole('heading', { name: /Pro Monthly/ })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Pro Annual/ })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Pro Lifetime/ })).toBeInTheDocument();
+    expect(await screen.findByLabelText('Pro Monthly')).toBeInTheDocument();
+    expect(screen.getByLabelText('Pro Annual')).toBeInTheDocument();
+    expect(screen.getByLabelText('Pro Lifetime')).toBeInTheDocument();
   });
 
   it('shows lifetime slots remaining once counter loads', async () => {
