@@ -1,0 +1,17 @@
+/* ─── Breakpoint tokens ─────────────────────────────────────────
+ * Three canonical breakpoints used across the codebase.
+ *
+ * Usage in @media queries: use raw values (480px / 768px / 1024px).
+ * CSS spec disallows custom properties inside @media (max-width: ...).
+ * Tokens here serve as documentation + JS reference.
+ *
+ * Migration rule (strict round-down):
+ *   480, 500           → 480px (sm)
+ *   560, 600, 640, 700, 720 → 768px (md)
+ *   900, 1024          → 1024px (lg)
+ */
+:root {
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+}
