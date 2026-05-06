@@ -223,6 +223,7 @@ app.use('/api/config',        require('./routes/config'));
 app.use('/api/safety',        require('./routes/safety'));
 app.use('/api/client-error',  require('./routes/clientError'));
 app.use('/api/admin/ingest-status', require('./routes/ingestStatus'));
+app.use('/api',                   require('./routes/landingRoutes'));
 if (process.env.TRIPS_ENABLED !== '0') {
   app.use('/api/trips',       require('./routes/trips'));
   app.use('/api/push',        require('./routes/push'));

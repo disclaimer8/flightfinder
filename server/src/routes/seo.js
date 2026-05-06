@@ -110,6 +110,23 @@ router.get('/sitemap.xml', async (_req, res) => {
     console.warn('[seo] indexable safety events unavailable for sitemap:', err.message);
   }
 
+  // Aircraft × Route programmatic grid — qualifying combos in last 90d + editorial whitelist.
+  // Capped at 10K for sitemap hygiene.
+  try {
+    const aircraftRouteSvc = require('../services/aircraftRouteService');
+    const combos = aircraftRouteSvc.listQualifying({ limit: 10000 });
+    for (const c of combos) {
+      urls.push({
+        loc: `${BASE}/routes/${c.from_iata}-${c.to_iata}/${c.slug}`,
+        changefreq: 'weekly',
+        priority: '0.5',
+        lastmod: today,
+      });
+    }
+  } catch (err) {
+    console.warn('[seo] aircraft-route grid unavailable for sitemap:', err.message);
+  }
+
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',

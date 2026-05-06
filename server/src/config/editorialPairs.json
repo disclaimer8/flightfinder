@@ -1,0 +1,15 @@
+{
+  "_doc": "Editorial whitelist for /routes/{pair}/{aircraft-slug} pages. These pairs always generate landing pages even if no observed flights in last 90 days. Stored as 'lhr-jfk' (lowercase, dash-separated) format. Maintained manually based on global passenger-volume hub pairs (IATA top 50).",
+  "pairs": [
+    "lhr-jfk", "lhr-lax", "lhr-sin", "lhr-dxb", "lhr-hkg",
+    "jfk-lax", "jfk-sfo", "jfk-mia", "jfk-cdg", "jfk-fco",
+    "nrt-lax", "nrt-sfo", "nrt-jfk", "hnd-sfo", "hnd-jfk",
+    "sin-syd", "sin-lhr", "sin-jfk", "hkg-jfk", "hkg-syd",
+    "dxb-jfk", "dxb-lhr", "dxb-syd", "doh-lhr", "doh-jfk",
+    "cdg-jfk", "cdg-yyz", "fra-jfk", "ams-jfk", "lhr-yyz",
+    "syd-lax", "syd-sfo", "mel-lax", "syd-hnd", "syd-sin",
+    "icn-jfk", "icn-lax", "icn-sfo", "pek-lax", "pvg-jfk",
+    "bom-lhr", "del-lhr", "del-jfk", "bkk-lhr", "kul-lhr",
+    "ord-lhr", "ord-fra", "iah-lhr", "atl-lhr", "dfw-lhr"
+  ]
+}

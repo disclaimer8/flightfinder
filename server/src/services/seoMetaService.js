@@ -22,6 +22,7 @@
  */
 const { getFamilyBySlug, getFamilyList } = require('../models/aircraftFamilies');
 const openFlightsService = require('./openFlightsService');
+const aircraftRouteService = require('./aircraftRouteService');
 const { AIRCRAFT_FAQ, ROUTE_FAQ, interpolate } = require('../content/landingFaq');
 const safety = require('../models/safetyEvents');
 const { buildEventSlug, parseEventIdFromSlug } = require('../utils/eventSlug');
@@ -140,6 +141,44 @@ function routeMeta(pair) {
   };
 }
 
+/** /routes/:pair/:slug  (e.g. lhr-jfk/boeing-787) */
+function aircraftRouteMeta(pair, slug) {
+  const m = /^([a-z]{3})-([a-z]{3})$/.exec(pair);
+  if (!m) return notFoundMeta();
+  const fromIata = m[1].toUpperCase();
+  const toIata   = m[2].toUpperCase();
+  const fromAp   = openFlightsService.getAirport(fromIata);
+  const toAp     = openFlightsService.getAirport(toIata);
+  if (!fromAp || !toAp) return notFoundMeta();
+
+  const fam = getFamilyBySlug(slug);
+  if (!fam) return notFoundMeta();
+  const aircraftLabel = fam.family?.label || fam.name || slug;
+
+  const qualifies = aircraftRouteService.isQualifying(fromIata, toIata, slug);
+  const fromName = fromAp.city || fromAp.name || fromIata;
+  const toName   = toAp.city   || toAp.name   || toIata;
+  const canonical = `${BASE}/routes/${pair}/${slug}`;
+
+  return {
+    title: `${fromName} to ${toName} on the ${aircraftLabel} (${fromIata} → ${toIata}) — flights and operators | FlightFinder`,
+    description: `Flights from ${fromName} (${fromIata}) to ${toName} (${toIata}) operated by the ${aircraftLabel}: which airlines, model variants observed, and recent observations from open ADS-B data.`,
+    canonical,
+    h1: `${fromName} to ${toName} on the ${aircraftLabel}`,
+    subtitle: `${fromIata} → ${toIata} · operated by the ${aircraftLabel}`,
+    robots: qualifies ? 'index, follow' : 'noindex, follow',
+    ogType: 'article',
+    kind: 'aircraft-route',
+    pair,
+    slug,
+    fromIata,
+    toIata,
+    fromName,
+    toName,
+    aircraftLabel,
+  };
+}
+
 function notFoundMeta() {
   return {
     ...HOME,
@@ -163,6 +202,11 @@ function resolve(pathname) {
 
   const rtMatch = /^\/routes\/([^/?#]+)\/?$/.exec(pathname);
   if (rtMatch) return routeMeta(rtMatch[1].toLowerCase());
+
+  const acRtMatch = /^\/routes\/([a-z]{3}-[a-z]{3})\/([^/?#]+)\/?$/i.exec(pathname);
+  if (acRtMatch) {
+    return aircraftRouteMeta(acRtMatch[1].toLowerCase(), acRtMatch[2].toLowerCase());
+  }
 
   // Subscription pivot routes — indexable SPA pages with per-route meta so
   // Google doesn't dedupe them with the home title (they share an index.html
@@ -567,6 +611,58 @@ function structuredData(meta) {
           'ADS-B',
         ],
       },
+    });
+  } else if (meta.kind === 'aircraft-route') {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: 'Routes', item: `${BASE}/` },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: `${meta.fromName} to ${meta.toName}`,
+          item: `${BASE}/routes/${meta.pair}`,
+        },
+        { '@type': 'ListItem', position: 4, name: meta.aircraftLabel, item: meta.canonical },
+      ],
+    });
+    graph.push({
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: `Which airlines fly the ${meta.aircraftLabel} from ${meta.fromIata} to ${meta.toIata}?`,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'See the operators list on this page — it is compiled from open ADS-B observed-flights data updated nightly. Operators with the most recent observations are listed first.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: `How often is the ${meta.aircraftLabel} used on the ${meta.fromIata} to ${meta.toIata} route?`,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Observed model variants and date ranges are listed below. Aircraft assignments can change seasonally; data refreshes nightly.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: `What is the typical schedule for ${meta.aircraftLabel} flights from ${meta.fromName} to ${meta.toName}?`,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Schedules vary by operator. For live schedules and fares, search by aircraft on the FlightFinder home page.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'Where does this data come from?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Operator and aircraft observations come from the adsb.lol open ADS-B network under the Open Database License. Data refreshes nightly.',
+          },
+        },
+      ],
     });
   } else if (meta.kind === 'safety-event') {
     const ev = meta.eventData;
