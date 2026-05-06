@@ -1,0 +1,21 @@
+/* ─── Fluid typography tokens ───────────────────────────────────
+ * Display heading sizes scale with viewport via clamp().
+ * Body sizes barely scale (1px between min/max) — included for
+ * consistency.
+ *
+ * Computed at common widths:
+ *   Token         320px  375px  768px  1280px
+ *   --font-h1     28px   28px   41px   48px
+ *   --font-h2     22px   22px   34px   36px
+ *   --font-h3     18px   18px   23px   24px
+ *   --font-body   15px   15px   16px   16px
+ *
+ * --font-meta is fixed (14px) — utility/eyebrow, not display.
+ */
+:root {
+  --font-h1:   clamp(28px, 4.5vw + 12px, 48px);
+  --font-h2:   clamp(22px, 3vw + 12px, 36px);
+  --font-h3:   clamp(18px, 2vw + 10px, 24px);
+  --font-body: clamp(15px, 0.5vw + 14px, 16px);
+  --font-meta: 14px;
+}
