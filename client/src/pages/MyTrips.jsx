@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTrips, deleteTrip, fetchTripStatus } from '../hooks/useTrips';
+import EmptyState from '../components/EmptyState';
 import './MyTrips.css';
 
 function formatDate(ms) {
@@ -24,21 +25,25 @@ export default function MyTrips() {
 
   if (authLoading) return <div className="mytrips-loading">Loading…</div>;
   if (!user) return (
-    <div className="mytrips-empty">
-      <h2>My Trips</h2>
+    <EmptyState
+      variant="page"
+      heading="My Trips"
+      cta={{ label: 'Go to homepage', to: '/' }}
+    >
       <p>Track upcoming flights with delay alerts and live status.</p>
-      <p className="mytrips-empty__hint">My Trips is a Pro feature requiring sign-in.</p>
-      <Link to="/" className="mytrips-empty__cta">Go to homepage</Link>
-    </div>
+      <p className="empty-state__hint">My Trips is a Pro feature requiring sign-in.</p>
+    </EmptyState>
   );
   if (error) return <div className="mytrips-error">{error}</div>;
   if (!trips) return <div className="mytrips-loading">Loading…</div>;
   if (!trips.length) return (
-    <div className="mytrips-empty">
-      <h2>No trips yet</h2>
-      <p>Find a flight and click <strong>+ Add to My Trips</strong> to track it here.</p>
-      <Link to="/" className="mytrips-empty__cta">Search flights</Link>
-    </div>
+    <EmptyState
+      variant="page"
+      heading="No trips yet"
+      cta={{ label: 'Search flights', to: '/' }}
+    >
+      <p className="empty-state__body">Find a flight and click <strong>+ Add to My Trips</strong> to track it here.</p>
+    </EmptyState>
   );
 
   async function loadStatus(id) {
