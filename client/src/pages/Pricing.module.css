@@ -12,13 +12,12 @@
 }
 
 .hero h1 {
-  font: 600 40px/1.15 var(--font-display);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--font-h1);
+  line-height: 1.15;
   color: var(--text);
   margin: 0 0 12px;
-}
-
-@media (max-width: 768px) {
-  .hero h1 { font-size: 32px; }
 }
 
 .hero p {
