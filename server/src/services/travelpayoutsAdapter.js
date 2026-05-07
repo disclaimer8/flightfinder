@@ -16,7 +16,7 @@ const tp = require('./travelpayoutsService');
  * Never throws — every failure mode (not configured, missing function, service
  * returns null/non-object, service throws) collapses to `null`.
  */
-exports.search = async ({ departure, arrival, date, currency } = {}) => {
+exports.search = async ({ departure, arrival, date, currency, cabin = 'economy' } = {}) => {
   if (typeof tp.isConfigured === 'function' && !tp.isConfigured()) return null;
   if (typeof tp.getCheapest !== 'function') return null;
 
@@ -26,6 +26,7 @@ exports.search = async ({ departure, arrival, date, currency } = {}) => {
       destination: arrival,
       date,
       currency: currency || 'usd',
+      cabin,
     });
     if (!offer || typeof offer !== 'object') return null;
     return [normalize(offer, { departure, arrival, date })];

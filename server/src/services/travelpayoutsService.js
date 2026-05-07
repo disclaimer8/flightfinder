@@ -19,6 +19,13 @@ const client = axios.create({
 
 const ALLOWED_CURRENCIES = new Set(['usd', 'eur']);
 
+const CABIN_TO_TRIP_CLASS = {
+  'economy':         0,
+  'premium-economy': 1,
+  'business':        2,
+  'first':           3,
+};
+
 function normaliseCurrency(cur) {
   const c = String(cur || 'usd').toLowerCase();
   return ALLOWED_CURRENCIES.has(c) ? c : 'usd';
@@ -37,19 +44,20 @@ exports.isConfigured = () => Boolean(TOKEN);
  * @param {string} [params.date] - YYYY-MM-DD (optional, narrows result)
  * @param {string} [params.currency] - 'usd' | 'eur'
  */
-exports.getCheapest = async ({ origin, destination, date, currency }) => {
+exports.getCheapest = async ({ origin, destination, date, currency, cabin = 'economy' }) => {
   if (!TOKEN) return null;
   const o = String(origin || '').toUpperCase();
   const d = String(destination || '').toUpperCase();
   const cur = normaliseCurrency(currency);
-  const cacheKey = `tp:cheap:${o}:${d}:${date || '*'}:${cur}`;
+  const tripClass = CABIN_TO_TRIP_CLASS[cabin] ?? 0;
+  const cacheKey = `tp:cheap:${o}:${d}:${date || '*'}:${cur}:${cabin}`;
 
   const hit = cacheService.get(cacheKey);
   if (hit !== undefined) return hit;
 
   try {
     const { data } = await client.get('/v1/prices/cheap', {
-      params: { origin: o, destination: d, depart_date: date || undefined, currency: cur },
+      params: { origin: o, destination: d, depart_date: date || undefined, currency: cur, trip_class: tripClass },
     });
 
     if (!data?.success || !data?.data) {

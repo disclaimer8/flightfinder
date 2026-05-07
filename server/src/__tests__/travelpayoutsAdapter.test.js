@@ -32,12 +32,15 @@ describe('travelpayoutsAdapter.search', () => {
     tp.isConfigured.mockReturnValue(true);
     tp.getCheapest.mockResolvedValue(TP_OFFER);
     const result = await adapter.search(PARAMS);
-    expect(tp.getCheapest).toHaveBeenCalledWith({
-      origin: 'LIS',
-      destination: 'JFK',
-      date: '2026-06-01',
-      currency: 'EUR',
-    });
+    expect(tp.getCheapest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        origin: 'LIS',
+        destination: 'JFK',
+        date: '2026-06-01',
+        currency: 'EUR',
+        cabin: 'economy',
+      })
+    );
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBe(1);
     const f = result[0];
