@@ -95,6 +95,10 @@
   padding: 16px 20px;
   z-index: 100;
   animation: filter-chip-sheet-in 0.2s ease-out;
+  /* iOS Safari ignores body { overflow: hidden } for the page scroll, so the
+     page slides under the sheet when the user scrolls inside it. Containing
+     the overscroll within the sheet prevents the bleed. */
+  overscroll-behavior: contain;
 }
 
 @keyframes filter-chip-sheet-in {

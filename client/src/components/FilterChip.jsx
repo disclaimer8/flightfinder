@@ -18,6 +18,8 @@ function useIsMobile() {
 export default function FilterChip({ label, summary, hasValue, onClear, children }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
+  const dialogRef = useRef(null);
+  const triggerRef = useRef(null);
   const isMobile = useIsMobile();
 
   // Close on outside click
@@ -49,6 +51,17 @@ export default function FilterChip({ label, summary, hasValue, onClear, children
     }
   }, [open, isMobile]);
 
+  // A11y: when popover opens, move focus to first focusable child (role=dialog
+  // expectation per WAI-ARIA). When it closes, return focus to the trigger.
+  useEffect(() => {
+    if (!open) return;
+    const target = dialogRef.current?.querySelector(
+      'button, [tabindex="0"], input, select, textarea, [href]'
+    );
+    target?.focus();
+    return () => { triggerRef.current?.focus(); };
+  }, [open]);
+
   const handleClear = useCallback((e) => {
     e.stopPropagation();
     if (onClear) onClear();
@@ -61,6 +74,7 @@ export default function FilterChip({ label, summary, hasValue, onClear, children
   return (
     <div ref={containerRef} className={`filter-chip${hasValue ? ' filter-chip--filled' : ''}`}>
       <button
+        ref={triggerRef}
         type="button"
         className="filter-chip-trigger"
         aria-haspopup="dialog"
@@ -85,8 +99,10 @@ export default function FilterChip({ label, summary, hasValue, onClear, children
         <>
           {isMobile && <div className="filter-chip-backdrop" />}
           <div
+            ref={dialogRef}
             className={`filter-chip-popover${isMobile ? ' filter-chip-popover--bottom-sheet' : ''}`}
             role="dialog"
+            aria-modal={isMobile ? 'true' : undefined}
             aria-label={`${label} options`}
           >
             {isMobile && (
