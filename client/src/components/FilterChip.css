@@ -148,3 +148,8 @@
   height: 16px;
   cursor: pointer;
 }
+
+.filter-chip-airline-iata {
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+}
