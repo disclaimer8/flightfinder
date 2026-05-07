@@ -10,6 +10,7 @@ import { useFilterOptions } from '../hooks/useFilterOptions';
 import { FilterOptionsContext } from '../context/FilterOptionsContext';
 import { useUrlFlightSearch } from '../hooks/useFlightSearch';
 import { parseSearchParams, isSearchReady } from '../utils/searchParams';
+import { computeSafetyScore } from '../utils/safetyScore';
 import './Search.css';
 
 function flightAirlineCode(f) {
@@ -32,13 +33,6 @@ function flightPrice(f) {
   return f.price?.amount ?? (typeof f.price === 'number' ? f.price : Infinity);
 }
 
-function flightSafetyScore(f) {
-  // Higher score = safer. Phase 5 will replace with the canonical formula
-  // from utils/safetyScore.js (per spec section 11). For now, rank using
-  // any prefilled `safetyScore` numeric on the flight payload, defaulting
-  // to 0 (so flights without scores sink to the bottom of "best safety").
-  return typeof f.safetyScore === 'number' ? f.safetyScore : 0;
-}
 
 export default function Search() {
   const { filterOptions } = useFilterOptions();
@@ -74,7 +68,7 @@ export default function Search() {
         arr.sort((a, b) => flightDuration(a) - flightDuration(b));
         break;
       case 'safety':
-        arr.sort((a, b) => flightSafetyScore(b) - flightSafetyScore(a));
+        arr.sort((a, b) => computeSafetyScore(b) - computeSafetyScore(a));
         break;
       case 'departure-asc':
         arr.sort((a, b) => String(a.departureTime || '').localeCompare(String(b.departureTime || '')));
