@@ -31,6 +31,7 @@ const DATE_RE      = /^\d{4}-\d{2}-\d{2}$/;
 const AIRCRAFT_MODEL_RE = /^[A-Z0-9]{1,6}$/;
 
 const VALID_AIRCRAFT_TYPES = new Set(['turboprop', 'jet', 'regional', 'wide-body']);
+const VALID_CABINS = new Set(['economy', 'premium-economy', 'business', 'first']);
 const PHONE_RE       = /^\+?[\d\s\-().]{7,20}$/;
 const VALID_TITLES   = new Set(['mr', 'ms', 'mrs', 'miss', 'dr']);
 const VALID_GENDERS  = new Set(['M', 'F']);
@@ -40,7 +41,7 @@ const DOB_RE     = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Send a 400 with a human-readable message */
 function bad(res, message) {
-  return res.status(400).json({ success: false, message });
+  return res.status(400).json({ success: false, message, error: message });
 }
 
 /** Sanitise a string used as part of a cache key — strip anything except alphanumeric + hyphen */
@@ -109,6 +110,17 @@ function searchQuery(req, res, next) {
   // Include in cache key so direct-only results don't poison the general cache.
   const directOnlyBool = directOnly === '1' || directOnly === 'true';
 
+  const cabin = asStr(req.query.cabin) || 'economy';
+  if (!VALID_CABINS.has(cabin)) {
+    return bad(res, `cabin must be one of: ${[...VALID_CABINS].join(', ')}`);
+  }
+
+  const flexDatesStr = asStr(req.query.flex_dates);
+  const flexDates = flexDatesStr === '1' || flexDatesStr === 'true';
+  if (flexDates && !date) {
+    return bad(res, 'flex_dates requires a date to expand around');
+  }
+
   // Normalise onto req so controllers get clean values
   req.validatedQuery = {
     departure:    dep,
@@ -120,7 +132,9 @@ function searchQuery(req, res, next) {
     aircraftModel: aircraftModel?.toUpperCase() || null,
     familyName:   (familyName && familyName.trim()) || null,
     directOnly:   directOnlyBool,
-    sanitisedCacheKey: `${dep}:${arr}:${date || ''}:${pax || 1}:${returnDate || ''}:${directOnlyBool ? 'd' : 'a'}`,
+    cabin,
+    flexDates,
+    sanitisedCacheKey: `${dep}:${arr}:${date || ''}:${pax || 1}:${returnDate || ''}:${directOnlyBool ? 'd' : 'a'}:${cabin}:${flexDates ? 'flex' : 'exact'}`,
   };
 
   next();
