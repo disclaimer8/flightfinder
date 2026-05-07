@@ -1,0 +1,123 @@
+.filter-chip {
+  position: relative;
+  display: inline-block;
+}
+
+.filter-chip-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 18px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: #fff;
+  color: var(--text-muted, #64748b);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 36px;
+}
+
+.filter-chip-trigger:hover {
+  background: var(--bg-subtle, #f8fafc);
+}
+
+.filter-chip-trigger:focus-visible {
+  outline: 2px solid var(--primary, #4338ca);
+  outline-offset: 1px;
+}
+
+.filter-chip--filled .filter-chip-trigger {
+  background: var(--primary-tint, #eef2ff);
+  border-color: var(--primary, #4338ca);
+  color: var(--primary, #4338ca);
+}
+
+.filter-chip-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(67, 56, 202, 0.12);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-chip-clear:hover {
+  background: rgba(67, 56, 202, 0.24);
+}
+
+.filter-chip-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  min-width: 240px;
+  max-width: 320px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 12px;
+}
+
+.filter-chip-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 99;
+  animation: filter-chip-backdrop-in 0.15s ease-out;
+}
+
+@keyframes filter-chip-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.filter-chip-popover--bottom-sheet {
+  position: fixed;
+  top: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: none;
+  max-height: 80vh;
+  border-radius: 16px 16px 0 0;
+  border: none;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.16);
+  padding: 16px 20px;
+  z-index: 100;
+  animation: filter-chip-sheet-in 0.2s ease-out;
+}
+
+@keyframes filter-chip-sheet-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.filter-chip-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  margin: -16px -20px 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.filter-chip-popover-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted, #64748b);
+  padding: 0 4px;
+}
