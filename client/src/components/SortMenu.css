@@ -1,0 +1,27 @@
+.sort-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+}
+
+.sort-menu-label {
+  font-weight: 500;
+}
+
+.sort-menu select {
+  padding: 6px 10px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--text, #0f172a);
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.sort-menu select:focus-visible {
+  outline: 2px solid var(--primary, #4338ca);
+  outline-offset: 1px;
+}
