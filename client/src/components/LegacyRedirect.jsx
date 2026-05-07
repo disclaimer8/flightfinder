@@ -30,9 +30,15 @@ function familyToSlug(familyParam) {
 
 export default function LegacyRedirect() {
   const navigate = useNavigate();
-  const { search } = useLocation();
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
+    // Only fire on the legacy home URL — Search and Map both wrap Home in
+    // Phase 1, so without this guard the from+to branch would fire a
+    // no-op `navigate(/search?…)` on every /search mount, which would
+    // collide with Phase 2's URL state machinery.
+    if (pathname !== '/') return;
+
     const params = new URLSearchParams(search);
 
     // /?mode=by-aircraft[&family=…] → /aircraft/:slug or /by-aircraft fallback
@@ -53,7 +59,7 @@ export default function LegacyRedirect() {
       navigate(`/search?${params.toString()}`, { replace: true });
       return;
     }
-  }, [search, navigate]);
+  }, [pathname, search, navigate]);
 
   return null;
 }
