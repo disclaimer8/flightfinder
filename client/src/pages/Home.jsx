@@ -18,6 +18,7 @@ import SiteLayout from '../components/SiteLayout';
 import SampleCards from '../components/SampleCards';
 import RecentSafetyEvents from '../components/RecentSafetyEvents';
 import { API_BASE } from '../utils/api';
+import LegacyRedirect from '../components/LegacyRedirect';
 import '../App.css';
 
 export default function Home() {
@@ -132,6 +133,7 @@ export default function Home() {
 
   return (
     <div data-testid="page-home">
+      <LegacyRedirect />
       <FilterOptionsContext.Provider value={filterOptions}>
         <SiteLayout variant="transparent-over-hero">
           <section className="hero">
