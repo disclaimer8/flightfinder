@@ -127,7 +127,7 @@ export default function HomeSearchBar() {
         </label>
 
         <button type="submit" className="hsb-submit">
-          Search
+          Search flights
         </button>
       </div>
 
