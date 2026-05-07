@@ -16,7 +16,6 @@ export { default as RouteOperators }    from './RouteOperators';
 export { default as RouteDotPopover }   from './RouteDotPopover';
 export { default as EnrichedTeaser }    from './EnrichedTeaser';
 export { default as RecentSafetyEvents } from './RecentSafetyEvents';
-export { default as SampleCards }       from './SampleCards';
 export { default as MetaLine }          from './MetaLine';
 export { default as EmptyState }        from './EmptyState';
 export { default as Button }            from './Button';
