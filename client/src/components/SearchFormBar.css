@@ -1,0 +1,73 @@
+.search-form-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--bg-card, #fff);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin-bottom: 16px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.sfb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sfb-field input,
+.sfb-field select {
+  padding: 8px 10px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--text, #0f172a);
+  background: #fff;
+  text-transform: none;
+  letter-spacing: normal;
+  font-family: inherit;
+  min-height: 38px;
+}
+
+.sfb-field input:focus,
+.sfb-field select:focus {
+  outline: 2px solid var(--primary, #4338ca);
+  outline-offset: 1px;
+}
+
+.sfb-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text, #0f172a);
+  text-transform: none;
+  letter-spacing: normal;
+  align-self: flex-end;
+  padding-bottom: 8px;
+}
+
+.sfb-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .search-form-bar {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .sfb-checkbox {
+    grid-column: span 2;
+    align-self: auto;
+    padding-bottom: 0;
+  }
+}
