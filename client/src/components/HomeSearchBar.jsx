@@ -35,6 +35,16 @@ export default function HomeSearchBar() {
       return;
     }
 
+    const today = new Date().toISOString().slice(0, 10);
+    if (date < today) {
+      setError('Departure date cannot be in the past.');
+      return;
+    }
+    if (returnDate && returnDate < date) {
+      setError('Return date must be on or after the departure date.');
+      return;
+    }
+
     const qs = serializeSearchParams({
       ...DEFAULTS,
       from,
@@ -98,6 +108,7 @@ export default function HomeSearchBar() {
             type="date"
             aria-label="Depart"
             value={date}
+            min={new Date().toISOString().slice(0, 10)}
             onChange={e => setDate(e.target.value)}
           />
         </label>

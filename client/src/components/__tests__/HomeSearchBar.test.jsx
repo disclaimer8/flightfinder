@@ -107,4 +107,32 @@ describe('HomeSearchBar', () => {
     fireEvent.click(screen.getByRole('button', { name: /search/i }));
     expect(capturedNavigate).toMatch(/flex_dates=1/);
   });
+
+  test('rejects past departure date with inline error', () => {
+    renderBar();
+    fireEvent.change(screen.getByLabelText(/^from$/i), { target: { value: 'LHR' } });
+    fireEvent.change(screen.getByLabelText(/^to$/i),   { target: { value: 'JFK' } });
+    fireEvent.change(screen.getByLabelText(/depart/i), { target: { value: '2020-01-01' } });
+    fireEvent.click(screen.getByRole('button', { name: /search/i }));
+    expect(screen.getByRole('alert').textContent).toMatch(/past/i);
+    expect(capturedNavigate).toBeNull();
+  });
+
+  test('rejects return date earlier than depart with inline error', () => {
+    renderBar();
+    fireEvent.change(screen.getByLabelText(/^from$/i), { target: { value: 'LHR' } });
+    fireEvent.change(screen.getByLabelText(/^to$/i),   { target: { value: 'JFK' } });
+    fireEvent.change(screen.getByLabelText(/depart/i), { target: { value: '2099-06-15' } });
+    fireEvent.change(screen.getByLabelText(/return/i), { target: { value: '2099-06-10' } });
+    fireEvent.click(screen.getByRole('button', { name: /search/i }));
+    expect(screen.getByRole('alert').textContent).toMatch(/return/i);
+    expect(capturedNavigate).toBeNull();
+  });
+
+  test('Depart input has min=today (browser-level guard)', () => {
+    renderBar();
+    const depart = screen.getByLabelText(/depart/i);
+    const today = new Date().toISOString().slice(0, 10);
+    expect(depart).toHaveAttribute('min', today);
+  });
 });
