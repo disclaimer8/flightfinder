@@ -6,6 +6,7 @@ import FlightResults from '../components/FlightResults';
 import ErrorBoundary from '../components/ErrorBoundary';
 import SearchFormBar from '../components/SearchFormBar';
 import FilterChipRow from '../components/FilterChipRow';
+import ScrollRestoration from '../components/ScrollRestoration';
 import { useFilterOptions } from '../hooks/useFilterOptions';
 import { FilterOptionsContext } from '../context/FilterOptionsContext';
 import { useUrlFlightSearch } from '../hooks/useFlightSearch';
@@ -131,6 +132,7 @@ export default function Search() {
 
                 {!loading && hasSearched && (
                   <ErrorBoundary>
+                    <ScrollRestoration ready={visibleFlights.length > 0} />
                     <FlightResults
                       flights={visibleFlights}
                       source={apiSource}
