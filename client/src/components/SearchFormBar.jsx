@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DEFAULTS, parseSearchParams, serializeSearchParams } from '../utils/searchParams';
 import './SearchFormBar.css';
@@ -13,6 +14,19 @@ const SEARCH_AFFECTING_KEYS = new Set([
 export default function SearchFormBar() {
   const [searchParams, setSearchParams] = useSearchParams();
   const state = parseSearchParams(searchParams);
+  const sentinelRef = useRef(null);
+  const [stuck, setStuck] = useState(false);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setStuck(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
 
   const update = (patch) => {
     const triggersNewSearch = Object.keys(patch).some(k => SEARCH_AFFECTING_KEYS.has(k));
@@ -26,11 +40,13 @@ export default function SearchFormBar() {
   };
 
   return (
-    <form
-      className="search-form-bar"
-      onSubmit={e => e.preventDefault()}
-      aria-label="Flight search"
-    >
+    <>
+      <div ref={sentinelRef} className="search-form-bar-sentinel" aria-hidden="true" />
+      <form
+        className={`search-form-bar${stuck ? ' search-form-bar--collapsed' : ''}`}
+        onSubmit={e => e.preventDefault()}
+        aria-label="Flight search"
+      >
       <label className="sfb-field">
         <span>From</span>
         <input
@@ -123,5 +139,6 @@ export default function SearchFormBar() {
         ±3 days
       </label>
     </form>
+    </>
   );
 }

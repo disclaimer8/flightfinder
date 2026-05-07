@@ -1,3 +1,9 @@
+.search-form-bar-sentinel {
+  height: 1px;
+  width: 1px;
+  pointer-events: none;
+}
+
 .search-form-bar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -8,6 +14,19 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   margin-bottom: 16px;
   border: 1px solid var(--border, #e2e8f0);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  transition: padding 0.15s, box-shadow 0.15s;
+}
+
+.search-form-bar--collapsed {
+  padding: 8px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.search-form-bar--collapsed .sfb-checkbox {
+  display: none;
 }
 
 .sfb-field {
@@ -69,5 +88,9 @@
     grid-column: span 2;
     align-self: auto;
     padding-bottom: 0;
+  }
+
+  .search-form-bar--collapsed {
+    padding: 8px 12px;
   }
 }

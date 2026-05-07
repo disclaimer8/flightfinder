@@ -87,4 +87,10 @@ describe('SearchFormBar', () => {
     expect(qs).toMatch(/direct=1/);
     expect(qs).toMatch(/shown=37/); // preserved
   });
+
+  test('sticky form bar has sentinel + collapse-ready class structure', () => {
+    renderAt('/search?from=LHR&to=JFK&date=2099-01-15');
+    expect(document.querySelector('.search-form-bar-sentinel')).toBeInTheDocument();
+    expect(document.querySelector('.search-form-bar')).toBeInTheDocument();
+  });
 });
