@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import App from './App';
 import SiteLayout from './components/SiteLayout';
 import Home from './pages/Home';
 import Search from './pages/Search';
@@ -51,7 +50,7 @@ export default function AppRoutes() {
       <Route path="/"       element={<Home />} />
       <Route path="/search" element={<Search />} />
       <Route path="/map"    element={<Map />} />
-      <Route path="*" element={<App />} />
+      <Route path="*" element={<Home />} />
     </Routes>
   );
 }
