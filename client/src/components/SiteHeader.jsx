@@ -16,10 +16,10 @@ function isActive(pathname, search, target) {
   if (target.path === '/safety/global') {
     return pathname.startsWith('/safety/');
   }
-  if (target.path === '/?mode=search') {
-    if (pathname !== '/') return false;
-    const m = search.get('mode');
-    return m === null || m === 'search';
+  if (target.path === '/search') {
+    if (pathname === '/search') return true;
+    if (pathname === '/' && search.get('mode') === 'search') return true;
+    return false;
   }
   return pathname === target.path;
 }
@@ -44,8 +44,9 @@ export default function SiteHeader({ variant, scrolled, onSignInClick, onSignUpC
   }, [drawerOpen]);
 
   const navItems = [
-    { path: '/?mode=search',  label: 'Search' },
+    { path: '/search',        label: 'Search' },
     { path: '/by-aircraft',   label: 'By aircraft' },
+    { path: '/map',           label: 'Map' },
     { path: '/safety/global', label: 'Safety' },
   ];
   if (!isNativeApp()) navItems.push({ path: '/pricing', label: 'Pricing' });

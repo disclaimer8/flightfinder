@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import SiteHeader from '../SiteHeader';
 import { AuthProvider } from '../../context/AuthContext';
+import { _resetForTests } from '../../hooks/useFilterOptions';
 
 function renderHeader(initialEntries = ['/']) {
   return render(
@@ -63,5 +64,60 @@ describe('SiteHeader', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
     expect(onSignInClick).toHaveBeenCalled();
+  });
+});
+
+function renderHeaderPhase1(initialPath = '/') {
+  _resetForTests();
+  return render(
+    <AuthProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <SiteHeader onSignInClick={vi.fn()} onSignUpClick={vi.fn()} />
+      </MemoryRouter>
+    </AuthProvider>
+  );
+}
+
+describe('SiteHeader nav links (search redesign Phase 1)', () => {
+  test('Search link points to /search', () => {
+    renderHeaderPhase1();
+    const link = screen.getByRole('link', { name: 'Search' });
+    expect(link).toHaveAttribute('href', '/search');
+  });
+
+  test('By aircraft link still points to /by-aircraft', () => {
+    renderHeaderPhase1();
+    const link = screen.getByRole('link', { name: 'By aircraft' });
+    expect(link).toHaveAttribute('href', '/by-aircraft');
+  });
+
+  test('Map link is present and points to /map', () => {
+    renderHeaderPhase1();
+    const link = screen.getByRole('link', { name: 'Map' });
+    expect(link).toHaveAttribute('href', '/map');
+  });
+
+  test('Safety link still points to /safety/global', () => {
+    renderHeaderPhase1();
+    const link = screen.getByRole('link', { name: 'Safety' });
+    expect(link).toHaveAttribute('href', '/safety/global');
+  });
+
+  test('Search link is active when on /search', () => {
+    renderHeaderPhase1('/search');
+    const link = screen.getByRole('link', { name: 'Search' });
+    expect(link.className).toMatch(/active/);
+  });
+
+  test('Map link is active when on /map', () => {
+    renderHeaderPhase1('/map');
+    const link = screen.getByRole('link', { name: 'Map' });
+    expect(link.className).toMatch(/active/);
+  });
+
+  test('Search link is still active for legacy /?mode=search', () => {
+    renderHeaderPhase1('/?mode=search');
+    const link = screen.getByRole('link', { name: 'Search' });
+    expect(link.className).toMatch(/active/);
   });
 });
