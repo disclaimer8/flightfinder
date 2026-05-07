@@ -51,7 +51,9 @@ export function parseSearchParams(usp) {
   const pax = clamp(paxRaw, 1, 9);
 
   const shownRaw = asInt(get('shown'), DEFAULTS.shown);
-  const shown = shownRaw < 0 ? DEFAULTS.shown : shownRaw;
+  // shown<1 (negative or zero) would render an empty page with no "Show more"
+  // affordance — clamp to default 7 so a hand-crafted URL can't blank the page.
+  const shown = shownRaw < 1 ? DEFAULTS.shown : shownRaw;
 
   return {
     from: (get('from') || '').toUpperCase(),

@@ -191,6 +191,11 @@ export function useUrlFlightSearch(state) {
       .finally(() => {
         setLoading(false);
       });
+
+    // Cleanup on unmount or before next effect run: abort any in-flight fetch
+    // so a slow response can't setState on an unmounted component (React
+    // emits a warning and we'd leak the AbortController otherwise).
+    return () => { if (abortControllerRef.current) abortControllerRef.current.abort(); };
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const clearError = useCallback(() => setError(null), []);

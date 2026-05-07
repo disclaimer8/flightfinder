@@ -1,13 +1,26 @@
 import { useSearchParams } from 'react-router-dom';
-import { parseSearchParams, serializeSearchParams } from '../utils/searchParams';
+import { DEFAULTS, parseSearchParams, serializeSearchParams } from '../utils/searchParams';
 import './SearchFormBar.css';
+
+// Search-affecting param keys (state-shape names, not URL keys). Changing any
+// of these means a brand-new search is about to fire — reset `shown` to its
+// default so the user sees results from the top instead of being silently
+// scrolled deep into a stale page count. Mirrors searchAffectingHash().
+const SEARCH_AFFECTING_KEYS = new Set([
+  'from', 'to', 'date', 'return', 'pax', 'cabin', 'flexDates',
+]);
 
 export default function SearchFormBar() {
   const [searchParams, setSearchParams] = useSearchParams();
   const state = parseSearchParams(searchParams);
 
   const update = (patch) => {
-    const next = { ...state, ...patch };
+    const triggersNewSearch = Object.keys(patch).some(k => SEARCH_AFFECTING_KEYS.has(k));
+    const next = {
+      ...state,
+      ...patch,
+      ...(triggersNewSearch ? { shown: DEFAULTS.shown } : {}),
+    };
     const qs = serializeSearchParams(next);
     setSearchParams(qs, { replace: true });
   };

@@ -57,6 +57,10 @@ describe('parseSearchParams', () => {
     expect(parseSearchParams(urlParams('')).shown).toBe(7);
   });
 
+  test('shown=0 is treated as default 7 (handcrafted URL would otherwise blank the page)', () => {
+    expect(parseSearchParams(urlParams('shown=0')).shown).toBe(7);
+  });
+
   test('unknown sort falls back to cheapest', () => {
     expect(parseSearchParams(urlParams('sort=banana')).sort).toBe('cheapest');
     expect(parseSearchParams(urlParams('sort=fastest')).sort).toBe('fastest');

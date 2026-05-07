@@ -69,4 +69,22 @@ describe('SearchFormBar', () => {
     const input = screen.getByLabelText(/from/i);
     expect(input).toHaveAttribute('maxLength', '3');
   });
+
+  test('changing a search-affecting field resets shown to 7 (drop stale page count)', () => {
+    renderAt('/search?from=LHR&to=JFK&date=2099-01-15&shown=37');
+    fireEvent.change(screen.getByLabelText(/from/i), { target: { value: 'cdg' } });
+    const qs = screen.getByTestId('probe').textContent;
+    expect(qs).toMatch(/from=CDG/);
+    // shown=37 must be dropped (back to default 7, which serializeSearchParams
+    // omits from the URL entirely)
+    expect(qs).not.toMatch(/shown=37/);
+  });
+
+  test('changing a filter-only field (direct) does NOT reset shown', () => {
+    renderAt('/search?from=LHR&to=JFK&date=2099-01-15&shown=37');
+    fireEvent.click(screen.getByLabelText(/direct only/i));
+    const qs = screen.getByTestId('probe').textContent;
+    expect(qs).toMatch(/direct=1/);
+    expect(qs).toMatch(/shown=37/); // preserved
+  });
 });
