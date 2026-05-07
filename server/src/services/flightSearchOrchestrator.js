@@ -7,8 +7,11 @@ const TTL_FRESH = (cache.TTL && cache.TTL.flights) || 600;        // 10 min
 const TTL_STALE = 24 * 60 * 60;                                    // 24h
 
 function cacheKey(params) {
-  const { departure, arrival, date, returnDate, passengers } = params;
-  return `flights:${departure}:${arrival}:${date}:${returnDate || ''}:${passengers || 1}`;
+  const { departure, arrival, date, returnDate, passengers, cabin = 'economy', flexDates = false } = params;
+  // cabin and flexDates change which flights/prices come back, so they must be
+  // part of the cache key — otherwise an economy search poisons the business
+  // cabin cache (and vice versa).
+  return `flights:${departure}:${arrival}:${date}:${returnDate || ''}:${passengers || 1}:${cabin}:${flexDates ? 'flex' : 'exact'}`;
 }
 
 function staleKey(params) {
