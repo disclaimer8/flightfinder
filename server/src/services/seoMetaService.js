@@ -77,6 +77,16 @@ const MAP = {
   kind: 'map',
 };
 
+const SEARCH = {
+  title: 'Flight Search — FlightFinder',
+  description: 'Search flights by route and date. Filter results by aircraft type, airlines, and stops. See the safety record of every operator and aircraft before you book.',
+  canonical: `${BASE}/search`,
+  h1: 'Flight search',
+  subtitle: 'Pick origin, destination, and date — then refine by aircraft, airline, and safety.',
+  ogType: 'website',
+  kind: 'search',
+};
+
 // Slugs we know about — any /aircraft/:other falls through to 404-style
 // metadata (noindex, home canonical) so we don't let garbage URLs into
 // the index via open-ended routing.
@@ -276,6 +286,7 @@ function resolve(pathname) {
   if (!pathname || pathname === '/' || pathname === '') return HOME;
   if (pathname === '/by-aircraft' || pathname === '/by-aircraft/') return BY_AIRCRAFT;
   if (pathname === '/map' || pathname === '/map/') return MAP;
+  if (pathname === '/search' || pathname === '/search/') return SEARCH;
 
   const acAirlinesMatch = /^\/aircraft\/([^/?#]+)\/airlines\/?$/.exec(pathname);
   if (acAirlinesMatch) return aircraftAirlinesMeta(acAirlinesMatch[1].toLowerCase());
