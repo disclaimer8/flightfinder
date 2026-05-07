@@ -132,152 +132,152 @@ export default function Home() {
 
   return (
     <div data-testid="page-home">
-    <FilterOptionsContext.Provider value={filterOptions}>
-      <SiteLayout variant="transparent-over-hero">
-        <section className="hero">
-          {verifyState && verifyState !== 'pending' && (
-            <div
-              className={`verify-banner verify-banner--${verifyState}`}
-              role="alert"
-            >
-              <span>{verifyMessage}</span>
-              {verifyState === 'success' && (
-                <span className="verify-banner-hint">Use the Sign in button above.</span>
-              )}
-              <button
-                className="error-dismiss"
-                onClick={() => setVerifyState(null)}
-                aria-label="Dismiss"
+      <FilterOptionsContext.Provider value={filterOptions}>
+        <SiteLayout variant="transparent-over-hero">
+          <section className="hero">
+            {verifyState && verifyState !== 'pending' && (
+              <div
+                className={`verify-banner verify-banner--${verifyState}`}
+                role="alert"
               >
-                ×
-              </button>
-            </div>
-          )}
-
-          <div className="hero-content">
-            <h1 className="hero-title">
-              {homeContent?.hero?.h1 ?? 'The aircraft- and safety-aware flight search engine'}
-            </h1>
-            <p className="hero-subtitle">
-              {homeContent?.hero?.subhead ?? 'See which airline, which aircraft, and what its safety record looks like — before you book.'}
-            </p>
-          </div>
-
-          {filterOptionsError && (
-            <div className="error-banner" role="alert">
-              <span>Failed to load search options. Please refresh the page.</span>
-            </div>
-          )}
-
-          {filterOptions && (
-            <div className="hero-search">
-              <div className="search-mode-tabs">
+                <span>{verifyMessage}</span>
+                {verifyState === 'success' && (
+                  <span className="verify-banner-hint">Use the Sign in button above.</span>
+                )}
                 <button
-                  className={`search-mode-tab${searchMode === 'search' ? ' search-mode-tab--active' : ''}`}
-                  onClick={() => { setSearchMode('search'); setAcQuery(null); }}
+                  className="error-dismiss"
+                  onClick={() => setVerifyState(null)}
+                  aria-label="Dismiss"
                 >
-                  Search flights
-                </button>
-                <button
-                  className={`search-mode-tab${searchMode === 'by-aircraft' ? ' search-mode-tab--active' : ''}`}
-                  onClick={() => { setSearchMode('by-aircraft'); setAcQuery(null); }}
-                >
-                  By aircraft
-                </button>
-                <button
-                  className={`search-mode-tab${searchMode === 'map' ? ' search-mode-tab--active' : ''}`}
-                  onClick={() => { setSearchMode('map'); setAcQuery(null); }}
-                >
-                  Route map
+                  ×
                 </button>
               </div>
-
-              {searchMode === 'search' && (
-                <SearchForm
-                  onSearch={handleSearch}
-                  onExplore={handleExplore}
-                  loading={loading}
-                  prefillDeparture={prefillDeparture}
-                  prefillArrival={prefillArrival}
-                  onPrefillUsed={() => { setPrefillDeparture(null); setPrefillArrival(null); }}
-                />
-              )}
-
-              {searchMode === 'by-aircraft' && !acQuery && (
-                <AircraftSearchForm
-                  initialFamily={initialFamily}
-                  onSearch={handleAircraftSearch}
-                  loading={loading}
-                  onCancel={clearError}
-                />
-              )}
-
-              {searchMode === 'map' && (
-                <p className="explore-hint" style={{ marginTop: 0 }}>
-                  Explore global routes — click an airport to see destinations, draw a radius to find nearby airports.
-                </p>
-              )}
+            )}
+  
+            <div className="hero-content">
+              <h1 className="hero-title">
+                {homeContent?.hero?.h1 ?? 'The aircraft- and safety-aware flight search engine'}
+              </h1>
+              <p className="hero-subtitle">
+                {homeContent?.hero?.subhead ?? 'See which airline, which aircraft, and what its safety record looks like — before you book.'}
+              </p>
             </div>
-          )}
-        </section>
-
-        <SampleCards />
-
-        <section className="results-section">
-          {searchMode === 'map' ? (
-            <ErrorBoundary>
-              <Suspense fallback={<SkeletonResults message="Loading map…" />}>
-                <RouteMap />
-              </Suspense>
-            </ErrorBoundary>
-          ) : searchMode === 'by-aircraft' && acQuery ? (
-            <ErrorBoundary>
-              <Suspense fallback={<SkeletonResults message="Loading map…" />}>
-                <AircraftRouteMap
-                  familyName={acQuery.familyName}
-                  family={acQuery.familyName}
-                  date={acQuery.date}
-                  passengers={acQuery.passengers}
-                  originIatas={[acQuery.origin]}
-                  directOnly={acQuery.directOnly}
-                  onBack={() => setAcQuery(null)}
-                />
-              </Suspense>
-            </ErrorBoundary>
-          ) : (
-            <>
-              {error && (
-                <div className="error-banner" role="alert">
-                  <span>{error}</span>
-                  <button className="error-dismiss" onClick={clearError} aria-label="Dismiss">×</button>
+  
+            {filterOptionsError && (
+              <div className="error-banner" role="alert">
+                <span>Failed to load search options. Please refresh the page.</span>
+              </div>
+            )}
+  
+            {filterOptions && (
+              <div className="hero-search">
+                <div className="search-mode-tabs">
+                  <button
+                    className={`search-mode-tab${searchMode === 'search' ? ' search-mode-tab--active' : ''}`}
+                    onClick={() => { setSearchMode('search'); setAcQuery(null); }}
+                  >
+                    Search flights
+                  </button>
+                  <button
+                    className={`search-mode-tab${searchMode === 'by-aircraft' ? ' search-mode-tab--active' : ''}`}
+                    onClick={() => { setSearchMode('by-aircraft'); setAcQuery(null); }}
+                  >
+                    By aircraft
+                  </button>
+                  <button
+                    className={`search-mode-tab${searchMode === 'map' ? ' search-mode-tab--active' : ''}`}
+                    onClick={() => { setSearchMode('map'); setAcQuery(null); }}
+                  >
+                    Route map
+                  </button>
                 </div>
-              )}
-
-              {loading && <SkeletonResults message={loadingMessage} />}
-
-              {!loading && searchMode === 'search' && exploreResults !== null && (
-                <ErrorBoundary>
-                  <ExploreResults
-                    results={exploreResults}
-                    departure={exploreContext?.departure}
-                    aircraft={exploreContext?.aircraft}
-                    onSelect={handleSelectDestination}
+  
+                {searchMode === 'search' && (
+                  <SearchForm
+                    onSearch={handleSearch}
+                    onExplore={handleExplore}
+                    loading={loading}
+                    prefillDeparture={prefillDeparture}
+                    prefillArrival={prefillArrival}
+                    onPrefillUsed={() => { setPrefillDeparture(null); setPrefillArrival(null); }}
                   />
-                </ErrorBoundary>
-              )}
-
-              {!loading && (searchMode !== 'search' || exploreResults === null) && (
-                <ErrorBoundary>
-                  <FlightResults flights={flights} source={apiSource} hasSearched={hasSearched} initialAirlines={searchedAirlines} />
-                </ErrorBoundary>
-              )}
-
-              {!hasSearched && exploreResults === null && <RecentSafetyEvents />}
-            </>
-          )}
-        </section>
-      </SiteLayout>
-    </FilterOptionsContext.Provider>
+                )}
+  
+                {searchMode === 'by-aircraft' && !acQuery && (
+                  <AircraftSearchForm
+                    initialFamily={initialFamily}
+                    onSearch={handleAircraftSearch}
+                    loading={loading}
+                    onCancel={clearError}
+                  />
+                )}
+  
+                {searchMode === 'map' && (
+                  <p className="explore-hint" style={{ marginTop: 0 }}>
+                    Explore global routes — click an airport to see destinations, draw a radius to find nearby airports.
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+  
+          <SampleCards />
+  
+          <section className="results-section">
+            {searchMode === 'map' ? (
+              <ErrorBoundary>
+                <Suspense fallback={<SkeletonResults message="Loading map…" />}>
+                  <RouteMap />
+                </Suspense>
+              </ErrorBoundary>
+            ) : searchMode === 'by-aircraft' && acQuery ? (
+              <ErrorBoundary>
+                <Suspense fallback={<SkeletonResults message="Loading map…" />}>
+                  <AircraftRouteMap
+                    familyName={acQuery.familyName}
+                    family={acQuery.familyName}
+                    date={acQuery.date}
+                    passengers={acQuery.passengers}
+                    originIatas={[acQuery.origin]}
+                    directOnly={acQuery.directOnly}
+                    onBack={() => setAcQuery(null)}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            ) : (
+              <>
+                {error && (
+                  <div className="error-banner" role="alert">
+                    <span>{error}</span>
+                    <button className="error-dismiss" onClick={clearError} aria-label="Dismiss">×</button>
+                  </div>
+                )}
+  
+                {loading && <SkeletonResults message={loadingMessage} />}
+  
+                {!loading && searchMode === 'search' && exploreResults !== null && (
+                  <ErrorBoundary>
+                    <ExploreResults
+                      results={exploreResults}
+                      departure={exploreContext?.departure}
+                      aircraft={exploreContext?.aircraft}
+                      onSelect={handleSelectDestination}
+                    />
+                  </ErrorBoundary>
+                )}
+  
+                {!loading && (searchMode !== 'search' || exploreResults === null) && (
+                  <ErrorBoundary>
+                    <FlightResults flights={flights} source={apiSource} hasSearched={hasSearched} initialAirlines={searchedAirlines} />
+                  </ErrorBoundary>
+                )}
+  
+                {!hasSearched && exploreResults === null && <RecentSafetyEvents />}
+              </>
+            )}
+          </section>
+        </SiteLayout>
+      </FilterOptionsContext.Provider>
     </div>
   );
 }
