@@ -93,7 +93,7 @@ export function serializeSearchParams(state) {
 }
 
 /**
- * Hash of search-affecting params only. When this changes, useFlightSearch
+ * Hash of search-affecting params only. When this changes, useUrlFlightSearch
  * refires the API. When filter or display params change, this stays stable
  * and the cached results are re-filtered/re-sorted in memory.
  */
