@@ -49,6 +49,8 @@ exports.searchFlights = async (req, res) => {
   const familyName   = vq.familyName   || req.query.familyName;
   const passengers   = vq.passengers   || parseInt(req.query.passengers, 10) || 1;
   const directOnly   = vq.directOnly   === true;
+  const cabin        = vq.cabin        || 'economy';
+  const flexDates    = vq.flexDates    === true;
   const { useMockData } = req.query;
 
   // Note: ?api= override removed — orchestrator owns the source chain.
@@ -66,6 +68,7 @@ exports.searchFlights = async (req, res) => {
     } else {
       const orch = await flightSearchOrchestrator.search({
         departure, arrival, date, returnDate, passengers,
+        cabin, flexDates,
       });
       flights = orch.flights;
       sourceLabel = orch.source;

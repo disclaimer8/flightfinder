@@ -30,7 +30,11 @@ function nonEmpty(arr) {
  *        the same as null for the purpose of fallback; orchestrator's job is
  *        to give the user SOMETHING, even if upstream legitimately had nothing)
  */
-exports.search = async (params) => {
+exports.search = async ({
+  departure, arrival, date, returnDate, passengers,
+  cabin = 'economy', flexDates = false,
+} = {}) => {
+  const params = { departure, arrival, date, returnDate, passengers, cabin, flexDates };
   const key = cacheKey(params);
   const fresh = cache.get(key);
   if (nonEmpty(fresh)) return { flights: fresh, source: 'cache' };

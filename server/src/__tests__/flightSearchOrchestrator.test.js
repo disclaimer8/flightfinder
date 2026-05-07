@@ -81,7 +81,7 @@ describe('flightSearchOrchestrator.search', () => {
     tpAdapter.search.mockResolvedValue(STUB_FLIGHT);
     const r = await orch.search(PARAMS);
     expect(r.source).toBe('travelpayouts');
-    expect(tpAdapter.search).toHaveBeenCalledWith(PARAMS);
+    expect(tpAdapter.search).toHaveBeenCalledWith(expect.objectContaining(PARAMS));
   });
 
   test('returns source none when adapter signals not-configured (null)', async () => {
