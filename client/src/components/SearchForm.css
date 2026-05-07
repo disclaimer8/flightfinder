@@ -436,4 +436,21 @@
   .btn-swap {
     margin: 0 auto;
   }
+
+  /* Mode toggle and trip-type toggle are inline-flex with nowrap labels;
+     at 375px the two buttons + emoji labels overflow the card. Stretch
+     the toggle full-width and let buttons flex evenly so the row always
+     fits the container regardless of label length. */
+  .mode-toggle,
+  .trip-type-toggle {
+    display: flex;
+    width: 100%;
+  }
+  .mode-btn,
+  .trip-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.6rem 0.5rem;
+    font-size: 0.8rem;
+  }
 }

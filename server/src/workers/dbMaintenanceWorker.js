@@ -26,10 +26,15 @@ function runCycle() {
   if (_runCycleImpl) return _runCycleImpl();
   try {
     const { db } = require('../models/db');
-    const beforeWal = db.prepare("SELECT * FROM pragma_wal_checkpoint('TRUNCATE')").get() || {};
+    // db.pragma() is the only correct way to invoke wal_checkpoint with
+    // better-sqlite3 — the table-valued `pragma_wal_checkpoint(...)` form
+    // requires SQLITE_ENABLE_PRAGMA_FUNCTIONS, which is not compiled into
+    // better-sqlite3's bundled binary.
+    const checkpointRows = db.pragma('wal_checkpoint(TRUNCATE)') || [];
+    const wal = checkpointRows[0] || {};
     const freed = db.pragma('incremental_vacuum');
     console.log(
-      `[db-maintenance] checkpoint busy=${beforeWal.busy} log=${beforeWal.log} checkpointed=${beforeWal.checkpointed} | incremental_vacuum freed=${JSON.stringify(freed)}`
+      `[db-maintenance] checkpoint busy=${wal.busy ?? '?'} log=${wal.log ?? '?'} checkpointed=${wal.checkpointed ?? '?'} | incremental_vacuum freed=${JSON.stringify(freed)}`
     );
   } catch (err) {
     console.warn('[db-maintenance] cycle failed:', err.message);
