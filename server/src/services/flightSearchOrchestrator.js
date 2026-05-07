@@ -22,8 +22,27 @@ function nonEmpty(arr) {
   return Array.isArray(arr) && arr.length > 0;
 }
 
+function expandDateRange(anchorDate) {
+  const dates = [];
+  const base = new Date(anchorDate + 'T00:00:00Z');
+  for (let offset = -3; offset <= 3; offset++) {
+    const d = new Date(base.getTime() + offset * 86400000);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  return dates;
+}
+
+function dedupeFlights(flights) {
+  const seen = new Map();
+  for (const f of flights) {
+    const key = `${f.carrier || ''}|${f.flightNo || f.flightNumber || ''}|${f.departureTime || f.depTime || ''}`;
+    if (!seen.has(key)) seen.set(key, f);
+  }
+  return [...seen.values()];
+}
+
 /**
- * Run the fallback chain and return { flights, source }.
+ * Run the fallback chain for a single day and return { flights, source }.
  * Never throws — orchestration errors get squashed into source: 'none'.
  *
  * Source semantics:
@@ -33,11 +52,7 @@ function nonEmpty(arr) {
  *        the same as null for the purpose of fallback; orchestrator's job is
  *        to give the user SOMETHING, even if upstream legitimately had nothing)
  */
-exports.search = async ({
-  departure, arrival, date, returnDate, passengers,
-  cabin = 'economy', flexDates = false,
-} = {}) => {
-  const params = { departure, arrival, date, returnDate, passengers, cabin, flexDates };
+async function runSingleDaySearch(params) {
   const key = cacheKey(params);
   const fresh = cache.get(key);
   if (nonEmpty(fresh)) return { flights: fresh, source: 'cache' };
@@ -67,4 +82,41 @@ exports.search = async ({
   if (nonEmpty(stale)) return { flights: stale, source: 'stale-cache' };
 
   return { flights: [], source: 'none' };
+}
+
+exports.search = async ({
+  departure, arrival, date, returnDate, passengers,
+  cabin = 'economy', flexDates = false,
+} = {}) => {
+  if (!flexDates) {
+    return runSingleDaySearch({ departure, arrival, date, returnDate, passengers, cabin, flexDates: false });
+  }
+
+  // Fan-out path — share a single cache entry for the merged 7-day result.
+  const flexParams = { departure, arrival, date, returnDate, passengers, cabin, flexDates: true };
+  const flexKey = cacheKey(flexParams);
+  const fresh = cache.get(flexKey);
+  if (nonEmpty(fresh)) return { flights: fresh, source: 'cache' };
+
+  const dates = expandDateRange(date);
+  const results = await Promise.all(
+    dates.map(d => runSingleDaySearch({
+      departure, arrival, date: d, returnDate, passengers, cabin, flexDates: false,
+    }))
+  );
+
+  const merged = results.flatMap(r => r?.flights || []);
+  const flights = dedupeFlights(merged);
+
+  // Source label: pick the most-authoritative source represented.
+  const sourcePriority = ['google', 'ita', 'travelpayouts', 'cache', 'stale-cache', 'none'];
+  const sources = results.map(r => r?.source).filter(Boolean);
+  const source = sourcePriority.find(s => sources.includes(s)) || 'none';
+
+  if (nonEmpty(flights)) {
+    cache.set(flexKey, flights, TTL_FRESH);
+    cache.set(staleKey(flexParams), flights, TTL_STALE);
+  }
+
+  return { flights, source };
 };

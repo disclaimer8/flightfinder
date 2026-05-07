@@ -54,19 +54,29 @@ describe('flightSearchOrchestrator cache key includes cabin + flexDates', () => 
     const exactFlights = [{ id: 'exact', price: 487 }];
     const flexFlights = [{ id: 'flex', price: 312 }];
 
+    // First call: exact (1 google call)
     google.search.mockResolvedValueOnce(exactFlights);
     await orchestrator.search({
       departure: 'LHR', arrival: 'JFK', date: '2099-01-15',
       passengers: 1, cabin: 'economy', flexDates: false,
     });
 
+    // Second call: flex — fan-out fires 7 sub-searches (date-3..date+3).
+    // Return flexFlights on first sub-search, empty on the rest.
     google.search.mockResolvedValueOnce(flexFlights);
+    google.search.mockResolvedValue([]);
     const r2 = await orchestrator.search({
       departure: 'LHR', arrival: 'JFK', date: '2099-01-15',
       passengers: 1, cabin: 'economy', flexDates: true,
     });
     expect(r2.flights).toEqual(flexFlights);
-    expect(google.search).toHaveBeenCalledTimes(2);
+    // 1 exact + 6 flex sub-searches = 7 total calls. The flex fan-out fires
+    // 7 sub-searches (date-3..date+3), each with flexDates:false — so the
+    // 2099-01-15 sub-search hits the exact-date cache from the first call,
+    // meaning only 6 of the 7 flex sub-dates actually call google.
+    // The flex result is NOT pulled from the exact-date cache because it lives
+    // under a separate ':flex' key.
+    expect(google.search).toHaveBeenCalledTimes(7);
   });
 
   test('same cabin + same flexDates hits cache on second call', async () => {
