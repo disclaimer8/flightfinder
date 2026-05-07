@@ -1,0 +1,39 @@
+.filter-chip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  margin-bottom: 12px;
+  border-top: 1px solid var(--border, #e2e8f0);
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.filter-chip-row-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-chip-row-sort {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .filter-chip-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .filter-chip-row-chips {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    margin-bottom: -4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filter-chip-row-sort {
+    align-self: flex-end;
+  }
+}

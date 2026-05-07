@@ -5,6 +5,7 @@ import SkeletonResults from '../components/SkeletonResults';
 import FlightResults from '../components/FlightResults';
 import ErrorBoundary from '../components/ErrorBoundary';
 import SearchFormBar from '../components/SearchFormBar';
+import FilterChipRow from '../components/FilterChipRow';
 import { useFilterOptions } from '../hooks/useFilterOptions';
 import { FilterOptionsContext } from '../context/FilterOptionsContext';
 import { useUrlFlightSearch } from '../hooks/useFlightSearch';
@@ -106,6 +107,7 @@ export default function Search() {
         <SiteLayout>
           <section className="search-results-section">
             <SearchFormBar />
+            {ready && <FilterChipRow />}
             {!ready && (
               <div className="search-empty">
                 <h1>Search for flights</h1>
