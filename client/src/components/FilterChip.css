@@ -121,3 +121,30 @@
   color: var(--text-muted, #64748b);
   padding: 0 4px;
 }
+
+.filter-chip-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-chip-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text, #0f172a);
+}
+
+.filter-chip-checkbox:hover {
+  background: var(--bg-subtle, #f8fafc);
+  border-radius: 4px;
+}
+
+.filter-chip-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
