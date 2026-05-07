@@ -73,3 +73,34 @@ jobs:
             || (echo "::error::segments missing or empty" && exit 1)
 
           echo "::notice::canary OK source=$SOURCE flights=$(echo "$RESP" | jq -r '.data | length') duration=${DUR}min"
+
+      - name: SPA route smoke test
+        env:
+          PROD_URL: https://himaxym.com
+        run: |
+          set -euo pipefail
+          ROUTES=("/" "/search" "/map" "/aircraft/boeing-787" "/safety/global")
+          declare -A EXPECTED_TITLE_CONTAINS=(
+            ["/"]="aircraft"
+            ["/search"]="Flight Search"
+            ["/map"]="Route Map"
+            ["/aircraft/boeing-787"]="Boeing 787"
+            ["/safety/global"]="aviation"
+          )
+          for route in "${ROUTES[@]}"; do
+            url="$PROD_URL$route"
+            echo "Smoke: $url"
+            html=$(curl -fsSL --max-time 8 "$url")
+            title=$(echo "$html" | grep -oE '<title>[^<]+</title>' | head -1 || true)
+            if [ -z "$title" ]; then
+              echo "FAIL: no <title> tag in $route response"
+              exit 1
+            fi
+            expected="${EXPECTED_TITLE_CONTAINS[$route]}"
+            if ! echo "$title" | grep -qi "$expected"; then
+              echo "FAIL: $route title='$title' does not contain '$expected'"
+              exit 1
+            fi
+            echo "  OK title=$title"
+          done
+          echo "All SPA route smoke tests passed."
