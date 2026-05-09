@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchOperator, fetchGlobalOperatorsCached } from '../pages/safety/safetyApi';
 import { useAuth } from '../context/AuthContext';
+import { getRiskLevel } from '../utils/safetyRiskLevel';
+import SafetyBadge from './SafetyBadge';
 import './OperatorSafetyBlock.css';
 
 // Match an airline display name (or IATA/ICAO code) against the AirCrash
@@ -73,6 +75,10 @@ export default function OperatorSafetyBlock({ airlineIata, airlineIcao, airlineN
   const total = counts.total || 0;
   const fatal = counts.fatal || 0;
 
+  // Single source of truth for the colored badge across all 3 render branches
+  // below. Pure function — see utils/safetyRiskLevel.test.js for the rules.
+  const risk = getRiskLevel({ counts: data?.counts || null, globalMatch });
+
   // Reusable global-history sub-block. Lifetime accident count is a different
   // thing from the 90-day NTSB rate above — we label it explicitly as
   // "historical" and link to the full dataset so users can self-contextualise.
@@ -102,6 +108,7 @@ export default function OperatorSafetyBlock({ airlineIata, airlineIcao, airlineN
   if (data && coverage !== 'us-ntsb') {
     return (
       <div className="operator-safety">
+        <SafetyBadge risk={risk} />
         <div className="operator-safety--unavailable">
           <span className="operator-safety__label">Recent (US NTSB)</span>
           <span className="operator-safety__muted">Unavailable for this operator</span>
@@ -119,6 +126,7 @@ export default function OperatorSafetyBlock({ airlineIata, airlineIcao, airlineN
   if (!data && globalMatch) {
     return (
       <div className="operator-safety">
+        <SafetyBadge risk={risk} />
         {renderGlobalRow()}
       </div>
     );
@@ -127,6 +135,7 @@ export default function OperatorSafetyBlock({ airlineIata, airlineIcao, airlineN
   // Branch 3: NTSB success path (US carrier).
   return (
     <div className="operator-safety">
+      <SafetyBadge risk={risk} />
       <div className="operator-safety__row">
         <span className="operator-safety__label">90-day safety record (US NTSB)</span>
         <span className={`operator-safety__count${fatal > 0 ? ' operator-safety__count--fatal' : ''}`}>
