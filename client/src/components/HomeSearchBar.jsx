@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULTS, serializeSearchParams } from '../utils/searchParams';
+import CityAutocomplete from './CityAutocomplete';
 import './HomeSearchBar.css';
 
 /**
@@ -78,27 +79,21 @@ export default function HomeSearchBar() {
       <div className="hsb-fields">
         <label className="hsb-field">
           <span className="hsb-label">From</span>
-          <input
-            type="text"
-            aria-label="From"
+          <CityAutocomplete
             value={from}
-            onChange={e => setFrom(e.target.value.toUpperCase().slice(0, 3))}
-            maxLength={3}
-            placeholder="LHR"
-            autoComplete="off"
+            onChange={setFrom}
+            ariaLabel="From"
+            placeholder="City or airport"
           />
         </label>
 
         <label className="hsb-field">
           <span className="hsb-label">To</span>
-          <input
-            type="text"
-            aria-label="To"
+          <CityAutocomplete
             value={to}
-            onChange={e => setTo(e.target.value.toUpperCase().slice(0, 3))}
-            maxLength={3}
-            placeholder="JFK"
-            autoComplete="off"
+            onChange={setTo}
+            ariaLabel="To"
+            placeholder="City or airport"
           />
         </label>
 

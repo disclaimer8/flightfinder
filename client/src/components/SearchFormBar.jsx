@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DEFAULTS, parseSearchParams, serializeSearchParams } from '../utils/searchParams';
+import CityAutocomplete from './CityAutocomplete';
 import './SearchFormBar.css';
 
 // Search-affecting param keys (state-shape names, not URL keys). Changing any
@@ -49,27 +50,21 @@ export default function SearchFormBar() {
       >
       <label className="sfb-field">
         <span>From</span>
-        <input
-          type="text"
-          aria-label="From"
+        <CityAutocomplete
           value={state.from}
-          onChange={e => update({ from: e.target.value.toUpperCase().slice(0, 3) })}
-          maxLength={3}
-          placeholder="LHR"
-          autoComplete="off"
+          onChange={code => update({ from: code })}
+          ariaLabel="From"
+          placeholder="City or airport"
         />
       </label>
 
       <label className="sfb-field">
         <span>To</span>
-        <input
-          type="text"
-          aria-label="To"
+        <CityAutocomplete
           value={state.to}
-          onChange={e => update({ to: e.target.value.toUpperCase().slice(0, 3) })}
-          maxLength={3}
-          placeholder="JFK"
-          autoComplete="off"
+          onChange={code => update({ to: code })}
+          ariaLabel="To"
+          placeholder="City or airport"
         />
       </label>
 
