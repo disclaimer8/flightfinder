@@ -78,6 +78,49 @@ function bAircraft(meta, db) {
   `.trim();
 }
 
+function bAircraftAirlines(meta, db) {
+  if (!Array.isArray(meta.icaoList) || meta.icaoList.length === 0) return null;
+  const ops = db.getAircraftOperators(meta.icaoList, 20);
+  if (ops.length === 0) return null;
+  const items = ops
+    .map((o) => `<li>${esc(o.airline)} — ${esc(o.count)} observed flight${o.count === 1 ? '' : 's'}</li>`)
+    .join('');
+  const label = meta.aircraftLabel || meta.slug || 'this aircraft';
+  return `
+    <p>${esc(ops.length)} airline${ops.length === 1 ? '' : 's'} observed operating the ${esc(label)} in the last 14 days, ranked by flight frequency:</p>
+    <ul>${items}</ul>
+  `.trim();
+}
+
+function bAircraftRoutes(meta, db) {
+  if (!Array.isArray(meta.icaoList) || meta.icaoList.length === 0) return null;
+  const routes = db.getAircraftTopRoutes(meta.icaoList, 30);
+  if (routes.length === 0) return null;
+  const items = routes
+    .map((r) => `<li>${esc(r.from)} → ${esc(r.to)} (${esc(r.count)} flight${r.count === 1 ? '' : 's'})</li>`)
+    .join('');
+  const label = meta.aircraftLabel || meta.slug || 'this aircraft';
+  return `
+    <p>Top ${esc(routes.length)} city pairs flown by the ${esc(label)}, ranked by frequency in the last 14 days:</p>
+    <ul>${items}</ul>
+  `.trim();
+}
+
+function bAircraftSafety(meta, _db) {
+  // Safety data lives in safetyEvents service. If meta carries pre-resolved
+  // counts use those; otherwise return null and degrade. Keeps this builder
+  // honest — we never invent numbers.
+  if (typeof meta.safetyEventCount !== 'number') return null;
+  const label = meta.aircraftLabel || meta.slug || 'this aircraft';
+  const recent = meta.mostRecentSafetyEvent
+    ? `Most recent on file: ${esc(meta.mostRecentSafetyEvent.date)} — ${esc(meta.mostRecentSafetyEvent.summary || 'no summary')}.`
+    : '';
+  return `
+    <p>${esc(meta.safetyEventCount)} incident${meta.safetyEventCount === 1 ? '' : 's'} on file involving the ${esc(label)} across the Aviation Safety Network, B3A, NTSB, and Wikidata datasets we aggregate.</p>
+    ${recent ? `<p>${recent}</p>` : ''}
+  `.trim();
+}
+
 function bAircraftSpecs(meta, _db) {
   const fam = meta.family || {};
   const parts = [];
@@ -110,9 +153,12 @@ function build(meta, db) {
   const dbInstance = db || require('../models/db');
   const builder = STATIC_BUILDERS[meta.kind];
   if (builder) return builder(meta);
-  if (meta.kind === 'route')           return bRoute(meta, dbInstance);
-  if (meta.kind === 'aircraft')        return bAircraft(meta, dbInstance);
-  if (meta.kind === 'aircraft-specs')  return bAircraftSpecs(meta, dbInstance);
+  if (meta.kind === 'route')              return bRoute(meta, dbInstance);
+  if (meta.kind === 'aircraft')           return bAircraft(meta, dbInstance);
+  if (meta.kind === 'aircraft-specs')     return bAircraftSpecs(meta, dbInstance);
+  if (meta.kind === 'aircraft-airlines')  return bAircraftAirlines(meta, dbInstance);
+  if (meta.kind === 'aircraft-routes')    return bAircraftRoutes(meta, dbInstance);
+  if (meta.kind === 'aircraft-safety')    return bAircraftSafety(meta, dbInstance);
   return null;
 }
 

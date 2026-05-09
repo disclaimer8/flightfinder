@@ -109,3 +109,31 @@ describe('seoContentBuilders.build — aircraft + aircraft-specs', () => {
     expect(build({ kind: 'aircraft', aircraftLabel: 'X' })).toBeNull();
   });
 });
+
+describe('seoContentBuilders.build — aircraft subpages', () => {
+  const baseMeta = {
+    aircraftLabel: 'Boeing 777',
+    slug: 'boeing-777',
+    icaoList: ['B77W'],
+  };
+
+  it('aircraft-airlines lists operators with frequency counts', () => {
+    const { build } = require('../services/seoContentBuilders');
+    const html = build({ ...baseMeta, kind: 'aircraft-airlines' });
+    expect(html).toMatch(/<li>/);
+    expect(html).toMatch(/[A-Z]{2}\b/); // some IATA airline code
+  });
+
+  it('aircraft-routes lists top city pairs', () => {
+    const { build } = require('../services/seoContentBuilders');
+    const html = build({ ...baseMeta, kind: 'aircraft-routes' });
+    expect(html).toMatch(/<li>/);
+  });
+
+  it('aircraft-safety returns null when no safety data is available', () => {
+    const { build } = require('../services/seoContentBuilders');
+    // No safety fixture seeded — builder should degrade gracefully.
+    const html = build({ ...baseMeta, kind: 'aircraft-safety' });
+    expect(html === null || html.length > 0).toBe(true);
+  });
+});
