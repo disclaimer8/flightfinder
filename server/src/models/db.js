@@ -387,6 +387,30 @@ const stmts = {
       updated_at = excluded.updated_at
   `),
   aircraftDbSize:   db.prepare('SELECT COUNT(*) AS n FROM aircraft_db'),
+
+  // SEO baking — aggregate facts per route / per aircraft from observed_routes.
+  seoRouteFacts: db.prepare(`
+    SELECT
+      COUNT(DISTINCT airline_iata) AS airline_count,
+      COUNT(DISTINCT aircraft_icao) AS aircraft_count
+    FROM observed_routes
+    WHERE dep_iata = ? AND arr_iata = ?
+  `),
+  seoRouteTopAirlines: db.prepare(`
+    SELECT airline_iata AS airline, COUNT(*) AS n
+    FROM observed_routes
+    WHERE dep_iata = ? AND arr_iata = ? AND airline_iata IS NOT NULL
+    GROUP BY airline_iata ORDER BY n DESC LIMIT ?
+  `),
+  seoRouteTopAircraft: db.prepare(`
+    SELECT aircraft_icao AS icao, COUNT(*) AS n
+    FROM observed_routes
+    WHERE dep_iata = ? AND arr_iata = ?
+    GROUP BY aircraft_icao ORDER BY n DESC LIMIT ?
+  `),
+  seoRouteCount: db.prepare(`
+    SELECT COUNT(DISTINCT dep_iata || '-' || arr_iata) AS n FROM observed_routes
+  `),
 };
 
 // Bulk insert helper — wraps a transaction around N upsertAircraft calls. Used by the
@@ -565,4 +589,60 @@ module.exports = {
   aircraftDbSize: () => stmts.aircraftDbSize.get().n,
 
   hashToken,
+
+  getRouteFacts: (from, to) => {
+    const f = String(from).toUpperCase();
+    const t = String(to).toUpperCase();
+    const counts = stmts.seoRouteFacts.get(f, t) || { airline_count: 0, aircraft_count: 0 };
+    const topAirlines = stmts.seoRouteTopAirlines.all(f, t, 5).map((r) => r.airline);
+    const topAircraft = stmts.seoRouteTopAircraft.all(f, t, 3).map((r) => r.icao);
+    return {
+      airlineCount: counts.airline_count,
+      aircraftCount: counts.aircraft_count,
+      topAirlines,
+      topAircraft,
+    };
+  },
+
+  getAircraftFacts: (icaoList) => {
+    if (!Array.isArray(icaoList) || icaoList.length === 0) {
+      return { airlineCount: 0, routeCount: 0 };
+    }
+    const placeholders = icaoList.map(() => '?').join(',');
+    const row = db.prepare(`
+      SELECT
+        COUNT(DISTINCT airline_iata) AS airline_count,
+        COUNT(DISTINCT dep_iata || '-' || arr_iata) AS route_count
+      FROM observed_routes
+      WHERE aircraft_icao IN (${placeholders})
+    `).get(...icaoList);
+    return {
+      airlineCount: row?.airline_count || 0,
+      routeCount: row?.route_count || 0,
+    };
+  },
+
+  getAircraftOperators: (icaoList, limit = 20) => {
+    if (!Array.isArray(icaoList) || icaoList.length === 0) return [];
+    const placeholders = icaoList.map(() => '?').join(',');
+    return db.prepare(`
+      SELECT airline_iata AS airline, COUNT(*) AS count
+      FROM observed_routes
+      WHERE aircraft_icao IN (${placeholders}) AND airline_iata IS NOT NULL
+      GROUP BY airline_iata ORDER BY count DESC LIMIT ?
+    `).all(...icaoList, limit);
+  },
+
+  getAircraftTopRoutes: (icaoList, limit = 30) => {
+    if (!Array.isArray(icaoList) || icaoList.length === 0) return [];
+    const placeholders = icaoList.map(() => '?').join(',');
+    return db.prepare(`
+      SELECT dep_iata AS "from", arr_iata AS "to", COUNT(*) AS count
+      FROM observed_routes
+      WHERE aircraft_icao IN (${placeholders})
+      GROUP BY dep_iata, arr_iata ORDER BY count DESC LIMIT ?
+    `).all(...icaoList, limit);
+  },
+
+  getRouteCount: () => stmts.seoRouteCount.get()?.n || 0,
 };
