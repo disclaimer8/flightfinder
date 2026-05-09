@@ -319,6 +319,7 @@ if (!IS_DEV) {
   // known URL (/, /by-aircraft, /map, /aircraft/:slug, /routes/:from-:to) is
   // indexable with correct content even without JS rendering.
   const seoMeta = require('./services/seoMetaService');
+  const seoContentCache = require('./services/seoContentCache');
 
   const spaFallback = (req, res) => {
     const meta = seoMeta.resolve(req.path);
@@ -327,7 +328,8 @@ if (!IS_DEV) {
       return res.redirect(301, meta.redirectFromLegacy);
     }
 
-    let html = seoMeta.inject(readIndexHtml(), meta);
+    const bodyContent = seoContentCache.get(req.path);
+    let html = seoMeta.inject(readIndexHtml(), meta, bodyContent);
     const q = req.query || {};
     // Query-string variants collapse to the route's canonical — otherwise
     // ?utm=… and SearchAction links would create duplicate-content copies
@@ -391,6 +393,18 @@ app.use((err, _req, res, _next) => {
 // ─────────────────────────────────────────
 //  Start
 // ─────────────────────────────────────────
+// Warm SEO content cache so the very first /aircraft/* and /routes/* hits
+// after deploy are served with baked HTML. Blocks listen by ~1-2s for
+// ~300 SQLite queries; acceptable for a pm2 restart.
+if (!IS_DEV) {
+  try {
+    require('./services/seoContentCache').warm();
+  } catch (err) {
+    // Cache failure must never block the server from accepting traffic.
+    try { require('@sentry/node').captureException(err); } catch {}
+  }
+}
+
 if (require.main === module) {
   app.listen(PORT, BIND_HOST, () => {
     console.log(`Server running on ${BIND_HOST}:${PORT} [${process.env.NODE_ENV || 'development'}]`);
