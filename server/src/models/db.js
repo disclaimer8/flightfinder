@@ -405,7 +405,7 @@ const stmts = {
   seoRouteTopAircraft: db.prepare(`
     SELECT aircraft_icao AS icao, COUNT(*) AS n
     FROM observed_routes
-    WHERE dep_iata = ? AND arr_iata = ?
+    WHERE dep_iata = ? AND arr_iata = ? AND aircraft_icao IS NOT NULL
     GROUP BY aircraft_icao ORDER BY n DESC LIMIT ?
   `),
   seoRouteCount: db.prepare(`
