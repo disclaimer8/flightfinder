@@ -198,8 +198,16 @@ function aircraftSafetyMeta(slug) {
   const label = fam.family?.label || fam.name || slug;
   const icaoList = fam.icaoList;
   const family   = _bakeFamilyFields(fam);
-  // TODO(seo-bake): wire safetyEvents.getCountForIcaoList(icaoList) once that
-  // helper exists; until then, bAircraftSafety degrades to null intentionally.
+  // Use 1980-01-01 as the lower bound (dataset start). sinceMs=0 is epoch
+  // which also works, but 1980 matches the documented dataset temporal range
+  // and is more explicit about intent.
+  let safetyEventCount;
+  try {
+    const since = Date.parse('1980-01-01T00:00:00Z');
+    safetyEventCount = safety.countByAircraftCodes(icaoList, since);
+  } catch {
+    safetyEventCount = undefined; // builder degrades to null
+  }
   return {
     title: `${label} safety record — accidents and incidents | FlightFinder`,
     description: `Aviation safety events involving the ${label}: hull losses, fatal accidents, and serious incidents from NTSB CAROL, Aviation Safety Network, B3A, and Wikidata.`,
@@ -214,6 +222,7 @@ function aircraftSafetyMeta(slug) {
     aircraftLabel: label,
     icaoList,
     family,
+    safetyEventCount,
   };
 }
 
@@ -420,11 +429,18 @@ function resolve(pathname) {
   }
 
   if (pathname === '/safety/feed' || pathname === '/safety/feed/') {
-    // TODO(seo-bake): wire safetyEvents.getCountForIcaoList(icaoList) once that
-    // helper exists; until then, bAircraftSafety degrades to null intentionally.
-    // recentIncidents is not populated here because ntsbAdapter.getRecent()
-    // performs a live DB query that is not trivially available at resolve time;
-    // bSafetyFeed degrades to null gracefully when recentIncidents is absent.
+    let recentIncidents = [];
+    try {
+      const raw = safety.getRecent({ limit: 10 }) || [];
+      // Map to the shape bSafetyFeed expects: {date, aircraft, summary}
+      recentIncidents = raw.map((e) => ({
+        date:     e.date || e.occurred_at || null,
+        aircraft: e.aircraft_type || e.aircraft_icao_type || e.aircraft || 'unknown aircraft',
+        summary:  e.summary || e.narrative || 'no summary',
+      }));
+    } catch {
+      recentIncidents = []; // builder will return null
+    }
     return {
       title: 'NTSB recent aviation accidents — daily feed (United States) | FlightFinder',
       description: 'Daily updated feed of recent U.S. aviation accidents and incidents from the official NTSB CAROL database. Filter by severity. Cross-references aircraft type and operator.',
@@ -436,6 +452,7 @@ function resolve(pathname) {
       ogImage: `${BASE}/og/safety-feed.png`,
       ogImageAlt: 'NTSB recent aviation accidents feed',
       kind: 'safety-feed',
+      recentIncidents,
     };
   }
 
