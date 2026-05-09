@@ -134,7 +134,7 @@ describe('seoContentBuilders.build — aircraft subpages', () => {
     const { build } = require('../services/seoContentBuilders');
     // No safety fixture seeded — builder should degrade gracefully.
     const html = build({ ...baseMeta, kind: 'aircraft-safety' });
-    expect(html === null || html.length > 0).toBe(true);
+    expect(html).toBeNull();
   });
 });
 
@@ -154,6 +154,6 @@ describe('seoContentBuilders.build — home and safety', () => {
   it('safety-feed returns null when no recent incidents are available', () => {
     const { build } = require('../services/seoContentBuilders');
     const html = build({ kind: 'safety-feed' });
-    expect(html === null || html.length > 0).toBe(true);
+    expect(html).toBeNull();
   });
 });

@@ -32,6 +32,21 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c])
 );
 
+// Normalise aircraftFamilies.js per-family record for SEO bake builders.
+// Builders read range_km/capacity/engines/mtow_kg; the source uses different
+// field names (maxRange, etc.) and not all fields are populated for every
+// family — those become undefined, builders gracefully omit them.
+function _bakeFamilyFields(fam) {
+  if (!fam || !fam.family) return null;
+  const f = fam.family;
+  return {
+    range_km: f.maxRange || f.range_km,
+    capacity: f.capacity,
+    engines:  f.engines,
+    mtow_kg:  f.mtow || f.mtow_kg,
+  };
+}
+
 // Replace the body between a tag-open prefix and its closing tag, using
 // only linear indexOf/slice so there's no regex backtracking surface.
 // Returns the input unchanged when either marker is missing.
@@ -104,6 +119,8 @@ function aircraftMeta(slug) {
   const fam = getFamilyBySlug(slug);
   const label = fam?.family?.label || fam?.name || slug;
   const manufacturer = fam?.family?.manufacturer || '';
+  const icaoList = fam ? fam.icaoList : [];
+  const family   = _bakeFamilyFields(fam);
   return {
     title: `${label} flights, routes and safety record | FlightFinder`,
     description: `Every route operated by the ${label}: airlines, city pairs, and recent safety events for the ${manufacturer} ${fam?.name || ''} fleet. Live schedule data.`,
@@ -121,6 +138,8 @@ function aircraftMeta(slug) {
     slug,
     aircraftLabel: label,
     aircraftManufacturer: manufacturer,
+    icaoList,
+    family,
   };
 }
 
@@ -129,6 +148,8 @@ function aircraftAirlinesMeta(slug) {
   const fam = getFamilyBySlug(slug);
   if (!fam) return notFoundMeta();
   const label = fam.family?.label || fam.name || slug;
+  const icaoList = fam.icaoList;
+  const family   = _bakeFamilyFields(fam);
   return {
     title: `Airlines that operate the ${label} | FlightFinder`,
     description: `Airlines worldwide operating the ${label}: route count per carrier, model variants flown, last observed dates. Sourced from open ADS-B data, refreshed nightly.`,
@@ -141,6 +162,8 @@ function aircraftAirlinesMeta(slug) {
     kind: 'aircraft-airlines',
     slug,
     aircraftLabel: label,
+    icaoList,
+    family,
   };
 }
 
@@ -149,6 +172,8 @@ function aircraftRoutesMeta(slug) {
   const fam = getFamilyBySlug(slug);
   if (!fam) return notFoundMeta();
   const label = fam.family?.label || fam.name || slug;
+  const icaoList = fam.icaoList;
+  const family   = _bakeFamilyFields(fam);
   return {
     title: `Top routes flown by the ${label} | FlightFinder`,
     description: `Top 50 city pairs operated by the ${label} worldwide: which airlines fly each route, how many model variants observed. Sourced from open ADS-B data.`,
@@ -161,6 +186,8 @@ function aircraftRoutesMeta(slug) {
     kind: 'aircraft-routes',
     slug,
     aircraftLabel: label,
+    icaoList,
+    family,
   };
 }
 
@@ -169,6 +196,10 @@ function aircraftSafetyMeta(slug) {
   const fam = getFamilyBySlug(slug);
   if (!fam) return notFoundMeta();
   const label = fam.family?.label || fam.name || slug;
+  const icaoList = fam.icaoList;
+  const family   = _bakeFamilyFields(fam);
+  // TODO(seo-bake): wire safetyEvents.getCountForIcaoList(icaoList) once that
+  // helper exists; until then, bAircraftSafety degrades to null intentionally.
   return {
     title: `${label} safety record — accidents and incidents | FlightFinder`,
     description: `Aviation safety events involving the ${label}: hull losses, fatal accidents, and serious incidents from NTSB CAROL, Aviation Safety Network, B3A, and Wikidata.`,
@@ -181,6 +212,8 @@ function aircraftSafetyMeta(slug) {
     kind: 'aircraft-safety',
     slug,
     aircraftLabel: label,
+    icaoList,
+    family,
   };
 }
 
@@ -189,6 +222,8 @@ function aircraftSpecsMeta(slug) {
   const fam = getFamilyBySlug(slug);
   if (!fam) return notFoundMeta();
   const label = fam.family?.label || fam.name || slug;
+  const icaoList = fam.icaoList;
+  const family   = _bakeFamilyFields(fam);
   return {
     title: `${label} specifications — range, capacity, engines | FlightFinder`,
     description: `${label} technical specifications: range, passenger capacity, maximum takeoff weight, wingspan, length, height, max speed, ceiling, engine options, variants.`,
@@ -201,6 +236,8 @@ function aircraftSpecsMeta(slug) {
     kind: 'aircraft-specs',
     slug,
     aircraftLabel: label,
+    icaoList,
+    family,
   };
 }
 
@@ -383,6 +420,11 @@ function resolve(pathname) {
   }
 
   if (pathname === '/safety/feed' || pathname === '/safety/feed/') {
+    // TODO(seo-bake): wire safetyEvents.getCountForIcaoList(icaoList) once that
+    // helper exists; until then, bAircraftSafety degrades to null intentionally.
+    // recentIncidents is not populated here because ntsbAdapter.getRecent()
+    // performs a live DB query that is not trivially available at resolve time;
+    // bSafetyFeed degrades to null gracefully when recentIncidents is absent.
     return {
       title: 'NTSB recent aviation accidents — daily feed (United States) | FlightFinder',
       description: 'Daily updated feed of recent U.S. aviation accidents and incidents from the official NTSB CAROL database. Filter by severity. Cross-references aircraft type and operator.',
