@@ -498,16 +498,18 @@ function structuredData(meta) {
         })),
       });
     }
-    // Vehicle schema — schema.org has no Aircraft type, but Vehicle is
-    // ingested cleanly by Google entity panels and Bing knowledge cards.
+    // schema.org has no Aircraft type. Vehicle fits but inherits from Product,
+    // which triggers Google's "missing offers/review/aggregateRating" rich-result
+    // warning we can't honestly satisfy. Use Thing + Wikidata additionalType
+    // (Q197 = airplane) so Knowledge Graph still resolves the entity.
     graph.push({
-      '@type': 'Vehicle',
+      '@type': 'Thing',
       name: meta.aircraftLabel,
-      ...(meta.aircraftManufacturer ? {
-        manufacturer: { '@type': 'Organization', name: meta.aircraftManufacturer },
-      } : {}),
-      vehicleConfiguration: 'Commercial aircraft',
+      additionalType: 'https://www.wikidata.org/wiki/Q197',
       url: meta.canonical,
+      ...(meta.aircraftManufacturer ? {
+        description: `${meta.aircraftLabel} commercial aircraft, manufactured by ${meta.aircraftManufacturer}.`,
+      } : {}),
     });
   } else if (meta.kind === 'route') {
     graph.push({
