@@ -1,0 +1,61 @@
+/* ─── CityAutocomplete ─── */
+
+.city-autocomplete {
+  position: relative;
+  width: 100%;
+}
+
+.city-autocomplete__input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.city-autocomplete__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50; /* below filter-chip-popover(100) and site-header-drawer(200) */
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--color-surface, #fff);
+  border: 1.5px solid var(--color-border, #d1d5db);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.city-autocomplete__option {
+  padding: 8px 12px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  color: var(--color-text, #111827);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.city-autocomplete__option:hover,
+.city-autocomplete__option--highlighted {
+  background: var(--color-primary-ring, rgba(37, 99, 235, 0.08));
+  color: var(--color-primary, #2563eb);
+}
+
+.city-autocomplete__empty {
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #6b7280);
+  text-align: center;
+}
+
+/* Mobile: ensure dropdown is reachable on 375px */
+@media (max-width: 480px) {
+  .city-autocomplete__dropdown {
+    max-height: 60vh;
+    /* Allow the dropdown to extend to the right edge of the viewport */
+    max-width: 100vw;
+  }
+}
