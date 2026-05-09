@@ -21,18 +21,28 @@ function warm(opts = {}) {
     paths = STATIC_PATHS;
   }
 
+  // Track every path we attempted this pass — used by refresh() to distinguish
+  // "URL no longer enumerated" (prune) from "builder failed but URL still
+  // exists" (preserve prior value).
+  const attempted = new Set();
+
   for (const p of paths) {
+    attempted.add(p);
     let meta;
     try { meta = seoMeta.resolve(p); } catch { continue; }
     if (!meta) continue;
+    const canonical = meta.canonical || `https://himaxym.com${p}`;
+    attempted.add(canonical);
+
     let html;
     try { html = builders.build(meta); } catch (err) {
       try { require('@sentry/node').captureException(err, { tags: { seo_path: p } }); } catch {}
       continue;
     }
-    if (html != null) map.set(meta.canonical || `https://himaxym.com${p}`, html);
-    // Also key by request-path (without origin) so spaFallback can do a direct lookup.
-    if (html != null) map.set(p, html);
+    if (html != null) {
+      map.set(canonical, html);
+      map.set(p, html);
+    }
   }
 
   lastWarmedAt = Date.now();
@@ -41,18 +51,18 @@ function warm(opts = {}) {
     timer = setInterval(refresh, REFRESH_MS);
     if (timer.unref) timer.unref(); // don't keep the event loop alive in tests
   }
+
+  return attempted;
 }
 
 function refresh() {
-  // Re-warm without scheduling another timer. Failures in any one builder
-  // already short-circuit inside warm(); a refresh that produces no value
-  // for a key leaves the prior value in place because we only set, never
-  // delete. To prune stale entries on URL removal, snapshot the keyset
-  // before warm() and delete the diff afterwards.
-  const before = new Set(map.keys());
-  warm({ schedule: false });
-  const after = new Set(map.keys());
-  for (const key of before) if (!after.has(key)) map.delete(key);
+  // Re-warm; preserve prior values for URLs whose builders failed this pass
+  // (they remain in the enumerated set so we don't prune them). Only delete
+  // keys that have genuinely fallen out of the enumeration.
+  const attempted = warm({ schedule: false });
+  for (const key of [...map.keys()]) {
+    if (!attempted.has(key)) map.delete(key);
+  }
 }
 
 function get(pathname) {
@@ -70,4 +80,8 @@ function _clearForTests() {
   lastWarmedAt = 0;
 }
 
-module.exports = { warm, refresh, get, stats, _clearForTests };
+function _injectForTests(key, html) {
+  map.set(key, html);
+}
+
+module.exports = { warm, refresh, get, stats, _clearForTests, _injectForTests };
