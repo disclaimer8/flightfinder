@@ -65,3 +65,47 @@ describe('seoContentBuilders.build — route', () => {
     expect(build(meta)).toBeNull();
   });
 });
+
+describe('seoContentBuilders.build — aircraft + aircraft-specs', () => {
+  beforeAll(() => {
+    const db = require('../models/db');
+    function seed(dep, arr, icao, airline) {
+      db.upsertObservedRoute({
+        depIata: dep, arrIata: arr, aircraftIcao: icao, airlineIata: airline, source: 'test',
+      });
+    }
+    seed('JFK', 'LHR', 'B77W', 'BA');
+    seed('LAX', 'NRT', 'B77W', 'JL');
+  });
+
+  it('returns HTML mentioning operator count and a top route for kind=aircraft', () => {
+    const { build } = require('../services/seoContentBuilders');
+    const meta = {
+      kind: 'aircraft',
+      slug: 'boeing-777',
+      aircraftLabel: 'Boeing 777',
+      icaoList: ['B77W'],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/airline/i);
+    expect(html).toMatch(/Boeing 777|B77W/);
+  });
+
+  it('returns HTML with specs for kind=aircraft-specs', () => {
+    const { build } = require('../services/seoContentBuilders');
+    const meta = {
+      kind: 'aircraft-specs',
+      aircraftLabel: 'Boeing 777',
+      slug: 'boeing-777',
+      icaoList: ['B77W'],
+      family: { range_km: 14490, capacity: '301-368', engines: '2 × GE90', mtow_kg: 351500 },
+    };
+    const html = build(meta);
+    expect(html).toMatch(/14490|range/i);
+  });
+
+  it('returns null for aircraft with no icaoList', () => {
+    const { build } = require('../services/seoContentBuilders');
+    expect(build({ kind: 'aircraft', aircraftLabel: 'X' })).toBeNull();
+  });
+});

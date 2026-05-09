@@ -63,6 +63,36 @@ function bRoute(meta, db) {
   `.trim();
 }
 
+function bAircraft(meta, db) {
+  if (!Array.isArray(meta.icaoList) || meta.icaoList.length === 0) return null;
+  const facts = db.getAircraftFacts(meta.icaoList);
+  if (facts.airlineCount === 0 && facts.routeCount === 0) return null;
+  const topRoutes = db.getAircraftTopRoutes(meta.icaoList, 5);
+  const routeLabels = topRoutes
+    .map((r) => `${esc(r.from)}-${esc(r.to)}`)
+    .join(', ');
+  const label = meta.aircraftLabel || meta.slug || 'this aircraft';
+  return `
+    <p>The ${esc(label)} is operated by ${esc(facts.airlineCount)} airline${facts.airlineCount === 1 ? '' : 's'} across ${esc(facts.routeCount)} city pair${facts.routeCount === 1 ? '' : 's'} in our observed-flights dataset (last 14 days).</p>
+    ${routeLabels ? `<p>Top routes: ${routeLabels}.</p>` : ''}
+  `.trim();
+}
+
+function bAircraftSpecs(meta, _db) {
+  const fam = meta.family || {};
+  const parts = [];
+  if (fam.range_km)  parts.push(`Range: <strong>${esc(fam.range_km)} km</strong>`);
+  if (fam.capacity)  parts.push(`Capacity: <strong>${esc(fam.capacity)} seats</strong>`);
+  if (fam.engines)   parts.push(`Engines: <strong>${esc(fam.engines)}</strong>`);
+  if (fam.mtow_kg)   parts.push(`MTOW: <strong>${esc(fam.mtow_kg)} kg</strong>`);
+  if (parts.length === 0) return null;
+  const label = meta.aircraftLabel || meta.slug || 'aircraft';
+  return `
+    <p>Specifications for the ${esc(label)}:</p>
+    <ul>${parts.map((p) => `<li>${p}</li>`).join('')}</ul>
+  `.trim();
+}
+
 const STATIC_BUILDERS = {
   pricing:       bPricing,
   about:         bAbout,
@@ -80,7 +110,9 @@ function build(meta, db) {
   const dbInstance = db || require('../models/db');
   const builder = STATIC_BUILDERS[meta.kind];
   if (builder) return builder(meta);
-  if (meta.kind === 'route') return bRoute(meta, dbInstance);
+  if (meta.kind === 'route')           return bRoute(meta, dbInstance);
+  if (meta.kind === 'aircraft')        return bAircraft(meta, dbInstance);
+  if (meta.kind === 'aircraft-specs')  return bAircraftSpecs(meta, dbInstance);
   return null;
 }
 
