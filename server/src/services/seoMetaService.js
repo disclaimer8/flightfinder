@@ -892,7 +892,7 @@ function structuredData(meta) {
  *   - Adds a <script type="application/ld+json"> with per-route graph
  *     (BreadcrumbList / FAQPage) right before </head>.
  */
-function inject(html, meta) {
+function inject(html, meta, bodyContent = null) {
   let out = html;
   out = out.replace(/<title>[^<]*<\/title>/i, `<title>${esc(meta.title)}</title>`);
   out = out.replace(
@@ -966,6 +966,19 @@ function inject(html, meta) {
   // on `[^"]*"[^>]*>` when scanning arbitrary HTML.
   out = replaceTagBody(out, '<h1 style="font-size:clamp(32px,6vw,56px)', '</h1>', esc(meta.h1));
   out = replaceTagBody(out, '<p style="font-size:clamp(16px,2.2vw,20px)', '</p>',  esc(meta.subtitle));
+  // Bake real per-route facts into #root for first-pass indexing. The client
+  // uses createRoot().render() (not hydrateRoot), which wipes #root on mount,
+  // so this section is invisible to JS-enabled users after hydration.
+  // Idempotent: skip if a previous inject already ran on this html.
+  if (bodyContent && !out.includes('data-seo-bake="true"')) {
+    const subtitleClose = out.indexOf('</p>',
+      out.indexOf('<p style="font-size:clamp(16px,2.2vw,20px)'));
+    if (subtitleClose !== -1) {
+      const insertAt = subtitleClose + '</p>'.length;
+      const section  = `<section data-seo-bake="true">${bodyContent}</section>`;
+      out = out.slice(0, insertAt) + section + out.slice(insertAt);
+    }
+  }
   const sd = structuredData(meta);
   if (sd) {
     // JSON.stringify output is already safe inside a <script> tag as long
