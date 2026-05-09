@@ -136,6 +136,33 @@ function bAircraftSpecs(meta, _db) {
   `.trim();
 }
 
+function bHome(_meta, db) {
+  const routeCount = db.getRouteCount();
+  const families   = getFamilyList().length;
+  return `
+    <p>Search ${esc(routeCount)} observed routes worldwide, filtered by aircraft type. Pick a Boeing 737, Airbus A320, turboprop, or wide-body jet — see only flights operating that equipment.</p>
+    <p>${esc(families)} aircraft families have dedicated landing pages with operator lists, top routes, safety records, and full specifications.</p>
+  `.trim();
+}
+
+function bSafetyGlobal(_meta, _db) {
+  return `
+    <p>Worldwide aviation accident dataset aggregated from the Aviation Safety Network, the Bureau of Aircraft Accidents Archives (B3A), and Wikidata. Approximately 5 200 records since 1980 with aircraft type, operator, location, fatalities and source URL where known.</p>
+    <p>Updated weekly. Free for non-commercial use; cite Aviation Safety Network and B3A when redistributing.</p>
+  `.trim();
+}
+
+function bSafetyFeed(meta, _db) {
+  if (!Array.isArray(meta.recentIncidents) || meta.recentIncidents.length === 0) return null;
+  const items = meta.recentIncidents.slice(0, 10).map((i) =>
+    `<li>${esc(i.date)} — ${esc(i.aircraft || 'unknown aircraft')}: ${esc(i.summary || 'no summary')}</li>`
+  ).join('');
+  return `
+    <p>Recent U.S. aviation accidents and incidents from the official National Transportation Safety Board (NTSB) CAROL database, updated daily.</p>
+    <ul>${items}</ul>
+  `.trim();
+}
+
 const STATIC_BUILDERS = {
   pricing:       bPricing,
   about:         bAbout,
@@ -159,6 +186,9 @@ function build(meta, db) {
   if (meta.kind === 'aircraft-airlines')  return bAircraftAirlines(meta, dbInstance);
   if (meta.kind === 'aircraft-routes')    return bAircraftRoutes(meta, dbInstance);
   if (meta.kind === 'aircraft-safety')    return bAircraftSafety(meta, dbInstance);
+  if (meta.kind === 'home')               return bHome(meta, dbInstance);
+  if (meta.kind === 'safety-global')      return bSafetyGlobal(meta, dbInstance);
+  if (meta.kind === 'safety-feed')        return bSafetyFeed(meta, dbInstance);
   return null;
 }
 

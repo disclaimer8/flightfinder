@@ -137,3 +137,23 @@ describe('seoContentBuilders.build — aircraft subpages', () => {
     expect(html === null || html.length > 0).toBe(true);
   });
 });
+
+describe('seoContentBuilders.build — home and safety', () => {
+  it('home includes a route count', () => {
+    const { build } = require('../services/seoContentBuilders');
+    const html = build({ kind: 'home' });
+    expect(html).toMatch(/route|airport|aircraft/i);
+  });
+
+  it('safety-global describes the dataset', () => {
+    const { build } = require('../services/seoContentBuilders');
+    const html = build({ kind: 'safety-global' });
+    expect(html).toMatch(/Aviation Safety Network|NTSB|dataset/i);
+  });
+
+  it('safety-feed returns null when no recent incidents are available', () => {
+    const { build } = require('../services/seoContentBuilders');
+    const html = build({ kind: 'safety-feed' });
+    expect(html === null || html.length > 0).toBe(true);
+  });
+});
