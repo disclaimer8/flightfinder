@@ -319,6 +319,7 @@ if (!IS_DEV) {
   // known URL (/, /by-aircraft, /map, /aircraft/:slug, /routes/:from-:to) is
   // indexable with correct content even without JS rendering.
   const seoMeta = require('./services/seoMetaService');
+  const seoContentCache = require('./services/seoContentCache');
 
   const spaFallback = (req, res) => {
     const meta = seoMeta.resolve(req.path);
@@ -327,7 +328,8 @@ if (!IS_DEV) {
       return res.redirect(301, meta.redirectFromLegacy);
     }
 
-    let html = seoMeta.inject(readIndexHtml(), meta);
+    const bodyContent = seoContentCache.get(req.path);
+    let html = seoMeta.inject(readIndexHtml(), meta, bodyContent);
     const q = req.query || {};
     // Query-string variants collapse to the route's canonical — otherwise
     // ?utm=… and SearchAction links would create duplicate-content copies
@@ -391,9 +393,21 @@ app.use((err, _req, res, _next) => {
 // ─────────────────────────────────────────
 //  Start
 // ─────────────────────────────────────────
+// (no warm here — moved to fire after listen() to avoid blocking pm2 health checks)
+
 if (require.main === module) {
   app.listen(PORT, BIND_HOST, () => {
     console.log(`Server running on ${BIND_HOST}:${PORT} [${process.env.NODE_ENV || 'development'}]`);
+    // Kick the SEO cache warm asynchronously — first few requests after a
+    // restart may render without bake content (acceptable trade for fast
+    // pm2 health-check response). Subsequent refresh interval keeps it
+    // fresh.
+    if (!IS_DEV) {
+      setImmediate(() => {
+        try { require('./services/seoContentCache').warm(); }
+        catch (err) { try { Sentry.captureException(err); } catch {} }
+      });
+    }
   });
 
   // Background workers.

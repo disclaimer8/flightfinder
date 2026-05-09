@@ -1,0 +1,195 @@
+const { getFamilyList } = require('../models/aircraftFamilies');
+const { esc } = require('./seoMetaService');
+
+/**
+ * Per-kind HTML emitters for the SEO content cache. Each builder returns
+ * an HTML string ready to drop inside `<section data-seo-bake>`, or null
+ * if the kind is unknown / data is missing.
+ *
+ * Builders MUST escape any user/db-derived value through esc(). Static
+ * copy may use raw HTML.
+ */
+
+function bPricing() {
+  return `
+    <p>FlightFinder Pro unlocks enriched flight cards (livery, on-time stats, CO₂, amenities), delay predictions, and My Trips with push alerts.</p>
+    <p>Three plans: <strong>Pro Monthly</strong> at $4.99/mo, <strong>Pro Annual</strong> at $39/year, and <strong>Pro Lifetime</strong> at $99 one-time (limited to 500 seats).</p>
+    <p>Cancel anytime. All plans include the same feature set; the difference is billing cadence.</p>
+  `.trim();
+}
+
+function bAbout() {
+  return `
+    <p>FlightFinder is an independent flight-search engine focused on aircraft transparency. We surface what most search engines hide: which exact aircraft is operating your flight, its safety record, on-time performance, and amenities.</p>
+    <p>Data flows from Amadeus, Duffel, AirLabs, and the official safety datasets (NTSB, Aviation Safety Network, B3A). We don't sell tickets — we redirect to airline and OTA sites for booking.</p>
+    <p>Built and run by Denys Kolomiiets. Contact: hello@himaxym.com.</p>
+  `.trim();
+}
+
+function bMap() {
+  return `
+    <p>The interactive map shows every airport in our dataset and lets you draw a radius to see what flies within a region. Click any airport to see its destinations; click a destination dot to pull live priced flights for that leg.</p>
+    <p>Filter by aircraft family (Boeing 747, Airbus A380, A340 family, …) to see only routes operating that equipment in the last 14 days.</p>
+  `.trim();
+}
+
+function bByAircraft() {
+  const families = getFamilyList();
+  const items = families
+    .map((f) => `<li><a href="/aircraft/${esc(f.slug)}">${esc(f.label || f.name || f.slug)}</a></li>`)
+    .join('');
+  return `
+    <p>Dedicated landing pages for ${families.length} aircraft families. Each page lists the airlines that operate the type, the routes it flies, recent safety events, and full specs.</p>
+    <ul>${items}</ul>
+  `.trim();
+}
+
+function bRoute(meta, db) {
+  if (!meta.fromIata || !meta.toIata) return null;
+  const facts = db.getRouteFacts(meta.fromIata, meta.toIata);
+  if (facts.airlineCount === 0 && facts.aircraftCount === 0) return null;
+
+  const fromLabel = meta.fromName || meta.fromIata;
+  const toLabel   = meta.toName   || meta.toIata;
+  const aircraftLabel = facts.topAircraft.length
+    ? `Most common aircraft: ${facts.topAircraft.map(esc).join(', ')}.`
+    : '';
+  const airlineLabel = facts.topAirlines.length
+    ? `Top operators: ${facts.topAirlines.map(esc).join(', ')}.`
+    : '';
+  return `
+    <p>${esc(facts.airlineCount)} airline${facts.airlineCount === 1 ? '' : 's'} operate${facts.airlineCount === 1 ? 's' : ''} the ${esc(fromLabel)} (${esc(meta.fromIata)}) to ${esc(toLabel)} (${esc(meta.toIata)}) route across ${esc(facts.aircraftCount)} aircraft type${facts.aircraftCount === 1 ? '' : 's'} in our dataset.</p>
+    <p>${aircraftLabel} ${airlineLabel}</p>
+  `.trim();
+}
+
+function bAircraft(meta, db) {
+  if (!Array.isArray(meta.icaoList) || meta.icaoList.length === 0) return null;
+  const facts = db.getAircraftFacts(meta.icaoList);
+  if (facts.airlineCount === 0 && facts.routeCount === 0) return null;
+  const topRoutes = db.getAircraftTopRoutes(meta.icaoList, 5);
+  const routeLabels = topRoutes
+    .map((r) => `${esc(r.from)}-${esc(r.to)}`)
+    .join(', ');
+  const label = meta.aircraftLabel || meta.slug || 'this aircraft';
+  return `
+    <p>The ${esc(label)} is operated by ${esc(facts.airlineCount)} airline${facts.airlineCount === 1 ? '' : 's'} across ${esc(facts.routeCount)} city pair${facts.routeCount === 1 ? '' : 's'} in our observed-flights dataset (last 14 days).</p>
+    ${routeLabels ? `<p>Top routes: ${routeLabels}.</p>` : ''}
+  `.trim();
+}
+
+function bAircraftAirlines(meta, db) {
+  if (!Array.isArray(meta.icaoList) || meta.icaoList.length === 0) return null;
+  const ops = db.getAircraftOperators(meta.icaoList, 20);
+  if (ops.length === 0) return null;
+  const items = ops
+    .map((o) => `<li>${esc(o.airline)} — ${esc(o.count)} observed flight${o.count === 1 ? '' : 's'}</li>`)
+    .join('');
+  const label = meta.aircraftLabel || meta.slug || 'this aircraft';
+  return `
+    <p>${esc(ops.length)} airline${ops.length === 1 ? '' : 's'} observed operating the ${esc(label)} in the last 14 days, ranked by flight frequency:</p>
+    <ul>${items}</ul>
+  `.trim();
+}
+
+function bAircraftRoutes(meta, db) {
+  if (!Array.isArray(meta.icaoList) || meta.icaoList.length === 0) return null;
+  const routes = db.getAircraftTopRoutes(meta.icaoList, 30);
+  if (routes.length === 0) return null;
+  const items = routes
+    .map((r) => `<li>${esc(r.from)} → ${esc(r.to)} (${esc(r.count)} flight${r.count === 1 ? '' : 's'})</li>`)
+    .join('');
+  const label = meta.aircraftLabel || meta.slug || 'this aircraft';
+  return `
+    <p>Top ${esc(routes.length)} city pairs flown by the ${esc(label)}, ranked by frequency in the last 14 days:</p>
+    <ul>${items}</ul>
+  `.trim();
+}
+
+function bAircraftSafety(meta, _db) {
+  // Safety data lives in safetyEvents service. If meta carries pre-resolved
+  // counts use those; otherwise return null and degrade. Keeps this builder
+  // honest — we never invent numbers.
+  if (typeof meta.safetyEventCount !== 'number') return null;
+  const label = meta.aircraftLabel || meta.slug || 'this aircraft';
+  const recent = meta.mostRecentSafetyEvent
+    ? `Most recent on file: ${esc(meta.mostRecentSafetyEvent.date)} — ${esc(meta.mostRecentSafetyEvent.summary || 'no summary')}.`
+    : '';
+  return `
+    <p>${esc(meta.safetyEventCount)} incident${meta.safetyEventCount === 1 ? '' : 's'} on file involving the ${esc(label)} across the Aviation Safety Network, B3A, NTSB, and Wikidata datasets we aggregate.</p>
+    ${recent ? `<p>${recent}</p>` : ''}
+  `.trim();
+}
+
+function bAircraftSpecs(meta, _db) {
+  const fam = meta.family || {};
+  const parts = [];
+  if (fam.range_km)  parts.push(`Range: <strong>${esc(fam.range_km)} km</strong>`);
+  if (fam.capacity)  parts.push(`Capacity: <strong>${esc(fam.capacity)} seats</strong>`);
+  if (fam.engines)   parts.push(`Engines: <strong>${esc(fam.engines)}</strong>`);
+  if (fam.mtow_kg)   parts.push(`MTOW: <strong>${esc(fam.mtow_kg)} kg</strong>`);
+  if (parts.length === 0) return null;
+  const label = meta.aircraftLabel || meta.slug || 'aircraft';
+  return `
+    <p>Specifications for the ${esc(label)}:</p>
+    <ul>${parts.map((p) => `<li>${p}</li>`).join('')}</ul>
+  `.trim();
+}
+
+function bHome(_meta, db) {
+  const routeCount = db.getRouteCount();
+  const families   = getFamilyList().length;
+  return `
+    <p>Search ${esc(routeCount)} observed routes worldwide, filtered by aircraft type. Pick a Boeing 737, Airbus A320, turboprop, or wide-body jet — see only flights operating that equipment.</p>
+    <p>${esc(families)} aircraft families have dedicated landing pages with operator lists, top routes, safety records, and full specifications.</p>
+  `.trim();
+}
+
+function bSafetyGlobal(_meta, _db) {
+  return `
+    <p>Worldwide aviation accident dataset aggregated from the Aviation Safety Network, the Bureau of Aircraft Accidents Archives (B3A), and Wikidata. Approximately 5 200 records since 1980 with aircraft type, operator, location, fatalities and source URL where known.</p>
+    <p>Updated weekly. Free for non-commercial use; cite Aviation Safety Network and B3A when redistributing.</p>
+  `.trim();
+}
+
+function bSafetyFeed(meta, _db) {
+  if (!Array.isArray(meta.recentIncidents) || meta.recentIncidents.length === 0) return null;
+  const items = meta.recentIncidents.slice(0, 10).map((i) =>
+    `<li>${esc(i.date)} — ${esc(i.aircraft || 'unknown aircraft')}: ${esc(i.summary || 'no summary')}</li>`
+  ).join('');
+  return `
+    <p>Recent U.S. aviation accidents and incidents from the official National Transportation Safety Board (NTSB) CAROL database, updated daily.</p>
+    <ul>${items}</ul>
+  `.trim();
+}
+
+const STATIC_BUILDERS = {
+  pricing:       bPricing,
+  about:         bAbout,
+  map:           bMap,
+  'by-aircraft': bByAircraft,
+};
+
+/**
+ * @param {object} meta - resolved meta object from seoMetaService.resolve()
+ * @param {object} [db] - optional db override for testing; defaults to ../models/db
+ * @returns {string|null} HTML string, or null if kind is unknown or build failed
+ */
+function build(meta, db) {
+  if (!meta || !meta.kind) return null;
+  const dbInstance = db || require('../models/db');
+  const builder = STATIC_BUILDERS[meta.kind];
+  if (builder) return builder(meta);
+  if (meta.kind === 'route')              return bRoute(meta, dbInstance);
+  if (meta.kind === 'aircraft')           return bAircraft(meta, dbInstance);
+  if (meta.kind === 'aircraft-specs')     return bAircraftSpecs(meta, dbInstance);
+  if (meta.kind === 'aircraft-airlines')  return bAircraftAirlines(meta, dbInstance);
+  if (meta.kind === 'aircraft-routes')    return bAircraftRoutes(meta, dbInstance);
+  if (meta.kind === 'aircraft-safety')    return bAircraftSafety(meta, dbInstance);
+  if (meta.kind === 'home')               return bHome(meta, dbInstance);
+  if (meta.kind === 'safety-global')      return bSafetyGlobal(meta, dbInstance);
+  if (meta.kind === 'safety-feed')        return bSafetyFeed(meta, dbInstance);
+  return null;
+}
+
+module.exports = { build };

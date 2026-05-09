@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const { getFamilyList } = require('../models/aircraftFamilies');
+const { enumerateSeoUrls } = require('../services/seoUrlEnumerator');
 
 const router = express.Router();
 
@@ -48,46 +48,29 @@ router.get('/sitemap.xml', async (_req, res) => {
   const aircraftDay = aircraftCatalogueLastmod();
   const today       = TODAY();
 
-  const urls = [
-    { loc: `${BASE}/`,              changefreq: 'weekly',  priority: '1.0', lastmod: deployDay },
-    { loc: `${BASE}/by-aircraft`,   changefreq: 'weekly',  priority: '0.9', lastmod: aircraftDay },
-    { loc: `${BASE}/map`,           changefreq: 'weekly',  priority: '0.8', lastmod: deployDay },
-    { loc: `${BASE}/safety/global`, changefreq: 'weekly',  priority: '0.8', lastmod: today },
-    { loc: `${BASE}/safety/feed`,   changefreq: 'daily',   priority: '0.7', lastmod: today },
-    { loc: `${BASE}/pricing`,       changefreq: 'monthly', priority: '0.6', lastmod: deployDay },
-    { loc: `${BASE}/about`,         changefreq: 'monthly', priority: '0.5', lastmod: deployDay },
-  ];
-
-  // Aircraft landing pages — /aircraft/:slug for every family we support.
-  // Lastmod tracks the catalogue file so a new family triggers a fresh
-  // crawl invitation across all aircraft URLs.
-  for (const fam of getFamilyList()) {
-    urls.push({
-      loc: `${BASE}/aircraft/${fam.slug}`,
-      changefreq: 'weekly',
-      priority: '0.7',
-      lastmod: aircraftDay,
-    });
-  }
-
-  // Route landing pages — top 100 hub-network edges. We read the already
-  // cached map payload; if the cache is cold or the DB is empty (observed_
-  // routes still warming up), we silently skip — the aircraft pages alone
-  // carry enough long-tail weight for a first sitemap.
-  try {
-    const db = require('../models/db');
-    const { edges = [] } = db.getHubNetwork?.({ hubLimit: 200, minDests: 15, edgeLimit: 100 }) || {};
-    for (const [from, to] of edges) {
-      urls.push({
-        loc: `${BASE}/routes/${from.toLowerCase()}-${to.toLowerCase()}`,
-        changefreq: 'weekly',
-        priority: '0.6',
-        lastmod: today,
-      });
-    }
-  } catch (err) {
-    console.warn('[seo] hub-network edges unavailable for sitemap:', err.message);
-  }
+  // Canonical path list — single source of truth shared with seoContentCache.
+  // Aircraft subpages (/aircraft/{slug}/airlines etc.) and hub-network routes
+  // are included by enumerateSeoUrls so both the sitemap and future cache
+  // stay in sync without separate maintenance.
+  const paths = enumerateSeoUrls();
+  const urls = paths.map((p) => {
+    const loc = `${BASE}${p}`;
+    if (p === '/')               return { loc, changefreq: 'weekly',  priority: '1.0', lastmod: deployDay };
+    if (p === '/by-aircraft')    return { loc, changefreq: 'weekly',  priority: '0.9', lastmod: aircraftDay };
+    if (p === '/map')            return { loc, changefreq: 'weekly',  priority: '0.8', lastmod: deployDay };
+    if (p === '/safety/global')  return { loc, changefreq: 'weekly',  priority: '0.8', lastmod: today };
+    if (p === '/safety/feed')    return { loc, changefreq: 'daily',   priority: '0.7', lastmod: today };
+    if (p === '/pricing')        return { loc, changefreq: 'monthly', priority: '0.6', lastmod: deployDay };
+    if (p === '/about')          return { loc, changefreq: 'monthly', priority: '0.5', lastmod: deployDay };
+    // Aircraft family landing pages (/aircraft/{slug} — no trailing subpage segment).
+    if (/^\/aircraft\/[^/]+$/.test(p))
+                                 return { loc, changefreq: 'weekly',  priority: '0.7', lastmod: aircraftDay };
+    // Aircraft pillar subpages (/aircraft/{slug}/{sub}).
+    if (p.startsWith('/aircraft/'))
+                                 return { loc, changefreq: 'monthly', priority: '0.6', lastmod: deployDay };
+    if (p.startsWith('/routes/')) return { loc, changefreq: 'weekly',  priority: '0.6', lastmod: today };
+    return { loc, changefreq: 'weekly', priority: '0.5', lastmod: today };
+  });
 
   // Indexable safety events — fatal/hull_loss with narrative or ≥3 related events.
   // Capped at 500 for sitemap hygiene; excess events still get unique meta when accessed.
@@ -125,23 +108,6 @@ router.get('/sitemap.xml', async (_req, res) => {
     }
   } catch (err) {
     console.warn('[seo] aircraft-route grid unavailable for sitemap:', err.message);
-  }
-
-  // Aircraft pillar sub-pages — 4 per family × 19 families = 76 URLs.
-  try {
-    const { getFamilyList: getPillarFamilies } = require('../models/aircraftFamilies');
-    for (const fam of getPillarFamilies()) {
-      for (const sub of ['airlines', 'routes', 'safety', 'specs']) {
-        urls.push({
-          loc: `${BASE}/aircraft/${fam.slug}/${sub}`,
-          changefreq: 'monthly',
-          priority: '0.6',
-          lastmod: deployDay,
-        });
-      }
-    }
-  } catch (err) {
-    console.warn('[seo] aircraft pillar sub-pages unavailable for sitemap:', err.message);
   }
 
   const xml = [

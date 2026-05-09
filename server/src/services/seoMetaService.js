@@ -32,6 +32,21 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c])
 );
 
+// Normalise aircraftFamilies.js per-family record for SEO bake builders.
+// Builders read range_km/capacity/engines/mtow_kg; the source uses different
+// field names (maxRange, etc.) and not all fields are populated for every
+// family — those become undefined, builders gracefully omit them.
+function _bakeFamilyFields(fam) {
+  if (!fam || !fam.family) return null;
+  const f = fam.family;
+  return {
+    range_km: f.maxRange || f.range_km,
+    capacity: f.capacity,
+    engines:  f.engines,
+    mtow_kg:  f.mtow || f.mtow_kg,
+  };
+}
+
 // Replace the body between a tag-open prefix and its closing tag, using
 // only linear indexOf/slice so there's no regex backtracking surface.
 // Returns the input unchanged when either marker is missing.
@@ -104,6 +119,8 @@ function aircraftMeta(slug) {
   const fam = getFamilyBySlug(slug);
   const label = fam?.family?.label || fam?.name || slug;
   const manufacturer = fam?.family?.manufacturer || '';
+  const icaoList = fam ? fam.icaoList : [];
+  const family   = _bakeFamilyFields(fam);
   return {
     title: `${label} flights, routes and safety record | FlightFinder`,
     description: `Every route operated by the ${label}: airlines, city pairs, and recent safety events for the ${manufacturer} ${fam?.name || ''} fleet. Live schedule data.`,
@@ -121,6 +138,8 @@ function aircraftMeta(slug) {
     slug,
     aircraftLabel: label,
     aircraftManufacturer: manufacturer,
+    icaoList,
+    family,
   };
 }
 
@@ -129,6 +148,8 @@ function aircraftAirlinesMeta(slug) {
   const fam = getFamilyBySlug(slug);
   if (!fam) return notFoundMeta();
   const label = fam.family?.label || fam.name || slug;
+  const icaoList = fam.icaoList;
+  const family   = _bakeFamilyFields(fam);
   return {
     title: `Airlines that operate the ${label} | FlightFinder`,
     description: `Airlines worldwide operating the ${label}: route count per carrier, model variants flown, last observed dates. Sourced from open ADS-B data, refreshed nightly.`,
@@ -141,6 +162,8 @@ function aircraftAirlinesMeta(slug) {
     kind: 'aircraft-airlines',
     slug,
     aircraftLabel: label,
+    icaoList,
+    family,
   };
 }
 
@@ -149,6 +172,8 @@ function aircraftRoutesMeta(slug) {
   const fam = getFamilyBySlug(slug);
   if (!fam) return notFoundMeta();
   const label = fam.family?.label || fam.name || slug;
+  const icaoList = fam.icaoList;
+  const family   = _bakeFamilyFields(fam);
   return {
     title: `Top routes flown by the ${label} | FlightFinder`,
     description: `Top 50 city pairs operated by the ${label} worldwide: which airlines fly each route, how many model variants observed. Sourced from open ADS-B data.`,
@@ -161,6 +186,8 @@ function aircraftRoutesMeta(slug) {
     kind: 'aircraft-routes',
     slug,
     aircraftLabel: label,
+    icaoList,
+    family,
   };
 }
 
@@ -169,6 +196,18 @@ function aircraftSafetyMeta(slug) {
   const fam = getFamilyBySlug(slug);
   if (!fam) return notFoundMeta();
   const label = fam.family?.label || fam.name || slug;
+  const icaoList = fam.icaoList;
+  const family   = _bakeFamilyFields(fam);
+  // Use 1980-01-01 as the lower bound (dataset start). sinceMs=0 is epoch
+  // which also works, but 1980 matches the documented dataset temporal range
+  // and is more explicit about intent.
+  let safetyEventCount;
+  try {
+    const since = Date.parse('1980-01-01T00:00:00Z');
+    safetyEventCount = safety.countByAircraftCodes(icaoList, since);
+  } catch {
+    safetyEventCount = undefined; // builder degrades to null
+  }
   return {
     title: `${label} safety record — accidents and incidents | FlightFinder`,
     description: `Aviation safety events involving the ${label}: hull losses, fatal accidents, and serious incidents from NTSB CAROL, Aviation Safety Network, B3A, and Wikidata.`,
@@ -181,6 +220,9 @@ function aircraftSafetyMeta(slug) {
     kind: 'aircraft-safety',
     slug,
     aircraftLabel: label,
+    icaoList,
+    family,
+    safetyEventCount,
   };
 }
 
@@ -189,6 +231,8 @@ function aircraftSpecsMeta(slug) {
   const fam = getFamilyBySlug(slug);
   if (!fam) return notFoundMeta();
   const label = fam.family?.label || fam.name || slug;
+  const icaoList = fam.icaoList;
+  const family   = _bakeFamilyFields(fam);
   return {
     title: `${label} specifications — range, capacity, engines | FlightFinder`,
     description: `${label} technical specifications: range, passenger capacity, maximum takeoff weight, wingspan, length, height, max speed, ceiling, engine options, variants.`,
@@ -201,6 +245,8 @@ function aircraftSpecsMeta(slug) {
     kind: 'aircraft-specs',
     slug,
     aircraftLabel: label,
+    icaoList,
+    family,
   };
 }
 
@@ -383,6 +429,18 @@ function resolve(pathname) {
   }
 
   if (pathname === '/safety/feed' || pathname === '/safety/feed/') {
+    let recentIncidents = [];
+    try {
+      const raw = safety.getRecent({ limit: 10 }) || [];
+      // Map to the shape bSafetyFeed expects: {date, aircraft, summary}
+      recentIncidents = raw.map((e) => ({
+        date:     e.date || e.occurred_at || null,
+        aircraft: e.aircraft_type || e.aircraft_icao_type || e.aircraft || 'unknown aircraft',
+        summary:  e.summary || e.narrative || 'no summary',
+      }));
+    } catch {
+      recentIncidents = []; // builder will return null
+    }
     return {
       title: 'NTSB recent aviation accidents — daily feed (United States) | FlightFinder',
       description: 'Daily updated feed of recent U.S. aviation accidents and incidents from the official NTSB CAROL database. Filter by severity. Cross-references aircraft type and operator.',
@@ -394,6 +452,7 @@ function resolve(pathname) {
       ogImage: `${BASE}/og/safety-feed.png`,
       ogImageAlt: 'NTSB recent aviation accidents feed',
       kind: 'safety-feed',
+      recentIncidents,
     };
   }
 
@@ -892,7 +951,7 @@ function structuredData(meta) {
  *   - Adds a <script type="application/ld+json"> with per-route graph
  *     (BreadcrumbList / FAQPage) right before </head>.
  */
-function inject(html, meta) {
+function inject(html, meta, bodyContent = null) {
   let out = html;
   out = out.replace(/<title>[^<]*<\/title>/i, `<title>${esc(meta.title)}</title>`);
   out = out.replace(
@@ -966,6 +1025,24 @@ function inject(html, meta) {
   // on `[^"]*"[^>]*>` when scanning arbitrary HTML.
   out = replaceTagBody(out, '<h1 style="font-size:clamp(32px,6vw,56px)', '</h1>', esc(meta.h1));
   out = replaceTagBody(out, '<p style="font-size:clamp(16px,2.2vw,20px)', '</p>',  esc(meta.subtitle));
+  // Bake real per-route facts into #root for first-pass indexing. The client
+  // uses createRoot().render() (not hydrateRoot), which wipes #root on mount,
+  // so this section is invisible to JS-enabled users after hydration.
+  // Idempotent: skip if a previous inject already ran on this html.
+  if (bodyContent && !out.includes('data-seo-bake="true"')) {
+    const subtitleClose = out.indexOf('</p>',
+      out.indexOf('<p style="font-size:clamp(16px,2.2vw,20px)'));
+    if (subtitleClose !== -1) {
+      const insertAt = subtitleClose + '</p>'.length;
+      const section  = `<section data-seo-bake="true">${bodyContent}</section>`;
+      out = out.slice(0, insertAt) + section + out.slice(insertAt);
+    } else {
+      // Template no longer contains the subtitle anchor (redesign, minification,
+      // style tweak). Surface it operationally — a silent skip would make all
+      // baked content disappear from Googlebot responses with no visible signal.
+      console.warn('[seoMetaService] bodyContent supplied but subtitle anchor missing — bake section skipped');
+    }
+  }
   const sd = structuredData(meta);
   if (sd) {
     // JSON.stringify output is already safe inside a <script> tag as long

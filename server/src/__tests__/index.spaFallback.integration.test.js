@@ -1,0 +1,141 @@
+/**
+ * End-to-end integration test: spaFallback injects baked SEO content.
+ *
+ * index.js only mounts the spaFallback block when IS_DEV is false
+ * (i.e. NODE_ENV === 'production'). We switch NODE_ENV to 'production'
+ * for the duration of this test file, then restore it after so other
+ * test files are unaffected.
+ *
+ * client/dist/ is gitignored (build artifact). This test creates a minimal
+ * index.html fixture at that path before requiring index.js and removes it
+ * in afterAll, so the test is fully self-contained with no committed dist.
+ *
+ * Path note: index.js computes clientBuild as
+ *   path.join(__dirname, '../../client/dist')
+ * where __dirname = server/src. So the fixture must live at
+ *   <worktree-root>/client/dist/index.html
+ * which is path.resolve(__dirname, '../../../client/dist') from __tests__.
+ */
+
+const fs   = require('fs');
+const path = require('path');
+const request = require('supertest');
+
+// The path that index.js resolves to for clientBuild:
+//   server/src/__dirname = <worktree>/server/src
+//   path.join(__dirname, '../../client/dist') = <worktree>/client/dist
+// From this test file (__dirname = <worktree>/server/src/__tests__):
+//   path.resolve(__dirname, '../../../client/dist') = <worktree>/client/dist
+const distDir     = path.resolve(__dirname, '../../../client/dist');
+const fixtureFile = path.join(distDir, 'index.html');
+
+// Minimal index.html that satisfies seoMetaService.inject()'s string
+// searches (title, description, canonical, og:*, h1, p#subtitle markers).
+// The h1/p markers must match the exact prefix strings used in inject().
+const FIXTURE_HTML = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FlightFinder — Search Flights by Aircraft Type | Boeing, Airbus &amp; More</title>
+    <meta name="description" content="Search flights worldwide filtered by aircraft type." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://himaxym.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://himaxym.com/" />
+    <meta property="og:title" content="FlightFinder" />
+    <meta property="og:description" content="The only flight search filtered by aircraft model." />
+    <meta property="og:image" content="https://himaxym.com/og-image.png" />
+    <meta property="og:image:alt" content="FlightFinder" />
+    <meta name="twitter:title" content="FlightFinder" />
+    <meta name="twitter:description" content="The only flight search filtered by aircraft model." />
+    <meta name="twitter:image" content="https://himaxym.com/og-image.png" />
+    <meta name="twitter:image:alt" content="FlightFinder" />
+  </head>
+  <body>
+    <div id="root">
+      <div style="min-height:100vh;">
+        <h1 style="font-size:clamp(32px,6vw,56px);line-height:1.1;margin:0 0 16px;font-weight:800;">Find flights by aircraft type</h1>
+        <p style="font-size:clamp(16px,2.2vw,20px);color:#94a3b8;margin:0 0 32px;">Search routes worldwide, filtered by aircraft model — Boeing 737, Airbus A320, turboprops, wide-body jets and more.</p>
+      </div>
+    </div>
+  </body>
+</html>`;
+
+let createdDir  = false;
+let createdFile = false;
+
+const _savedNodeEnv = process.env.NODE_ENV;
+
+describe('SPA fallback bakes content for known SEO URLs', () => {
+  let app;
+
+  beforeAll(() => {
+    // Create client/dist/index.html fixture if it doesn't already exist.
+    // (In a real CI with a built client it would already be present.)
+    if (!fs.existsSync(distDir)) {
+      fs.mkdirSync(distDir, { recursive: true });
+      createdDir = true;
+    }
+    if (!fs.existsSync(fixtureFile)) {
+      fs.writeFileSync(fixtureFile, FIXTURE_HTML, 'utf8');
+      createdFile = true;
+    }
+
+    jest.resetModules();
+
+    // Seed the DB under test mode so it stays in-memory.
+    process.env.NODE_ENV = 'test';
+    const db = require('../models/db');
+    db.upsertObservedRoute({
+      depIata: 'LHR', arrIata: 'JFK', aircraftIcao: 'B77W', airlineIata: 'BA', source: 'test',
+    });
+
+    // Now load index.js under production mode so the spaFallback + warm
+    // branches activate. db.js was already loaded under 'test' and the
+    // module cache returns the in-memory instance — index.js's transitive
+    // require sees the same DB that we just seeded.
+    process.env.NODE_ENV = 'production';
+    app = require('../index');
+
+    // index.js no longer warms inline; warm explicitly for the test.
+    const cache = require('../services/seoContentCache');
+    cache.warm({ schedule: false });
+  });
+
+  afterAll(() => {
+    try {
+      // Clean up the fixture files we created so the repo stays tidy.
+      if (createdFile && fs.existsSync(fixtureFile)) fs.unlinkSync(fixtureFile);
+      if (createdDir && fs.existsSync(distDir)) {
+        try { fs.rmdirSync(distDir); } catch {}
+      }
+    } finally {
+      // Restore NODE_ENV so subsequent test files run under 'test'.
+      process.env.NODE_ENV = _savedNodeEnv;
+      jest.resetModules();
+    }
+  });
+
+  it('GET /pricing includes the baked Pro paragraph', async () => {
+    const res = await request(app).get('/pricing');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/data-seo-bake/);
+    expect(res.text).toMatch(/Pro Monthly|Pro Annual/);
+  });
+
+  it('GET /about includes baked about copy inside #root', async () => {
+    const res = await request(app).get('/about');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/data-seo-bake/);
+  });
+
+  it('GET /unknown-path returns HTML with no bake section', async () => {
+    const res = await request(app).get('/this-does-not-exist');
+    // Unknown paths resolve to meta.kind === 'not-found', which the spaFallback
+    // responds to with HTTP 404 (preserving crawl-budget for bot-fuzz typos)
+    // while still serving the React shell so human visitors see the in-app
+    // "not found" screen. No bake section is emitted for unknown paths.
+    expect(res.status).toBe(404);
+    expect(res.text).not.toMatch(/data-seo-bake/);
+  });
+});
