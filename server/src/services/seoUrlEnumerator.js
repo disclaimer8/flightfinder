@@ -42,8 +42,11 @@ function enumerateSeoUrls(opts = {}) {
     for (const [from, to] of edges) {
       set.add(`/routes/${from.toLowerCase()}-${to.toLowerCase()}`);
     }
-  } catch {
-    // DB cold or empty — sitemap also tolerates this; static paths still ship.
+  } catch (err) {
+    // DB cold or empty — sitemap tolerates this; static paths still ship.
+    // Log so a non-cold-start failure (schema migration, broken prepared
+    // statement) is visible in operational logs.
+    console.warn('[seoUrlEnumerator] hub-network edges unavailable:', err.message);
   }
 
   return [...set];
