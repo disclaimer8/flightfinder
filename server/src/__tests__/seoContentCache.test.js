@@ -38,6 +38,7 @@ describe('seoContentCache', () => {
     cache.warm({ schedule: false });
     const s = cache.stats();
     expect(s.size).toBeGreaterThan(0);
+    expect(s.pageCount).toBeGreaterThan(0);
     expect(typeof s.lastWarmedAt).toBe('number');
   });
 

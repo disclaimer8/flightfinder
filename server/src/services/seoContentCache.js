@@ -3,12 +3,30 @@ const seoMeta = require('./seoMetaService');
 const builders = require('./seoContentBuilders');
 const { enumerateSeoUrls } = require('./seoUrlEnumerator');
 
+// Sentry is optional in test envs; load once at module init.
+let Sentry;
+try { Sentry = require('@sentry/node'); } catch { /* optional dep */ }
+
 const REFRESH_MS = 6 * 60 * 60 * 1000; // 6h
 
 const map = new Map();
 let lastWarmedAt = 0;
 let timer = null;
 
+/**
+ * Populate (or repopulate) the cache from enumerateSeoUrls(). This is
+ * additive — it sets entries but does NOT prune keys for URLs that have
+ * fallen out of the enumeration. Pruning happens only via refresh(),
+ * which consumes the returned `attempted` set.
+ *
+ * For initial boot warming, calling warm() directly is correct because
+ * the cache starts empty. For periodic refresh, call refresh() — it
+ * handles both repopulation and pruning.
+ *
+ * @param {{schedule?: boolean}} [opts]
+ * @returns {Set<string>} the set of paths attempted this pass; refresh()
+ *   uses this to determine what to prune
+ */
 function warm(opts = {}) {
   const schedule = opts.schedule !== false;
   let paths;
@@ -16,7 +34,7 @@ function warm(opts = {}) {
     paths = enumerateSeoUrls();
   } catch (err) {
     // Fall back to static-only — sentry capture is fire-and-forget.
-    try { require('@sentry/node').captureException(err); } catch {}
+    try { Sentry?.captureException(err); } catch {}
     const { STATIC_PATHS } = require('./seoUrlEnumerator');
     paths = STATIC_PATHS;
   }
@@ -36,7 +54,7 @@ function warm(opts = {}) {
 
     let html;
     try { html = builders.build(meta); } catch (err) {
-      try { require('@sentry/node').captureException(err, { tags: { seo_path: p } }); } catch {}
+      try { Sentry?.captureException(err, { tags: { seo_path: p } }); } catch {}
       continue;
     }
     if (html != null) {
@@ -55,6 +73,13 @@ function warm(opts = {}) {
   return attempted;
 }
 
+/**
+ * Re-warm the cache and prune keys for URLs no longer enumerated.
+ * Builder failures during this pass do NOT cause pruning — the
+ * pre-existing cached value is preserved (URL still in the attempted
+ * set even when its build threw). Only URLs absent from the
+ * enumeration are removed.
+ */
 function refresh() {
   // Re-warm; preserve prior values for URLs whose builders failed this pass
   // (they remain in the enumerated set so we don't prune them). Only delete
@@ -71,7 +96,12 @@ function get(pathname) {
 }
 
 function stats() {
-  return { size: map.size, lastWarmedAt };
+  return {
+    // map.size counts both canonical-URL and pathname keys per page (~2× page count).
+    size: map.size,
+    pageCount: Math.round(map.size / 2),
+    lastWarmedAt,
+  };
 }
 
 function _clearForTests() {
