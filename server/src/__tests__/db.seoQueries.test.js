@@ -41,6 +41,17 @@ describe('getRouteFacts', () => {
     expect(facts.topAirlines).toEqual([]);
     expect(facts.topAircraft).toEqual([]);
   });
+
+  it('is bidirectional: same facts when from/to are reversed', () => {
+    // observed_routes only has LHR→JFK seeded — no JFK→LHR rows. The query
+    // unions both directions so JFK-LHR gets the same fact set as LHR-JFK.
+    const forward = db.getRouteFacts('LHR', 'JFK');
+    const reverse = db.getRouteFacts('JFK', 'LHR');
+    expect(reverse.airlineCount).toBe(forward.airlineCount);
+    expect(reverse.aircraftCount).toBe(forward.aircraftCount);
+    expect(reverse.topAirlines.sort()).toEqual(forward.topAirlines.sort());
+    expect(reverse.topAircraft.sort()).toEqual(forward.topAircraft.sort());
+  });
 });
 
 describe('getAircraftFacts', () => {

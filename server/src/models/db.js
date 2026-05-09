@@ -388,24 +388,29 @@ const stmts = {
   `),
   aircraftDbSize:   db.prepare('SELECT COUNT(*) AS n FROM aircraft_db'),
 
-  // SEO baking — aggregate facts per route / per aircraft from observed_routes.
+  // SEO baking — aggregate facts per city pair from observed_routes. Bidirectional:
+  // observed_routes is strictly directional (dep,arr) but a /routes/{a}-{b} page
+  // describes the city pair, not the leg. We query both directions and union so
+  // /routes/jfk-lax and /routes/lax-jfk both render the full operator/aircraft set.
   seoRouteFacts: db.prepare(`
     SELECT
       COUNT(DISTINCT airline_iata) AS airline_count,
       COUNT(DISTINCT aircraft_icao) AS aircraft_count
     FROM observed_routes
-    WHERE dep_iata = ? AND arr_iata = ?
+    WHERE (dep_iata = ? AND arr_iata = ?) OR (dep_iata = ? AND arr_iata = ?)
   `),
   seoRouteTopAirlines: db.prepare(`
     SELECT airline_iata AS airline, COUNT(*) AS n
     FROM observed_routes
-    WHERE dep_iata = ? AND arr_iata = ? AND airline_iata IS NOT NULL
+    WHERE ((dep_iata = ? AND arr_iata = ?) OR (dep_iata = ? AND arr_iata = ?))
+      AND airline_iata IS NOT NULL
     GROUP BY airline_iata ORDER BY n DESC LIMIT ?
   `),
   seoRouteTopAircraft: db.prepare(`
     SELECT aircraft_icao AS icao, COUNT(*) AS n
     FROM observed_routes
-    WHERE dep_iata = ? AND arr_iata = ? AND aircraft_icao IS NOT NULL
+    WHERE ((dep_iata = ? AND arr_iata = ?) OR (dep_iata = ? AND arr_iata = ?))
+      AND aircraft_icao IS NOT NULL
     GROUP BY aircraft_icao ORDER BY n DESC LIMIT ?
   `),
   seoRouteCount: db.prepare(`
@@ -593,9 +598,10 @@ module.exports = {
   getRouteFacts: (from, to) => {
     const f = String(from).toUpperCase();
     const t = String(to).toUpperCase();
-    const counts = stmts.seoRouteFacts.get(f, t) || { airline_count: 0, aircraft_count: 0 };
-    const topAirlines = stmts.seoRouteTopAirlines.all(f, t, 5).map((r) => r.airline);
-    const topAircraft = stmts.seoRouteTopAircraft.all(f, t, 3).map((r) => r.icao);
+    // Pass both directions to the bidirectional WHERE clause: (f,t) OR (t,f).
+    const counts = stmts.seoRouteFacts.get(f, t, t, f) || { airline_count: 0, aircraft_count: 0 };
+    const topAirlines = stmts.seoRouteTopAirlines.all(f, t, t, f, 5).map((r) => r.airline);
+    const topAircraft = stmts.seoRouteTopAircraft.all(f, t, t, f, 3).map((r) => r.icao);
     return {
       airlineCount: counts.airline_count,
       aircraftCount: counts.aircraft_count,
