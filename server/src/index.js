@@ -401,7 +401,7 @@ if (!IS_DEV) {
     require('./services/seoContentCache').warm();
   } catch (err) {
     // Cache failure must never block the server from accepting traffic.
-    try { require('@sentry/node').captureException(err); } catch {}
+    try { Sentry.captureException(err); } catch {}
   }
 }
 

@@ -64,10 +64,7 @@ const FIXTURE_HTML = `<!DOCTYPE html>
 let createdDir  = false;
 let createdFile = false;
 
-// Switch to production mode *before* requiring index.js so the spaFallback
-// branch (`if (!IS_DEV)`) is active when the app module is evaluated.
 const _savedNodeEnv = process.env.NODE_ENV;
-process.env.NODE_ENV = 'production';
 
 describe('SPA fallback bakes content for known SEO URLs', () => {
   let app;
@@ -84,30 +81,35 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
       createdFile = true;
     }
 
-    // Seed a route so aircraft/route builders have data if needed.
     jest.resetModules();
+
+    // Seed the DB under test mode so it stays in-memory.
+    process.env.NODE_ENV = 'test';
     const db = require('../models/db');
     db.upsertObservedRoute({
       depIata: 'LHR', arrIata: 'JFK', aircraftIcao: 'B77W', airlineIata: 'BA', source: 'test',
     });
 
-    // Re-require index.js under production NODE_ENV. jest.resetModules()
-    // above ensures a fresh evaluation rather than the cached dev-mode app.
+    // Now load index.js under production mode so the spaFallback + warm
+    // branches activate. db.js was already loaded under 'test' and the
+    // module cache returns the in-memory instance — index.js's transitive
+    // require sees the same DB that we just seeded.
     process.env.NODE_ENV = 'production';
     app = require('../index');
   });
 
   afterAll(() => {
-    // Clean up the fixture files we created so the repo stays tidy.
-    if (createdFile && fs.existsSync(fixtureFile)) {
-      fs.unlinkSync(fixtureFile);
+    try {
+      // Clean up the fixture files we created so the repo stays tidy.
+      if (createdFile && fs.existsSync(fixtureFile)) fs.unlinkSync(fixtureFile);
+      if (createdDir && fs.existsSync(distDir)) {
+        try { fs.rmdirSync(distDir); } catch {}
+      }
+    } finally {
+      // Restore NODE_ENV so subsequent test files run under 'test'.
+      process.env.NODE_ENV = _savedNodeEnv;
+      jest.resetModules();
     }
-    if (createdDir && fs.existsSync(distDir)) {
-      try { fs.rmdirSync(distDir); } catch { /* not empty — leave it */ }
-    }
-    // Restore NODE_ENV so subsequent test files run under 'test'.
-    process.env.NODE_ENV = _savedNodeEnv;
-    jest.resetModules();
   });
 
   it('GET /pricing includes the baked Pro paragraph', async () => {
