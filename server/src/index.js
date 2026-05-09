@@ -393,21 +393,21 @@ app.use((err, _req, res, _next) => {
 // ─────────────────────────────────────────
 //  Start
 // ─────────────────────────────────────────
-// Warm SEO content cache so the very first /aircraft/* and /routes/* hits
-// after deploy are served with baked HTML. Blocks listen by ~1-2s for
-// ~300 SQLite queries; acceptable for a pm2 restart.
-if (!IS_DEV) {
-  try {
-    require('./services/seoContentCache').warm();
-  } catch (err) {
-    // Cache failure must never block the server from accepting traffic.
-    try { Sentry.captureException(err); } catch {}
-  }
-}
+// (no warm here — moved to fire after listen() to avoid blocking pm2 health checks)
 
 if (require.main === module) {
   app.listen(PORT, BIND_HOST, () => {
     console.log(`Server running on ${BIND_HOST}:${PORT} [${process.env.NODE_ENV || 'development'}]`);
+    // Kick the SEO cache warm asynchronously — first few requests after a
+    // restart may render without bake content (acceptable trade for fast
+    // pm2 health-check response). Subsequent refresh interval keeps it
+    // fresh.
+    if (!IS_DEV) {
+      setImmediate(() => {
+        try { require('./services/seoContentCache').warm(); }
+        catch (err) { try { Sentry.captureException(err); } catch {} }
+      });
+    }
   });
 
   // Background workers.

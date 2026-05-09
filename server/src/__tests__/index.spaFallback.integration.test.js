@@ -96,6 +96,10 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
     // require sees the same DB that we just seeded.
     process.env.NODE_ENV = 'production';
     app = require('../index');
+
+    // index.js no longer warms inline; warm explicitly for the test.
+    const cache = require('../services/seoContentCache');
+    cache.warm({ schedule: false });
   });
 
   afterAll(() => {
