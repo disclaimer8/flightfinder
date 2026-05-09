@@ -39,8 +39,12 @@ function enumerateSeoUrls(opts = {}) {
     const { edges = [] } = db.getHubNetwork?.({
       hubLimit: 200, minDests: 15, edgeLimit: 100,
     }) || {};
-    for (const [from, to] of edges) {
-      set.add(`/routes/${from.toLowerCase()}-${to.toLowerCase()}`);
+    for (const [a, b] of edges) {
+      // Each direction is a distinct indexable URL — users search both
+      // "A to B" and "B to A" with different intents, and bRoute queries
+      // the directional table observed_routes(dep_iata, arr_iata).
+      set.add(`/routes/${a.toLowerCase()}-${b.toLowerCase()}`);
+      set.add(`/routes/${b.toLowerCase()}-${a.toLowerCase()}`);
     }
   } catch (err) {
     // DB cold or empty — sitemap tolerates this; static paths still ship.

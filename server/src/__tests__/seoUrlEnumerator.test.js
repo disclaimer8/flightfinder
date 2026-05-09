@@ -39,6 +39,13 @@ describe('enumerateSeoUrls', () => {
     expect(paths).toContain('/routes/jfk-cdg');
   });
 
+  it('emits both directions for each hub-network edge', () => {
+    const fakeDb = { getHubNetwork: () => ({ edges: [['LHR', 'JFK']] }) };
+    const paths = enumerateSeoUrls({ db: fakeDb });
+    expect(paths).toContain('/routes/lhr-jfk');
+    expect(paths).toContain('/routes/jfk-lhr');
+  });
+
   it('returns static paths gracefully when injected db.getHubNetwork throws', () => {
     const fakeDb = {
       getHubNetwork: () => { throw new Error('cold start'); },
