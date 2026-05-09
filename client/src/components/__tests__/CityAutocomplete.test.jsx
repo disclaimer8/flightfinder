@@ -91,6 +91,23 @@ describe('CityAutocomplete', () => {
     expect(screen.queryByRole('option')).toBeNull();
   });
 
+  test('mousedown on option (real-browser path) selects without click event', () => {
+    // Regression for prod bug 2026-05-09: in real browsers, the option's
+    // click event was racing with handleInputBlur's deferred setQuery(''),
+    // resulting in an empty input + dropdown showing all 116 cities.
+    // The fix moves selectOption to onMouseDown so it commits before the
+    // blur timeout can fire. This test verifies that mouse-down alone
+    // (the path real browsers take) correctly selects.
+    const onChange = vi.fn();
+    renderWithContext({ value: '', onChange, ariaLabel: 'From' });
+    const input = screen.getByRole('combobox', { name: /from/i });
+    fireEvent.click(input);
+    const lhrOption = screen.getByRole('option', { name: /Heathrow/i });
+    fireEvent.mouseDown(lhrOption);
+    expect(onChange).toHaveBeenCalledWith('LHR');
+    expect(screen.queryByRole('option')).toBeNull();
+  });
+
   test('ESC closes dropdown', () => {
     renderWithContext({ value: '', onChange: vi.fn(), ariaLabel: 'From' });
     const input = screen.getByRole('combobox', { name: /from/i });

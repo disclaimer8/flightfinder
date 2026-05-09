@@ -275,9 +275,20 @@ export default function CityAutocomplete({ value, onChange, ariaLabel, placehold
                   aria-selected={isHighlighted}
                   className={`city-autocomplete__option${isHighlighted ? ' city-autocomplete__option--highlighted' : ''}`}
                   onMouseDown={(e) => {
-                    // Prevent blur from firing before click
+                    // Select on mousedown (not click) so we beat the input's
+                    // blur → setTimeout(setQuery, 150) race that was clearing
+                    // the query before click fired in prod (caught during
+                    // post-deploy verify: clicking an option produced an
+                    // empty input + dropdown showing all 116 cities).
+                    // preventDefault keeps focus on the input so blur
+                    // doesn't fire at all.
                     e.preventDefault();
+                    selectOption(city.code);
                   }}
+                  // Keep onClick as a fallback for keyboard activation and
+                  // for fireEvent.click() in unit tests (which doesn't fire
+                  // mousedown). selectOption is idempotent — second call
+                  // with same code is a no-op state-wise.
                   onClick={() => selectOption(city.code)}
                 >
                   {city.name} · {city.code}
