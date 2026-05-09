@@ -192,8 +192,8 @@ describe('AuthModal submission', () => {
     await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
     // Wait for success text to appear
     await screen.findByText(/welcome back/i);
-    // Advance past the 1000ms delay
-    await act(async () => { vi.advanceTimersByTime(1100); });
+    // Advance past the 1500ms delay
+    await act(async () => { vi.advanceTimersByTime(1600); });
     expect(onClose).toHaveBeenCalled();
     vi.useRealTimers();
   });
