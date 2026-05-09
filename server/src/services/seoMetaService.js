@@ -977,6 +977,11 @@ function inject(html, meta, bodyContent = null) {
       const insertAt = subtitleClose + '</p>'.length;
       const section  = `<section data-seo-bake="true">${bodyContent}</section>`;
       out = out.slice(0, insertAt) + section + out.slice(insertAt);
+    } else {
+      // Template no longer contains the subtitle anchor (redesign, minification,
+      // style tweak). Surface it operationally — a silent skip would make all
+      // baked content disappear from Googlebot responses with no visible signal.
+      console.warn('[seoMetaService] bodyContent supplied but subtitle anchor missing — bake section skipped');
     }
   }
   const sd = structuredData(meta);

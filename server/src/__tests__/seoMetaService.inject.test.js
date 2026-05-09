@@ -49,4 +49,17 @@ describe('inject() bodyContent argument', () => {
     const twice = inject(once, META, '<p>x</p>');
     expect((twice.match(/data-seo-bake/g) || []).length).toBe(1);
   });
+
+  it('does not throw and omits the section when subtitle marker is absent', () => {
+    const stripped = HTML.replace(/<p style="font-size:clamp\(16px[^"]*">[^<]*<\/p>/, '');
+    // Suppress expected warn output in test logs.
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const out = inject(stripped, META, '<p>baked fact</p>');
+    expect(out).not.toMatch(/data-seo-bake/);
+    expect(out).toMatch(/>H1</);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('subtitle anchor missing')
+    );
+    warnSpy.mockRestore();
+  });
 });
