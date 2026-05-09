@@ -28,3 +28,40 @@ describe('seoContentBuilders.build — static kinds', () => {
     expect(html).toMatch(/<li>/);
   });
 });
+
+describe('seoContentBuilders.build — route', () => {
+  beforeAll(() => {
+    const db = require('../models/db');
+    function seed(dep, arr, icao, airline) {
+      db.upsertObservedRoute({
+        depIata: dep, arrIata: arr, aircraftIcao: icao, airlineIata: airline, source: 'test',
+      });
+    }
+    // 3 distinct (dep,arr,icao) tuples on LHR-JFK -> 3 airlines, 3 aircraft
+    seed('LHR', 'JFK', 'B77W', 'BA');
+    seed('LHR', 'JFK', 'A359', 'AA');
+    seed('LHR', 'JFK', 'B789', 'VS');
+  });
+
+  it('returns HTML mentioning airline count and aircraft for a route', () => {
+    const { build } = require('../services/seoContentBuilders');
+    const meta = {
+      kind: 'route',
+      fromIata: 'LHR', toIata: 'JFK',
+      fromName: 'London Heathrow', toName: 'John F Kennedy',
+    };
+    const html = build(meta);
+    expect(html).toMatch(/airline/i);
+    expect(html).toMatch(/B77W|A359|B789/);
+  });
+
+  it('returns null for a route with no observed flights', () => {
+    const { build } = require('../services/seoContentBuilders');
+    const meta = {
+      kind: 'route',
+      fromIata: 'AAA', toIata: 'BBB',
+      fromName: 'X', toName: 'Y',
+    };
+    expect(build(meta)).toBeNull();
+  });
+});

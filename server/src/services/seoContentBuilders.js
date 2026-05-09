@@ -44,6 +44,25 @@ function bByAircraft() {
   `.trim();
 }
 
+function bRoute(meta, db) {
+  if (!meta.fromIata || !meta.toIata) return null;
+  const facts = db.getRouteFacts(meta.fromIata, meta.toIata);
+  if (facts.airlineCount === 0 && facts.aircraftCount === 0) return null;
+
+  const fromLabel = meta.fromName || meta.fromIata;
+  const toLabel   = meta.toName   || meta.toIata;
+  const aircraftLabel = facts.topAircraft.length
+    ? `Most common aircraft: ${facts.topAircraft.map(esc).join(', ')}.`
+    : '';
+  const airlineLabel = facts.topAirlines.length
+    ? `Top operators: ${facts.topAirlines.map(esc).join(', ')}.`
+    : '';
+  return `
+    <p>${esc(facts.airlineCount)} airline${facts.airlineCount === 1 ? '' : 's'} operate${facts.airlineCount === 1 ? 's' : ''} the ${esc(fromLabel)} (${esc(meta.fromIata)}) to ${esc(toLabel)} (${esc(meta.toIata)}) route across ${esc(facts.aircraftCount)} aircraft type${facts.aircraftCount === 1 ? '' : 's'} in our dataset.</p>
+    <p>${aircraftLabel} ${airlineLabel}</p>
+  `.trim();
+}
+
 const STATIC_BUILDERS = {
   pricing:       bPricing,
   about:         bAbout,
@@ -56,11 +75,12 @@ const STATIC_BUILDERS = {
  * @param {object} [db] - optional db override for testing; defaults to ../models/db
  * @returns {string|null} HTML string, or null if kind is unknown or build failed
  */
-function build(meta, _db) {
+function build(meta, db) {
   if (!meta || !meta.kind) return null;
+  const dbInstance = db || require('../models/db');
   const builder = STATIC_BUILDERS[meta.kind];
   if (builder) return builder(meta);
-  // Non-static kinds are added in subsequent tasks (route, aircraft, …).
+  if (meta.kind === 'route') return bRoute(meta, dbInstance);
   return null;
 }
 
