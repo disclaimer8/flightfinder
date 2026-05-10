@@ -159,6 +159,13 @@ describe('seoContentBuilders.build — home and safety', () => {
 });
 
 describe('seoContentBuilders.build — bAircraft enriched', () => {
+  beforeAll(() => {
+    const db = require('../models/db');
+    db.upsertObservedRoute({
+      depIata: 'LHR', arrIata: 'JFK', aircraftIcao: 'B789', airlineIata: 'VS', source: 'test',
+    });
+  });
+
   it('renders color band and disclaimer when meta.colorBand is set', () => {
     const meta = {
       kind: 'aircraft',
@@ -193,5 +200,28 @@ describe('seoContentBuilders.build — bAircraft enriched', () => {
     };
     const html = build(meta);
     expect(html).toMatch(/operated by/i);
+    expect(html).toMatch(/safety-band--green/);
+  });
+
+  it('renders notable events with missing fields without producing broken HTML', () => {
+    const meta = {
+      kind: 'aircraft',
+      slug: 'boeing-787', aircraftLabel: 'Boeing 787',
+      icaoList: ['B789'],
+      colorBand: { bucket: 'orange', label: 'Last fatal: 2018', lastFatalDate: '2018-09-20' },
+      topEvents: [
+        { occurred_at: Date.parse('2018-09-20'), fatalities: 5, aircraft_icao_type: 'B789' },
+        { occurred_at: Date.parse('2020-06-10'), operator_name: 'Other Op', aircraft_icao_type: 'B789' },
+        { occurred_at: Date.parse('2024-01-15'), operator_name: 'Bad Op', aircraft_icao_type: 'B789',
+          report_url: 'javascript:alert(1)' },
+      ],
+      variants: [],
+    };
+    const html = build(meta);
+    expect(html).not.toMatch(/\(\)/);
+    expect(html).not.toMatch(/\(, /);
+    expect(html).not.toMatch(/— \(/);
+    expect(html).not.toMatch(/href="javascript:/);
+    expect(html).toMatch(/Bad Op/);
   });
 });

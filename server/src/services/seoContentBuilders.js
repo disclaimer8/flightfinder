@@ -29,18 +29,33 @@ function _renderSafetyBand(meta) {
   `.trim();
 }
 
+function _safeHttpUrl(u) {
+  try {
+    const url = new URL(u);
+    return (url.protocol === 'https:' || url.protocol === 'http:') ? url.href : '';
+  } catch { return ''; }
+}
+
 function _renderTopEvents(events) {
   if (!Array.isArray(events) || events.length === 0) return '';
   const items = events.map((e) => {
     const ms = typeof e.occurred_at === 'number' ? e.occurred_at : Date.parse(e.occurred_at || '');
     const date = Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : '';
-    const route = e.dep_iata && e.arr_iata ? ` ${esc(e.dep_iata)}–${esc(e.arr_iata)}.` : '';
-    const reg = e.registration ? `${esc(e.registration)}, ` : '';
-    const acType = e.aircraft_icao_type ? esc(e.aircraft_icao_type) : '';
-    const op = e.operator_name ? `<strong>${esc(e.operator_name)}</strong> ` : '';
-    const fatal = e.fatalities ? ` — ${esc(e.fatalities)} fatalities` : '';
-    const src = e.report_url ? ` <a href="${esc(e.report_url)}" rel="noopener nofollow">Source</a>.` : '';
-    return `<li><time datetime="${esc(date)}">${esc(date)}</time> — ${op}(${reg}${acType})${fatal}.${route}${src}</li>`;
+
+    const idParts = [e.registration, e.aircraft_icao_type].filter(Boolean).map((s) => esc(s));
+    const opChunk = e.operator_name ? `<strong>${esc(e.operator_name)}</strong>` : '';
+    const idChunk = idParts.length === 0 ? '' : (opChunk ? `(${idParts.join(', ')})` : idParts.join(', '));
+    const actor = [opChunk, idChunk].filter(Boolean).join(' ');
+
+    const fatalChunk = e.fatalities ? `${esc(e.fatalities)} fatalities` : '';
+    const routeChunk = e.dep_iata && e.arr_iata ? `${esc(e.dep_iata)}–${esc(e.arr_iata)}` : '';
+    const safeUrl = _safeHttpUrl(e.report_url);
+    const srcChunk = safeUrl ? `<a href="${esc(safeUrl)}" rel="noopener nofollow">Source</a>` : '';
+    const facts = [fatalChunk, routeChunk, srcChunk].filter(Boolean).join('. ');
+
+    const lead = date ? `<time datetime="${esc(date)}">${esc(date)}</time>` : '';
+    const body = [lead, actor, facts].filter(Boolean).join(' — ');
+    return `<li>${body}${facts ? '.' : ''}</li>`;
   }).join('');
   return `<h3>Notable events</h3><ol>${items}</ol>`;
 }
