@@ -125,3 +125,34 @@ describe('seoMetaService — fr24Stats enrichment', () => {
     expect(seoMeta.resolve('/routes/LHR-JFK').fr24Stats).toEqual(stats);
   });
 });
+
+describe('structuredData — BreadcrumbList for indexable kinds', () => {
+  // structuredData() returns a parsed object (not a JSON string) — callers
+  // serialize it before injecting into the <script> tag. Tolerate both forms
+  // so the tests survive a future refactor to string output.
+  function asJson(sd) {
+    return typeof sd === 'string' ? JSON.parse(sd) : sd;
+  }
+
+  it('emits BreadcrumbList for aircraft-variant kind', () => {
+    const meta = seoMeta.resolve('/aircraft/boeing-787/variants/787-9');
+    const sd = seoMeta.structuredData(meta);
+    const json = asJson(sd);
+    const bc = (json['@graph'] || [json]).find((x) => x['@type'] === 'BreadcrumbList');
+    expect(bc).toBeTruthy();
+    const itemNames = bc.itemListElement.map((i) => i.name);
+    expect(itemNames).toContain('Home');
+    expect(itemNames).toContain('Aircraft');
+    expect(itemNames.some((n) => /Boeing 787/.test(n))).toBe(true);
+    expect(itemNames.some((n) => /787-9/.test(n))).toBe(true);
+  });
+
+  it('emits BreadcrumbList for route kind', () => {
+    const meta = seoMeta.resolve('/routes/jfk-lhr');
+    const sd = seoMeta.structuredData(meta);
+    const json = asJson(sd);
+    const bc = (json['@graph'] || [json]).find((x) => x['@type'] === 'BreadcrumbList');
+    expect(bc).toBeTruthy();
+    expect(bc.itemListElement.some((i) => /JFK/.test(i.name))).toBe(true);
+  });
+});
