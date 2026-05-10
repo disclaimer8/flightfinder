@@ -70,6 +70,11 @@ describe('getFatalEventsByIcaoList', () => {
   it('returns [] for unknown icao', () => {
     expect(db.getFatalEventsByIcaoList(['ZZZZ'])).toEqual([]);
   });
+
+  it('uppercases the input ICAO codes', () => {
+    const out = db.getFatalEventsByIcaoList(['b789']);
+    expect(out.map((e) => e.source_event_id)).toContain('tev1');
+  });
 });
 
 describe('getAllEventsByIcaoList', () => {
@@ -91,5 +96,10 @@ describe('getAllEventsByIcaoList', () => {
 
   it('returns [] for empty icao list', () => {
     expect(db.getAllEventsByIcaoList([])).toEqual([]);
+  });
+
+  it('uppercases the input ICAO codes', () => {
+    const out = db.getAllEventsByIcaoList(['b789']);
+    expect(out.map((e) => e.source_event_id).sort()).toEqual(['tev1', 'tev2']);
   });
 });
