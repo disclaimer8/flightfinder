@@ -270,6 +270,8 @@ describe('fr24Service withYearly option', () => {
     for (let i = 2; i < 7; i++) {
       expect(mockGet.mock.calls[i][0]).toBe('/flight-summary/count');
     }
+    // Verify the variant's ICAO filter propagates to yearly queries (not just the main count/light)
+    expect(mockGet.mock.calls[2][1].params.aircraft).toBe('B789');
   });
 
   it('yearlyBreakdown sorted newest year first', async () => {
@@ -310,5 +312,27 @@ describe('fr24Service withYearly option', () => {
     const stats = await fr24.fetchFamilyStats(['B737', 'B738'], { withYearly: true });
     expect(mockGet).toHaveBeenCalledTimes(7);
     expect(stats.yearlyBreakdown).toHaveLength(5);
+    // Verify the family's joined ICAO list propagates to yearly queries
+    expect(mockGet.mock.calls[2][1].params.aircraft).toBe('B737,B738');
+  });
+
+  it('one yearly /count failure yields {year, count: 0} but other years succeed', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});  // suppress expected warn
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 1 }] } })  // main count
+      .mockResolvedValueOnce({ data: { data: [] } })                       // light
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 100 }] } }) // year 0 (current)
+      .mockRejectedValueOnce(new Error('FR24 timeout'))                    // year 1 fails
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 80 }] } })  // year 2
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 70 }] } })  // year 3
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 60 }] } }); // year 4
+    const fr24 = require('../services/fr24Service');
+    const stats = await fr24.fetchVariantStats('B789', { withYearly: true });
+    expect(stats.yearlyBreakdown).toHaveLength(5);
+    expect(stats.yearlyBreakdown[0].count).toBe(100);  // succeeded
+    expect(stats.yearlyBreakdown[1].count).toBe(0);    // failed → fallback
+    expect(stats.yearlyBreakdown[2].count).toBe(80);   // others intact
+    expect(stats.yearlyBreakdown[3].count).toBe(70);
+    expect(stats.yearlyBreakdown[4].count).toBe(60);
   });
 });

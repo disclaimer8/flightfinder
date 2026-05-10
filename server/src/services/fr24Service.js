@@ -115,7 +115,8 @@ async function _fetchYearlyCounts(filterParams) {
       });
       const count = res.data?.data?.[0]?.record_count ?? 0;
       out.push({ year, count });
-    } catch {
+    } catch (err) {
+      console.warn(`[fr24] yearly count failed year=${year} filter=${JSON.stringify(filterParams)}: ${err.message || err}`);
       out.push({ year, count: 0 });
     }
   }
