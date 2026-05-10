@@ -377,3 +377,51 @@ describe('seoChrome._renderCrossRefs route kinds', () => {
     expect(html).toMatch(/Boeing 787/);
   });
 });
+
+describe('seoChrome._renderCrossRefs safety kinds', () => {
+  const { _renderCrossRefs } = chrome._internal;
+
+  function mockSafetyDb() {
+    return {
+      getTopAircraftBySafetyEventCount: jest.fn(() => [
+        { aircraft_icao_type: 'B789', count: 5 },
+        { aircraft_icao_type: 'B738', count: 3 },
+      ]),
+    };
+  }
+
+  it('renders cross-refs for safety-feed with link to global + family safety pages', () => {
+    jest.resetModules();
+    jest.doMock('../models/aircraftFamilies', () => ({
+      getFamilyList: () => [{ slug: 'boeing-787', label: 'Boeing 787', icaoList: ['B788', 'B789'] }],
+    }));
+    const freshChrome = require('../services/seoChrome');
+    const html = freshChrome._internal._renderCrossRefs(
+      { kind: 'safety-feed' },
+      mockSafetyDb(),
+    );
+    expect(html).toMatch(/href="\/safety\/global"/);
+    expect(html).toMatch(/href="\/aircraft\/boeing-787\/safety"/);
+    jest.dontMock('../models/aircraftFamilies');
+  });
+
+  it('renders cross-refs for safety-global with link to feed', () => {
+    jest.resetModules();
+    jest.doMock('../models/aircraftFamilies', () => ({
+      getFamilyList: () => [{ slug: 'boeing-787', label: 'Boeing 787', icaoList: ['B788', 'B789'] }],
+    }));
+    const freshChrome = require('../services/seoChrome');
+    const html = freshChrome._internal._renderCrossRefs(
+      { kind: 'safety-global' },
+      mockSafetyDb(),
+    );
+    expect(html).toMatch(/href="\/safety\/feed"/);
+    jest.dontMock('../models/aircraftFamilies');
+  });
+
+  it('handles empty safety event data — returns header-only block', () => {
+    const db = { getTopAircraftBySafetyEventCount: jest.fn(() => []) };
+    const html = _renderCrossRefs({ kind: 'safety-feed' }, db);
+    expect(html).toMatch(/href="\/safety\/global"/);
+  });
+});

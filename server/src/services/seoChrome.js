@@ -265,6 +265,36 @@ function _crossRefsForAircraftRoute(meta) {
   </aside>`;
 }
 
+function _crossRefsForSafety(meta, db) {
+  const otherLink = meta.kind === 'safety-feed'
+    ? '<li><a href="/safety/global">Global safety overview</a></li>'
+    : '<li><a href="/safety/feed">Recent safety events</a></li>';
+
+  const topAircraft = _safeChrome(() => db.getTopAircraftBySafetyEventCount(5), []);
+  let familyLinks = '';
+  if (topAircraft.length > 0) {
+    const families = getFamilyList();
+    const familyByIcao = new Map();
+    for (const f of families) {
+      for (const icao of (f.icaoList || [])) familyByIcao.set(icao, f);
+    }
+    const seen = new Set();
+    const items = topAircraft
+      .map((a) => familyByIcao.get(a.aircraft_icao_type))
+      .filter((f) => f && !seen.has(f.slug) && (seen.add(f.slug), true))
+      .slice(0, 5)
+      .map((f) => `<li><a href="/aircraft/${esc(f.slug)}/safety">${esc(f.label)} safety record</a></li>`)
+      .join('');
+    if (items) familyLinks = `<h4>Most-tracked aircraft safety records</h4><ul>${items}</ul>`;
+  }
+
+  return `<aside class="cross-refs">
+    <h3>Related safety pages</h3>
+    <ul>${otherLink}</ul>
+    ${familyLinks}
+  </aside>`;
+}
+
 function _renderCrossRefs(meta, db) {
   if (!meta || !meta.kind) return '';
   switch (meta.kind) {
@@ -276,7 +306,8 @@ function _renderCrossRefs(meta, db) {
     case 'aircraft-specs':   return _crossRefsForAircraftSubpage(meta);
     case 'route':            return _crossRefsForRoute(meta, db);
     case 'aircraft-route':   return _crossRefsForAircraftRoute(meta);
-    // safety-* in next task
+    case 'safety-feed':
+    case 'safety-global':    return _crossRefsForSafety(meta, db);
     default: return '';
   }
 }
