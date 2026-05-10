@@ -89,6 +89,46 @@ function _renderDecadeTimeline(events) {
   }).join('');
 }
 
+function _formatNumber(n) {
+  return Number(n).toLocaleString('en-US');
+}
+
+function _renderYearlyBreakdown(yearlyBreakdown) {
+  if (!Array.isArray(yearlyBreakdown) || yearlyBreakdown.length === 0) return '';
+  const items = yearlyBreakdown
+    .map((y) => `<li>${esc(y.year)}: ${esc(_formatNumber(y.count))} flights</li>`)
+    .join('');
+  return `<h4>5-year trend</h4><ul class="yearly-breakdown">${items}</ul>`;
+}
+
+function _renderFr24Stats(stats, opts = {}) {
+  if (!stats || !stats.totalFlights) return '';
+  const date = new Date(stats.fetchedAt).toISOString().slice(0, 10);
+  const isRoute = opts.context === 'route';
+
+  const heading = isRoute
+    ? '<h3>Worldwide activity on this route (last 12 months)</h3>'
+    : '<h3>Worldwide activity (last 12 months)</h3>';
+
+  const totalLine = isRoute
+    ? `<p>Flown <strong>${esc(_formatNumber(stats.totalFlights))}</strong> times by ${esc(stats.uniqueOperators)} airlines in the past year.</p>`
+    : `<p>Operated <strong>${esc(_formatNumber(stats.totalFlights))}</strong> times globally by ${esc(stats.uniqueOperators)} airlines.</p>`;
+
+  const operatorsLine = (stats.topOperators && stats.topOperators.length > 0)
+    ? `<p>Top operators: ${stats.topOperators.map((o) => `${esc(o.icao)} (${esc(_formatNumber(o.count))})`).join(', ')}</p>`
+    : '';
+
+  const routesLine = (!isRoute && stats.topRoutes && stats.topRoutes.length > 0)
+    ? `<p>Top routes: ${stats.topRoutes.map((r) => `${esc(r.from)}–${esc(r.to)} (${esc(_formatNumber(r.count))})`).join(', ')}</p>`
+    : '';
+
+  const yearly = _renderYearlyBreakdown(stats.yearlyBreakdown);
+  const sourceLine = `<p class="data-source">Data via Flightradar24, as of ${esc(date)}.</p>`;
+
+  return [heading, totalLine, operatorsLine, routesLine, yearly, sourceLine]
+    .filter(Boolean).join('\n');
+}
+
 function _renderVariantBreakdown(allEvents, variants) {
   if (!Array.isArray(variants) || variants.length === 0) return '';
   if (!Array.isArray(allEvents) || allEvents.length === 0) return '';
@@ -136,9 +176,12 @@ function bByAircraft() {
 }
 
 function bRoute(meta, db) {
-  if (!meta.fromIata || !meta.toIata) return null;
+  const fr24Block = _renderFr24Stats(meta.fr24Stats, { context: 'route' });
+
+  // If we lack route IATA codes, fall back to FR24-only rendering (or null if neither).
+  if (!meta.fromIata || !meta.toIata) return fr24Block || null;
   const facts = db.getRouteFacts(meta.fromIata, meta.toIata);
-  if (facts.airlineCount === 0 && facts.aircraftCount === 0) return null;
+  if (facts.airlineCount === 0 && facts.aircraftCount === 0) return fr24Block || null;
 
   const fromLabel = meta.fromName || meta.fromIata;
   const toLabel   = meta.toName   || meta.toIata;
@@ -148,10 +191,11 @@ function bRoute(meta, db) {
   const airlineLabel = facts.topAirlines.length
     ? `Top operators: ${facts.topAirlines.map(esc).join(', ')}.`
     : '';
-  return `
+  const factsBlock = `
     <p>${esc(facts.airlineCount)} airline${facts.airlineCount === 1 ? '' : 's'} operate${facts.airlineCount === 1 ? 's' : ''} the ${esc(fromLabel)} (${esc(meta.fromIata)}) to ${esc(toLabel)} (${esc(meta.toIata)}) route across ${esc(facts.aircraftCount)} aircraft type${facts.aircraftCount === 1 ? '' : 's'} in our dataset.</p>
     <p>${aircraftLabel} ${airlineLabel}</p>
   `.trim();
+  return [factsBlock, fr24Block].filter(Boolean).join('\n').trim();
 }
 
 function bAircraft(meta, db) {
@@ -160,7 +204,7 @@ function bAircraft(meta, db) {
   const haveFacts = facts.airlineCount > 0 || facts.routeCount > 0;
   const haveSafety = meta.colorBand && meta.colorBand.bucket !== undefined;
   const haveVariants = Array.isArray(meta.variants) && meta.variants.length > 0;
-  if (!haveFacts && !haveSafety && !haveVariants) return null;
+  if (!haveFacts && !haveSafety && !haveVariants && !meta.fr24Stats?.totalFlights) return null;
 
   const topRoutes = haveFacts ? db.getAircraftTopRoutes(meta.icaoList, 5) : [];
   const routeLabels = topRoutes.map((r) => `${esc(r.from)}-${esc(r.to)}`).join(', ');
@@ -173,8 +217,9 @@ function bAircraft(meta, db) {
 
   const safetyBlock = _renderSafetyBand(meta) + _renderTopEvents(meta.topEvents);
   const variantsBlock = _renderVariantsList(meta.variants);
+  const fr24Block = _renderFr24Stats(meta.fr24Stats, { context: 'aircraft' });
 
-  return [factsBlock, safetyBlock, variantsBlock].filter(Boolean).join('\n').trim();
+  return [factsBlock, safetyBlock, variantsBlock, fr24Block].filter(Boolean).join('\n').trim();
 }
 
 function bAircraftAirlines(meta, db) {
@@ -247,7 +292,9 @@ function bAircraftVariant(meta, db) {
     ? `<p>Part of the <a href="/aircraft/${esc(fam.slug || meta.variant.familySlug)}">${esc(fam.label)}</a> family.</p>`
     : '';
 
-  return [description, safetyHeader, topEvents, fullTimeline, operatorsBlock, routesBlock, familyLink]
+  const fr24Block = _renderFr24Stats(meta.fr24Stats, { context: 'aircraft' });
+
+  return [description, safetyHeader, topEvents, fullTimeline, operatorsBlock, routesBlock, familyLink, fr24Block]
     .filter(Boolean).join('\n').trim();
 }
 
@@ -323,4 +370,8 @@ function build(meta, db) {
   return null;
 }
 
-module.exports = { build };
+module.exports = {
+  build,
+  _renderFr24Stats,
+  _renderYearlyBreakdown,
+};

@@ -2,6 +2,7 @@
 const seoMeta = require('./seoMetaService');
 const builders = require('./seoContentBuilders');
 const { enumerateSeoUrls } = require('./seoUrlEnumerator');
+const fr24CacheService = require('./fr24CacheService');
 
 // Sentry is optional in test envs; load once at module init.
 let Sentry;
@@ -37,6 +38,15 @@ function warm(opts = {}) {
     try { Sentry?.captureException(err); } catch {}
     const { STATIC_PATHS } = require('./seoUrlEnumerator');
     paths = STATIC_PATHS;
+  }
+
+  // Fire-and-forget FR24 refresh. Runs in background (~94 min throttled);
+  // current warm bakes whatever is already in the FR24 cache. Next warm
+  // (≤6h later) picks up newly populated entries.
+  if (fr24CacheService.isStale()) {
+    fr24CacheService.refresh().catch((err) => {
+      console.warn(`[fr24] background refresh error: ${err.message || err}`);
+    });
   }
 
   // Track every path we attempted this pass — used by refresh() to distinguish

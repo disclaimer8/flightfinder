@@ -680,4 +680,19 @@ module.exports = {
   },
 
   getRouteCount: () => stmts.seoRouteCount.get()?.n || 0,
+
+  // Top city pairs by observed-route occurrence count.
+  // Used by fr24CacheService.refresh to pick which /routes/{a}-{b} pages
+  // to enrich. Limit guards against over-broad refresh.
+  getTopRoutesByObservedFrequency: (limit) => {
+    if (typeof limit !== 'number' || limit <= 0) return [];
+    return db.prepare(`
+      SELECT dep_iata AS "from", arr_iata AS "to", COUNT(*) AS count
+      FROM observed_routes
+      WHERE dep_iata IS NOT NULL AND arr_iata IS NOT NULL
+      GROUP BY dep_iata, arr_iata
+      ORDER BY count DESC
+      LIMIT ?
+    `).all(limit);
+  },
 };
