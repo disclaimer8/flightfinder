@@ -9,7 +9,18 @@
  * builder.
  */
 
+// Average year in ms, including leap-year fractional days. We accept ~2.5
+// day drift at bucket boundaries (e.g. an event exactly 5 calendar years
+// ago lands in 'orange' rather than 'yellow') because: real accident dates
+// almost never fall within 2.5 days of a boundary, and calendar-relative
+// arithmetic (Date.setFullYear) would add complexity with no SEO benefit.
 const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
+
+function _toMs(val) {
+  if (typeof val === 'number') return val;
+  if (val == null) return NaN;
+  return Date.parse(val);
+}
 
 function colorBand(events, now = Date.now()) {
   if (!Array.isArray(events) || events.length === 0) {
@@ -18,7 +29,7 @@ function colorBand(events, now = Date.now()) {
   // Find the most recent occurred_at.
   let mostRecent = -Infinity;
   for (const e of events) {
-    const t = typeof e.occurred_at === 'number' ? e.occurred_at : Date.parse(e.occurred_at || '');
+    const t = _toMs(e.occurred_at);
     if (Number.isFinite(t) && t > mostRecent) mostRecent = t;
   }
   if (!Number.isFinite(mostRecent)) {
@@ -42,10 +53,11 @@ function colorBand(events, now = Date.now()) {
 
 function topNotable(events, n = 5) {
   if (!Array.isArray(events) || events.length === 0) return [];
+  if (typeof n !== 'number' || n <= 0) return [];
   const sorted = [...events].sort((a, b) => {
     if ((b.fatalities || 0) !== (a.fatalities || 0)) return (b.fatalities || 0) - (a.fatalities || 0);
-    const at = typeof a.occurred_at === 'number' ? a.occurred_at : Date.parse(a.occurred_at || '');
-    const bt = typeof b.occurred_at === 'number' ? b.occurred_at : Date.parse(b.occurred_at || '');
+    const at = _toMs(a.occurred_at);
+    const bt = _toMs(b.occurred_at);
     return (bt || 0) - (at || 0);
   });
   return sorted.slice(0, n);
@@ -54,7 +66,7 @@ function topNotable(events, n = 5) {
 function groupByDecade(events) {
   const out = {};
   for (const e of events) {
-    const t = typeof e.occurred_at === 'number' ? e.occurred_at : Date.parse(e.occurred_at || '');
+    const t = _toMs(e.occurred_at);
     if (!Number.isFinite(t)) continue;
     const year = new Date(t).getUTCFullYear();
     const decade = `${Math.floor(year / 10) * 10}s`;
