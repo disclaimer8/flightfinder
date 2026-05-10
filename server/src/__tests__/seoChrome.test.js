@@ -191,3 +191,122 @@ describe('seoChrome._renderFooter', () => {
     expect(db.getTopRoutesByObservedFrequency).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('seoChrome._renderCrossRefs', () => {
+  const { _renderCrossRefs } = chrome._internal;
+
+  it('returns "" for unknown kind', () => {
+    expect(_renderCrossRefs({ kind: 'home' }, {})).toBe('');
+    expect(_renderCrossRefs({ kind: 'about' }, {})).toBe('');
+    expect(_renderCrossRefs({ kind: 'not-found' }, {})).toBe('');
+  });
+
+  describe('aircraft-variant kind', () => {
+    it('renders sibling variants excluding self', () => {
+      jest.resetModules();
+      jest.doMock('../models/aircraftVariants', () => ({
+        getVariantsByFamilySlug: () => [
+          { icao: 'B788', familySlug: 'boeing-787', slug: '787-8', shortName: '787-8' },
+          { icao: 'B789', familySlug: 'boeing-787', slug: '787-9', shortName: '787-9' },
+          { icao: 'B78X', familySlug: 'boeing-787', slug: '787-10', shortName: '787-10' },
+        ],
+      }));
+      const freshChrome = require('../services/seoChrome');
+      const html = freshChrome._internal._renderCrossRefs({
+        kind: 'aircraft-variant',
+        variant: { icao: 'B789', familySlug: 'boeing-787' },
+      }, {});
+      expect(html).toMatch(/<aside class="cross-refs"/);
+      expect(html).toMatch(/Other variants/);
+      expect(html).toMatch(/787-8/);
+      expect(html).toMatch(/787-10/);
+      expect(html).not.toMatch(/787-9/);  // excluded self
+      jest.dontMock('../models/aircraftVariants');
+    });
+
+    it('returns "" when variant is the only one in family', () => {
+      jest.resetModules();
+      jest.doMock('../models/aircraftVariants', () => ({
+        getVariantsByFamilySlug: () => [{ icao: 'B789', familySlug: 'boeing-787', slug: '787-9', shortName: '787-9' }],
+      }));
+      const freshChrome = require('../services/seoChrome');
+      const html = freshChrome._internal._renderCrossRefs({
+        kind: 'aircraft-variant',
+        variant: { icao: 'B789', familySlug: 'boeing-787' },
+      }, {});
+      expect(html).toBe('');
+      jest.dontMock('../models/aircraftVariants');
+    });
+  });
+
+  describe('aircraft (family) kind', () => {
+    it('renders other families by same manufacturer (excluding self)', () => {
+      jest.resetModules();
+      jest.doMock('../models/aircraftFamilies', () => ({
+        getFamilyList: () => [
+          { slug: 'boeing-737', label: 'Boeing 737', manufacturer: 'Boeing' },
+          { slug: 'boeing-747', label: 'Boeing 747', manufacturer: 'Boeing' },
+          { slug: 'boeing-787', label: 'Boeing 787', manufacturer: 'Boeing' },
+          { slug: 'airbus-a320', label: 'Airbus A320', manufacturer: 'Airbus' },
+        ],
+      }));
+      const freshChrome = require('../services/seoChrome');
+      const html = freshChrome._internal._renderCrossRefs({
+        kind: 'aircraft',
+        slug: 'boeing-787',
+        family: { manufacturer: 'Boeing' },
+      }, {});
+      expect(html).toMatch(/Other Boeing/);
+      expect(html).toMatch(/Boeing 737/);
+      expect(html).toMatch(/Boeing 747/);
+      expect(html).not.toMatch(/Boeing 787/);  // self excluded
+      expect(html).not.toMatch(/Airbus/);  // different manufacturer
+      jest.dontMock('../models/aircraftFamilies');
+    });
+
+    it('returns "" when no other families share manufacturer', () => {
+      jest.resetModules();
+      jest.doMock('../models/aircraftFamilies', () => ({
+        getFamilyList: () => [
+          { slug: 'atr-42-72', label: 'ATR 42/72', manufacturer: 'ATR' },
+          { slug: 'boeing-787', label: 'Boeing 787', manufacturer: 'Boeing' },
+        ],
+      }));
+      const freshChrome = require('../services/seoChrome');
+      const html = freshChrome._internal._renderCrossRefs({
+        kind: 'aircraft',
+        slug: 'atr-42-72',
+        family: { manufacturer: 'ATR' },
+      }, {});
+      expect(html).toBe('');
+      jest.dontMock('../models/aircraftFamilies');
+    });
+  });
+
+  describe('aircraft subpage kinds', () => {
+    it('renders "More about {family}" for aircraft-airlines', () => {
+      const html = _renderCrossRefs({
+        kind: 'aircraft-airlines',
+        slug: 'boeing-787',
+        aircraftLabel: 'Boeing 787',
+      }, {});
+      expect(html).toMatch(/More about Boeing 787/);
+      expect(html).toMatch(/href="\/aircraft\/boeing-787">Overview</);
+      expect(html).toMatch(/href="\/aircraft\/boeing-787\/routes"/);
+      expect(html).toMatch(/href="\/aircraft\/boeing-787\/safety"/);
+      expect(html).toMatch(/href="\/aircraft\/boeing-787\/specs"/);
+      expect(html).not.toMatch(/href="\/aircraft\/boeing-787\/airlines"/);
+    });
+
+    it('renders for aircraft-safety with self excluded', () => {
+      const html = _renderCrossRefs({
+        kind: 'aircraft-safety',
+        slug: 'boeing-787',
+        aircraftLabel: 'Boeing 787',
+      }, {});
+      expect(html).toMatch(/href="\/aircraft\/boeing-787\/airlines"/);
+      expect(html).toMatch(/href="\/aircraft\/boeing-787\/routes"/);
+      expect(html).not.toMatch(/href="\/aircraft\/boeing-787\/safety"/);
+    });
+  });
+});

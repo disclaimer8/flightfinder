@@ -172,7 +172,68 @@ function _renderFooter(db) {
   return html;
 }
 
-function _renderCrossRefs(_meta, _db) { return ''; }
+function _crossRefsForVariant(meta) {
+  if (!meta.variant?.familySlug) return '';
+  const { getVariantsByFamilySlug } = require('../models/aircraftVariants');
+  const siblings = getVariantsByFamilySlug(meta.variant.familySlug)
+    .filter((v) => v.icao !== meta.variant.icao);
+  if (siblings.length === 0) return '';
+  const items = siblings
+    .map((v) => `<li><a href="/aircraft/${esc(v.familySlug)}/variants/${esc(v.slug)}">${esc(v.shortName)}</a></li>`)
+    .join('');
+  return `<aside class="cross-refs"><h3>Other variants in this family</h3><ul>${items}</ul></aside>`;
+}
+
+function _crossRefsForFamily(meta) {
+  if (!meta.family?.manufacturer) return '';
+  const all = getFamilyList();
+  const siblings = all
+    .filter((f) => f.manufacturer === meta.family.manufacturer && f.slug !== meta.slug)
+    .slice(0, 5);
+  if (siblings.length === 0) return '';
+  const items = siblings
+    .map((f) => `<li><a href="/aircraft/${esc(f.slug)}">${esc(f.label)}</a></li>`)
+    .join('');
+  return `<aside class="cross-refs"><h3>Other ${esc(meta.family.manufacturer)} families</h3><ul>${items}</ul></aside>`;
+}
+
+function _crossRefsForAircraftSubpage(meta) {
+  const slug = meta.slug;
+  if (!slug) return '';
+  const label = meta.aircraftLabel || slug;
+  const subpages = [
+    ['', 'Overview'],
+    ['/airlines', 'Operators'],
+    ['/routes', 'Top routes'],
+    ['/safety', 'Safety record'],
+    ['/specs', 'Full specs'],
+  ];
+  const currentSuffix = {
+    'aircraft-airlines': '/airlines',
+    'aircraft-routes': '/routes',
+    'aircraft-safety': '/safety',
+    'aircraft-specs': '/specs',
+  }[meta.kind];
+  const items = subpages
+    .filter(([suffix]) => suffix !== currentSuffix)
+    .map(([suffix, lbl]) => `<li><a href="/aircraft/${esc(slug)}${suffix}">${esc(lbl)}</a></li>`)
+    .join('');
+  return `<aside class="cross-refs"><h3>More about ${esc(label)}</h3><ul>${items}</ul></aside>`;
+}
+
+function _renderCrossRefs(meta, db) {
+  if (!meta || !meta.kind) return '';
+  switch (meta.kind) {
+    case 'aircraft':         return _crossRefsForFamily(meta);
+    case 'aircraft-variant': return _crossRefsForVariant(meta);
+    case 'aircraft-airlines':
+    case 'aircraft-routes':
+    case 'aircraft-safety':
+    case 'aircraft-specs':   return _crossRefsForAircraftSubpage(meta);
+    // route, aircraft-route, safety-* implemented in later tasks
+    default: return '';
+  }
+}
 
 // ── Public ──────────────────────────────────────────────────────────────
 
