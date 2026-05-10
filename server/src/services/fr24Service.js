@@ -147,9 +147,26 @@ async function fetchFamilyStats(icaoList, opts = {}) {
   };
 }
 
-async function fetchRouteStats(_orig, _dest, _opts) {
+async function fetchRouteStats(orig, dest, opts = {}) {
   if (!isEnabled()) { _logDisabledOnce(); return null; }
-  return null;  // implemented in Task 5
+  if (!orig || !dest) return null;
+
+  const windowDays = opts.windowDays || 365;
+  const { totalFlights, lightRows } = await _fetchCountAndLight(
+    { routes: `${orig}-${dest}` },
+    windowDays,
+  );
+  const derived = _deriveFromLight(lightRows);
+
+  // No topRoutes — the page IS the route. Save bytes in cache and HTML.
+  return {
+    totalFlights,
+    uniqueOperators: derived.uniqueOperators,
+    topOperators: derived.topOperators,
+    yearlyBreakdown: null,
+    windowDays,
+    fetchedAt: Date.now(),
+  };
 }
 
 module.exports = {

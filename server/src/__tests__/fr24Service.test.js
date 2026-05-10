@@ -193,3 +193,51 @@ describe('fr24Service.fetchFamilyStats', () => {
     expect(stats.yearlyBreakdown).toBeNull();
   });
 });
+
+describe('fr24Service.fetchRouteStats', () => {
+  let mockGet;
+
+  beforeEach(() => {
+    process.env.FR24_API_KEY = 'sandbox-test-key';
+    jest.resetModules();
+    mockGet = jest.fn();
+    jest.doMock('axios', () => ({ create: () => ({ get: mockGet }) }));
+    jest.spyOn(global, 'setTimeout').mockImplementation((cb) => { cb(); return 0; });
+  });
+
+  afterEach(() => {
+    jest.dontMock('axios');
+    jest.restoreAllMocks();
+  });
+
+  it('passes routes=ORIG-DEST in URL params', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 847 }] } })
+      .mockResolvedValueOnce({ data: { data: [] } });
+    const fr24 = require('../services/fr24Service');
+    await fr24.fetchRouteStats('JFK', 'LHR');
+    expect(mockGet.mock.calls[0][1].params.routes).toBe('JFK-LHR');
+  });
+
+  it('returns DerivedStats without topRoutes field (the page IS the route)', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 100 }] } })
+      .mockResolvedValueOnce({ data: { data: [
+        { operating_as: 'BAW', orig_icao: 'KJFK', dest_icao: 'EGLL' },
+        { operating_as: 'AAL', orig_icao: 'KJFK', dest_icao: 'EGLL' },
+      ] } });
+    const fr24 = require('../services/fr24Service');
+    const stats = await fr24.fetchRouteStats('JFK', 'LHR');
+    expect(stats.totalFlights).toBe(100);
+    expect(stats.uniqueOperators).toBe(2);
+    expect(stats.topOperators).toHaveLength(2);
+    expect(stats.topRoutes).toBeUndefined();
+  });
+
+  it('returns null for missing orig or dest', async () => {
+    const fr24 = require('../services/fr24Service');
+    expect(await fr24.fetchRouteStats('', 'LHR')).toBeNull();
+    expect(await fr24.fetchRouteStats('JFK', '')).toBeNull();
+    expect(await fr24.fetchRouteStats(null, 'LHR')).toBeNull();
+  });
+});
