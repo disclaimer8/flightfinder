@@ -192,7 +192,9 @@ const families = {
     manufacturer: 'Embraer',
     type: 'regional',
     maxRange: 4260,
-    codes: new Set(['ERJ','ER7','E70','E75','E7W','E75L','ERD']),
+    // Includes proper ICAO type designators (E170, E75L, E75S) alongside the
+    // legacy IATA-ish codes Amadeus may still return.
+    codes: new Set(['ERJ','ER7','E70','E75','E7W','E75L','E75S','E170','ERD']),
     engines: '2 × turbofan',
     capacity: '70-88 pax',
     firstFlight: '2002-02',
@@ -203,7 +205,9 @@ const families = {
     manufacturer: 'Embraer',
     type: 'regional',
     maxRange: 5278,
-    codes: new Set(['ER9','E90','E95','E9W','E9X']),
+    // Includes proper ICAO type designators (E190, E195, E290, E295) alongside
+    // the legacy IATA-ish codes Amadeus may still return.
+    codes: new Set(['ER9','E90','E95','E9W','E9X','E190','E195','E290','E295']),
     engines: '2 × turbofan',
     capacity: '96-146 pax',
     firstFlight: '2004-03',
@@ -240,7 +244,9 @@ const families = {
     manufacturer: 'ATR',
     type: 'turboprop',
     maxRange: 2750,
-    codes: new Set(['ATR','AT7','AT4']),
+    // Includes proper ICAO type designators (AT43/AT45/AT46/AT72/AT75/AT76)
+    // alongside the legacy IATA-ish codes Amadeus may still return.
+    codes: new Set(['ATR','AT7','AT4','AT43','AT45','AT46','AT72','AT75','AT76']),
     engines: '2 × turboprop',
     capacity: '48-78 pax',
     firstFlight: '1984-08',
