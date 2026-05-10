@@ -432,12 +432,28 @@ function resolve(pathname) {
     let recentIncidents = [];
     try {
       const raw = safety.getRecent({ limit: 10 }) || [];
-      // Map to the shape bSafetyFeed expects: {date, aircraft, summary}
-      recentIncidents = raw.map((e) => ({
-        date:     e.date || e.occurred_at || null,
-        aircraft: e.aircraft_type || e.aircraft_icao_type || e.aircraft || 'unknown aircraft',
-        summary:  e.summary || e.narrative || 'no summary',
-      }));
+      // Map to the shape bSafetyFeed expects: {date, aircraft, summary}.
+      // occurred_at is stored as epoch ms — format to YYYY-MM-DD.
+      // Many NTSB rows lack narrative; compose a useful summary from
+      // operator + location + severity so the feed item is still informative.
+      recentIncidents = raw.map((e) => {
+        const ms = typeof e.occurred_at === 'number' ? e.occurred_at : Date.parse(e.date || '');
+        const date = Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : 'unknown date';
+
+        const aircraft = e.aircraft_icao_type || e.aircraft_type || e.registration || 'unknown aircraft';
+
+        let summary = e.narrative || e.summary;
+        if (!summary) {
+          const parts = [];
+          if (e.severity)         parts.push(e.severity);
+          if (e.fatalities > 0)   parts.push(`${e.fatalities} fatal`);
+          if (e.operator_name)    parts.push(e.operator_name);
+          if (e.location_country) parts.push(e.location_country);
+          summary = parts.length ? parts.join(', ') : 'no details';
+        }
+
+        return { date, aircraft, summary };
+      });
     } catch {
       recentIncidents = []; // builder will return null
     }
