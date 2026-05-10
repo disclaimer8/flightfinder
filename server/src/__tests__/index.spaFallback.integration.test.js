@@ -155,4 +155,79 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
     expect(res.status).toBe(404);
     expect(res.text).not.toMatch(/data-seo-bake/);
   });
+
+  it('GET /aircraft/boeing-787 includes FR24 worldwide activity when cache populated', async () => {
+    const fr24Cache = require('../services/fr24CacheService');
+    fr24Cache.set('family:boeing-787', {
+      totalFlights: 47200,
+      uniqueOperators: 84,
+      topOperators: [{ icao: 'ANA', count: 3200 }],
+      topRoutes: [{ from: 'RJTT', to: 'KLAX', count: 340 }],
+      yearlyBreakdown: [{ year: 2025, count: 47200 }, { year: 2024, count: 38400 }],
+      fetchedAt: Date.now(),
+    });
+    require('../services/seoContentCache').warm({ schedule: false });
+
+    const res = await request(app).get('/aircraft/boeing-787');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/Worldwide activity \(last 12 months\)/);
+    expect(res.text).toMatch(/47,200/);
+    expect(res.text).toMatch(/5-year trend/);
+  });
+
+  it('GET /aircraft/boeing-787/variants/787-9 includes FR24 + 5-year trend', async () => {
+    const fr24Cache = require('../services/fr24CacheService');
+    fr24Cache.set('variant:B789', {
+      totalFlights: 12000,
+      uniqueOperators: 25,
+      topOperators: [{ icao: 'UAL', count: 1500 }],
+      topRoutes: [],
+      yearlyBreakdown: [{ year: 2025, count: 12000 }, { year: 2024, count: 10000 }],
+      fetchedAt: Date.now(),
+    });
+    require('../services/seoContentCache').warm({ schedule: false });
+
+    const res = await request(app).get('/aircraft/boeing-787/variants/787-9');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/Worldwide activity/);
+    expect(res.text).toMatch(/5-year trend/);
+  });
+
+  it('GET /routes/JFK-LHR includes FR24 route-context section when cache populated', async () => {
+    // Seed enough observed_routes that JFK and LHR both qualify as hubs
+    // (≥15 distinct destinations each) so /routes/jfk-lhr appears in
+    // enumerateSeoUrls()'s hub-network edges and the warm pass bakes it.
+    const db = require('../models/db');
+    const PAD = ['ATL','BOS','CDG','DFW','EWR','FRA','HKG','IST','LAX','MAD','MIA','MUC','NRT','ORD','SEA','SFO','SIN','SYD','YYZ','ZRH'];
+    for (const a of PAD) {
+      db.upsertObservedRoute({ depIata: 'JFK', arrIata: a, aircraftIcao: 'B789', airlineIata: 'BA', source: 'test' });
+      db.upsertObservedRoute({ depIata: 'LHR', arrIata: a, aircraftIcao: 'B789', airlineIata: 'BA', source: 'test' });
+    }
+
+    const fr24Cache = require('../services/fr24CacheService');
+    fr24Cache.set('route:JFK-LHR', {
+      totalFlights: 847,
+      uniqueOperators: 12,
+      topOperators: [{ icao: 'BAW', count: 340 }],
+      yearlyBreakdown: null,
+      fetchedAt: Date.now(),
+    });
+    require('../services/seoContentCache').warm({ schedule: false });
+
+    const res = await request(app).get('/routes/jfk-lhr');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/Worldwide activity on this route/);
+    expect(res.text).toMatch(/Flown.*847/);
+    expect(res.text).not.toMatch(/Top routes:/);
+  });
+
+  it('GET /aircraft/boeing-787 omits FR24 section when cache empty', async () => {
+    const fr24Cache = require('../services/fr24CacheService');
+    fr24Cache.clear();
+    require('../services/seoContentCache').warm({ schedule: false });
+
+    const res = await request(app).get('/aircraft/boeing-787');
+    expect(res.status).toBe(200);
+    expect(res.text).not.toMatch(/Worldwide activity/);
+  });
 });
