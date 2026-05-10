@@ -310,3 +310,70 @@ describe('seoChrome._renderCrossRefs', () => {
     });
   });
 });
+
+describe('seoChrome._renderCrossRefs route kinds', () => {
+  const { _renderCrossRefs } = chrome._internal;
+
+  function mockRouteDb(fromRoutes, toRoutes) {
+    return {
+      getTopRoutesFromAirport: jest.fn(() => fromRoutes),
+      getTopRoutesToAirport: jest.fn(() => toRoutes),
+    };
+  }
+
+  it('renders both "from" and "to" sections for route kind', () => {
+    const html = _renderCrossRefs(
+      { kind: 'route', fromIata: 'JFK', toIata: 'LHR' },
+      mockRouteDb(
+        [{ from: 'JFK', to: 'CDG', count: 3 }, { from: 'JFK', to: 'FRA', count: 2 }],
+        [{ from: 'BOS', to: 'LHR', count: 4 }, { from: 'ORD', to: 'LHR', count: 3 }],
+      ),
+    );
+    expect(html).toMatch(/Other routes from JFK/);
+    expect(html).toMatch(/href="\/routes\/jfk-cdg"/);
+    expect(html).toMatch(/Other routes to LHR/);
+    expect(html).toMatch(/href="\/routes\/bos-lhr"/);
+  });
+
+  it('skips self-route from "from" list', () => {
+    const html = _renderCrossRefs(
+      { kind: 'route', fromIata: 'JFK', toIata: 'LHR' },
+      mockRouteDb(
+        [
+          { from: 'JFK', to: 'LHR', count: 5 },
+          { from: 'JFK', to: 'CDG', count: 3 },
+        ],
+        [],
+      ),
+    );
+    expect(html).not.toMatch(/href="\/routes\/jfk-lhr"/);
+    expect(html).toMatch(/href="\/routes\/jfk-cdg"/);
+  });
+
+  it('returns only "to" section if "from" data is empty', () => {
+    const html = _renderCrossRefs(
+      { kind: 'route', fromIata: 'JFK', toIata: 'LHR' },
+      mockRouteDb([], [{ from: 'BOS', to: 'LHR', count: 4 }]),
+    );
+    expect(html).not.toMatch(/Other routes from JFK/);
+    expect(html).toMatch(/Other routes to LHR/);
+  });
+
+  it('returns "" when both "from" and "to" data are empty', () => {
+    const html = _renderCrossRefs(
+      { kind: 'route', fromIata: 'JFK', toIata: 'LHR' },
+      mockRouteDb([], []),
+    );
+    expect(html).toBe('');
+  });
+
+  it('renders aircraft-route cross-refs', () => {
+    const html = _renderCrossRefs(
+      { kind: 'aircraft-route', fromIata: 'JFK', toIata: 'LHR', slug: 'boeing-787', aircraftLabel: 'Boeing 787' },
+      {},
+    );
+    expect(html).toMatch(/href="\/routes\/jfk-lhr"/);
+    expect(html).toMatch(/href="\/aircraft\/boeing-787"/);
+    expect(html).toMatch(/Boeing 787/);
+  });
+});

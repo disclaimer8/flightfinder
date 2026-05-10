@@ -221,6 +221,50 @@ function _crossRefsForAircraftSubpage(meta) {
   return `<aside class="cross-refs"><h3>More about ${esc(label)}</h3><ul>${items}</ul></aside>`;
 }
 
+function _crossRefsForRoute(meta, db) {
+  const orig = meta.fromIata;
+  const dest = meta.toIata;
+  if (!orig || !dest) return '';
+
+  const fromRoutes = _safeChrome(() => db.getTopRoutesFromAirport(orig, 6), [])
+    .filter((r) => !(r.from === orig && r.to === dest))
+    .slice(0, 5);
+  const toRoutes = _safeChrome(() => db.getTopRoutesToAirport(dest, 6), [])
+    .filter((r) => !(r.from === orig && r.to === dest))
+    .slice(0, 5);
+
+  const blocks = [];
+  if (fromRoutes.length > 0) {
+    const items = fromRoutes
+      .map((r) => `<li><a href="/routes/${esc(r.from.toLowerCase())}-${esc(r.to.toLowerCase())}">${esc(r.from)}–${esc(r.to)}</a></li>`)
+      .join('');
+    blocks.push(`<h3>Other routes from ${esc(orig)}</h3><ul>${items}</ul>`);
+  }
+  if (toRoutes.length > 0) {
+    const items = toRoutes
+      .map((r) => `<li><a href="/routes/${esc(r.from.toLowerCase())}-${esc(r.to.toLowerCase())}">${esc(r.from)}–${esc(r.to)}</a></li>`)
+      .join('');
+    blocks.push(`<h3>Other routes to ${esc(dest)}</h3><ul>${items}</ul>`);
+  }
+  if (blocks.length === 0) return '';
+  return `<aside class="cross-refs">${blocks.join('')}</aside>`;
+}
+
+function _crossRefsForAircraftRoute(meta) {
+  const orig = meta.fromIata;
+  const dest = meta.toIata;
+  const slug = meta.slug;
+  const label = meta.aircraftLabel || slug;
+  if (!orig || !dest || !slug) return '';
+  return `<aside class="cross-refs">
+    <h3>Related pages</h3>
+    <ul>
+      <li><a href="/routes/${esc(orig.toLowerCase())}-${esc(dest.toLowerCase())}">All flights ${esc(orig)}–${esc(dest)}</a></li>
+      <li><a href="/aircraft/${esc(slug)}">${esc(label)} overview</a></li>
+    </ul>
+  </aside>`;
+}
+
 function _renderCrossRefs(meta, db) {
   if (!meta || !meta.kind) return '';
   switch (meta.kind) {
@@ -230,7 +274,9 @@ function _renderCrossRefs(meta, db) {
     case 'aircraft-routes':
     case 'aircraft-safety':
     case 'aircraft-specs':   return _crossRefsForAircraftSubpage(meta);
-    // route, aircraft-route, safety-* implemented in later tasks
+    case 'route':            return _crossRefsForRoute(meta, db);
+    case 'aircraft-route':   return _crossRefsForAircraftRoute(meta);
+    // safety-* in next task
     default: return '';
   }
 }
