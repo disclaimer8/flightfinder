@@ -51,7 +51,7 @@ async function refresh() {
   }
 
   const { getAllVariants } = require('../models/aircraftVariants');
-  const { getFamilyList } = require('../models/aircraftFamilies');
+  const { getFamilyList, getFamilyBySlug } = require('../models/aircraftFamilies');
   const db = require('../models/db');
 
   let refreshed = 0, skipped = 0, failed = 0;
@@ -67,7 +67,9 @@ async function refresh() {
   for (const fam of getFamilyList()) {
     const key = `family:${fam.slug}`;
     if (_isFresh(key)) { skipped++; continue; }
-    const stats = await fr24.fetchFamilyStats(fam.icaoList || [], { withYearly: true });
+    const fullFam = getFamilyBySlug(fam.slug);
+    const icaoList = (fullFam && fullFam.icaoList) || [];
+    const stats = await fr24.fetchFamilyStats(icaoList, { withYearly: true });
     if (stats) { _store.set(key, stats); refreshed++; }
     else { failed++; }
   }

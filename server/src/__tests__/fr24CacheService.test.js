@@ -15,8 +15,11 @@ jest.mock('../models/aircraftVariants', () => ({
 }));
 jest.mock('../models/aircraftFamilies', () => ({
   getFamilyList: () => [
-    { slug: 'boeing-787', icaoList: ['B788', 'B789', 'B78X'] },
+    { slug: 'boeing-787', name: 'Boeing 787', label: 'Boeing 787 Dreamliner' },
   ],
+  getFamilyBySlug: (slug) => slug === 'boeing-787'
+    ? { slug, name: 'Boeing 787', icaoList: ['B788', 'B789', 'B78X'] }
+    : null,
 }));
 jest.mock('../models/db', () => ({
   getTopRoutesByObservedFrequency: () => [
