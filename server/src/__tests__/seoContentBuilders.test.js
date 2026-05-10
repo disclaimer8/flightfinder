@@ -251,6 +251,32 @@ describe('seoContentBuilders.build — bAircraftSafety enriched', () => {
     expect(html).toMatch(/Op A/);
   });
 
+  it('renders by-variant breakdown when variants and allEvents are present', () => {
+    const meta = {
+      kind: 'aircraft-safety',
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+      icaoList: ['B788', 'B789'],
+      colorBand: { bucket: 'orange', label: 'Last fatal: 2024', lastFatalDate: '2024-03-01' },
+      topEvents: [],
+      allEvents: [
+        { occurred_at: Date.parse('2024-03-01'), aircraft_icao_type: 'B789', severity: 'fatal' },
+        { occurred_at: Date.parse('2018-09-20'), aircraft_icao_type: 'B788', severity: 'incident' },
+        { occurred_at: Date.parse('2010-04-15'), aircraft_icao_type: 'B788', severity: 'incident' },
+      ],
+      variants: [
+        { icao: 'B788', shortName: '787-8' },
+        { icao: 'B789', shortName: '787-9' },
+        { icao: 'B78X', shortName: '787-10' },
+      ],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/By variant:/);
+    expect(html).toMatch(/787-8 \(2 events\)/);
+    expect(html).toMatch(/787-9 \(1 event\)/);
+    expect(html).toMatch(/787-10 \(0 events\)/);
+  });
+
   it('renders timeline events with missing fields without producing broken HTML', () => {
     const meta = {
       kind: 'aircraft-safety',
@@ -315,5 +341,32 @@ describe('seoContentBuilders.build — bAircraftVariant', () => {
 
   it('returns null when meta.variant is missing', () => {
     expect(build({ kind: 'aircraft-variant' })).toBeNull();
+  });
+
+  it('renders full per-variant decade timeline when allEvents has rows', () => {
+    const meta = {
+      kind: 'aircraft-variant',
+      variant: {
+        familySlug: 'boeing-787', slug: '787-9',
+        icao: 'B789', shortName: '787-9', fullName: 'Boeing 787-9 Dreamliner',
+        firstFlight: '2013-09-17', capacity: '290 pax', range_km: 14140,
+        engines: ['GE GEnx-1B'],
+        description: 'Stretched variant of the 787 family.',
+      },
+      family: { name: 'Boeing 787', label: 'Boeing 787 Dreamliner', slug: 'boeing-787' },
+      icaoList: ['B789'],
+      colorBand: { bucket: 'orange', label: 'Last fatal: 2024', lastFatalDate: '2024-03-01' },
+      topEvents: [],
+      allEvents: [
+        { occurred_at: Date.parse('2024-03-01'), aircraft_icao_type: 'B789', severity: 'fatal', operator_name: 'Op A', fatalities: 2 },
+        { occurred_at: Date.parse('2015-06-10'), aircraft_icao_type: 'B789', severity: 'incident', operator_name: 'Op B' },
+      ],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/<h3>2020s<\/h3>/);
+    expect(html).toMatch(/<h3>2010s<\/h3>/);
+    expect(html.indexOf('2020s')).toBeLessThan(html.indexOf('2010s'));
+    expect(html).toMatch(/Op A/);
+    expect(html).toMatch(/Op B/);
   });
 });

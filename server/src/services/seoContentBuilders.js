@@ -68,6 +68,39 @@ function _renderVariantsList(variants) {
   return `<h3>Variants</h3><ul>${items}</ul>`;
 }
 
+function _renderDecadeTimeline(events) {
+  if (!Array.isArray(events) || events.length === 0) return '';
+  const { groupByDecade } = require('./safetyRating');
+  const grouped = groupByDecade(events);
+  // String sort is correct for 4-digit-decade keys (e.g. '1990s' < '2020s').
+  const decades = Object.keys(grouped).sort().reverse();
+  return decades.map((d) => {
+    const items = grouped[d].map((e) => {
+      const ms = typeof e.occurred_at === 'number' ? e.occurred_at : Date.parse(e.occurred_at || '');
+      const date = Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : '';
+      const lead = date ? `<time datetime="${esc(date)}">${esc(date)}</time>` : '';
+      const opChunk = e.operator_name ? `<strong>${esc(e.operator_name)}</strong>` : '';
+      const variantChunk = e.aircraft_icao_type ? esc(e.aircraft_icao_type) : '';
+      const fatalText = e.fatalities ? `${esc(e.fatalities)} fatal` : (e.severity ? esc(e.severity) : '');
+      const parenChunk = fatalText ? `(${fatalText})` : '';
+      return `<li>${[lead, opChunk, variantChunk, parenChunk].filter(Boolean).join(' — ')}</li>`;
+    }).join('');
+    return `<h3>${esc(d)}</h3><ul>${items}</ul>`;
+  }).join('');
+}
+
+function _renderVariantBreakdown(allEvents, variants) {
+  if (!Array.isArray(variants) || variants.length === 0) return '';
+  if (!Array.isArray(allEvents) || allEvents.length === 0) return '';
+  const { breakdownByVariant } = require('./safetyRating');
+  const counts = breakdownByVariant(allEvents);
+  const items = variants.map((v) => {
+    const n = counts[v.icao] || 0;
+    return `${esc(v.shortName)} (${esc(n)} event${n === 1 ? '' : 's'})`;
+  }).join(', ');
+  return items ? `<p>By variant: ${items}.</p>` : '';
+}
+
 function bPricing() {
   return `
     <p>FlightFinder Pro unlocks enriched flight cards (livery, on-time stats, CO₂, amenities), delay predictions, and My Trips with push alerts.</p>
@@ -176,29 +209,12 @@ function bAircraftSafety(meta, _db) {
   if (!meta) return null;
 
   const safetyHeader = _renderSafetyBand(meta);
+  const breakdown = _renderVariantBreakdown(meta.allEvents, meta.variants);
   const top = _renderTopEvents(meta.topEvents);
+  const fullList = _renderDecadeTimeline(meta.allEvents);
 
-  const allEvents = Array.isArray(meta.allEvents) ? meta.allEvents : [];
-  const { groupByDecade } = require('./safetyRating');
-  const grouped = groupByDecade(allEvents);
-  // String sort is correct for 4-digit-decade keys (e.g. '1990s' < '2020s').
-  const decades = Object.keys(grouped).sort().reverse();
-  const fullList = decades.map((d) => {
-    const items = grouped[d].map((e) => {
-      const ms = typeof e.occurred_at === 'number' ? e.occurred_at : Date.parse(e.occurred_at || '');
-      const date = Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : '';
-      const lead = date ? `<time datetime="${esc(date)}">${esc(date)}</time>` : '';
-      const opChunk = e.operator_name ? `<strong>${esc(e.operator_name)}</strong>` : '';
-      const variantChunk = e.aircraft_icao_type ? esc(e.aircraft_icao_type) : '';
-      const fatalText = e.fatalities ? `${esc(e.fatalities)} fatal` : (e.severity ? esc(e.severity) : '');
-      const parenChunk = fatalText ? `(${fatalText})` : '';
-      return `<li>${[lead, opChunk, variantChunk, parenChunk].filter(Boolean).join(' — ')}</li>`;
-    }).join('');
-    return `<h3>${esc(d)}</h3><ul>${items}</ul>`;
-  }).join('');
-
-  if (!safetyHeader && !top && !fullList) return null;
-  return [safetyHeader, top, fullList].filter(Boolean).join('\n').trim();
+  if (!safetyHeader && !top && !breakdown && !fullList) return null;
+  return [safetyHeader, breakdown, top, fullList].filter(Boolean).join('\n').trim();
 }
 
 function bAircraftVariant(meta, db) {
@@ -217,6 +233,7 @@ function bAircraftVariant(meta, db) {
 
   const safetyHeader = _renderSafetyBand(meta);
   const topEvents = _renderTopEvents(meta.topEvents);
+  const fullTimeline = _renderDecadeTimeline(meta.allEvents);
 
   const operatorsBlock = operators.length > 0
     ? `<h3>Operators</h3><p>Operated by ${esc(operators.length)} airline${operators.length === 1 ? '' : 's'} (top by frequency in our observed-flights dataset):</p><ul>${operators.map((o) => `<li>${esc(o.airline)} — ${esc(o.count)} observed flight${o.count === 1 ? '' : 's'}</li>`).join('')}</ul>`
@@ -230,7 +247,7 @@ function bAircraftVariant(meta, db) {
     ? `<p>Part of the <a href="/aircraft/${esc(fam.slug || meta.variant.familySlug)}">${esc(fam.label)}</a> family.</p>`
     : '';
 
-  return [description, safetyHeader, topEvents, operatorsBlock, routesBlock, familyLink]
+  return [description, safetyHeader, topEvents, fullTimeline, operatorsBlock, routesBlock, familyLink]
     .filter(Boolean).join('\n').trim();
 }
 

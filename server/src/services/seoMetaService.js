@@ -229,6 +229,7 @@ function aircraftSafetyMeta(slug) {
   // arrays so colorBand defaults to "green / no record" instead of crashing.
   const fatalEvents = _safeDb((d) => d.getFatalEventsByIcaoList(icaoList));
   const allEvents   = _safeDb((d) => d.getAllEventsByIcaoList(icaoList, 100));
+  const variants = getVariantsByFamilySlug(slug);
   return {
     title: `${label} safety record — accidents and incidents | FlightFinder`,
     description: `Aviation safety events involving the ${label}: hull losses, fatal accidents, and serious incidents from NTSB CAROL, Aviation Safety Network, B3A, and Wikidata.`,
@@ -247,6 +248,7 @@ function aircraftSafetyMeta(slug) {
     colorBand: colorBand(fatalEvents),
     topEvents: topNotable(fatalEvents, 5),
     allEvents,
+    variants,
   };
 }
 
