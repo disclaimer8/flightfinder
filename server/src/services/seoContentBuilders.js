@@ -173,18 +173,32 @@ function bAircraftRoutes(meta, db) {
 }
 
 function bAircraftSafety(meta, _db) {
-  // Safety data lives in safetyEvents service. If meta carries pre-resolved
-  // counts use those; otherwise return null and degrade. Keeps this builder
-  // honest — we never invent numbers.
-  if (typeof meta.safetyEventCount !== 'number') return null;
-  const label = meta.aircraftLabel || meta.slug || 'this aircraft';
-  const recent = meta.mostRecentSafetyEvent
-    ? `Most recent on file: ${esc(meta.mostRecentSafetyEvent.date)} — ${esc(meta.mostRecentSafetyEvent.summary || 'no summary')}.`
-    : '';
-  return `
-    <p>${esc(meta.safetyEventCount)} incident${meta.safetyEventCount === 1 ? '' : 's'} on file involving the ${esc(label)} across the Aviation Safety Network, B3A, NTSB, and Wikidata datasets we aggregate.</p>
-    ${recent ? `<p>${recent}</p>` : ''}
-  `.trim();
+  if (!meta) return null;
+
+  const safetyHeader = _renderSafetyBand(meta);
+  const top = _renderTopEvents(meta.topEvents);
+
+  const allEvents = Array.isArray(meta.allEvents) ? meta.allEvents : [];
+  const { groupByDecade } = require('./safetyRating');
+  const grouped = groupByDecade(allEvents);
+  // String sort is correct for 4-digit-decade keys (e.g. '1990s' < '2020s').
+  const decades = Object.keys(grouped).sort().reverse();
+  const fullList = decades.map((d) => {
+    const items = grouped[d].map((e) => {
+      const ms = typeof e.occurred_at === 'number' ? e.occurred_at : Date.parse(e.occurred_at || '');
+      const date = Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : '';
+      const lead = date ? `<time datetime="${esc(date)}">${esc(date)}</time>` : '';
+      const opChunk = e.operator_name ? `<strong>${esc(e.operator_name)}</strong>` : '';
+      const variantChunk = e.aircraft_icao_type ? esc(e.aircraft_icao_type) : '';
+      const fatalText = e.fatalities ? `${esc(e.fatalities)} fatal` : (e.severity ? esc(e.severity) : '');
+      const parenChunk = fatalText ? `(${fatalText})` : '';
+      return `<li>${[lead, opChunk, variantChunk, parenChunk].filter(Boolean).join(' — ')}</li>`;
+    }).join('');
+    return `<h3>${esc(d)}</h3><ul>${items}</ul>`;
+  }).join('');
+
+  if (!safetyHeader && !top && !fullList) return null;
+  return [safetyHeader, top, fullList].filter(Boolean).join('\n').trim();
 }
 
 function bAircraftSpecs(meta, _db) {

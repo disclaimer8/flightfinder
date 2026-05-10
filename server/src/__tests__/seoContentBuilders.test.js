@@ -225,3 +225,28 @@ describe('seoContentBuilders.build — bAircraft enriched', () => {
     expect(html).toMatch(/Bad Op/);
   });
 });
+
+describe('seoContentBuilders.build — bAircraftSafety enriched', () => {
+  it('renders color band, top events, and decade-grouped full timeline', () => {
+    const meta = {
+      kind: 'aircraft-safety',
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+      icaoList: ['B789'],
+      colorBand: { bucket: 'orange', label: 'Last fatal hull loss: 2024', lastFatalDate: '2024-03-01' },
+      topEvents: [
+        { occurred_at: Date.parse('2024-03-01'), fatalities: 2, operator_name: 'Op A', aircraft_icao_type: 'B789' },
+      ],
+      allEvents: [
+        { occurred_at: Date.parse('2024-03-01'), fatalities: 2, operator_name: 'Op A', aircraft_icao_type: 'B789', severity: 'fatal' },
+        { occurred_at: Date.parse('2018-09-20'), fatalities: 0, operator_name: 'Op B', aircraft_icao_type: 'B788', severity: 'incident' },
+      ],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/safety-band--orange/);
+    expect(html).toMatch(/safety-disclaimer/);
+    expect(html).toMatch(/<h3>2020s<\/h3>/);
+    expect(html).toMatch(/<h3>2010s<\/h3>/);
+    expect(html).toMatch(/Op A/);
+  });
+});
