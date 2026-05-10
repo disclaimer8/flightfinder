@@ -279,3 +279,34 @@ describe('seoContentBuilders.build — bAircraftSafety enriched', () => {
     expect(html).toMatch(/<h3>2010s<\/h3>/);
   });
 });
+
+describe('seoContentBuilders.build — bAircraftVariant', () => {
+  it('renders description, operators, top routes, color band, top-5, and family link', () => {
+    const meta = {
+      kind: 'aircraft-variant',
+      variant: {
+        familySlug: 'boeing-787', slug: '787-9',
+        icao: 'B789', shortName: '787-9', fullName: 'Boeing 787-9 Dreamliner',
+        firstFlight: '2013-09-17', capacity: '290 pax', range_km: 14140,
+        engines: ['GE GEnx-1B', 'Rolls-Royce Trent 1000'],
+        description: 'Stretched variant of the 787 family. Six metres longer than the 787-8.',
+      },
+      family: { name: 'Boeing 787', label: 'Boeing 787 Dreamliner', slug: 'boeing-787' },
+      icaoList: ['B789'],
+      colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+      topEvents: [],
+      allEvents: [],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/Stretched variant/);
+    expect(html).toMatch(/safety-band--green/);
+    expect(html).toMatch(/safety-disclaimer/);
+    // Family link wraps the label in an <a>, so the text is split by markup.
+    expect(html).toMatch(/Part of the\s*<a[^>]*href="\/aircraft\/boeing-787"[^>]*>Boeing 787 Dreamliner<\/a>\s*family/);
+    expect(html).toMatch(/14140|range/i);
+  });
+
+  it('returns null when meta.variant is missing', () => {
+    expect(build({ kind: 'aircraft-variant' })).toBeNull();
+  });
+});

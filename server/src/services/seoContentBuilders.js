@@ -201,6 +201,39 @@ function bAircraftSafety(meta, _db) {
   return [safetyHeader, top, fullList].filter(Boolean).join('\n').trim();
 }
 
+function bAircraftVariant(meta, db) {
+  if (!meta || !meta.variant) return null;
+  const v = meta.variant;
+  const fam = meta.family || {};
+
+  const operators = (() => {
+    try { return db.getAircraftOperators([v.icao], 10); } catch { return []; }
+  })();
+  const topRoutes = (() => {
+    try { return db.getAircraftTopRoutes([v.icao], 10); } catch { return []; }
+  })();
+
+  const description = `<p>${esc(v.description)}</p><p>First flight ${esc(v.firstFlight)}. Capacity ${esc(v.capacity)}. Range ${esc(v.range_km)} km. Engines: ${esc((v.engines || []).join(' or '))}.</p>`;
+
+  const safetyHeader = _renderSafetyBand(meta);
+  const topEvents = _renderTopEvents(meta.topEvents);
+
+  const operatorsBlock = operators.length > 0
+    ? `<h3>Operators</h3><p>Operated by ${esc(operators.length)} airline${operators.length === 1 ? '' : 's'} (top by frequency in our observed-flights dataset):</p><ul>${operators.map((o) => `<li>${esc(o.airline)} — ${esc(o.count)} observed flight${o.count === 1 ? '' : 's'}</li>`).join('')}</ul>`
+    : '<p>No observed flights for this variant in our dataset.</p>';
+
+  const routesBlock = topRoutes.length > 0
+    ? `<h3>Top routes</h3><ul>${topRoutes.map((r) => `<li>${esc(r.from)} → ${esc(r.to)} (${esc(r.count)} flight${r.count === 1 ? '' : 's'})</li>`).join('')}</ul>`
+    : '';
+
+  const familyLink = fam.label
+    ? `<p>Part of the <a href="/aircraft/${esc(fam.slug || meta.variant.familySlug)}">${esc(fam.label)}</a> family.</p>`
+    : '';
+
+  return [description, safetyHeader, topEvents, operatorsBlock, routesBlock, familyLink]
+    .filter(Boolean).join('\n').trim();
+}
+
 function bAircraftSpecs(meta, _db) {
   const fam = meta.family || {};
   const parts = [];
@@ -266,6 +299,7 @@ function build(meta, db) {
   if (meta.kind === 'aircraft-airlines')  return bAircraftAirlines(meta, dbInstance);
   if (meta.kind === 'aircraft-routes')    return bAircraftRoutes(meta, dbInstance);
   if (meta.kind === 'aircraft-safety')    return bAircraftSafety(meta, dbInstance);
+  if (meta.kind === 'aircraft-variant')   return bAircraftVariant(meta, dbInstance);
   if (meta.kind === 'home')               return bHome(meta, dbInstance);
   if (meta.kind === 'safety-global')      return bSafetyGlobal(meta, dbInstance);
   if (meta.kind === 'safety-feed')        return bSafetyFeed(meta, dbInstance);
