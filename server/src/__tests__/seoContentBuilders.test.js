@@ -537,4 +537,47 @@ describe('seoContentBuilders — FR24 wiring in builders', () => {
     expect(html).toMatch(/Flown.*847/);
     expect(html).not.toMatch(/Top routes:/);
   });
+
+  it('bRoute renders both observed facts AND FR24 section using production field names', () => {
+    const meta = {
+      kind: 'route',
+      pair: 'JFK-LHR',
+      fromIata: 'JFK',
+      toIata: 'LHR',
+      fromName: 'New York',
+      toName: 'London',
+      fr24Stats: {
+        totalFlights: 847,
+        uniqueOperators: 12,
+        topOperators: [{ icao: 'BAW', count: 340 }],
+        yearlyBreakdown: null,
+        fetchedAt: Date.now(),
+      },
+    };
+    const html = build(meta);
+    expect(html).toMatch(/Worldwide activity on this route/);
+    expect(html).toMatch(/Flown.*847/);
+    expect(html).not.toMatch(/Top routes:/);
+  });
+
+  it('bAircraft renders when only fr24Stats present (relaxed guard)', () => {
+    const meta = {
+      kind: 'aircraft',
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+      icaoList: ['B789'],
+      fr24Stats: {
+        totalFlights: 5000,
+        uniqueOperators: 30,
+        topOperators: [],
+        topRoutes: [],
+        yearlyBreakdown: null,
+        fetchedAt: Date.now(),
+      },
+    };
+    const html = build(meta);
+    expect(html).not.toBeNull();
+    expect(html).toMatch(/Worldwide activity \(last 12 months\)/);
+    expect(html).toMatch(/5,000/);
+  });
 });
