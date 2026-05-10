@@ -247,6 +247,35 @@ describe('seoContentBuilders.build — bAircraftSafety enriched', () => {
     expect(html).toMatch(/safety-disclaimer/);
     expect(html).toMatch(/<h3>2020s<\/h3>/);
     expect(html).toMatch(/<h3>2010s<\/h3>/);
+    expect(html.indexOf('2020s')).toBeLessThan(html.indexOf('2010s'));
     expect(html).toMatch(/Op A/);
+  });
+
+  it('renders timeline events with missing fields without producing broken HTML', () => {
+    const meta = {
+      kind: 'aircraft-safety',
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+      icaoList: ['B789'],
+      colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+      topEvents: [],
+      allEvents: [
+        // All fields missing except occurred_at
+        { occurred_at: Date.parse('2015-01-01') },
+        // Operator only
+        { occurred_at: Date.parse('2010-06-15'), operator_name: 'Solo Op' },
+      ],
+    };
+    const html = build(meta);
+    // No empty <li>
+    expect(html).not.toMatch(/<li>\s*<\/li>/);
+    // No double em-dash separator
+    expect(html).not.toMatch(/— —/);
+    // No empty parens
+    expect(html).not.toMatch(/\(\)/);
+    // Solo Op event still renders the operator
+    expect(html).toMatch(/Solo Op/);
+    // Decade headers still render even when events are sparse
+    expect(html).toMatch(/<h3>2010s<\/h3>/);
   });
 });
