@@ -59,4 +59,12 @@ describe('enumerateSeoUrls', () => {
     // No /routes/ entries because the query failed.
     expect(paths.some((p) => p.startsWith('/routes/'))).toBe(false);
   });
+
+  it('includes /aircraft/{family}/variants/{variant} for every catalog entry', () => {
+    const { getAllVariants } = require('../models/aircraftVariants');
+    const paths = enumerateSeoUrls();
+    for (const v of getAllVariants()) {
+      expect(paths).toContain(`/aircraft/${v.familySlug}/variants/${v.slug}`);
+    }
+  });
 });
