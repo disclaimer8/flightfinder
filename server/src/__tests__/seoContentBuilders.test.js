@@ -157,3 +157,41 @@ describe('seoContentBuilders.build — home and safety', () => {
     expect(html).toBeNull();
   });
 });
+
+describe('seoContentBuilders.build — bAircraft enriched', () => {
+  it('renders color band and disclaimer when meta.colorBand is set', () => {
+    const meta = {
+      kind: 'aircraft',
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+      icaoList: ['B789'],
+      colorBand: { bucket: 'yellow', label: 'Last fatal hull loss: 2018', lastFatalDate: '2018-09-20' },
+      topEvents: [
+        { occurred_at: Date.parse('2018-09-20'), fatalities: 5, operator_name: 'Test Op',
+          aircraft_icao_type: 'B789', registration: 'N999', dep_iata: 'JFK', arr_iata: 'LHR',
+          report_url: 'https://example.test/report' },
+      ],
+      variants: [{ familySlug: 'boeing-787', slug: '787-9', shortName: '787-9', description: 'desc one. more.' }],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/safety-band--yellow/);
+    expect(html).toMatch(/Last fatal hull loss/);
+    expect(html).toMatch(/safety-disclaimer/);
+    expect(html).toMatch(/not a commercial safety rating/);
+    expect(html).toMatch(/2018-09-20/);
+    expect(html).toMatch(/787-9/);
+  });
+
+  it('still renders the operator + route paragraph from before', () => {
+    const meta = {
+      kind: 'aircraft',
+      slug: 'boeing-787', aircraftLabel: 'Boeing 787',
+      icaoList: ['B789'],
+      colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+      topEvents: [],
+      variants: [],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/operated by/i);
+  });
+});

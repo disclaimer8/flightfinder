@@ -10,6 +10,49 @@ const { esc } = require('./seoMetaService');
  * copy may use raw HTML.
  */
 
+const SAFETY_DISCLAIMER =
+  'Color reflects time since the last recorded fatal hull-loss involving this type, drawn from public datasets (NTSB, Aviation Safety Network, Bureau of Aircraft Accidents Archives, Wikidata). It is not a commercial safety rating and does not normalise for flights flown, hours, or fleet size — for those, see the manufacturer or IATA Safety Report.';
+
+function _renderSafetyBand(meta) {
+  if (!meta || !meta.colorBand) return '';
+  const cb = meta.colorBand;
+  const linkHref = meta.kind === 'aircraft' && meta.slug
+    ? `<a href="/aircraft/${esc(meta.slug)}/safety">View full safety record →</a>`
+    : '';
+  return `
+    <div class="safety-band safety-band--${esc(cb.bucket)}" role="status">
+      <span class="safety-dot" aria-hidden="true"></span>
+      <strong>${esc(cb.label)}</strong>
+      ${linkHref}
+    </div>
+    <p class="safety-disclaimer">${esc(SAFETY_DISCLAIMER)}</p>
+  `.trim();
+}
+
+function _renderTopEvents(events) {
+  if (!Array.isArray(events) || events.length === 0) return '';
+  const items = events.map((e) => {
+    const ms = typeof e.occurred_at === 'number' ? e.occurred_at : Date.parse(e.occurred_at || '');
+    const date = Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : '';
+    const route = e.dep_iata && e.arr_iata ? ` ${esc(e.dep_iata)}–${esc(e.arr_iata)}.` : '';
+    const reg = e.registration ? `${esc(e.registration)}, ` : '';
+    const acType = e.aircraft_icao_type ? esc(e.aircraft_icao_type) : '';
+    const op = e.operator_name ? `<strong>${esc(e.operator_name)}</strong> ` : '';
+    const fatal = e.fatalities ? ` — ${esc(e.fatalities)} fatalities` : '';
+    const src = e.report_url ? ` <a href="${esc(e.report_url)}" rel="noopener nofollow">Source</a>.` : '';
+    return `<li><time datetime="${esc(date)}">${esc(date)}</time> — ${op}(${reg}${acType})${fatal}.${route}${src}</li>`;
+  }).join('');
+  return `<h3>Notable events</h3><ol>${items}</ol>`;
+}
+
+function _renderVariantsList(variants) {
+  if (!Array.isArray(variants) || variants.length === 0) return '';
+  const items = variants.map((v) =>
+    `<li><a href="/aircraft/${esc(v.familySlug)}/variants/${esc(v.slug)}">${esc(v.shortName)}</a> — ${esc((v.description || '').split('. ')[0])}.</li>`
+  ).join('');
+  return `<h3>Variants</h3><ul>${items}</ul>`;
+}
+
 function bPricing() {
   return `
     <p>FlightFinder Pro unlocks enriched flight cards (livery, on-time stats, CO₂, amenities), delay predictions, and My Trips with push alerts.</p>
@@ -66,16 +109,24 @@ function bRoute(meta, db) {
 function bAircraft(meta, db) {
   if (!Array.isArray(meta.icaoList) || meta.icaoList.length === 0) return null;
   const facts = db.getAircraftFacts(meta.icaoList);
-  if (facts.airlineCount === 0 && facts.routeCount === 0) return null;
-  const topRoutes = db.getAircraftTopRoutes(meta.icaoList, 5);
-  const routeLabels = topRoutes
-    .map((r) => `${esc(r.from)}-${esc(r.to)}`)
-    .join(', ');
+  const haveFacts = facts.airlineCount > 0 || facts.routeCount > 0;
+  const haveSafety = meta.colorBand && meta.colorBand.bucket !== undefined;
+  const haveVariants = Array.isArray(meta.variants) && meta.variants.length > 0;
+  if (!haveFacts && !haveSafety && !haveVariants) return null;
+
+  const topRoutes = haveFacts ? db.getAircraftTopRoutes(meta.icaoList, 5) : [];
+  const routeLabels = topRoutes.map((r) => `${esc(r.from)}-${esc(r.to)}`).join(', ');
   const label = meta.aircraftLabel || meta.slug || 'this aircraft';
-  return `
+
+  const factsBlock = haveFacts ? `
     <p>The ${esc(label)} is operated by ${esc(facts.airlineCount)} airline${facts.airlineCount === 1 ? '' : 's'} across ${esc(facts.routeCount)} city pair${facts.routeCount === 1 ? '' : 's'} in our observed-flights dataset (last 14 days).</p>
     ${routeLabels ? `<p>Top routes: ${routeLabels}.</p>` : ''}
-  `.trim();
+  `.trim() : '';
+
+  const safetyBlock = _renderSafetyBand(meta) + _renderTopEvents(meta.topEvents);
+  const variantsBlock = _renderVariantsList(meta.variants);
+
+  return [factsBlock, safetyBlock, variantsBlock].filter(Boolean).join('\n').trim();
 }
 
 function bAircraftAirlines(meta, db) {
