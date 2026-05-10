@@ -459,3 +459,82 @@ describe('seoContentBuilders — _renderYearlyBreakdown', () => {
     expect(html).toMatch(/<li>2021: 0 flights<\/li>/);
   });
 });
+
+describe('seoContentBuilders — FR24 wiring in builders', () => {
+  it('bAircraft renders FR24 section when meta.fr24Stats is populated', () => {
+    const meta = {
+      kind: 'aircraft',
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+      icaoList: ['B788', 'B789'],
+      colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+      topEvents: [],
+      variants: [],
+      fr24Stats: {
+        totalFlights: 47200,
+        uniqueOperators: 84,
+        topOperators: [{ icao: 'ANA', count: 3200 }],
+        topRoutes: [{ from: 'RJTT', to: 'KLAX', count: 340 }],
+        yearlyBreakdown: [
+          { year: 2025, count: 47200 },
+          { year: 2024, count: 38400 },
+        ],
+        fetchedAt: Date.parse('2026-05-10T00:00:00Z'),
+      },
+    };
+    const html = build(meta);
+    expect(html).toMatch(/Worldwide activity \(last 12 months\)/);
+    expect(html).toMatch(/47,200/);
+    expect(html).toMatch(/5-year trend/);
+    expect(html).toMatch(/Data via Flightradar24/);
+  });
+
+  it('bAircraft skips FR24 section when meta.fr24Stats is null', () => {
+    const meta = {
+      kind: 'aircraft', slug: 'boeing-787', aircraftLabel: 'Boeing 787',
+      icaoList: ['B789'],
+      colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+      topEvents: [], variants: [],
+      fr24Stats: null,
+    };
+    const html = build(meta);
+    expect(html).not.toMatch(/Worldwide activity/);
+  });
+
+  it('bAircraftVariant renders FR24 section + 5-year trend', () => {
+    const meta = {
+      kind: 'aircraft-variant',
+      variant: { familySlug: 'boeing-787', slug: '787-9', icao: 'B789', shortName: '787-9', fullName: 'Boeing 787-9 Dreamliner', firstFlight: '2013-09-17', capacity: '290 pax', range_km: 14140, engines: ['GE'], description: 'Stretched variant.' },
+      family: { name: 'Boeing 787', label: 'Boeing 787 Dreamliner', slug: 'boeing-787' },
+      icaoList: ['B789'],
+      colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+      topEvents: [], allEvents: [],
+      fr24Stats: {
+        totalFlights: 1000, uniqueOperators: 5, topOperators: [], topRoutes: [],
+        yearlyBreakdown: [{ year: 2025, count: 1000 }, { year: 2024, count: 800 }],
+        fetchedAt: Date.now(),
+      },
+    };
+    const html = build(meta);
+    expect(html).toMatch(/Worldwide activity \(last 12 months\)/);
+    expect(html).toMatch(/5-year trend/);
+  });
+
+  it('bRoute renders route-context FR24 section with no Top routes block', () => {
+    const meta = {
+      kind: 'route',
+      pair: 'JFK-LHR',
+      from: 'JFK', to: 'LHR',
+      fr24Stats: {
+        totalFlights: 847, uniqueOperators: 12,
+        topOperators: [{ icao: 'BAW', count: 340 }],
+        yearlyBreakdown: null,
+        fetchedAt: Date.now(),
+      },
+    };
+    const html = build(meta);
+    expect(html).toMatch(/Worldwide activity on this route/);
+    expect(html).toMatch(/Flown.*847/);
+    expect(html).not.toMatch(/Top routes:/);
+  });
+});

@@ -176,9 +176,12 @@ function bByAircraft() {
 }
 
 function bRoute(meta, db) {
-  if (!meta.fromIata || !meta.toIata) return null;
+  const fr24Block = _renderFr24Stats(meta.fr24Stats, { context: 'route' });
+
+  // If we lack route IATA codes, fall back to FR24-only rendering (or null if neither).
+  if (!meta.fromIata || !meta.toIata) return fr24Block || null;
   const facts = db.getRouteFacts(meta.fromIata, meta.toIata);
-  if (facts.airlineCount === 0 && facts.aircraftCount === 0) return null;
+  if (facts.airlineCount === 0 && facts.aircraftCount === 0) return fr24Block || null;
 
   const fromLabel = meta.fromName || meta.fromIata;
   const toLabel   = meta.toName   || meta.toIata;
@@ -188,10 +191,11 @@ function bRoute(meta, db) {
   const airlineLabel = facts.topAirlines.length
     ? `Top operators: ${facts.topAirlines.map(esc).join(', ')}.`
     : '';
-  return `
+  const factsBlock = `
     <p>${esc(facts.airlineCount)} airline${facts.airlineCount === 1 ? '' : 's'} operate${facts.airlineCount === 1 ? 's' : ''} the ${esc(fromLabel)} (${esc(meta.fromIata)}) to ${esc(toLabel)} (${esc(meta.toIata)}) route across ${esc(facts.aircraftCount)} aircraft type${facts.aircraftCount === 1 ? '' : 's'} in our dataset.</p>
     <p>${aircraftLabel} ${airlineLabel}</p>
   `.trim();
+  return [factsBlock, fr24Block].filter(Boolean).join('\n').trim();
 }
 
 function bAircraft(meta, db) {
@@ -200,7 +204,7 @@ function bAircraft(meta, db) {
   const haveFacts = facts.airlineCount > 0 || facts.routeCount > 0;
   const haveSafety = meta.colorBand && meta.colorBand.bucket !== undefined;
   const haveVariants = Array.isArray(meta.variants) && meta.variants.length > 0;
-  if (!haveFacts && !haveSafety && !haveVariants) return null;
+  if (!haveFacts && !haveSafety && !haveVariants && !meta.fr24Stats?.totalFlights) return null;
 
   const topRoutes = haveFacts ? db.getAircraftTopRoutes(meta.icaoList, 5) : [];
   const routeLabels = topRoutes.map((r) => `${esc(r.from)}-${esc(r.to)}`).join(', ');
@@ -213,8 +217,9 @@ function bAircraft(meta, db) {
 
   const safetyBlock = _renderSafetyBand(meta) + _renderTopEvents(meta.topEvents);
   const variantsBlock = _renderVariantsList(meta.variants);
+  const fr24Block = _renderFr24Stats(meta.fr24Stats, { context: 'aircraft' });
 
-  return [factsBlock, safetyBlock, variantsBlock].filter(Boolean).join('\n').trim();
+  return [factsBlock, safetyBlock, variantsBlock, fr24Block].filter(Boolean).join('\n').trim();
 }
 
 function bAircraftAirlines(meta, db) {
@@ -287,7 +292,9 @@ function bAircraftVariant(meta, db) {
     ? `<p>Part of the <a href="/aircraft/${esc(fam.slug || meta.variant.familySlug)}">${esc(fam.label)}</a> family.</p>`
     : '';
 
-  return [description, safetyHeader, topEvents, fullTimeline, operatorsBlock, routesBlock, familyLink]
+  const fr24Block = _renderFr24Stats(meta.fr24Stats, { context: 'aircraft' });
+
+  return [description, safetyHeader, topEvents, fullTimeline, operatorsBlock, routesBlock, familyLink, fr24Block]
     .filter(Boolean).join('\n').trim();
 }
 
