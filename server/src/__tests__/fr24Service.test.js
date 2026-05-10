@@ -130,3 +130,66 @@ describe('fr24Service.fetchVariantStats (no yearly)', () => {
     });
   });
 });
+
+describe('fr24Service.fetchFamilyStats', () => {
+  let mockGet;
+
+  beforeEach(() => {
+    process.env.FR24_API_KEY = 'sandbox-test-key';
+    jest.resetModules();
+    // HOIST mockGet BEFORE doMock factory (plan's nested form was broken — see Task 3)
+    mockGet = jest.fn();
+    jest.doMock('axios', () => ({ create: () => ({ get: mockGet }) }));
+    // Bypass production throttle (~7.5s gap would exceed Jest timeout)
+    jest.spyOn(global, 'setTimeout').mockImplementation((cb) => { cb(); return 0; });
+  });
+
+  afterEach(() => {
+    jest.dontMock('axios');
+    jest.restoreAllMocks();
+  });
+
+  it('joins ICAO list as comma-separated aircraft param', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 999 }] } })
+      .mockResolvedValueOnce({ data: { data: [] } });
+    const fr24 = require('../services/fr24Service');
+    await fr24.fetchFamilyStats(['B737', 'B738', 'B739']);
+    expect(mockGet.mock.calls[0][1].params.aircraft).toBe('B737,B738,B739');
+  });
+
+  it('caps ICAO list at 15 and warns when truncated', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const list = Array.from({ length: 17 }, (_, i) => `X${i.toString().padStart(3, '0')}`);
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 1 }] } })
+      .mockResolvedValueOnce({ data: { data: [] } });
+    const fr24 = require('../services/fr24Service');
+    await fr24.fetchFamilyStats(list);
+    const sent = mockGet.mock.calls[0][1].params.aircraft.split(',');
+    expect(sent).toHaveLength(15);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('truncated to 15'));
+    warn.mockRestore();
+  });
+
+  it('returns null for empty or non-array input', async () => {
+    const fr24 = require('../services/fr24Service');
+    expect(await fr24.fetchFamilyStats([])).toBeNull();
+    expect(await fr24.fetchFamilyStats(null)).toBeNull();
+    expect(await fr24.fetchFamilyStats('B789')).toBeNull();
+  });
+
+  it('returns DerivedStats shape on success', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 5000 }] } })
+      .mockResolvedValueOnce({ data: { data: [
+        { operating_as: 'BAW', orig_icao: 'EGLL', dest_icao: 'KJFK' },
+      ] } });
+    const fr24 = require('../services/fr24Service');
+    const stats = await fr24.fetchFamilyStats(['B737', 'B738']);
+    expect(stats.totalFlights).toBe(5000);
+    expect(stats.uniqueOperators).toBe(1);
+    expect(stats.windowDays).toBe(365);
+    expect(stats.yearlyBreakdown).toBeNull();
+  });
+});

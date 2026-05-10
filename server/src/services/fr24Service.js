@@ -102,6 +102,8 @@ async function _fetchCountAndLight(filterParams, windowDays) {
 
 // ── public methods ──────────────────────────────────────────────────────
 
+const FAMILY_MAX_CODES = 15;
+
 async function fetchVariantStats(icao, opts = {}) {
   if (!isEnabled()) { _logDisabledOnce(); return null; }
   const windowDays = opts.windowDays || 365;
@@ -118,9 +120,31 @@ async function fetchVariantStats(icao, opts = {}) {
   };
 }
 
-async function fetchFamilyStats(_icaoList, _opts) {
+async function fetchFamilyStats(icaoList, opts = {}) {
   if (!isEnabled()) { _logDisabledOnce(); return null; }
-  return null;  // implemented in Task 4
+  if (!Array.isArray(icaoList) || icaoList.length === 0) return null;
+
+  let codes = icaoList;
+  if (codes.length > FAMILY_MAX_CODES) {
+    console.warn(`[fr24] family ICAO list (${codes.length}) truncated to 15 — FR24 max`);
+    codes = codes.slice(0, FAMILY_MAX_CODES);
+  }
+
+  const windowDays = opts.windowDays || 365;
+  const { totalFlights, lightRows } = await _fetchCountAndLight(
+    { aircraft: codes.join(',') },
+    windowDays,
+  );
+  const derived = _deriveFromLight(lightRows);
+  return {
+    totalFlights,
+    uniqueOperators: derived.uniqueOperators,
+    topOperators: derived.topOperators,
+    topRoutes: derived.topRoutes,
+    yearlyBreakdown: null,
+    windowDays,
+    fetchedAt: Date.now(),
+  };
 }
 
 async function fetchRouteStats(_orig, _dest, _opts) {
