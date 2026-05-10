@@ -90,3 +90,38 @@ describe('seoMetaService — enriched aircraftSafetyMeta', () => {
     expect(meta.topEvents.some((e) => e.source_event_id === 'vmt1')).toBe(true);
   });
 });
+
+const fr24Cache = require('../services/fr24CacheService');
+
+describe('seoMetaService — fr24Stats enrichment', () => {
+  beforeEach(() => fr24Cache.clear());
+  afterAll(() => fr24Cache.clear());
+
+  it('aircraftMeta returns fr24Stats: null when cache empty', () => {
+    const meta = seoMeta.resolve('/aircraft/boeing-787');
+    expect(meta.fr24Stats).toBeNull();
+  });
+
+  it('aircraftMeta populates fr24Stats from family cache key', () => {
+    const stats = { totalFlights: 5000, uniqueOperators: 12, topOperators: [], topRoutes: [], yearlyBreakdown: null, windowDays: 365, fetchedAt: Date.now() };
+    fr24Cache.set('family:boeing-787', stats);
+    const meta = seoMeta.resolve('/aircraft/boeing-787');
+    expect(meta.fr24Stats).toEqual(stats);
+  });
+
+  it('aircraftVariantMeta populates fr24Stats from variant cache key', () => {
+    const stats = { totalFlights: 1000, uniqueOperators: 5, topOperators: [], topRoutes: [], yearlyBreakdown: null, windowDays: 365, fetchedAt: Date.now() };
+    fr24Cache.set('variant:B789', stats);
+    const meta = seoMeta.resolve('/aircraft/boeing-787/variants/787-9');
+    expect(meta.fr24Stats).toEqual(stats);
+  });
+
+  it('routeMeta populates fr24Stats from canonical route cache key', () => {
+    const stats = { totalFlights: 100, uniqueOperators: 3, topOperators: [], yearlyBreakdown: null, windowDays: 365, fetchedAt: Date.now() };
+    // Set under canonical (sorted) form
+    fr24Cache.set('route:JFK-LHR', stats);
+    // Both directions should resolve to it
+    expect(seoMeta.resolve('/routes/JFK-LHR').fr24Stats).toEqual(stats);
+    expect(seoMeta.resolve('/routes/LHR-JFK').fr24Stats).toEqual(stats);
+  });
+});

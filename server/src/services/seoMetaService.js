@@ -35,6 +35,21 @@ function _safeDb(fn, fallback = []) {
   catch { return fallback; }
 }
 
+const fr24Cache = require('./fr24CacheService');
+
+function _safeFr24(fn) {
+  try { return fn(fr24Cache); }
+  catch { return null; }
+}
+
+// Sort alphabetically so /routes/JFK-LHR and /routes/LHR-JFK collapse to the
+// same fr24 cache key — direction is irrelevant for the derived stats we cache,
+// and the refresh writer applies the same canonicalization on write.
+function _canonicalPair(a, b) {
+  const [x, y] = [a, b].map((s) => String(s || '').toUpperCase()).sort();
+  return `${x}-${y}`;
+}
+
 const BASE = 'https://himaxym.com';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c])
@@ -156,6 +171,7 @@ function aircraftMeta(slug) {
     colorBand: colorBand(fatalEvents),
     topEvents: topNotable(fatalEvents, 5),
     variants,
+    fr24Stats: _safeFr24((c) => c.get(`family:${slug}`)),
   };
 }
 
@@ -301,6 +317,7 @@ function aircraftVariantMeta(familySlug, variantSlug) {
     colorBand: colorBand(fatalEvents),
     topEvents: topNotable(fatalEvents, 5),
     allEvents,
+    fr24Stats: _safeFr24((c) => c.get(`variant:${v.icao}`)),
   };
 }
 
@@ -328,6 +345,7 @@ function routeMeta(pair) {
     toIata,
     fromName,
     toName,
+    fr24Stats: _safeFr24((c) => c.get(`route:${_canonicalPair(fromIata, toIata)}`)),
   };
 }
 
