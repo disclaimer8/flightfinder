@@ -336,3 +336,72 @@ describe('fr24Service withYearly option', () => {
     expect(stats.yearlyBreakdown[4].count).toBe(60);
   });
 });
+
+describe('fr24Service error handling', () => {
+  let mockGet;
+
+  beforeEach(() => {
+    process.env.FR24_API_KEY = 'sandbox-test-key';
+    jest.resetModules();
+    mockGet = jest.fn();
+    jest.doMock('axios', () => ({ create: () => ({ get: mockGet }) }));
+    jest.spyOn(global, 'setTimeout').mockImplementation((cb) => { cb(); return 0; });
+  });
+
+  afterEach(() => {
+    jest.dontMock('axios');
+    jest.restoreAllMocks();
+  });
+
+  it('401 → null + warn', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockGet.mockRejectedValueOnce({ response: { status: 401 } });
+    const fr24 = require('../services/fr24Service');
+    expect(await fr24.fetchVariantStats('B789')).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('auth error'));
+    warn.mockRestore();
+  });
+
+  it('429 → retry once with backoff → null on second 429', async () => {
+    mockGet
+      .mockRejectedValueOnce({ response: { status: 429 } })
+      .mockRejectedValueOnce({ response: { status: 429 } });
+    const fr24 = require('../services/fr24Service');
+    const result = await fr24.fetchVariantStats('B789');
+    expect(result).toBeNull();
+    expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
+  it('5xx → retry once → null', async () => {
+    mockGet
+      .mockRejectedValueOnce({ response: { status: 503 } })
+      .mockRejectedValueOnce({ response: { status: 503 } });
+    const fr24 = require('../services/fr24Service');
+    expect(await fr24.fetchVariantStats('B789')).toBeNull();
+    expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
+  it('timeout → null', async () => {
+    mockGet.mockRejectedValue({ code: 'ECONNABORTED' });
+    const fr24 = require('../services/fr24Service');
+    expect(await fr24.fetchVariantStats('B789')).toBeNull();
+  });
+
+  it('malformed response (no data field) → null or zeros', async () => {
+    mockGet.mockResolvedValueOnce({ data: { message: 'oops' } });
+    const fr24 = require('../services/fr24Service');
+    const stats = await fr24.fetchVariantStats('B789');
+    // Either null (whole call fails) or zeros (count empty, light empty) — both are acceptable.
+    if (stats !== null) {
+      expect(stats.totalFlights).toBe(0);
+    }
+  });
+
+  it('per-call failure does not throw — caller always gets null or DerivedStats', async () => {
+    mockGet.mockRejectedValue(new Error('network exploded'));
+    const fr24 = require('../services/fr24Service');
+    await expect(fr24.fetchVariantStats('B789')).resolves.toBeNull();
+    await expect(fr24.fetchFamilyStats(['B789'])).resolves.toBeNull();
+    await expect(fr24.fetchRouteStats('JFK', 'LHR')).resolves.toBeNull();
+  });
+});
