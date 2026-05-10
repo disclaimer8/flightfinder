@@ -26,8 +26,14 @@ const openFlightsService = require('./openFlightsService');
 const aircraftRouteService = require('./aircraftRouteService');
 const { AIRCRAFT_FAQ, ROUTE_FAQ, interpolate } = require('../content/landingFaq');
 const safety = require('../models/safetyEvents');
+const db = require('../models/db');
 const { colorBand, topNotable } = require('./safetyRating');
 const { buildEventSlug, parseEventIdFromSlug } = require('../utils/eventSlug');
+
+function _safeDb(fn, fallback = []) {
+  try { return fn(db); }
+  catch { return fallback; }
+}
 
 const BASE = 'https://himaxym.com';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
@@ -126,10 +132,7 @@ function aircraftMeta(slug) {
   // Safety enrichment — fatal events power the colorBand + topEvents the bake
   // pipeline renders into the static fallback. Wrapped in try/catch so a DB
   // hiccup degrades to no badge instead of breaking the whole page resolve.
-  const fatalEvents = (() => {
-    try { return require('../models/db').getFatalEventsByIcaoList(icaoList); }
-    catch { return []; }
-  })();
+  const fatalEvents = _safeDb((d) => d.getFatalEventsByIcaoList(icaoList));
   const variants = getVariantsByFamilySlug(slug);
   return {
     title: `${label} flights, routes and safety record | FlightFinder`,
@@ -224,14 +227,8 @@ function aircraftSafetyMeta(slug) {
   // Pull both fatal-only and full event lists for the safety pillar page.
   // Same try/catch degradation pattern as aircraftMeta — DB issues yield empty
   // arrays so colorBand defaults to "green / no record" instead of crashing.
-  const fatalEvents = (() => {
-    try { return require('../models/db').getFatalEventsByIcaoList(icaoList); }
-    catch { return []; }
-  })();
-  const allEvents = (() => {
-    try { return require('../models/db').getAllEventsByIcaoList(icaoList, 100); }
-    catch { return []; }
-  })();
+  const fatalEvents = _safeDb((d) => d.getFatalEventsByIcaoList(icaoList));
+  const allEvents   = _safeDb((d) => d.getAllEventsByIcaoList(icaoList, 100));
   return {
     title: `${label} safety record — accidents and incidents | FlightFinder`,
     description: `Aviation safety events involving the ${label}: hull losses, fatal accidents, and serious incidents from NTSB CAROL, Aviation Safety Network, B3A, and Wikidata.`,
@@ -283,14 +280,8 @@ function aircraftVariantMeta(familySlug, variantSlug) {
   const v = getVariantBySlug(familySlug, variantSlug);
   if (!fam || !v) return notFoundMeta();
 
-  const fatalEvents = (() => {
-    try { return require('../models/db').getFatalEventsByIcaoList([v.icao]); }
-    catch { return []; }
-  })();
-  const allEvents = (() => {
-    try { return require('../models/db').getAllEventsByIcaoList([v.icao], 100); }
-    catch { return []; }
-  })();
+  const fatalEvents = _safeDb((d) => d.getFatalEventsByIcaoList([v.icao]));
+  const allEvents   = _safeDb((d) => d.getAllEventsByIcaoList([v.icao], 100));
 
   return {
     title: `${v.fullName} — flights, routes and safety record | FlightFinder`,
@@ -303,7 +294,7 @@ function aircraftVariantMeta(familySlug, variantSlug) {
     kind: 'aircraft-variant',
 
     variant: v,
-    family: { name: fam.name, ...fam.family, slug: familySlug },
+    family: { ...fam.family, name: fam.name, slug: familySlug },
     icaoList: [v.icao],
     colorBand: colorBand(fatalEvents),
     topEvents: topNotable(fatalEvents, 5),

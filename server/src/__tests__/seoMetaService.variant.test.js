@@ -52,7 +52,9 @@ describe('seoMetaService — aircraft variant kind', () => {
     expect(meta.family).toMatchObject({ name: 'Boeing 787' });
     expect(meta.icaoList).toEqual(['B789']);
     expect(meta.colorBand).toBeTruthy();
-    expect(meta.colorBand.bucket).toMatch(/^(green|light-green|yellow|orange|red)$/);
+    expect(meta.colorBand.bucket).toBe('orange');
+    expect(meta.topEvents.length).toBeGreaterThan(0);
+    expect(meta.topEvents[0].source_event_id).toBe('vmt1');
   });
 
   it('returns not-found when variant slug is unknown', () => {
@@ -70,8 +72,9 @@ describe('seoMetaService — enriched aircraftMeta', () => {
   it('populates colorBand for /aircraft/boeing-787', () => {
     const meta = seoMeta.resolve('/aircraft/boeing-787');
     expect(meta.colorBand).toBeTruthy();
-    expect(meta.colorBand.bucket).toMatch(/^(green|light-green|yellow|orange|red)$/);
+    expect(meta.colorBand.bucket).toBe('orange');
     expect(Array.isArray(meta.topEvents)).toBe(true);
+    expect(meta.topEvents.some((e) => e.source_event_id === 'vmt1')).toBe(true);
     expect(Array.isArray(meta.variants)).toBe(true);
     expect(meta.variants.length).toBeGreaterThan(0);
   });
@@ -81,7 +84,9 @@ describe('seoMetaService — enriched aircraftSafetyMeta', () => {
   it('populates colorBand and allEvents for /aircraft/boeing-787/safety', () => {
     const meta = seoMeta.resolve('/aircraft/boeing-787/safety');
     expect(meta.colorBand).toBeTruthy();
+    expect(meta.colorBand.bucket).toBe('orange');
     expect(Array.isArray(meta.allEvents)).toBe(true);
     expect(Array.isArray(meta.topEvents)).toBe(true);
+    expect(meta.topEvents.some((e) => e.source_event_id === 'vmt1')).toBe(true);
   });
 });
