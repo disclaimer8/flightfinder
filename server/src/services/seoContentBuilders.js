@@ -316,11 +316,54 @@ function bAircraftSpecs(meta, _db) {
 
 function bHome(_meta, db) {
   const routeCount = db.getRouteCount();
-  const families   = getFamilyList().length;
-  return `
+  const families = getFamilyList();
+
+  const intro = `
     <p>Search ${esc(routeCount)} observed routes worldwide, filtered by aircraft type. Pick a Boeing 737, Airbus A320, turboprop, or wide-body jet — see only flights operating that equipment.</p>
-    <p>${esc(families)} aircraft families have dedicated landing pages with operator lists, top routes, safety records, and full specifications.</p>
+    <p>${esc(families.length)} aircraft families have dedicated landing pages with operator lists, top routes, safety records, and full specifications.</p>
   `.trim();
+
+  const familyCards = `
+    <h2>Aircraft families</h2>
+    <div class="family-grid">
+      ${families.map((f) => _familyCard(f, db)).filter(Boolean).join('')}
+    </div>
+  `.trim();
+
+  let topRoutes = [];
+  try { topRoutes = db.getTopRoutesByObservedFrequency(15); } catch { topRoutes = []; }
+  const routesBlock = topRoutes.length > 0 ? `
+    <h2>Popular routes</h2>
+    <ul class="popular-routes">
+      ${topRoutes.map((r) => `<li><a href="/routes/${esc(r.from.toLowerCase())}-${esc(r.to.toLowerCase())}">${esc(r.from)}–${esc(r.to)}</a> <small>(${esc(r.count)} observed)</small></li>`).join('')}
+    </ul>
+  `.trim() : '';
+
+  const safetyBlock = `
+    <h2>Safety</h2>
+    <ul>
+      <li><a href="/safety/global">Global safety overview</a> — color-coded buckets per aircraft type</li>
+      <li><a href="/safety/feed">Recent safety events</a> — chronological feed from public datasets</li>
+    </ul>
+  `.trim();
+
+  return [intro, familyCards, routesBlock, safetyBlock].filter(Boolean).join('\n');
+}
+
+function _familyCard(f, db) {
+  const { getFamilyBySlug } = require('../models/aircraftFamilies');
+  const fullFam = getFamilyBySlug(f.slug);
+  const icaoList = (fullFam && fullFam.icaoList) || [];
+  let facts = { airlineCount: 0, routeCount: 0 };
+  try { facts = db.getAircraftFacts(icaoList); } catch {}
+  const stats = facts.airlineCount > 0
+    ? `<p class="stats">${esc(facts.airlineCount)} operators · ${esc(facts.routeCount)} city pairs</p>`
+    : '';
+  return `<article class="family-card">
+    <h3><a href="/aircraft/${esc(f.slug)}">${esc(f.label)}</a></h3>
+    <p class="manufacturer">${esc(f.manufacturer)}${f.type ? ` · ${esc(f.type)}` : ''}</p>
+    ${stats}
+  </article>`;
 }
 
 function bSafetyGlobal(_meta, _db) {

@@ -619,3 +619,45 @@ describe('build() — chrome wrapping', () => {
     expect(html).toMatch(/787-9/);
   });
 });
+
+describe('bHome — rich grid', () => {
+  beforeAll(() => {
+    const db = require('../models/db');
+    function seed(dep, arr, icao, airline) {
+      db.upsertObservedRoute({
+        depIata: dep, arrIata: arr, aircraftIcao: icao, airlineIata: airline, source: 'test',
+      });
+    }
+    // Seed observed routes so getTopRoutesByObservedFrequency returns rows.
+    seed('LHR', 'JFK', 'B77W', 'BA');
+    seed('JFK', 'LHR', 'B789', 'VS');
+    seed('LAX', 'NRT', 'B77W', 'JL');
+  });
+
+  it('renders all sections: intro + family grid + popular routes + safety', () => {
+    const meta = { kind: 'home' };
+    const html = build(meta);
+    expect(html).toMatch(/Search.*observed routes worldwide/);
+    expect(html).toMatch(/<h2>Aircraft families<\/h2>/);
+    expect(html).toMatch(/<h2>Popular routes<\/h2>/);
+    expect(html).toMatch(/<h2>Safety<\/h2>/);
+  });
+
+  it('family grid renders family cards with manufacturer + link', () => {
+    const html = build({ kind: 'home' });
+    expect(html).toMatch(/<article class="family-card"/);
+    expect(html).toMatch(/href="\/aircraft\/boeing-787"/);
+    expect(html).toMatch(/Boeing/);
+  });
+
+  it('popular routes section links to baked routes', () => {
+    const html = build({ kind: 'home' });
+    expect(html).toMatch(/<ul class="popular-routes"/);
+  });
+
+  it('safety section links to global + feed', () => {
+    const html = build({ kind: 'home' });
+    expect(html).toMatch(/href="\/safety\/global"/);
+    expect(html).toMatch(/href="\/safety\/feed"/);
+  });
+});
