@@ -126,3 +126,68 @@ describe('seoChrome._renderBreadcrumbs', () => {
     expect(html).toMatch(/mystery/);
   });
 });
+
+describe('seoChrome._renderFooter', () => {
+  const { _renderFooter } = chrome._internal;
+
+  function mockDb(overrides = {}) {
+    return {
+      getTopRoutesByObservedFrequency: jest.fn(() => [
+        { from: 'JFK', to: 'LHR', count: 100 },
+        { from: 'LAX', to: 'NRT', count: 80 },
+      ]),
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    chrome._internal._invalidateFooterCache();
+  });
+
+  it('renders all 4 footer sections', () => {
+    const html = _renderFooter(mockDb());
+    expect(html).toMatch(/<footer class="seo-footer"/);
+    expect(html).toMatch(/<h4>Aircraft families<\/h4>/);
+    expect(html).toMatch(/<h4>Popular routes<\/h4>/);
+    expect(html).toMatch(/<h4>Safety<\/h4>/);
+    expect(html).toMatch(/<h4>About<\/h4>/);
+  });
+
+  it('renders top routes from db helper', () => {
+    const html = _renderFooter(mockDb());
+    expect(html).toMatch(/href="\/routes\/jfk-lhr"/);
+    expect(html).toMatch(/JFK–LHR/);
+  });
+
+  it('renders all aircraft families with links', () => {
+    const html = _renderFooter(mockDb());
+    expect(html).toMatch(/href="\/aircraft\/boeing-737"/);
+    expect(html).toMatch(/href="\/aircraft\/airbus-a320"/);
+  });
+
+  it('renders safety + about links', () => {
+    const html = _renderFooter(mockDb());
+    expect(html).toMatch(/href="\/safety\/global"/);
+    expect(html).toMatch(/href="\/safety\/feed"/);
+    expect(html).toMatch(/href="\/about"/);
+    expect(html).toMatch(/href="\/pricing"/);
+  });
+
+  it('routes section empty if helper throws — other sections render', () => {
+    const db = mockDb({
+      getTopRoutesByObservedFrequency: jest.fn(() => { throw new Error('db down'); }),
+    });
+    const html = _renderFooter(db);
+    expect(html).toMatch(/<h4>Aircraft families<\/h4>/);
+    expect(html).toMatch(/<h4>Safety<\/h4>/);
+    expect(html).toMatch(/<h4>Popular routes<\/h4>/);
+  });
+
+  it('caches result for 60 seconds (same db call count)', () => {
+    const db = mockDb();
+    _renderFooter(db);
+    _renderFooter(db);
+    _renderFooter(db);
+    expect(db.getTopRoutesByObservedFrequency).toHaveBeenCalledTimes(1);
+  });
+});

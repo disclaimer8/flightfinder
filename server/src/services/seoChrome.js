@@ -13,6 +13,17 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
 );
 
+const { getFamilyList } = require('../models/aircraftFamilies');
+
+const FOOTER_CACHE_TTL_MS = 60_000;
+let _footerCache = null;
+let _footerCachedAt = 0;
+
+function _invalidateFooterCache() {
+  _footerCache = null;
+  _footerCachedAt = 0;
+}
+
 // ── Site nav (static const) ─────────────────────────────────────────────
 
 const SITE_NAV_HTML = `<nav class="seo-nav" aria-label="Site navigation">
@@ -115,7 +126,52 @@ function _renderBreadcrumbs(meta) {
 
   return `<nav class="breadcrumbs" aria-label="Breadcrumb">${items}</nav>`;
 }
-function _renderFooter(_db) { return ''; }
+
+function _renderFooter(db) {
+  if (_footerCache && (Date.now() - _footerCachedAt) < FOOTER_CACHE_TTL_MS) {
+    return _footerCache;
+  }
+
+  const families = _safeChrome(() => getFamilyList(), []);
+  const familiesList = families
+    .map((f) => `<li><a href="/aircraft/${esc(f.slug)}">${esc(f.label)}</a></li>`)
+    .join('');
+
+  const routes = _safeChrome(() => db.getTopRoutesByObservedFrequency(30), []);
+  const routesList = routes
+    .map((r) => `<li><a href="/routes/${esc(r.from.toLowerCase())}-${esc(r.to.toLowerCase())}">${esc(r.from)}–${esc(r.to)}</a></li>`)
+    .join('');
+
+  const html = `<footer class="seo-footer">
+    <div class="footer-section">
+      <h4>Aircraft families</h4>
+      <ul>${familiesList}</ul>
+    </div>
+    <div class="footer-section">
+      <h4>Popular routes</h4>
+      <ul>${routesList}</ul>
+    </div>
+    <div class="footer-section">
+      <h4>Safety</h4>
+      <ul>
+        <li><a href="/safety/global">Global overview</a></li>
+        <li><a href="/safety/feed">Recent events</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h4>About</h4>
+      <ul>
+        <li><a href="/about">About FlightFinder</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+      </ul>
+    </div>
+  </footer>`;
+
+  _footerCache = html;
+  _footerCachedAt = Date.now();
+  return html;
+}
+
 function _renderCrossRefs(_meta, _db) { return ''; }
 
 // ── Public ──────────────────────────────────────────────────────────────
@@ -141,6 +197,7 @@ module.exports = {
     _renderFooter,
     _renderCrossRefs,
     _safeChrome,
+    _invalidateFooterCache,
     esc,
   },
 };
