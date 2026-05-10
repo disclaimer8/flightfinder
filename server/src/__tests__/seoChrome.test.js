@@ -55,3 +55,74 @@ describe('seoChrome._safeChrome', () => {
     warn.mockRestore();
   });
 });
+
+describe('seoChrome._renderBreadcrumbs', () => {
+  const { _renderBreadcrumbs } = chrome._internal;
+
+  it('returns "" for home kind', () => {
+    expect(_renderBreadcrumbs({ kind: 'home' })).toBe('');
+  });
+
+  it('returns "" for not-found kind', () => {
+    expect(_renderBreadcrumbs({ kind: 'not-found' })).toBe('');
+  });
+
+  it('renders Aircraft family breadcrumbs', () => {
+    const html = _renderBreadcrumbs({
+      kind: 'aircraft',
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+    });
+    expect(html).toMatch(/<nav class="breadcrumbs"/);
+    expect(html).toMatch(/href="\/">Home</);
+    expect(html).toMatch(/href="\/by-aircraft">Aircraft</);
+    expect(html).toMatch(/Boeing 787/);
+  });
+
+  it('renders Aircraft variant breadcrumbs with all 4 levels', () => {
+    const html = _renderBreadcrumbs({
+      kind: 'aircraft-variant',
+      variant: { familySlug: 'boeing-787', shortName: '787-9' },
+      family: { name: 'Boeing 787', slug: 'boeing-787' },
+    });
+    expect(html).toMatch(/href="\/aircraft\/boeing-787">Boeing 787</);
+    expect(html).toMatch(/787-9/);
+  });
+
+  it('renders aircraft subpage breadcrumbs (operators)', () => {
+    const html = _renderBreadcrumbs({
+      kind: 'aircraft-airlines',
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+    });
+    expect(html).toMatch(/Operators/);
+  });
+
+  it('renders route breadcrumbs', () => {
+    const html = _renderBreadcrumbs({
+      kind: 'route',
+      fromIata: 'JFK',
+      toIata: 'LHR',
+    });
+    expect(html).toMatch(/JFK/);
+    expect(html).toMatch(/LHR/);
+  });
+
+  it('escapes XSS in slug/label', () => {
+    const html = _renderBreadcrumbs({
+      kind: 'aircraft',
+      slug: '<script>',
+      aircraftLabel: '<img>',
+    });
+    expect(html).not.toMatch(/<script>/);
+    expect(html).not.toMatch(/<img>/);
+    // aircraftLabel wins over slug per impl; assert it's escaped
+    expect(html).toMatch(/&lt;img&gt;/);
+  });
+
+  it('falls back to Home › <kind> for unknown kind', () => {
+    const html = _renderBreadcrumbs({ kind: 'mystery' });
+    expect(html).toMatch(/href="\/">Home</);
+    expect(html).toMatch(/mystery/);
+  });
+});
