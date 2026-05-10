@@ -21,10 +21,12 @@
  * layer in server/src/index.js).
  */
 const { getFamilyBySlug, getFamilyList } = require('../models/aircraftFamilies');
+const { getVariantBySlug, getVariantsByFamilySlug } = require('../models/aircraftVariants');
 const openFlightsService = require('./openFlightsService');
 const aircraftRouteService = require('./aircraftRouteService');
 const { AIRCRAFT_FAQ, ROUTE_FAQ, interpolate } = require('../content/landingFaq');
 const safety = require('../models/safetyEvents');
+const { colorBand, topNotable } = require('./safetyRating');
 const { buildEventSlug, parseEventIdFromSlug } = require('../utils/eventSlug');
 
 const BASE = 'https://himaxym.com';
@@ -121,6 +123,14 @@ function aircraftMeta(slug) {
   const manufacturer = fam?.family?.manufacturer || '';
   const icaoList = fam ? fam.icaoList : [];
   const family   = _bakeFamilyFields(fam);
+  // Safety enrichment — fatal events power the colorBand + topEvents the bake
+  // pipeline renders into the static fallback. Wrapped in try/catch so a DB
+  // hiccup degrades to no badge instead of breaking the whole page resolve.
+  const fatalEvents = (() => {
+    try { return require('../models/db').getFatalEventsByIcaoList(icaoList); }
+    catch { return []; }
+  })();
+  const variants = getVariantsByFamilySlug(slug);
   return {
     title: `${label} flights, routes and safety record | FlightFinder`,
     description: `Every route operated by the ${label}: airlines, city pairs, and recent safety events for the ${manufacturer} ${fam?.name || ''} fleet. Live schedule data.`,
@@ -140,6 +150,9 @@ function aircraftMeta(slug) {
     aircraftManufacturer: manufacturer,
     icaoList,
     family,
+    colorBand: colorBand(fatalEvents),
+    topEvents: topNotable(fatalEvents, 5),
+    variants,
   };
 }
 
@@ -208,6 +221,17 @@ function aircraftSafetyMeta(slug) {
   } catch {
     safetyEventCount = undefined; // builder degrades to null
   }
+  // Pull both fatal-only and full event lists for the safety pillar page.
+  // Same try/catch degradation pattern as aircraftMeta — DB issues yield empty
+  // arrays so colorBand defaults to "green / no record" instead of crashing.
+  const fatalEvents = (() => {
+    try { return require('../models/db').getFatalEventsByIcaoList(icaoList); }
+    catch { return []; }
+  })();
+  const allEvents = (() => {
+    try { return require('../models/db').getAllEventsByIcaoList(icaoList, 100); }
+    catch { return []; }
+  })();
   return {
     title: `${label} safety record — accidents and incidents | FlightFinder`,
     description: `Aviation safety events involving the ${label}: hull losses, fatal accidents, and serious incidents from NTSB CAROL, Aviation Safety Network, B3A, and Wikidata.`,
@@ -223,6 +247,9 @@ function aircraftSafetyMeta(slug) {
     icaoList,
     family,
     safetyEventCount,
+    colorBand: colorBand(fatalEvents),
+    topEvents: topNotable(fatalEvents, 5),
+    allEvents,
   };
 }
 
@@ -247,6 +274,40 @@ function aircraftSpecsMeta(slug) {
     aircraftLabel: label,
     icaoList,
     family,
+  };
+}
+
+/** /aircraft/:family/variants/:variant */
+function aircraftVariantMeta(familySlug, variantSlug) {
+  const fam = getFamilyBySlug(familySlug);
+  const v = getVariantBySlug(familySlug, variantSlug);
+  if (!fam || !v) return notFoundMeta();
+
+  const fatalEvents = (() => {
+    try { return require('../models/db').getFatalEventsByIcaoList([v.icao]); }
+    catch { return []; }
+  })();
+  const allEvents = (() => {
+    try { return require('../models/db').getAllEventsByIcaoList([v.icao], 100); }
+    catch { return []; }
+  })();
+
+  return {
+    title: `${v.fullName} — flights, routes and safety record | FlightFinder`,
+    description: `${v.shortName} (${v.icao}) operators, top routes, full specifications, and complete safety record from public datasets. Part of the ${fam.family.label} family.`,
+    canonical: `${BASE}/aircraft/${familySlug}/variants/${variantSlug}`,
+    h1: `${v.shortName} — flights, routes and operators`,
+    subtitle: v.description.split('. ')[0] + '.',
+    robots: 'index, follow',
+    ogType: 'website',
+    kind: 'aircraft-variant',
+
+    variant: v,
+    family: { name: fam.name, ...fam.family, slug: familySlug },
+    icaoList: [v.icao],
+    colorBand: colorBand(fatalEvents),
+    topEvents: topNotable(fatalEvents, 5),
+    allEvents,
   };
 }
 
@@ -345,6 +406,18 @@ function resolve(pathname) {
 
   const acSpecsMatch = /^\/aircraft\/([^/?#]+)\/specs\/?$/.exec(pathname);
   if (acSpecsMatch) return aircraftSpecsMeta(acSpecsMatch[1].toLowerCase());
+
+  // Variant landing must match BEFORE the bare /aircraft/:slug catch-all,
+  // otherwise the /:slug regex wins and 'boeing-787' resolves to family meta
+  // while '/variants/787-9' falls through as 404.
+  const acVariantMatch = /^\/aircraft\/([^/?#]+)\/variants\/([^/?#]+)\/?$/
+    .exec(pathname);
+  if (acVariantMatch) {
+    return aircraftVariantMeta(
+      acVariantMatch[1].toLowerCase(),
+      acVariantMatch[2].toLowerCase(),
+    );
+  }
 
   const acMatch = /^\/aircraft\/([^/?#]+)\/?$/.exec(pathname);
   if (acMatch) return aircraftMeta(acMatch[1].toLowerCase());
