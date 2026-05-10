@@ -581,3 +581,41 @@ describe('seoContentBuilders — FR24 wiring in builders', () => {
     expect(html).toMatch(/5,000/);
   });
 });
+
+describe('build() — chrome wrapping', () => {
+  it('build for aircraft kind wraps with site nav + footer', () => {
+    const meta = {
+      kind: 'aircraft',
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+      icaoList: ['B789'],
+      family: { manufacturer: 'Boeing' },
+      colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+      topEvents: [],
+      variants: [],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/<nav class="seo-nav"/);
+    expect(html).toMatch(/<footer class="seo-footer"/);
+  });
+
+  it('build for unknown/null inner returns null (no chrome wrap)', () => {
+    const meta = { kind: 'aircraft', slug: 'no-such-family', icaoList: [] };
+    expect(build(meta)).toBeNull();
+  });
+
+  it('build for variant kind includes breadcrumbs', () => {
+    const meta = {
+      kind: 'aircraft-variant',
+      variant: { familySlug: 'boeing-787', slug: '787-9', icao: 'B789', shortName: '787-9', fullName: 'Boeing 787-9 Dreamliner', firstFlight: '2013-09-17', capacity: '290 pax', range_km: 14140, engines: ['GE'], description: 'Stretched variant.' },
+      family: { name: 'Boeing 787', label: 'Boeing 787 Dreamliner', slug: 'boeing-787' },
+      icaoList: ['B789'],
+      colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+      topEvents: [], allEvents: [],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/<nav class="breadcrumbs"/);
+    expect(html).toMatch(/Boeing 787/);
+    expect(html).toMatch(/787-9/);
+  });
+});

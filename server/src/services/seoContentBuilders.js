@@ -1,5 +1,6 @@
 const { getFamilyList } = require('../models/aircraftFamilies');
 const { esc } = require('./seoMetaService');
+const { applyChrome } = require('./seoChrome');
 
 /**
  * Per-kind HTML emitters for the SEO content cache. Each builder returns
@@ -355,19 +356,20 @@ const STATIC_BUILDERS = {
 function build(meta, db) {
   if (!meta || !meta.kind) return null;
   const dbInstance = db || require('../models/db');
+  let innerHtml = null;
   const builder = STATIC_BUILDERS[meta.kind];
-  if (builder) return builder(meta);
-  if (meta.kind === 'route')              return bRoute(meta, dbInstance);
-  if (meta.kind === 'aircraft')           return bAircraft(meta, dbInstance);
-  if (meta.kind === 'aircraft-specs')     return bAircraftSpecs(meta, dbInstance);
-  if (meta.kind === 'aircraft-airlines')  return bAircraftAirlines(meta, dbInstance);
-  if (meta.kind === 'aircraft-routes')    return bAircraftRoutes(meta, dbInstance);
-  if (meta.kind === 'aircraft-safety')    return bAircraftSafety(meta, dbInstance);
-  if (meta.kind === 'aircraft-variant')   return bAircraftVariant(meta, dbInstance);
-  if (meta.kind === 'home')               return bHome(meta, dbInstance);
-  if (meta.kind === 'safety-global')      return bSafetyGlobal(meta, dbInstance);
-  if (meta.kind === 'safety-feed')        return bSafetyFeed(meta, dbInstance);
-  return null;
+  if (builder) innerHtml = builder(meta);
+  else if (meta.kind === 'route')              innerHtml = bRoute(meta, dbInstance);
+  else if (meta.kind === 'aircraft')           innerHtml = bAircraft(meta, dbInstance);
+  else if (meta.kind === 'aircraft-specs')     innerHtml = bAircraftSpecs(meta, dbInstance);
+  else if (meta.kind === 'aircraft-airlines')  innerHtml = bAircraftAirlines(meta, dbInstance);
+  else if (meta.kind === 'aircraft-routes')    innerHtml = bAircraftRoutes(meta, dbInstance);
+  else if (meta.kind === 'aircraft-safety')    innerHtml = bAircraftSafety(meta, dbInstance);
+  else if (meta.kind === 'aircraft-variant')   innerHtml = bAircraftVariant(meta, dbInstance);
+  else if (meta.kind === 'home')               innerHtml = bHome(meta, dbInstance);
+  else if (meta.kind === 'safety-global')      innerHtml = bSafetyGlobal(meta, dbInstance);
+  else if (meta.kind === 'safety-feed')        innerHtml = bSafetyFeed(meta, dbInstance);
+  return applyChrome(meta, innerHtml, dbInstance);
 }
 
 module.exports = {
