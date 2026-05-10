@@ -89,6 +89,9 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
     db.upsertObservedRoute({
       depIata: 'LHR', arrIata: 'JFK', aircraftIcao: 'B77W', airlineIata: 'BA', source: 'test',
     });
+    db.upsertObservedRoute({
+      depIata: 'JFK', arrIata: 'LHR', aircraftIcao: 'B789', airlineIata: 'BA', source: 'test',
+    });
 
     // Now load index.js under production mode so the spaFallback + warm
     // branches activate. db.js was already loaded under 'test' and the
@@ -127,6 +130,20 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
     const res = await request(app).get('/about');
     expect(res.status).toBe(200);
     expect(res.text).toMatch(/data-seo-bake/);
+  });
+
+  it('GET /aircraft/boeing-787/variants/787-9 includes baked variant content + color band', async () => {
+    // Pre-warm the cache after seeding inside beforeAll already ran.
+    const cache = require('../services/seoContentCache');
+    cache.warm({ schedule: false });
+
+    const res = await request(app).get('/aircraft/boeing-787/variants/787-9');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/data-seo-bake/);
+    expect(res.text).toMatch(/787-9/);
+    expect(res.text).toMatch(/safety-band--/);
+    expect(res.text).toMatch(/safety-disclaimer/);
+    expect(res.text).toMatch(/Part of the/);
   });
 
   it('GET /unknown-path returns HTML with no bake section', async () => {
