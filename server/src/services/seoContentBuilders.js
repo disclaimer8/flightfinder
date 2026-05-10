@@ -10,6 +10,97 @@ const { esc } = require('./seoMetaService');
  * copy may use raw HTML.
  */
 
+const SAFETY_DISCLAIMER =
+  'Color reflects time since the last recorded fatal hull-loss involving this type, drawn from public datasets (NTSB, Aviation Safety Network, Bureau of Aircraft Accidents Archives, Wikidata). It is not a commercial safety rating and does not normalise for flights flown, hours, or fleet size — for those, see the manufacturer or IATA Safety Report.';
+
+function _renderSafetyBand(meta) {
+  if (!meta || !meta.colorBand) return '';
+  const cb = meta.colorBand;
+  const linkHref = meta.kind === 'aircraft' && meta.slug
+    ? `<a href="/aircraft/${esc(meta.slug)}/safety">View full safety record →</a>`
+    : '';
+  return `
+    <div class="safety-band safety-band--${esc(cb.bucket)}" role="status">
+      <span class="safety-dot" aria-hidden="true"></span>
+      <strong>${esc(cb.label)}</strong>
+      ${linkHref}
+    </div>
+    <p class="safety-disclaimer">${esc(SAFETY_DISCLAIMER)}</p>
+  `.trim();
+}
+
+function _safeHttpUrl(u) {
+  try {
+    const url = new URL(u);
+    return (url.protocol === 'https:' || url.protocol === 'http:') ? url.href : '';
+  } catch { return ''; }
+}
+
+function _renderTopEvents(events) {
+  if (!Array.isArray(events) || events.length === 0) return '';
+  const items = events.map((e) => {
+    const ms = typeof e.occurred_at === 'number' ? e.occurred_at : Date.parse(e.occurred_at || '');
+    const date = Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : '';
+
+    const idParts = [e.registration, e.aircraft_icao_type].filter(Boolean).map((s) => esc(s));
+    const opChunk = e.operator_name ? `<strong>${esc(e.operator_name)}</strong>` : '';
+    const idChunk = idParts.length === 0 ? '' : (opChunk ? `(${idParts.join(', ')})` : idParts.join(', '));
+    const actor = [opChunk, idChunk].filter(Boolean).join(' ');
+
+    const fatalChunk = e.fatalities ? `${esc(e.fatalities)} fatalities` : '';
+    const routeChunk = e.dep_iata && e.arr_iata ? `${esc(e.dep_iata)}–${esc(e.arr_iata)}` : '';
+    const safeUrl = _safeHttpUrl(e.report_url);
+    const srcChunk = safeUrl ? `<a href="${esc(safeUrl)}" rel="noopener nofollow">Source</a>` : '';
+    const facts = [fatalChunk, routeChunk, srcChunk].filter(Boolean).join('. ');
+
+    const lead = date ? `<time datetime="${esc(date)}">${esc(date)}</time>` : '';
+    const body = [lead, actor, facts].filter(Boolean).join(' — ');
+    return `<li>${body}${facts ? '.' : ''}</li>`;
+  }).join('');
+  return `<h3>Notable events</h3><ol>${items}</ol>`;
+}
+
+function _renderVariantsList(variants) {
+  if (!Array.isArray(variants) || variants.length === 0) return '';
+  const items = variants.map((v) =>
+    `<li><a href="/aircraft/${esc(v.familySlug)}/variants/${esc(v.slug)}">${esc(v.shortName)}</a> — ${esc((v.description || '').split('. ')[0])}.</li>`
+  ).join('');
+  return `<h3>Variants</h3><ul>${items}</ul>`;
+}
+
+function _renderDecadeTimeline(events) {
+  if (!Array.isArray(events) || events.length === 0) return '';
+  const { groupByDecade } = require('./safetyRating');
+  const grouped = groupByDecade(events);
+  // String sort is correct for 4-digit-decade keys (e.g. '1990s' < '2020s').
+  const decades = Object.keys(grouped).sort().reverse();
+  return decades.map((d) => {
+    const items = grouped[d].map((e) => {
+      const ms = typeof e.occurred_at === 'number' ? e.occurred_at : Date.parse(e.occurred_at || '');
+      const date = Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : '';
+      const lead = date ? `<time datetime="${esc(date)}">${esc(date)}</time>` : '';
+      const opChunk = e.operator_name ? `<strong>${esc(e.operator_name)}</strong>` : '';
+      const variantChunk = e.aircraft_icao_type ? esc(e.aircraft_icao_type) : '';
+      const fatalText = e.fatalities ? `${esc(e.fatalities)} fatal` : (e.severity ? esc(e.severity) : '');
+      const parenChunk = fatalText ? `(${fatalText})` : '';
+      return `<li>${[lead, opChunk, variantChunk, parenChunk].filter(Boolean).join(' — ')}</li>`;
+    }).join('');
+    return `<h3>${esc(d)}</h3><ul>${items}</ul>`;
+  }).join('');
+}
+
+function _renderVariantBreakdown(allEvents, variants) {
+  if (!Array.isArray(variants) || variants.length === 0) return '';
+  if (!Array.isArray(allEvents) || allEvents.length === 0) return '';
+  const { breakdownByVariant } = require('./safetyRating');
+  const counts = breakdownByVariant(allEvents);
+  const items = variants.map((v) => {
+    const n = counts[v.icao] || 0;
+    return `${esc(v.shortName)} (${esc(n)} event${n === 1 ? '' : 's'})`;
+  }).join(', ');
+  return items ? `<p>By variant: ${items}.</p>` : '';
+}
+
 function bPricing() {
   return `
     <p>FlightFinder Pro unlocks enriched flight cards (livery, on-time stats, CO₂, amenities), delay predictions, and My Trips with push alerts.</p>
@@ -66,16 +157,24 @@ function bRoute(meta, db) {
 function bAircraft(meta, db) {
   if (!Array.isArray(meta.icaoList) || meta.icaoList.length === 0) return null;
   const facts = db.getAircraftFacts(meta.icaoList);
-  if (facts.airlineCount === 0 && facts.routeCount === 0) return null;
-  const topRoutes = db.getAircraftTopRoutes(meta.icaoList, 5);
-  const routeLabels = topRoutes
-    .map((r) => `${esc(r.from)}-${esc(r.to)}`)
-    .join(', ');
+  const haveFacts = facts.airlineCount > 0 || facts.routeCount > 0;
+  const haveSafety = meta.colorBand && meta.colorBand.bucket !== undefined;
+  const haveVariants = Array.isArray(meta.variants) && meta.variants.length > 0;
+  if (!haveFacts && !haveSafety && !haveVariants) return null;
+
+  const topRoutes = haveFacts ? db.getAircraftTopRoutes(meta.icaoList, 5) : [];
+  const routeLabels = topRoutes.map((r) => `${esc(r.from)}-${esc(r.to)}`).join(', ');
   const label = meta.aircraftLabel || meta.slug || 'this aircraft';
-  return `
+
+  const factsBlock = haveFacts ? `
     <p>The ${esc(label)} is operated by ${esc(facts.airlineCount)} airline${facts.airlineCount === 1 ? '' : 's'} across ${esc(facts.routeCount)} city pair${facts.routeCount === 1 ? '' : 's'} in our observed-flights dataset (last 14 days).</p>
     ${routeLabels ? `<p>Top routes: ${routeLabels}.</p>` : ''}
-  `.trim();
+  `.trim() : '';
+
+  const safetyBlock = _renderSafetyBand(meta) + _renderTopEvents(meta.topEvents);
+  const variantsBlock = _renderVariantsList(meta.variants);
+
+  return [factsBlock, safetyBlock, variantsBlock].filter(Boolean).join('\n').trim();
 }
 
 function bAircraftAirlines(meta, db) {
@@ -107,18 +206,49 @@ function bAircraftRoutes(meta, db) {
 }
 
 function bAircraftSafety(meta, _db) {
-  // Safety data lives in safetyEvents service. If meta carries pre-resolved
-  // counts use those; otherwise return null and degrade. Keeps this builder
-  // honest — we never invent numbers.
-  if (typeof meta.safetyEventCount !== 'number') return null;
-  const label = meta.aircraftLabel || meta.slug || 'this aircraft';
-  const recent = meta.mostRecentSafetyEvent
-    ? `Most recent on file: ${esc(meta.mostRecentSafetyEvent.date)} — ${esc(meta.mostRecentSafetyEvent.summary || 'no summary')}.`
+  if (!meta) return null;
+
+  const safetyHeader = _renderSafetyBand(meta);
+  const breakdown = _renderVariantBreakdown(meta.allEvents, meta.variants);
+  const top = _renderTopEvents(meta.topEvents);
+  const fullList = _renderDecadeTimeline(meta.allEvents);
+
+  if (!safetyHeader && !top && !breakdown && !fullList) return null;
+  return [safetyHeader, breakdown, top, fullList].filter(Boolean).join('\n').trim();
+}
+
+function bAircraftVariant(meta, db) {
+  if (!meta || !meta.variant) return null;
+  const v = meta.variant;
+  const fam = meta.family || {};
+
+  const operators = (() => {
+    try { return db.getAircraftOperators([v.icao], 10); } catch { return []; }
+  })();
+  const topRoutes = (() => {
+    try { return db.getAircraftTopRoutes([v.icao], 10); } catch { return []; }
+  })();
+
+  const description = `<p>${esc(v.description)}</p><p>First flight ${esc(v.firstFlight)}. Capacity ${esc(v.capacity)}. Range ${esc(v.range_km)} km. Engines: ${esc((v.engines || []).join(' or '))}.</p>`;
+
+  const safetyHeader = _renderSafetyBand(meta);
+  const topEvents = _renderTopEvents(meta.topEvents);
+  const fullTimeline = _renderDecadeTimeline(meta.allEvents);
+
+  const operatorsBlock = operators.length > 0
+    ? `<h3>Operators</h3><p>Operated by ${esc(operators.length)} airline${operators.length === 1 ? '' : 's'} (top by frequency in our observed-flights dataset):</p><ul>${operators.map((o) => `<li>${esc(o.airline)} — ${esc(o.count)} observed flight${o.count === 1 ? '' : 's'}</li>`).join('')}</ul>`
+    : '<p>No observed flights for this variant in our dataset.</p>';
+
+  const routesBlock = topRoutes.length > 0
+    ? `<h3>Top routes</h3><ul>${topRoutes.map((r) => `<li>${esc(r.from)} → ${esc(r.to)} (${esc(r.count)} flight${r.count === 1 ? '' : 's'})</li>`).join('')}</ul>`
     : '';
-  return `
-    <p>${esc(meta.safetyEventCount)} incident${meta.safetyEventCount === 1 ? '' : 's'} on file involving the ${esc(label)} across the Aviation Safety Network, B3A, NTSB, and Wikidata datasets we aggregate.</p>
-    ${recent ? `<p>${recent}</p>` : ''}
-  `.trim();
+
+  const familyLink = fam.label
+    ? `<p>Part of the <a href="/aircraft/${esc(fam.slug || meta.variant.familySlug)}">${esc(fam.label)}</a> family.</p>`
+    : '';
+
+  return [description, safetyHeader, topEvents, fullTimeline, operatorsBlock, routesBlock, familyLink]
+    .filter(Boolean).join('\n').trim();
 }
 
 function bAircraftSpecs(meta, _db) {
@@ -186,6 +316,7 @@ function build(meta, db) {
   if (meta.kind === 'aircraft-airlines')  return bAircraftAirlines(meta, dbInstance);
   if (meta.kind === 'aircraft-routes')    return bAircraftRoutes(meta, dbInstance);
   if (meta.kind === 'aircraft-safety')    return bAircraftSafety(meta, dbInstance);
+  if (meta.kind === 'aircraft-variant')   return bAircraftVariant(meta, dbInstance);
   if (meta.kind === 'home')               return bHome(meta, dbInstance);
   if (meta.kind === 'safety-global')      return bSafetyGlobal(meta, dbInstance);
   if (meta.kind === 'safety-feed')        return bSafetyFeed(meta, dbInstance);

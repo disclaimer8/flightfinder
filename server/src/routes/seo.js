@@ -65,6 +65,9 @@ router.get('/sitemap.xml', async (_req, res) => {
     // Aircraft family landing pages (/aircraft/{slug} — no trailing subpage segment).
     if (/^\/aircraft\/[^/]+$/.test(p))
                                  return { loc, changefreq: 'weekly',  priority: '0.7', lastmod: aircraftDay };
+    // Aircraft variant pages (/aircraft/{family}/variants/{variant}).
+    if (/^\/aircraft\/[^/]+\/variants\/[^/]+$/.test(p))
+                                 return { loc, changefreq: 'weekly',  priority: '0.6', lastmod: aircraftDay };
     // Aircraft pillar subpages (/aircraft/{slug}/{sub}).
     if (p.startsWith('/aircraft/'))
                                  return { loc, changefreq: 'monthly', priority: '0.6', lastmod: deployDay };

@@ -1,5 +1,6 @@
 // server/src/services/seoUrlEnumerator.js
 const { getFamilyList } = require('../models/aircraftFamilies');
+const { getAllVariants } = require('../models/aircraftVariants');
 
 const STATIC_PATHS = [
   '/',
@@ -32,6 +33,11 @@ function enumerateSeoUrls(opts = {}) {
     set.add(`/aircraft/${fam.slug}/routes`);
     set.add(`/aircraft/${fam.slug}/safety`);
     set.add(`/aircraft/${fam.slug}/specs`);
+  }
+
+  // Variant landing pages — one per entry in aircraftVariants.js
+  for (const v of getAllVariants()) {
+    set.add(`/aircraft/${v.familySlug}/variants/${v.slug}`);
   }
 
   // Top hub-network route pages — same call shape used by routes/seo.js

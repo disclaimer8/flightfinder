@@ -650,5 +650,34 @@ module.exports = {
     `).all(...icaoList, limit);
   },
 
+  // SEO bake: fatal-only safety events for an aircraft family. Consumed by the
+  // aircraft meta resolver to render "notable accidents" on variant pages.
+  getFatalEventsByIcaoList: (icaoList) => {
+    if (!Array.isArray(icaoList) || icaoList.length === 0) return [];
+    const codes = icaoList.map((c) => String(c).toUpperCase());
+    const placeholders = codes.map(() => '?').join(',');
+    return db.prepare(`
+      SELECT * FROM safety_events
+      WHERE aircraft_icao_type IN (${placeholders})
+        AND severity IN ('fatal', 'hull_loss')
+        AND fatalities > 0
+      ORDER BY occurred_at DESC
+    `).all(...codes);
+  },
+
+  // SEO bake: every severity for the family, capped. Consumed alongside the
+  // fatal slice to drive the full safety event timeline.
+  getAllEventsByIcaoList: (icaoList, limit = 100) => {
+    if (!Array.isArray(icaoList) || icaoList.length === 0) return [];
+    const codes = icaoList.map((c) => String(c).toUpperCase());
+    const placeholders = codes.map(() => '?').join(',');
+    return db.prepare(`
+      SELECT * FROM safety_events
+      WHERE aircraft_icao_type IN (${placeholders})
+      ORDER BY occurred_at DESC
+      LIMIT ?
+    `).all(...codes, limit);
+  },
+
   getRouteCount: () => stmts.seoRouteCount.get()?.n || 0,
 };
