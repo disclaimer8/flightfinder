@@ -281,6 +281,12 @@ describe('seoContentBuilders.build — bAircraftSafety enriched', () => {
 });
 
 describe('seoContentBuilders.build — bAircraftVariant', () => {
+  beforeAll(() => {
+    const { db } = require('../models/db');
+    // Clear all observed_routes to ensure empty operators list for this test block
+    db.prepare('DELETE FROM observed_routes').run();
+  });
+
   it('renders description, operators, top routes, color band, top-5, and family link', () => {
     const meta = {
       kind: 'aircraft-variant',
@@ -304,6 +310,7 @@ describe('seoContentBuilders.build — bAircraftVariant', () => {
     // Family link wraps the label in an <a>, so the text is split by markup.
     expect(html).toMatch(/Part of the\s*<a[^>]*href="\/aircraft\/boeing-787"[^>]*>Boeing 787 Dreamliner<\/a>\s*family/);
     expect(html).toMatch(/14140|range/i);
+    expect(html).toMatch(/No observed flights for this variant/);
   });
 
   it('returns null when meta.variant is missing', () => {
