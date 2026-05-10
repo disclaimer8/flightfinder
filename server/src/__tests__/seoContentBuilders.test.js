@@ -370,3 +370,92 @@ describe('seoContentBuilders.build — bAircraftVariant', () => {
     expect(html).toMatch(/Op B/);
   });
 });
+
+describe('seoContentBuilders — _renderFr24Stats', () => {
+  // The helpers are private — exercise them via build() with a synthetic kind.
+  // Or expose them through module.exports for testing.
+  const { _renderFr24Stats, _renderYearlyBreakdown } = require('../services/seoContentBuilders');
+
+  it('returns "" for null stats', () => {
+    expect(_renderFr24Stats(null)).toBe('');
+  });
+
+  it('returns "" when totalFlights is 0', () => {
+    expect(_renderFr24Stats({ totalFlights: 0, fetchedAt: Date.now() })).toBe('');
+  });
+
+  it('renders aircraft-context HTML with thousands separator', () => {
+    const stats = {
+      totalFlights: 47200,
+      uniqueOperators: 84,
+      topOperators: [{ icao: 'ANA', count: 3200 }, { icao: 'UAL', count: 2800 }],
+      topRoutes: [{ from: 'RJTT', to: 'KLAX', count: 340 }],
+      yearlyBreakdown: null,
+      fetchedAt: Date.parse('2026-05-10T00:00:00Z'),
+    };
+    const html = _renderFr24Stats(stats, { context: 'aircraft' });
+    expect(html).toMatch(/Worldwide activity/);
+    expect(html).toMatch(/47,200/);
+    expect(html).toMatch(/by 84 airlines/);
+    expect(html).toMatch(/Top operators:/);
+    expect(html).toMatch(/ANA/);
+    expect(html).toMatch(/Top routes:/);
+    expect(html).toMatch(/RJTT/);
+    expect(html).toMatch(/Data via Flightradar24, as of 2026-05-10/);
+  });
+
+  it('renders route-context HTML and skips topRoutes block', () => {
+    const stats = {
+      totalFlights: 847,
+      uniqueOperators: 12,
+      topOperators: [{ icao: 'BAW', count: 340 }],
+      yearlyBreakdown: null,
+      fetchedAt: Date.parse('2026-05-10T00:00:00Z'),
+    };
+    const html = _renderFr24Stats(stats, { context: 'route' });
+    expect(html).toMatch(/Worldwide activity on this route/);
+    expect(html).toMatch(/Flown.*847.*times/);
+    expect(html).toMatch(/by 12 airlines/);
+    expect(html).not.toMatch(/Top routes:/);
+  });
+
+  it('escapes operator/route ICAO codes', () => {
+    const stats = {
+      totalFlights: 5,
+      uniqueOperators: 1,
+      topOperators: [{ icao: '<script>', count: 5 }],
+      topRoutes: [{ from: '<x>', to: '<y>', count: 5 }],
+      yearlyBreakdown: null,
+      fetchedAt: Date.now(),
+    };
+    const html = _renderFr24Stats(stats, { context: 'aircraft' });
+    expect(html).not.toMatch(/<script>/);
+    expect(html).toMatch(/&lt;script&gt;/);
+  });
+});
+
+describe('seoContentBuilders — _renderYearlyBreakdown', () => {
+  const { _renderYearlyBreakdown } = require('../services/seoContentBuilders');
+
+  it('returns "" for null/empty', () => {
+    expect(_renderYearlyBreakdown(null)).toBe('');
+    expect(_renderYearlyBreakdown([])).toBe('');
+  });
+
+  it('renders <h4>5-year trend</h4> + <ul> with all entries', () => {
+    const html = _renderYearlyBreakdown([
+      { year: 2025, count: 47200 },
+      { year: 2024, count: 38400 },
+      { year: 2023, count: 31200 },
+    ]);
+    expect(html).toMatch(/<h4>5-year trend<\/h4>/);
+    expect(html).toMatch(/<li>2025: 47,200 flights<\/li>/);
+    expect(html).toMatch(/<li>2024: 38,400 flights<\/li>/);
+    expect(html).toMatch(/<li>2023: 31,200 flights<\/li>/);
+  });
+
+  it('handles zero-count years without crashing', () => {
+    const html = _renderYearlyBreakdown([{ year: 2021, count: 0 }]);
+    expect(html).toMatch(/<li>2021: 0 flights<\/li>/);
+  });
+});

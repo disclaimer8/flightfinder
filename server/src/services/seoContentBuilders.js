@@ -89,6 +89,46 @@ function _renderDecadeTimeline(events) {
   }).join('');
 }
 
+function _formatNumber(n) {
+  return Number(n).toLocaleString('en-US');
+}
+
+function _renderYearlyBreakdown(yearlyBreakdown) {
+  if (!Array.isArray(yearlyBreakdown) || yearlyBreakdown.length === 0) return '';
+  const items = yearlyBreakdown
+    .map((y) => `<li>${esc(y.year)}: ${esc(_formatNumber(y.count))} flights</li>`)
+    .join('');
+  return `<h4>5-year trend</h4><ul class="yearly-breakdown">${items}</ul>`;
+}
+
+function _renderFr24Stats(stats, opts = {}) {
+  if (!stats || !stats.totalFlights) return '';
+  const date = new Date(stats.fetchedAt).toISOString().slice(0, 10);
+  const isRoute = opts.context === 'route';
+
+  const heading = isRoute
+    ? '<h3>Worldwide activity on this route (last 12 months)</h3>'
+    : '<h3>Worldwide activity (last 12 months)</h3>';
+
+  const totalLine = isRoute
+    ? `<p>Flown <strong>${esc(_formatNumber(stats.totalFlights))}</strong> times by ${esc(stats.uniqueOperators)} airlines in the past year.</p>`
+    : `<p>Operated <strong>${esc(_formatNumber(stats.totalFlights))}</strong> times globally by ${esc(stats.uniqueOperators)} airlines.</p>`;
+
+  const operatorsLine = (stats.topOperators && stats.topOperators.length > 0)
+    ? `<p>Top operators: ${stats.topOperators.map((o) => `${esc(o.icao)} (${esc(_formatNumber(o.count))})`).join(', ')}</p>`
+    : '';
+
+  const routesLine = (!isRoute && stats.topRoutes && stats.topRoutes.length > 0)
+    ? `<p>Top routes: ${stats.topRoutes.map((r) => `${esc(r.from)}–${esc(r.to)} (${esc(_formatNumber(r.count))})`).join(', ')}</p>`
+    : '';
+
+  const yearly = _renderYearlyBreakdown(stats.yearlyBreakdown);
+  const sourceLine = `<p class="data-source">Data via Flightradar24, as of ${esc(date)}.</p>`;
+
+  return [heading, totalLine, operatorsLine, routesLine, yearly, sourceLine]
+    .filter(Boolean).join('\n');
+}
+
 function _renderVariantBreakdown(allEvents, variants) {
   if (!Array.isArray(variants) || variants.length === 0) return '';
   if (!Array.isArray(allEvents) || allEvents.length === 0) return '';
@@ -323,4 +363,8 @@ function build(meta, db) {
   return null;
 }
 
-module.exports = { build };
+module.exports = {
+  build,
+  _renderFr24Stats,
+  _renderYearlyBreakdown,
+};
