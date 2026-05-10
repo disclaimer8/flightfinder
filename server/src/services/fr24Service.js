@@ -46,9 +46,76 @@ function _logDisabledOnce() {
   console.warn('[fr24] disabled (no FR24_API_KEY in env)');
 }
 
-async function fetchVariantStats(_icao, _opts) {
+// ── private helpers ─────────────────────────────────────────────────────
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+function _formatDate(ms) {
+  // FR24 wants 'YYYY-MM-DD HH:MM:SS' (UTC)
+  return new Date(ms).toISOString().replace('T', ' ').slice(0, 19);
+}
+
+function _windowParams(windowDays) {
+  const now = Date.now();
+  return {
+    flight_datetime_from: _formatDate(now - windowDays * ONE_DAY_MS),
+    flight_datetime_to: _formatDate(now),
+  };
+}
+
+function _topN(rows, keyFn, n = 5) {
+  const counts = new Map();
+  for (const r of rows) {
+    const k = keyFn(r);
+    if (!k) continue;
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n);
+}
+
+function _deriveFromLight(rows) {
+  const operatorTop = _topN(rows, (r) => r.operating_as);
+  const routeTop = _topN(rows, (r) => r.orig_icao && r.dest_icao ? `${r.orig_icao}|${r.dest_icao}` : null);
+  return {
+    uniqueOperators: new Set(rows.map((r) => r.operating_as).filter(Boolean)).size,
+    topOperators: operatorTop.map(([icao, count]) => ({ icao, count })),
+    topRoutes: routeTop.map(([key, count]) => {
+      const [from, to] = key.split('|');
+      return { from, to, count };
+    }),
+  };
+}
+
+async function _fetchCountAndLight(filterParams, windowDays) {
+  const params = { ..._windowParams(windowDays), ...filterParams };
+  const countRes = await _throttledGet('/flight-summary/count', params);
+  const lightRes = await _throttledGet('/flight-summary/light', { ...params, limit: 20000, sort: 'desc' });
+
+  const countData = Array.isArray(countRes.data?.data) ? countRes.data.data : [];
+  const lightRows = Array.isArray(lightRes.data?.data) ? lightRes.data.data : [];
+
+  const totalFlights = countData[0]?.record_count ?? 0;
+  return { totalFlights, lightRows };
+}
+
+// ── public methods ──────────────────────────────────────────────────────
+
+async function fetchVariantStats(icao, opts = {}) {
   if (!isEnabled()) { _logDisabledOnce(); return null; }
-  return null;  // implemented in Task 3
+  const windowDays = opts.windowDays || 365;
+  const { totalFlights, lightRows } = await _fetchCountAndLight({ aircraft: icao }, windowDays);
+  const derived = _deriveFromLight(lightRows);
+  return {
+    totalFlights,
+    uniqueOperators: derived.uniqueOperators,
+    topOperators: derived.topOperators,
+    topRoutes: derived.topRoutes,
+    yearlyBreakdown: null,
+    windowDays,
+    fetchedAt: Date.now(),
+  };
 }
 
 async function fetchFamilyStats(_icaoList, _opts) {

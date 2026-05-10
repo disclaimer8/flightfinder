@@ -37,3 +37,96 @@ describe('fr24Service module shell', () => {
     expect(await fr24.fetchRouteStats('JFK', 'LHR')).toBeNull();
   });
 });
+
+describe('fr24Service.fetchVariantStats (no yearly)', () => {
+  let mockGet;
+  let setTimeoutSpy;
+
+  beforeEach(() => {
+    process.env.FR24_API_KEY = 'sandbox-test-key';
+    jest.resetModules();
+    mockGet = jest.fn();
+    jest.doMock('axios', () => {
+      return { create: () => ({ get: mockGet }) };
+    });
+    // Bypass the inter-request throttle in tests — we're not testing pacing here.
+    setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((cb) => { cb(); return 0; });
+  });
+
+  afterEach(() => {
+    setTimeoutSpy.mockRestore();
+    jest.dontMock('axios');
+  });
+
+  it('returns DerivedStats with totalFlights, uniqueOperators, top5 lists', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 1234 }] } })  // /count
+      .mockResolvedValueOnce({                                                 // /light
+        data: { data: [
+          { operating_as: 'ANA', orig_icao: 'RJTT', dest_icao: 'KLAX' },
+          { operating_as: 'ANA', orig_icao: 'RJTT', dest_icao: 'KLAX' },
+          { operating_as: 'ANA', orig_icao: 'RJAA', dest_icao: 'KSFO' },
+          { operating_as: 'UAL', orig_icao: 'KSFO', dest_icao: 'EGLL' },
+          { operating_as: 'BAW', orig_icao: 'EGLL', dest_icao: 'KSFO' },
+        ] },
+      });
+    const fr24 = require('../services/fr24Service');
+    const stats = await fr24.fetchVariantStats('B789');
+
+    expect(stats).toMatchObject({
+      totalFlights: 1234,
+      uniqueOperators: 3,
+      windowDays: 365,
+      yearlyBreakdown: null,
+    });
+    expect(stats.topOperators[0]).toEqual({ icao: 'ANA', count: 3 });
+    expect(stats.topOperators).toHaveLength(3);
+    expect(stats.topRoutes[0]).toEqual({ from: 'RJTT', to: 'KLAX', count: 2 });
+    expect(typeof stats.fetchedAt).toBe('number');
+  });
+
+  it('caps top-5 lists at 5 entries even when more groups exist', async () => {
+    const rows = [];
+    for (const op of ['A','B','C','D','E','F','G']) rows.push({ operating_as: op, orig_icao: 'XX', dest_icao: 'YY' });
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 7 }] } })
+      .mockResolvedValueOnce({ data: { data: rows } });
+    const fr24 = require('../services/fr24Service');
+    const stats = await fr24.fetchVariantStats('B789');
+    expect(stats.topOperators).toHaveLength(5);
+  });
+
+  it('passes aircraft=ICAO and 365-day window in URL params', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 0 }] } })
+      .mockResolvedValueOnce({ data: { data: [] } });
+    const fr24 = require('../services/fr24Service');
+    await fr24.fetchVariantStats('B789');
+
+    expect(mockGet).toHaveBeenCalledTimes(2);
+    const countCall = mockGet.mock.calls[0];
+    expect(countCall[0]).toBe('/flight-summary/count');
+    expect(countCall[1].params.aircraft).toBe('B789');
+    expect(countCall[1].params.flight_datetime_from).toMatch(/^\d{4}-\d{2}-\d{2}/);
+    expect(countCall[1].params.flight_datetime_to).toMatch(/^\d{4}-\d{2}-\d{2}/);
+
+    const lightCall = mockGet.mock.calls[1];
+    expect(lightCall[0]).toBe('/flight-summary/light');
+    expect(lightCall[1].params.aircraft).toBe('B789');
+    expect(lightCall[1].params.limit).toBe(20000);
+  });
+
+  it('returns derived with zeros when API returns empty data array', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 0 }] } })
+      .mockResolvedValueOnce({ data: { data: [] } });
+    const fr24 = require('../services/fr24Service');
+    const stats = await fr24.fetchVariantStats('B789');
+    expect(stats).toMatchObject({
+      totalFlights: 0,
+      uniqueOperators: 0,
+      topOperators: [],
+      topRoutes: [],
+    });
+  });
+});
