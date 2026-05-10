@@ -241,3 +241,74 @@ describe('fr24Service.fetchRouteStats', () => {
     expect(await fr24.fetchRouteStats(null, 'LHR')).toBeNull();
   });
 });
+
+describe('fr24Service withYearly option', () => {
+  let mockGet;
+
+  beforeEach(() => {
+    process.env.FR24_API_KEY = 'sandbox-test-key';
+    jest.resetModules();
+    mockGet = jest.fn();
+    jest.doMock('axios', () => ({ create: () => ({ get: mockGet }) }));
+    jest.spyOn(global, 'setTimeout').mockImplementation((cb) => { cb(); return 0; });
+  });
+
+  afterEach(() => {
+    jest.dontMock('axios');
+    jest.restoreAllMocks();
+  });
+
+  it('issues 5 additional /count queries when withYearly=true', async () => {
+    // count + light + 5 yearly counts = 7 calls
+    for (let i = 0; i < 7; i++) {
+      mockGet.mockResolvedValueOnce({ data: { data: i === 1 ? [] : [{ record_count: 1000 + i }] } });
+    }
+    const fr24 = require('../services/fr24Service');
+    await fr24.fetchVariantStats('B789', { withYearly: true });
+    expect(mockGet).toHaveBeenCalledTimes(7);
+    // Indexes 2-6 are the yearly counts
+    for (let i = 2; i < 7; i++) {
+      expect(mockGet.mock.calls[i][0]).toBe('/flight-summary/count');
+    }
+  });
+
+  it('yearlyBreakdown sorted newest year first', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 47200 }] } })  // main count
+      .mockResolvedValueOnce({ data: { data: [] } })                            // light
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 47200 }] } })   // year 0 (current)
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 38400 }] } })
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 31200 }] } })
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 22100 }] } })
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 18300 }] } });
+    const fr24 = require('../services/fr24Service');
+    const stats = await fr24.fetchVariantStats('B789', { withYearly: true });
+    expect(stats.yearlyBreakdown).toHaveLength(5);
+    expect(stats.yearlyBreakdown[0].count).toBe(47200);
+    expect(stats.yearlyBreakdown[4].count).toBe(18300);
+    // Years should descend
+    for (let i = 0; i < 4; i++) {
+      expect(stats.yearlyBreakdown[i].year).toBeGreaterThan(stats.yearlyBreakdown[i + 1].year);
+    }
+  });
+
+  it('withYearly=false (default) does not issue yearly queries', async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: { data: [{ record_count: 1 }] } })
+      .mockResolvedValueOnce({ data: { data: [] } });
+    const fr24 = require('../services/fr24Service');
+    const stats = await fr24.fetchVariantStats('B789');
+    expect(mockGet).toHaveBeenCalledTimes(2);
+    expect(stats.yearlyBreakdown).toBeNull();
+  });
+
+  it('fetchFamilyStats supports withYearly: true', async () => {
+    for (let i = 0; i < 7; i++) {
+      mockGet.mockResolvedValueOnce({ data: { data: i === 1 ? [] : [{ record_count: 100 }] } });
+    }
+    const fr24 = require('../services/fr24Service');
+    const stats = await fr24.fetchFamilyStats(['B737', 'B738'], { withYearly: true });
+    expect(mockGet).toHaveBeenCalledTimes(7);
+    expect(stats.yearlyBreakdown).toHaveLength(5);
+  });
+});

@@ -100,6 +100,28 @@ async function _fetchCountAndLight(filterParams, windowDays) {
   return { totalFlights, lightRows };
 }
 
+async function _fetchYearlyCounts(filterParams) {
+  const out = [];
+  const nowYear = new Date().getUTCFullYear();
+  for (let i = 0; i < 5; i++) {
+    const year = nowYear - i;
+    const from = `${year}-01-01 00:00:00`;
+    const to = `${year}-12-31 23:59:59`;
+    try {
+      const res = await _throttledGet('/flight-summary/count', {
+        ...filterParams,
+        flight_datetime_from: from,
+        flight_datetime_to: to,
+      });
+      const count = res.data?.data?.[0]?.record_count ?? 0;
+      out.push({ year, count });
+    } catch {
+      out.push({ year, count: 0 });
+    }
+  }
+  return out;  // already newest-first by construction
+}
+
 // ── public methods ──────────────────────────────────────────────────────
 
 const FAMILY_MAX_CODES = 15;
@@ -109,12 +131,15 @@ async function fetchVariantStats(icao, opts = {}) {
   const windowDays = opts.windowDays || 365;
   const { totalFlights, lightRows } = await _fetchCountAndLight({ aircraft: icao }, windowDays);
   const derived = _deriveFromLight(lightRows);
+  const yearlyBreakdown = opts.withYearly
+    ? await _fetchYearlyCounts({ aircraft: icao })
+    : null;
   return {
     totalFlights,
     uniqueOperators: derived.uniqueOperators,
     topOperators: derived.topOperators,
     topRoutes: derived.topRoutes,
-    yearlyBreakdown: null,
+    yearlyBreakdown,
     windowDays,
     fetchedAt: Date.now(),
   };
@@ -131,17 +156,21 @@ async function fetchFamilyStats(icaoList, opts = {}) {
   }
 
   const windowDays = opts.windowDays || 365;
+  const aircraftParam = codes.join(',');
   const { totalFlights, lightRows } = await _fetchCountAndLight(
-    { aircraft: codes.join(',') },
+    { aircraft: aircraftParam },
     windowDays,
   );
   const derived = _deriveFromLight(lightRows);
+  const yearlyBreakdown = opts.withYearly
+    ? await _fetchYearlyCounts({ aircraft: aircraftParam })
+    : null;
   return {
     totalFlights,
     uniqueOperators: derived.uniqueOperators,
     topOperators: derived.topOperators,
     topRoutes: derived.topRoutes,
-    yearlyBreakdown: null,
+    yearlyBreakdown,
     windowDays,
     fetchedAt: Date.now(),
   };
