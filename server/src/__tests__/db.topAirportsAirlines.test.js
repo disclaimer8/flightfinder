@@ -38,17 +38,22 @@ describe('getTopAirportsByObservedActivity', () => {
 });
 
 describe('getTopAirlinesByObservedActivity', () => {
-  test('orders by row count desc, ignores null airlines', () => {
-    // (dep, arr, aircraft_icao) is the unique key — vary aircraft_icao to get distinct rows.
+  test('converts ICAO (stored in airline_iata column) to IATA via openFlights, orders by count desc, ignores null airlines and unmapped ICAOs', () => {
+    // observed_routes.airline_iata stores ICAO codes (adsblol writes BAW for
+    // British Airways, AFR for Air France, etc.), not IATA. The export
+    // converts via openFlightsService.getAirlineByIcao.
     seed([
-      { dep: 'JFK', arr: 'LHR', ac: 'B789', al: 'BA',   seen: 1 },
-      { dep: 'JFK', arr: 'LHR', ac: 'A380', al: 'BA',   seen: 2 },
-      { dep: 'JFK', arr: 'CDG', ac: 'B789', al: 'AF',   seen: 3 },
+      { dep: 'JFK', arr: 'LHR', ac: 'B789', al: 'BAW',  seen: 1 },  // BAW (ICAO) → BA (IATA)
+      { dep: 'JFK', arr: 'LHR', ac: 'A380', al: 'BAW',  seen: 2 },
+      { dep: 'JFK', arr: 'CDG', ac: 'B789', al: 'AFR',  seen: 3 },  // AFR → AF
       { dep: 'JFK', arr: 'CDG', ac: 'A380', al: null,   seen: 4 },
+      { dep: 'JFK', arr: 'LHR', ac: 'B77W', al: 'XYZQ', seen: 5 },  // XYZQ → no IATA mapping → dropped
     ]);
     const top = getTopAirlinesByObservedActivity({ limit: 10 });
-    expect(top[0].iata).toBe('BA');
-    expect(top[0].count).toBe(2);
+    expect(top[0]).toMatchObject({ iata: 'BA', icao: 'BAW', count: 2 });
+    expect(top.find(r => r.iata === 'AF')).toMatchObject({ icao: 'AFR', count: 1 });
+    // XYZQ (unmapped ICAO) and null are both dropped
+    expect(top.find(r => r.icao === 'XYZQ')).toBeUndefined();
     expect(top.find(r => r.iata === null)).toBeUndefined();
   });
 });

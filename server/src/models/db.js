@@ -801,5 +801,29 @@ module.exports = {
   },
 
   getTopAirportsByObservedActivity: ({ limit = 200 } = {}) => stmts.topAirportsByActivity.all(limit),
-  getTopAirlinesByObservedActivity: ({ limit = 100 } = {}) => stmts.topAirlinesByActivity.all(limit),
+
+  /**
+   * Returns top airlines by observed flight count, mapped from the ICAO codes
+   * actually stored in observed_routes.airline_iata (column name is misleading —
+   * adsblol writes ICAO codes like CSN/BAW/CES, not IATA codes like CZ/BA/MU)
+   * into IATA codes via openFlightsService. Rows whose ICAO has no IATA mapping
+   * are dropped — those airlines are too obscure for an indexable SEO page anyway.
+   *
+   * Returns: [{ iata, name, icao, count }]
+   *
+   * NB: we over-fetch (limit*2) before filtering so that dropping unmapped ICAOs
+   * doesn't shrink the result below the requested limit.
+   */
+  getTopAirlinesByObservedActivity: ({ limit = 100 } = {}) => {
+    const openflights = require('../services/openFlightsService');
+    const rows = stmts.topAirlinesByActivity.all(limit * 2);
+    const out = [];
+    for (const r of rows) {
+      const airline = openflights.getAirlineByIcao(r.iata);
+      if (!airline || !airline.iata) continue;
+      out.push({ iata: airline.iata, name: airline.name, icao: r.iata, count: r.count });
+      if (out.length >= limit) break;
+    }
+    return out;
+  },
 };
