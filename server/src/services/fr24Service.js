@@ -105,11 +105,21 @@ function _topN(rows, keyFn, n = 5) {
     .slice(0, n);
 }
 
+// Field-name safety: /light docs say `origin_icao`/`destination_icao` but our
+// production probes have seen `orig_icao`/`dest_icao` too (and `operating_as`
+// vs docs' `operated_as`). Read both shapes — whichever the API returns wins.
+function _orig(r)  { return r.orig_icao || r.origin_icao; }
+function _dest(r)  { return r.dest_icao || r.destination_icao; }
+function _carrier(r) { return r.operating_as || r.operated_as; }
+
 function _deriveFromLight(rows) {
-  const operatorTop = _topN(rows, (r) => r.operating_as);
-  const routeTop = _topN(rows, (r) => r.orig_icao && r.dest_icao ? `${r.orig_icao}|${r.dest_icao}` : null);
+  const operatorTop = _topN(rows, _carrier);
+  const routeTop = _topN(rows, (r) => {
+    const o = _orig(r); const d = _dest(r);
+    return o && d ? `${o}|${d}` : null;
+  });
   return {
-    uniqueOperators: new Set(rows.map((r) => r.operating_as).filter(Boolean)).size,
+    uniqueOperators: new Set(rows.map(_carrier).filter(Boolean)).size,
     topOperators: operatorTop.map(([icao, count]) => ({ icao, count })),
     topRoutes: routeTop.map(([key, count]) => {
       const [from, to] = key.split('|');
@@ -118,60 +128,45 @@ function _deriveFromLight(rows) {
   };
 }
 
-async function _fetchCountAndLight(filterParams, windowDays) {
-  const params = { ..._windowParams(windowDays), ...filterParams };
-  const countRes = await _throttledGetWithRetry('/flight-summary/count', params);
-  const lightRes = await _throttledGetWithRetry('/flight-summary/light', { ...params, limit: 20000, sort: 'desc' });
+// Explorer tier ($9/mo) provides 30 days of history. The /flight-summary/count
+// endpoint we used originally is not part of any documented tier — 403 on prod —
+// so we derive totalFlights from light rows.length. /light caps at 20000 rows
+// per query, which is more than enough at a 30-day window for any single
+// aircraft type or family in our enumeration.
+const MAX_WINDOW_DAYS = parseInt(process.env.FR24_MAX_WINDOW_DAYS || '30', 10);
 
-  const countData = Array.isArray(countRes.data?.data) ? countRes.data.data : [];
+async function _fetchLight(filterParams, windowDays) {
+  const days = Math.min(windowDays, MAX_WINDOW_DAYS);
+  const params = { ..._windowParams(days), ...filterParams, limit: 20000, sort: 'desc' };
+  const lightRes = await _throttledGetWithRetry('/flight-summary/light', params);
   const lightRows = Array.isArray(lightRes.data?.data) ? lightRes.data.data : [];
-
-  const totalFlights = countData[0]?.record_count ?? 0;
-  return { totalFlights, lightRows };
-}
-
-async function _fetchYearlyCounts(filterParams) {
-  const out = [];
-  const nowYear = new Date().getUTCFullYear();
-  for (let i = 0; i < 5; i++) {
-    const year = nowYear - i;
-    const from = `${year}-01-01 00:00:00`;
-    const to = `${year}-12-31 23:59:59`;
-    try {
-      const res = await _throttledGetWithRetry('/flight-summary/count', {
-        ...filterParams,
-        flight_datetime_from: from,
-        flight_datetime_to: to,
-      });
-      const count = res.data?.data?.[0]?.record_count ?? 0;
-      out.push({ year, count });
-    } catch (err) {
-      console.warn(`[fr24] yearly count failed year=${year} filter=${JSON.stringify(filterParams)}: ${err.message || err}`);
-      out.push({ year, count: 0 });
-    }
-  }
-  return out;  // already newest-first by construction
+  // totalFlights is the rows we observed. If the 20000 cap is hit, this is a
+  // floor (we mark it with `truncated: true` so the renderer can hint "20000+").
+  return {
+    totalFlights: lightRows.length,
+    truncated: lightRows.length >= 20000,
+    lightRows,
+    windowDays: days,
+  };
 }
 
 // ── public methods ──────────────────────────────────────────────────────
 
 const FAMILY_MAX_CODES = 15;
 
-async function fetchVariantStats(icao, opts = {}) {
+async function fetchVariantStats(icao, _opts = {}) {
   if (!isEnabled()) { _logDisabledOnce(); return null; }
   try {
-    const windowDays = opts.windowDays || 365;
-    const { totalFlights, lightRows } = await _fetchCountAndLight({ aircraft: icao }, windowDays);
+    const { totalFlights, truncated, lightRows, windowDays } =
+      await _fetchLight({ aircraft: icao }, MAX_WINDOW_DAYS);
     const derived = _deriveFromLight(lightRows);
-    const yearlyBreakdown = opts.withYearly
-      ? await _fetchYearlyCounts({ aircraft: icao })
-      : null;
     return {
       totalFlights,
+      truncated,
       uniqueOperators: derived.uniqueOperators,
       topOperators: derived.topOperators,
       topRoutes: derived.topRoutes,
-      yearlyBreakdown,
+      yearlyBreakdown: null, // not available on Explorer tier (needs /count or 1yr+ history)
       windowDays,
       fetchedAt: Date.now(),
     };
@@ -181,7 +176,7 @@ async function fetchVariantStats(icao, opts = {}) {
   }
 }
 
-async function fetchFamilyStats(icaoList, opts = {}) {
+async function fetchFamilyStats(icaoList, _opts = {}) {
   if (!isEnabled()) { _logDisabledOnce(); return null; }
   if (!Array.isArray(icaoList) || icaoList.length === 0) return null;
 
@@ -193,21 +188,16 @@ async function fetchFamilyStats(icaoList, opts = {}) {
 
   const aircraftParam = codes.join(',');
   try {
-    const windowDays = opts.windowDays || 365;
-    const { totalFlights, lightRows } = await _fetchCountAndLight(
-      { aircraft: aircraftParam },
-      windowDays,
-    );
+    const { totalFlights, truncated, lightRows, windowDays } =
+      await _fetchLight({ aircraft: aircraftParam }, MAX_WINDOW_DAYS);
     const derived = _deriveFromLight(lightRows);
-    const yearlyBreakdown = opts.withYearly
-      ? await _fetchYearlyCounts({ aircraft: aircraftParam })
-      : null;
     return {
       totalFlights,
+      truncated,
       uniqueOperators: derived.uniqueOperators,
       topOperators: derived.topOperators,
       topRoutes: derived.topRoutes,
-      yearlyBreakdown,
+      yearlyBreakdown: null,
       windowDays,
       fetchedAt: Date.now(),
     };
@@ -217,21 +207,17 @@ async function fetchFamilyStats(icaoList, opts = {}) {
   }
 }
 
-async function fetchRouteStats(orig, dest, opts = {}) {
+async function fetchRouteStats(orig, dest, _opts = {}) {
   if (!isEnabled()) { _logDisabledOnce(); return null; }
   if (!orig || !dest) return null;
 
   try {
-    const windowDays = opts.windowDays || 365;
-    const { totalFlights, lightRows } = await _fetchCountAndLight(
-      { routes: `${orig}-${dest}` },
-      windowDays,
-    );
+    const { totalFlights, truncated, lightRows, windowDays } =
+      await _fetchLight({ routes: `${orig}-${dest}` }, MAX_WINDOW_DAYS);
     const derived = _deriveFromLight(lightRows);
-
-    // No topRoutes — the page IS the route. Save bytes in cache and HTML.
     return {
       totalFlights,
+      truncated,
       uniqueOperators: derived.uniqueOperators,
       topOperators: derived.topOperators,
       yearlyBreakdown: null,

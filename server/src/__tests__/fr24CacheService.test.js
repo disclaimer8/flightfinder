@@ -130,15 +130,15 @@ describe('fr24CacheService.refresh', () => {
     expect(fr24Service.fetchVariantStats).not.toHaveBeenCalled();
   });
 
-  it('passes withYearly: true to variant + family fetchers, NOT to route fetcher', async () => {
+  it('invokes variant + family + route fetchers with bare args (no withYearly — endpoint dropped)', async () => {
     fr24Service.fetchVariantStats.mockResolvedValue({ totalFlights: 1, fetchedAt: Date.now() });
     fr24Service.fetchFamilyStats.mockResolvedValue({ totalFlights: 1, fetchedAt: Date.now() });
     fr24Service.fetchRouteStats.mockResolvedValue({ totalFlights: 1, fetchedAt: Date.now() });
 
     await cache.refresh();
 
-    expect(fr24Service.fetchVariantStats).toHaveBeenCalledWith('B789', { withYearly: true });
-    expect(fr24Service.fetchFamilyStats).toHaveBeenCalledWith(['B788', 'B789', 'B78X'], { withYearly: true });
+    expect(fr24Service.fetchVariantStats).toHaveBeenCalledWith('B789');
+    expect(fr24Service.fetchFamilyStats).toHaveBeenCalledWith(['B788', 'B789', 'B78X']);
     expect(fr24Service.fetchRouteStats).toHaveBeenCalledWith('JFK', 'LHR');
   });
 });

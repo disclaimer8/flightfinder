@@ -59,7 +59,7 @@ async function refresh() {
   for (const v of getAllVariants()) {
     const key = `variant:${v.icao}`;
     if (_isFresh(key)) { skipped++; continue; }
-    const stats = await fr24.fetchVariantStats(v.icao, { withYearly: true });
+    const stats = await fr24.fetchVariantStats(v.icao);
     if (stats) { _store.set(key, stats); refreshed++; }
     else { failed++; }
   }
@@ -69,7 +69,7 @@ async function refresh() {
     if (_isFresh(key)) { skipped++; continue; }
     const fullFam = getFamilyBySlug(fam.slug);
     const icaoList = (fullFam && fullFam.icaoList) || [];
-    const stats = await fr24.fetchFamilyStats(icaoList, { withYearly: true });
+    const stats = await fr24.fetchFamilyStats(icaoList);
     if (stats) { _store.set(key, stats); refreshed++; }
     else { failed++; }
   }
