@@ -433,6 +433,26 @@ const stmts = {
   seoRouteCount: db.prepare(`
     SELECT COUNT(DISTINCT dep_iata || '-' || arr_iata) AS n FROM observed_routes
   `),
+
+  topAirportsByActivity: db.prepare(`
+    SELECT iata, SUM(n) AS activity FROM (
+      SELECT dep_iata AS iata, COUNT(*) AS n FROM observed_routes GROUP BY dep_iata
+      UNION ALL
+      SELECT arr_iata AS iata, COUNT(*) AS n FROM observed_routes GROUP BY arr_iata
+    )
+    WHERE iata IS NOT NULL AND iata != ''
+    GROUP BY iata
+    ORDER BY activity DESC
+    LIMIT ?
+  `),
+  topAirlinesByActivity: db.prepare(`
+    SELECT airline_iata AS iata, COUNT(*) AS count
+    FROM observed_routes
+    WHERE airline_iata IS NOT NULL AND airline_iata != ''
+    GROUP BY airline_iata
+    ORDER BY count DESC
+    LIMIT ?
+  `),
 };
 
 // Bulk insert helper — wraps a transaction around N upsertAircraft calls. Used by the
@@ -767,4 +787,7 @@ module.exports = {
       ORDER BY seen_at DESC
     `).all(String(orig).toUpperCase(), String(dest).toUpperCase(), ...codes);
   },
+
+  getTopAirportsByObservedActivity: ({ limit = 200 } = {}) => stmts.topAirportsByActivity.all(limit),
+  getTopAirlinesByObservedActivity: ({ limit = 100 } = {}) => stmts.topAirlinesByActivity.all(limit),
 };
