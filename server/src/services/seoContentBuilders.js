@@ -251,6 +251,44 @@ function bAircraftRoutes(meta, db) {
   `.trim();
 }
 
+// /routes/:pair/:slug — narrow combo page (e.g. /routes/lhr-jfk/boeing-787).
+// Before this builder existed, build() returned null for kind 'aircraft-route'
+// → applyChrome returned null → spaFallback served the React shell with no
+// bake section. Google flagged 200+ such URLs as Soft 404. This builder
+// always returns some content (real observed data when available, an explain
+// + cross-links fallback when not), so chrome wraps every page with nav,
+// breadcrumbs, footer, and cross-refs — enough to escape Soft 404.
+function bAircraftRoute(meta, db) {
+  if (!meta || !meta.fromIata || !meta.toIata || !meta.slug) return null;
+  const { fromIata, toIata, fromName, toName, aircraftLabel, slug } = meta;
+
+  const { getFamilyBySlug } = require('../models/aircraftFamilies');
+  const fam = getFamilyBySlug(slug);
+  const icaoList = (fam && fam.icaoList) || [];
+
+  let observed = [];
+  try { observed = db.getObservedAircraftOnRoute(fromIata, toIata, icaoList); } catch {}
+
+  const label = aircraftLabel || slug;
+  const intro = `<p>Recent <strong>${esc(label)}</strong> activity between <strong>${esc(fromName || fromIata)}</strong> (${esc(fromIata)}) and <strong>${esc(toName || toIata)}</strong> (${esc(toIata)}), drawn from open ADS-B observations in our 14-day rolling window.</p>`;
+
+  const routeHref = `/routes/${esc(fromIata.toLowerCase())}-${esc(toIata.toLowerCase())}`;
+  const aircraftHref = `/aircraft/${esc(slug)}`;
+
+  let detail;
+  if (observed.length > 0) {
+    const variants = observed
+      .map((o) => `${esc(o.aircraft_icao)}${o.airline_iata ? ` (operator: ${esc(o.airline_iata)})` : ''}`)
+      .join('; ');
+    detail = `<p>Observed variants on this route: ${variants}.</p>
+      <p>This page is auto-generated for every qualifying ADS-B-observed route × aircraft combination. See the parent <a href="${routeHref}">${esc(fromIata)}–${esc(toIata)} route page</a> for the full operator list, and the <a href="${aircraftHref}">${esc(label)} family page</a> for general specifications, safety record, and worldwide deployment data.</p>`;
+  } else {
+    detail = `<p>No recent observations of the ${esc(label)} on this exact route in our 14-day rolling ADS-B window. The route may be operated by other aircraft types — see the <a href="${routeHref}">${esc(fromIata)}–${esc(toIata)} route page</a> for current operators, or the <a href="${aircraftHref}">${esc(label)} family page</a> for general fleet info.</p>`;
+  }
+
+  return [intro, detail].join('\n');
+}
+
 function bAircraftSafety(meta, _db) {
   if (!meta) return null;
 
@@ -409,6 +447,7 @@ function build(meta, db) {
   else if (meta.kind === 'aircraft-routes')    innerHtml = bAircraftRoutes(meta, dbInstance);
   else if (meta.kind === 'aircraft-safety')    innerHtml = bAircraftSafety(meta, dbInstance);
   else if (meta.kind === 'aircraft-variant')   innerHtml = bAircraftVariant(meta, dbInstance);
+  else if (meta.kind === 'aircraft-route')     innerHtml = bAircraftRoute(meta, dbInstance);
   else if (meta.kind === 'home')               innerHtml = bHome(meta, dbInstance);
   else if (meta.kind === 'safety-global')      innerHtml = bSafetyGlobal(meta, dbInstance);
   else if (meta.kind === 'safety-feed')        innerHtml = bSafetyFeed(meta, dbInstance);

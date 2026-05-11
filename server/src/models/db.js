@@ -735,4 +735,19 @@ module.exports = {
       LIMIT ?
     `).all(limit);
   },
+
+  // Aircraft variants from a family observed on a specific route — for
+  // bAircraftRoute content. Returns rows like { aircraft_icao, airline_iata }
+  // ordered by recency. Empty array if no match or invalid input.
+  getObservedAircraftOnRoute: (orig, dest, icaoList) => {
+    if (!orig || !dest || !Array.isArray(icaoList) || icaoList.length === 0) return [];
+    const placeholders = icaoList.map(() => '?').join(',');
+    const codes = icaoList.map((s) => String(s).toUpperCase());
+    return db.prepare(`
+      SELECT aircraft_icao, airline_iata, seen_at
+      FROM observed_routes
+      WHERE dep_iata = ? AND arr_iata = ? AND aircraft_icao IN (${placeholders})
+      ORDER BY seen_at DESC
+    `).all(String(orig).toUpperCase(), String(dest).toUpperCase(), ...codes);
+  },
 };

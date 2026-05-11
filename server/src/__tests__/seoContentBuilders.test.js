@@ -661,3 +661,75 @@ describe('bHome — rich grid', () => {
     expect(html).toMatch(/href="\/safety\/feed"/);
   });
 });
+
+describe('bAircraftRoute — aircraft × route combo pages', () => {
+  const db = require('../models/db');
+
+  beforeAll(() => {
+    db.db.prepare("DELETE FROM observed_routes WHERE source = 'test-ac-route'").run();
+    db.upsertObservedRoute({
+      depIata: 'JFK', arrIata: 'LHR', aircraftIcao: 'B789',
+      airlineIata: 'BA', source: 'test-ac-route',
+    });
+    db.upsertObservedRoute({
+      depIata: 'JFK', arrIata: 'LHR', aircraftIcao: 'B788',
+      airlineIata: 'VS', source: 'test-ac-route',
+    });
+  });
+
+  afterAll(() => {
+    db.db.prepare("DELETE FROM observed_routes WHERE source = 'test-ac-route'").run();
+  });
+
+  it('returns null when essential fields missing', () => {
+    expect(build({ kind: 'aircraft-route', fromIata: 'JFK', toIata: 'LHR' })).toBeNull();
+    expect(build({ kind: 'aircraft-route', slug: 'boeing-787' })).toBeNull();
+  });
+
+  it('renders intro + observed variants when route has observations', () => {
+    const meta = {
+      kind: 'aircraft-route',
+      fromIata: 'JFK', toIata: 'LHR',
+      fromName: 'New York', toName: 'London',
+      aircraftLabel: 'Boeing 787 Dreamliner',
+      slug: 'boeing-787',
+    };
+    const html = build(meta);
+    expect(html).toMatch(/Recent.*Boeing 787 Dreamliner.*activity/);
+    expect(html).toMatch(/New York.*JFK/);
+    expect(html).toMatch(/London.*LHR/);
+    expect(html).toMatch(/Observed variants on this route/);
+    expect(html).toMatch(/B789/);
+    expect(html).toMatch(/B788/);
+    expect(html).toMatch(/href="\/routes\/jfk-lhr"/);
+    expect(html).toMatch(/href="\/aircraft\/boeing-787"/);
+  });
+
+  it('renders explain + cross-links when no observations for combo', () => {
+    const meta = {
+      kind: 'aircraft-route',
+      fromIata: 'ZZZ', toIata: 'YYY',
+      fromName: 'Nowhere', toName: 'Elsewhere',
+      aircraftLabel: 'Boeing 787 Dreamliner',
+      slug: 'boeing-787',
+    };
+    const html = build(meta);
+    expect(html).toMatch(/No recent observations/);
+    expect(html).toMatch(/href="\/routes\/zzz-yyy"/);
+    expect(html).toMatch(/href="\/aircraft\/boeing-787"/);
+  });
+
+  it('chrome wraps the output (site nav + footer)', () => {
+    const meta = {
+      kind: 'aircraft-route',
+      fromIata: 'JFK', toIata: 'LHR',
+      fromName: 'New York', toName: 'London',
+      aircraftLabel: 'Boeing 787',
+      slug: 'boeing-787',
+    };
+    const html = build(meta);
+    expect(html).toMatch(/<nav class="seo-nav"/);
+    expect(html).toMatch(/<footer class="seo-footer"/);
+    expect(html).toMatch(/<nav class="breadcrumbs"/);
+  });
+});
