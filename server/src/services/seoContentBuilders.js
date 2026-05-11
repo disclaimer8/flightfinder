@@ -422,6 +422,64 @@ function bSafetyFeed(meta, _db) {
   `.trim();
 }
 
+async function bAirport(meta, _db) {
+  const iata = meta.iata;
+  if (!iata) return null;
+  const amadeus = require('./amadeusAnalyticsService');
+
+  const directDest = await amadeus.getAirportDirectDestinations(iata).catch(() => null);
+
+  const heading = `<h1>${esc(iata)} airport — flights and destinations</h1>`;
+
+  let destBlock = '';
+  if (directDest && directDest.length > 0) {
+    const top = directDest.slice(0, 50);
+    const links = top.map(d =>
+      `<a href="/routes/${esc(iata.toLowerCase())}-${esc(String(d).toLowerCase())}">${esc(iata)}→${esc(d)}</a>`
+    ).join(', ');
+    destBlock = `<section><h2>Direct destinations (${esc(top.length)})</h2><p>${links}</p></section>`;
+  }
+
+  const jsonLd = `<script type="application/ld+json">${JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Airport',
+    name: `${iata} Airport`,
+    iataCode: iata,
+  })}</script>`;
+
+  return [heading, destBlock, jsonLd].filter(Boolean).join('\n');
+}
+
+async function bAirline(meta, _db) {
+  const iata = meta.iata;
+  if (!iata) return null;
+  const amadeus = require('./amadeusAnalyticsService');
+
+  const destinations = await amadeus.getAirlineRoutes(iata).catch(() => null);
+
+  const heading = `<h1>${esc(iata)} — destinations and fleet</h1>`;
+
+  let destBlock = '';
+  if (destinations && destinations.length > 0) {
+    const top = destinations.slice(0, 100);
+    const links = top.map(d =>
+      `<a href="/airport/${esc(String(d).toLowerCase())}">${esc(d)}</a>`
+    ).join(', ');
+    destBlock = `<section><h2>Destinations served (${esc(top.length)})</h2><p>${links}</p></section>`;
+  } else {
+    destBlock = `<p>Network data is being collected.</p>`;
+  }
+
+  const jsonLd = `<script type="application/ld+json">${JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Airline',
+    name: `${iata} Airline`,
+    iataCode: iata,
+  })}</script>`;
+
+  return [heading, destBlock, jsonLd].filter(Boolean).join('\n');
+}
+
 const STATIC_BUILDERS = {
   pricing:       bPricing,
   about:         bAbout,
@@ -454,8 +512,36 @@ function build(meta, db) {
   return applyChrome(meta, innerHtml, dbInstance);
 }
 
+/**
+ * Async builder entry point. Use this for any kind that needs awaited data
+ * (currently: airport, airline). Other kinds delegate to the sync `build()`
+ * unchanged. Both paths end up wrapped by applyChrome.
+ *
+ * @param {object} meta - resolved meta object
+ * @param {object} [db] - optional db override
+ * @returns {Promise<string|null>}
+ */
+async function buildAsync(meta, db) {
+  if (!meta || !meta.kind) return null;
+  const dbInstance = db || require('../models/db');
+
+  // Amadeus-backed kinds: builder returns inner HTML, applyChromeAsync wraps
+  // with chrome + Amadeus-backed extras (direct dest / network dest sidebars).
+  if (meta.kind === 'airport' || meta.kind === 'airline') {
+    const { applyChromeAsync } = require('./seoChrome');
+    const innerHtml = meta.kind === 'airport'
+      ? await bAirport(meta, dbInstance)
+      : await bAirline(meta, dbInstance);
+    return applyChromeAsync(meta, innerHtml, dbInstance);
+  }
+  // All other kinds (route included — Amadeus route enrichment was deprecated
+  // by Amadeus): sync builder already calls applyChrome inside build().
+  return build(meta, dbInstance);
+}
+
 module.exports = {
   build,
+  buildAsync,
   _renderFr24Stats,
   _renderYearlyBreakdown,
 };

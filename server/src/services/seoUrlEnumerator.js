@@ -72,6 +72,27 @@ function enumerateSeoUrls(opts = {}) {
     console.warn('[seoUrlEnumerator] aircraft-route combos unavailable:', err.message);
   }
 
+  // /airport/{iata} for top airports by observed activity. Source for the
+  // amadeus_cache pre-warm (airport_direct_dest endpoint).
+  try {
+    const airports = db.getTopAirportsByObservedActivity?.({ limit: 200 }) ?? [];
+    for (const a of airports) {
+      if (a?.iata) set.add(`/airport/${String(a.iata).toLowerCase()}`);
+    }
+  } catch (err) {
+    console.warn('[seoUrlEnumerator] top airports unavailable:', err.message);
+  }
+
+  // /airline/{iata} for top airlines by observed flight count.
+  try {
+    const airlines = db.getTopAirlinesByObservedActivity?.({ limit: 100 }) ?? [];
+    for (const al of airlines) {
+      if (al?.iata) set.add(`/airline/${String(al.iata).toLowerCase()}`);
+    }
+  } catch (err) {
+    console.warn('[seoUrlEnumerator] top airlines unavailable:', err.message);
+  }
+
   return [...set];
 }
 

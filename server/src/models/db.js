@@ -298,6 +298,23 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_push_user ON push_tokens(user_id);
+
+  CREATE TABLE IF NOT EXISTS amadeus_cache (
+    endpoint     TEXT    NOT NULL,
+    key          TEXT    NOT NULL,
+    payload_json TEXT    NOT NULL,
+    fetched_at   INTEGER NOT NULL,
+    expires_at   INTEGER NOT NULL,
+    PRIMARY KEY (endpoint, key)
+  );
+  CREATE INDEX IF NOT EXISTS idx_amadeus_cache_expires
+    ON amadeus_cache(expires_at);
+
+  CREATE TABLE IF NOT EXISTS amadeus_budget (
+    day_utc   TEXT    NOT NULL PRIMARY KEY,
+    calls     INTEGER NOT NULL DEFAULT 0,
+    errors    INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
 // Prepared statements
@@ -415,6 +432,26 @@ const stmts = {
   `),
   seoRouteCount: db.prepare(`
     SELECT COUNT(DISTINCT dep_iata || '-' || arr_iata) AS n FROM observed_routes
+  `),
+
+  topAirportsByActivity: db.prepare(`
+    SELECT iata, SUM(n) AS activity FROM (
+      SELECT dep_iata AS iata, COUNT(*) AS n FROM observed_routes GROUP BY dep_iata
+      UNION ALL
+      SELECT arr_iata AS iata, COUNT(*) AS n FROM observed_routes GROUP BY arr_iata
+    )
+    WHERE iata IS NOT NULL AND iata != ''
+    GROUP BY iata
+    ORDER BY activity DESC
+    LIMIT ?
+  `),
+  topAirlinesByActivity: db.prepare(`
+    SELECT airline_iata AS iata, COUNT(*) AS count
+    FROM observed_routes
+    WHERE airline_iata IS NOT NULL AND airline_iata != ''
+    GROUP BY airline_iata
+    ORDER BY count DESC
+    LIMIT ?
   `),
 };
 
@@ -750,4 +787,7 @@ module.exports = {
       ORDER BY seen_at DESC
     `).all(String(orig).toUpperCase(), String(dest).toUpperCase(), ...codes);
   },
+
+  getTopAirportsByObservedActivity: ({ limit = 200 } = {}) => stmts.topAirportsByActivity.all(limit),
+  getTopAirlinesByObservedActivity: ({ limit = 100 } = {}) => stmts.topAirlinesByActivity.all(limit),
 };

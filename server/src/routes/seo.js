@@ -72,6 +72,8 @@ router.get('/sitemap.xml', async (_req, res) => {
     if (p.startsWith('/aircraft/'))
                                  return { loc, changefreq: 'monthly', priority: '0.6', lastmod: deployDay };
     if (p.startsWith('/routes/')) return { loc, changefreq: 'weekly',  priority: '0.6', lastmod: today };
+    if (p.startsWith('/airport/')) return { loc, changefreq: 'monthly', priority: '0.6', lastmod: today };
+    if (p.startsWith('/airline/')) return { loc, changefreq: 'monthly', priority: '0.6', lastmod: today };
     return { loc, changefreq: 'weekly', priority: '0.5', lastmod: today };
   });
 
