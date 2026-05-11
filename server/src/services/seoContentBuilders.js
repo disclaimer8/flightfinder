@@ -459,6 +459,22 @@ async function bAirport(meta, _db) {
   return [heading, destBlock, traveledBlock, jsonLd].filter(Boolean).join('\n');
 }
 
+async function bRouteAsync(meta, db) {
+  const baseHtml = bRoute(meta, db); // sync builder — returns inner HTML, no chrome yet
+  if (!meta.fromIata || !meta.toIata) return baseHtml;
+
+  const amadeus = require('./amadeusAnalyticsService');
+  const mostTraveled = await amadeus.getMostTraveled(meta.fromIata, '2025').catch(() => null);
+
+  let mostBlock = '';
+  if (mostTraveled && mostTraveled.length > 0) {
+    const rows = mostTraveled.slice(0, 5).map(r => `<li>${esc(r.destination)}</li>`).join('');
+    mostBlock = `<section><h2>Top destinations travelled from ${esc(meta.fromIata)} (2025)</h2><ol>${rows}</ol></section>`;
+  }
+
+  return [baseHtml, mostBlock].filter(Boolean).join('\n');
+}
+
 async function bAirline(meta, _db) {
   const iata = meta.iata;
   if (!iata) return null;
@@ -540,6 +556,10 @@ async function buildAsync(meta, db) {
   }
   if (meta.kind === 'airline') {
     const innerHtml = await bAirline(meta, dbInstance);
+    return applyChrome(meta, innerHtml, dbInstance);
+  }
+  if (meta.kind === 'route') {
+    const innerHtml = await bRouteAsync(meta, dbInstance);
     return applyChrome(meta, innerHtml, dbInstance);
   }
   // All other kinds: sync builder already calls applyChrome inside build().
