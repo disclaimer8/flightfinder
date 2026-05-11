@@ -550,17 +550,15 @@ async function buildAsync(meta, db) {
   if (!meta || !meta.kind) return null;
   const dbInstance = db || require('../models/db');
 
-  if (meta.kind === 'airport') {
-    const innerHtml = await bAirport(meta, dbInstance);
-    return applyChrome(meta, innerHtml, dbInstance);
-  }
-  if (meta.kind === 'airline') {
-    const innerHtml = await bAirline(meta, dbInstance);
-    return applyChrome(meta, innerHtml, dbInstance);
-  }
-  if (meta.kind === 'route') {
-    const innerHtml = await bRouteAsync(meta, dbInstance);
-    return applyChrome(meta, innerHtml, dbInstance);
+  // Amadeus-backed kinds: builder returns inner HTML, applyChromeAsync wraps
+  // with chrome + Amadeus-backed extras (direct dest / network dest / similar).
+  if (meta.kind === 'airport' || meta.kind === 'airline' || meta.kind === 'route') {
+    const { applyChromeAsync } = require('./seoChrome');
+    let innerHtml;
+    if (meta.kind === 'airport')      innerHtml = await bAirport(meta, dbInstance);
+    else if (meta.kind === 'airline') innerHtml = await bAirline(meta, dbInstance);
+    else                              innerHtml = await bRouteAsync(meta, dbInstance);
+    return applyChromeAsync(meta, innerHtml, dbInstance);
   }
   // All other kinds: sync builder already calls applyChrome inside build().
   return build(meta, dbInstance);

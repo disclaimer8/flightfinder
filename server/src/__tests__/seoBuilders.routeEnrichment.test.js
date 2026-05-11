@@ -16,7 +16,12 @@ const stubDb = {
   }),
 };
 
-beforeEach(() => { Object.values(amadeus).forEach(fn => fn?.mockReset?.()); });
+beforeEach(() => {
+  Object.values(amadeus).forEach(fn => fn?.mockReset?.());
+  // applyChromeAsync for route also calls getTravelRecommendations — give a
+  // default so tests that only mock getMostTraveled don't blow up.
+  amadeus.getTravelRecommendations.mockResolvedValue(null);
+});
 
 test('bRoute via buildAsync appends Most Traveled block when present', async () => {
   amadeus.getMostTraveled.mockResolvedValue([

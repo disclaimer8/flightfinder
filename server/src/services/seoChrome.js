@@ -327,8 +327,69 @@ function applyChrome(meta, innerHtml, db) {
   ].filter(Boolean).join('\n');
 }
 
+// ── Amadeus-backed extras (async) ─────────────────────────────────────────
+
+async function _crossRefsForAirport(meta) {
+  if (!meta?.iata) return '';
+  const amadeus = require('./amadeusAnalyticsService');
+  const dest = await amadeus.getAirportDirectDestinations(meta.iata).catch(() => null);
+  if (!dest || dest.length === 0) return '';
+  const links = dest.slice(0, 24).map(d =>
+    `<a href="/airport/${esc(String(d).toLowerCase())}">${esc(d)}</a>`
+  ).join(', ');
+  return `<aside class="cross-refs"><h3>Direct destinations</h3><p>${links}</p></aside>`;
+}
+
+async function _crossRefsForAirline(meta) {
+  if (!meta?.iata) return '';
+  const amadeus = require('./amadeusAnalyticsService');
+  const dest = await amadeus.getAirlineRoutes(meta.iata).catch(() => null);
+  if (!dest || dest.length === 0) return '';
+  const links = dest.slice(0, 24).map(d =>
+    `<a href="/airport/${esc(String(d).toLowerCase())}">${esc(d)}</a>`
+  ).join(', ');
+  return `<aside class="cross-refs"><h3>Network destinations</h3><p>${links}</p></aside>`;
+}
+
+async function _similarDestinationsForRoute(meta) {
+  const cityCode = meta.destCity || meta.toIata;
+  if (!cityCode) return '';
+  const amadeus = require('./amadeusAnalyticsService');
+  const recs = await amadeus.getTravelRecommendations([cityCode], meta.originCountry || 'US').catch(() => null);
+  if (!recs || recs.length === 0) return '';
+  const items = recs.slice(0, 8).map(r =>
+    r.iataCode
+      ? `<a href="/airport/${esc(String(r.iataCode).toLowerCase())}">${esc(r.name || r.iataCode)}</a>`
+      : esc(r.name || '')
+  ).join(', ');
+  return `<aside class="cross-refs"><h3>Similar destinations</h3><p>${items}</p></aside>`;
+}
+
+/**
+ * Async chrome wrapper. For airport/airline/route kinds, awaits Amadeus-backed
+ * extras (direct destinations, network destinations, similar destinations) and
+ * injects them into innerHtml BEFORE delegating to the sync applyChrome. This
+ * way the sync chrome's nav/breadcrumb/footer ordering is preserved and the
+ * extra block lands inside the main content region.
+ *
+ * For all other kinds it returns the sync applyChrome verbatim.
+ */
+async function applyChromeAsync(meta, innerHtml, db) {
+  if (!innerHtml) return null;
+  if (!meta) return innerHtml;
+
+  let extra = '';
+  if (meta.kind === 'airport')      extra = await _crossRefsForAirport(meta);
+  else if (meta.kind === 'airline') extra = await _crossRefsForAirline(meta);
+  else if (meta.kind === 'route')   extra = await _similarDestinationsForRoute(meta);
+
+  const wrappedInner = extra ? `${innerHtml}\n${extra}` : innerHtml;
+  return applyChrome(meta, wrappedInner, db);
+}
+
 module.exports = {
   applyChrome,
+  applyChromeAsync,
   _internal: {
     _renderSiteNav,
     _renderBreadcrumbs,
