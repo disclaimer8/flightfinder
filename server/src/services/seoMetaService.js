@@ -396,6 +396,36 @@ function notFoundMeta() {
   };
 }
 
+function airportMeta(iata) {
+  const upper = iata.toUpperCase();
+  return {
+    title: `${upper} airport — direct destinations, airlines, top routes | FlightFinder`,
+    description: `${upper} airport: which cities have direct flights, which airlines operate them, and which destinations travellers favour. Sourced from Amadeus booked/traveled aggregates and open ADS-B observations.`,
+    canonical: `${BASE}/airport/${iata}`,
+    h1: `${upper} airport — flights and destinations`,
+    subtitle: `Direct destinations, top airlines, and traffic patterns for ${upper}.`,
+    robots: 'index, follow',
+    ogType: 'website',
+    kind: 'airport',
+    iata: upper,
+  };
+}
+
+function airlineMeta(iata) {
+  const upper = iata.toUpperCase();
+  return {
+    title: `${upper} airline — routes, fleet, destinations | FlightFinder`,
+    description: `${upper} airline network: destinations served, observed aircraft families, and top operated routes. Cross-referenced with open ADS-B and Amadeus reference data.`,
+    canonical: `${BASE}/airline/${iata}`,
+    h1: `${upper} — destinations and fleet`,
+    subtitle: `Routes, aircraft, and top destinations operated by ${upper}.`,
+    robots: 'index, follow',
+    ogType: 'website',
+    kind: 'airline',
+    iata: upper,
+  };
+}
+
 /**
  * Resolve metadata for a given request path.
  * @param {string} pathname — URL pathname (no query)
@@ -433,6 +463,12 @@ function resolve(pathname) {
 
   const acMatch = /^\/aircraft\/([^/?#]+)\/?$/.exec(pathname);
   if (acMatch) return aircraftMeta(acMatch[1].toLowerCase());
+
+  const airportMatch = /^\/airport\/([a-z]{3})\/?$/i.exec(pathname);
+  if (airportMatch) return airportMeta(airportMatch[1].toLowerCase());
+
+  const airlineMatch = /^\/airline\/([a-z0-9]{2,3})\/?$/i.exec(pathname);
+  if (airlineMatch) return airlineMeta(airlineMatch[1].toLowerCase());
 
   const rtMatch = /^\/routes\/([^/?#]+)\/?$/.exec(pathname);
   if (rtMatch) return routeMeta(rtMatch[1].toLowerCase());
