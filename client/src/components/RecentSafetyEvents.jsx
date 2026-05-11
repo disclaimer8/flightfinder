@@ -3,23 +3,18 @@ import { Link } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
 import './RecentSafetyEvents.css';
 
-const SEVERITY_LABEL = {
-  fatal:            'Fatal accident',
-  hull_loss:        'Hull loss',
-  serious_incident: 'Serious incident',
-  incident:         'Incident',
-  minor:            'Minor',
-};
-
-const SEVERITY_CLASS = {
-  fatal:            'sev-fatal',
-  hull_loss:        'sev-hull',
-  serious_incident: 'sev-hull',
-  incident:         'sev-incident',
-  minor:            'sev-incident',
-};
-
 function dash(v) { return v == null || v === '' ? '—' : v; }
+
+// The /api/safety/global/accidents endpoint is served by the Go sidecar
+// (bin/aircrash-sidecar). Its row shape is {id, date, aircraft_model,
+// operator, fatalities, location, source_url, lat, lon} — no severity,
+// no tail, no dep/arr ICAO. The columns below mirror that contract.
+function fatalitiesCell(raw) {
+  if (raw == null) return '—';
+  const s = String(raw).trim();
+  if (s === '' || s === '0' || /^unknown$/i.test(s)) return '—';
+  return s;
+}
 
 export default function RecentSafetyEvents() {
   const [rows, setRows] = useState(null);
@@ -70,18 +65,12 @@ export default function RecentSafetyEvents() {
       <table className="rse-table">
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i}>
+            <tr key={r.id ?? i}>
               <td className="rse-date">{dash(r.date)}</td>
-              <td className={`rse-sev ${SEVERITY_CLASS[r.severity] ?? 'sev-incident'}`}>
-                {SEVERITY_LABEL[r.severity] ?? dash(r.severity)}
-              </td>
+              <td className="rse-operator">{dash(r.operator)}</td>
               <td className="rse-aircraft">{dash(r.aircraft_model)}</td>
-              <td className="rse-tail">{dash(r.tail)}</td>
-              <td className="rse-route">
-                <span>{dash(r.from)}</span>
-                <span className="rse-arrow"> → </span>
-                <span>{dash(r.to)}</span>
-              </td>
+              <td className="rse-location">{dash(r.location)}</td>
+              <td className="rse-fatalities">{fatalitiesCell(r.fatalities)}</td>
             </tr>
           ))}
         </tbody>

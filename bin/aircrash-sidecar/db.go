@@ -56,12 +56,22 @@ func InitDB(filepath string) (*sql.DB, error) {
 
 // GetAccidents returns paginated accident rows, ordered most-recent first.
 // limit and offset are clamped at the handler layer — db.go trusts callers.
+//
+// The CASE in ORDER BY pushes records whose normalized_date is not an
+// ISO YYYY-MM-DD string to the bottom of pagination. Without it the few
+// dozen rows that arrived from the scraper as "xx Oct 2024" (day-of-month
+// unknown) — and whose normalized_date echoes the original string — float
+// to position #1 in a string-DESC sort ('x' > '2' in ASCII), turning the
+// homepage feed into a wall of unparseable dates.
 func GetAccidents(db *sql.DB, limit, offset int) ([]Accident, error) {
 	const query = `
 		SELECT id, date, aircraft_model, operator, fatalities, location, source_url,
 		       COALESCE(lat, 0), COALESCE(lon, 0)
 		FROM accidents
-		ORDER BY normalized_date DESC, id DESC
+		ORDER BY
+		  CASE WHEN normalized_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' THEN 0 ELSE 1 END,
+		  normalized_date DESC,
+		  id DESC
 		LIMIT ? OFFSET ?`
 	rows, err := db.Query(query, limit, offset)
 	if err != nil {
