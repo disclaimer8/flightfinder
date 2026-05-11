@@ -56,8 +56,10 @@ describe('enumerateSeoUrls', () => {
     warnSpy.mockRestore();
     expect(paths).toContain('/');
     expect(paths).toContain('/by-aircraft');
-    // No /routes/ entries because the query failed.
-    expect(paths.some((p) => p.startsWith('/routes/'))).toBe(false);
+    // No hub-network /routes/{pair} entries because the query failed.
+    // (Aircraft-route /routes/{pair}/{slug} URLs come from a separate
+    // listQualifying call that uses the real default DB.)
+    expect(paths.some((p) => /^\/routes\/[a-z]{3}-[a-z]{3}$/.test(p))).toBe(false);
   });
 
   it('includes /aircraft/{family}/variants/{variant} for every catalog entry', () => {

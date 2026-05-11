@@ -59,6 +59,19 @@ function enumerateSeoUrls(opts = {}) {
     console.warn('[seoUrlEnumerator] hub-network edges unavailable:', err.message);
   }
 
+  // Aircraft × Route programmatic grid — same listQualifying call used by
+  // sitemap (routes/seo.js). Cache.warm must include these or spaFallback
+  // returns an unbaked React shell → Google flags Soft 404. Cap at 10K
+  // to match sitemap. ~10K extra warm operations per cycle — small SQL.
+  try {
+    const combos = require('./aircraftRouteService').listQualifying({ limit: 10000 });
+    for (const c of combos) {
+      set.add(`/routes/${c.from_iata.toLowerCase()}-${c.to_iata.toLowerCase()}/${c.slug}`);
+    }
+  } catch (err) {
+    console.warn('[seoUrlEnumerator] aircraft-route combos unavailable:', err.message);
+  }
+
   return [...set];
 }
 
