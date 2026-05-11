@@ -315,6 +315,18 @@ db.exec(`
     calls     INTEGER NOT NULL DEFAULT 0,
     errors    INTEGER NOT NULL DEFAULT 0
   );
+
+  -- FR24 derived stats cache. Was RAM-only — moved to SQLite so it survives
+  -- pm2 reload, which lets buildAsync include FR24 blocks on the first warm
+  -- after any deploy (no waiting for the 6h refresh tick).
+  -- cache_key formats: variant:ICAO | family:slug | route:FROM-TO (alphabetically sorted)
+  CREATE TABLE IF NOT EXISTS fr24_cache (
+    cache_key    TEXT    NOT NULL PRIMARY KEY,
+    payload_json TEXT    NOT NULL,
+    fetched_at   INTEGER NOT NULL,
+    expires_at   INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_fr24_cache_expires ON fr24_cache(expires_at);
 `);
 
 // Prepared statements

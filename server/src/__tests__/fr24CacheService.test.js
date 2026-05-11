@@ -21,12 +21,18 @@ jest.mock('../models/aircraftFamilies', () => ({
     ? { slug, name: 'Boeing 787', icaoList: ['B788', 'B789', 'B78X'] }
     : null,
 }));
-jest.mock('../models/db', () => ({
-  getTopRoutesByObservedFrequency: () => [
-    { from: 'JFK', to: 'LHR', count: 100 },
-    { from: 'LAX', to: 'NRT', count: 80 },
-  ],
-}));
+jest.mock('../models/db', () => {
+  // fr24CacheService now reads/writes SQLite directly — keep the real db
+  // (in-memory test instance) and only override the top-routes selector.
+  const real = jest.requireActual('../models/db');
+  return {
+    ...real,
+    getTopRoutesByObservedFrequency: () => [
+      { from: 'JFK', to: 'LHR', count: 100 },
+      { from: 'LAX', to: 'NRT', count: 80 },
+    ],
+  };
+});
 
 const fr24Service = require('../services/fr24Service');
 const cache = require('../services/fr24CacheService');
@@ -126,8 +132,22 @@ describe('fr24CacheService.refresh', () => {
   it('refresh is no-op when fr24Service is disabled', async () => {
     fr24Service.isEnabled.mockReturnValue(false);
     const result = await cache.refresh();
-    expect(result).toEqual({ refreshed: 0, skipped: 0, failed: 0 });
+    expect(result).toMatchObject({ refreshed: 0, skipped: 0, failed: 0 });
+    expect(result.reason).toBe('disabled');
     expect(fr24Service.fetchVariantStats).not.toHaveBeenCalled();
+  });
+
+  it('refresh is no-op on follower workers (NODE_APP_INSTANCE=1)', async () => {
+    const prev = process.env.NODE_APP_INSTANCE;
+    process.env.NODE_APP_INSTANCE = '1';
+    try {
+      const result = await cache.refresh();
+      expect(result.reason).toBe('follower');
+      expect(fr24Service.fetchVariantStats).not.toHaveBeenCalled();
+    } finally {
+      if (prev === undefined) delete process.env.NODE_APP_INSTANCE;
+      else process.env.NODE_APP_INSTANCE = prev;
+    }
   });
 
   it('invokes variant + family + route fetchers with bare args (no withYearly — endpoint dropped)', async () => {
@@ -145,11 +165,16 @@ describe('fr24CacheService.refresh', () => {
 
 describe('fr24CacheService route key canonicalization', () => {
   it('refresh canonicalizes route keys (alphabetical sort) so both directions hit one entry', async () => {
-    // Mock db to return reverse-direction route (LHR-JFK)
+    // Mock db to return reverse-direction route (LHR-JFK) but keep the real
+    // SQLite db so fr24CacheService can still prepare its statements.
     jest.resetModules();
-    jest.doMock('../models/db', () => ({
-      getTopRoutesByObservedFrequency: () => [{ from: 'LHR', to: 'JFK', count: 100 }],
-    }));
+    jest.doMock('../models/db', () => {
+      const real = jest.requireActual('../models/db');
+      return {
+        ...real,
+        getTopRoutesByObservedFrequency: () => [{ from: 'LHR', to: 'JFK', count: 100 }],
+      };
+    });
     jest.doMock('../models/aircraftVariants', () => ({ getAllVariants: () => [] }));
     jest.doMock('../models/aircraftFamilies', () => ({ getFamilyList: () => [] }));
     jest.doMock('../services/fr24Service', () => ({
