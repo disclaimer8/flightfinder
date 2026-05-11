@@ -122,9 +122,54 @@ async function getTravelRecommendations(cityCodes, travelerCountryCode) {
     (r) => r.data || []);
 }
 
-async function refreshStale(_opts = {}) {
-  // Implemented in Phase C. Stubbed here so warm() hook is safe to add early.
-  return { refreshed: 0, skipped: 0, failed: 0 };
+/**
+ * Leader-only walk over the SEO enumeration sources (top airports, top airlines)
+ * to refresh stale or missing rows in amadeus_cache. Budget-capped via
+ * AMADEUS_DAILY_BUDGET_CALLS — exits early once today's calls cross the cap.
+ * Follower workers (NODE_APP_INSTANCE !== '0') return a zero-result no-op.
+ *
+ * @param {object} [opts]
+ * @param {number} [opts.airportLimit=200]
+ * @param {number} [opts.airlineLimit=100]
+ * @returns {Promise<{refreshed:number, skipped:number, failed:number, reason?:string}>}
+ */
+async function refreshStale({ airportLimit = 200, airlineLimit = 100 } = {}) {
+  if (!isLeader())  return { refreshed: 0, skipped: 0, failed: 0, reason: 'follower' };
+  if (!isEnabled()) return { refreshed: 0, skipped: 0, failed: 0, reason: 'disabled' };
+
+  const db = require('../models/db');
+  const airports = (db.getTopAirportsByObservedActivity?.({ limit: airportLimit }) ?? [])
+    .map(a => a.iata).filter(Boolean);
+  const airlines = (db.getTopAirlinesByObservedActivity?.({ limit: airlineLimit }) ?? [])
+    .map(a => a.iata).filter(Boolean);
+
+  let refreshed = 0, skipped = 0, failed = 0;
+
+  async function call(fn) {
+    if (budgetExceeded()) return;
+    const before = cache.todayBudget().calls;
+    const result = await fn();
+    const after = cache.todayBudget().calls;
+    if (after > before)         refreshed++;
+    else if (result == null)    failed++;
+    else                        skipped++;
+  }
+
+  for (const iata of airports) {
+    if (budgetExceeded()) break;
+    await call(() => getAirportDirectDestinations(iata));
+  }
+  for (const iata of airports) {
+    if (budgetExceeded()) break;
+    await call(() => getMostTraveled(iata, '2025'));
+  }
+  for (const iata of airlines) {
+    if (budgetExceeded()) break;
+    await call(() => getAirlineRoutes(iata));
+  }
+
+  console.log(`[amadeus-analytics] refreshStale: refreshed=${refreshed} skipped=${skipped} failed=${failed} budget=${cache.todayBudget().calls}`);
+  return { refreshed, skipped, failed };
 }
 
 module.exports = {

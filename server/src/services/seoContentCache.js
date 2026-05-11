@@ -49,6 +49,19 @@ async function warm(opts = {}) {
     });
   }
 
+  // Fire-and-forget Amadeus analytics refresh — leader-only, daily-budget-capped.
+  // Same pattern as FR24: this warm bakes whatever is already cached; the next
+  // warm picks up newly fetched rows.
+  if (!process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0') {
+    try {
+      require('./amadeusAnalyticsService').refreshStale().catch((err) => {
+        console.warn(`[amadeus-analytics] background refresh error: ${err.message || err}`);
+      });
+    } catch (err) {
+      console.warn(`[amadeus-analytics] failed to schedule refresh: ${err.message || err}`);
+    }
+  }
+
   // Track every path we attempted this pass — used by refresh() to distinguish
   // "URL no longer enumerated" (prune) from "builder failed but URL still
   // exists" (preserve prior value).
