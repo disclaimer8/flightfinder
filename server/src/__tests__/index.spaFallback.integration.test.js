@@ -70,7 +70,7 @@ const _savedNodeEnv = process.env.NODE_ENV;
 describe('SPA fallback bakes content for known SEO URLs', () => {
   let app;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Create client/dist/index.html fixture if it doesn't already exist.
     // (In a real CI with a built client it would already be present.)
     if (!fs.existsSync(distDir)) {
@@ -103,7 +103,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
 
     // index.js no longer warms inline; warm explicitly for the test.
     const cache = require('../services/seoContentCache');
-    cache.warm({ schedule: false });
+    await cache.warm({ schedule: false });
   });
 
   afterAll(() => {
@@ -136,7 +136,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
   it('GET /aircraft/boeing-787/variants/787-9 includes baked variant content + color band', async () => {
     // Pre-warm the cache after seeding inside beforeAll already ran.
     const cache = require('../services/seoContentCache');
-    cache.warm({ schedule: false });
+    await cache.warm({ schedule: false });
 
     const res = await request(app).get('/aircraft/boeing-787/variants/787-9');
     expect(res.status).toBe(200);
@@ -169,7 +169,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
       yearlyBreakdown: [{ year: 2025, count: 47200 }, { year: 2024, count: 38400 }],
       fetchedAt: Date.now(),
     });
-    require('../services/seoContentCache').warm({ schedule: false });
+    await require('../services/seoContentCache').warm({ schedule: false });
 
     const res = await request(app).get('/aircraft/boeing-787');
     expect(res.status).toBe(200);
@@ -188,7 +188,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
       yearlyBreakdown: [{ year: 2025, count: 12000 }, { year: 2024, count: 10000 }],
       fetchedAt: Date.now(),
     });
-    require('../services/seoContentCache').warm({ schedule: false });
+    await require('../services/seoContentCache').warm({ schedule: false });
 
     const res = await request(app).get('/aircraft/boeing-787/variants/787-9');
     expect(res.status).toBe(200);
@@ -215,7 +215,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
       yearlyBreakdown: null,
       fetchedAt: Date.now(),
     });
-    require('../services/seoContentCache').warm({ schedule: false });
+    await require('../services/seoContentCache').warm({ schedule: false });
 
     const res = await request(app).get('/routes/jfk-lhr');
     expect(res.status).toBe(200);
@@ -227,7 +227,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
   it('GET /aircraft/boeing-787 omits FR24 section when cache empty', async () => {
     const fr24Cache = require('../services/fr24CacheService');
     fr24Cache.clear();
-    require('../services/seoContentCache').warm({ schedule: false });
+    await require('../services/seoContentCache').warm({ schedule: false });
 
     const res = await request(app).get('/aircraft/boeing-787');
     expect(res.status).toBe(200);
@@ -235,7 +235,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
   });
 
   it('GET / includes family grid + popular routes + safety section + chrome', async () => {
-    require('../services/seoContentCache').warm({ schedule: false });
+    await require('../services/seoContentCache').warm({ schedule: false });
     const res = await request(app).get('/');
     expect(res.status).toBe(200);
     expect(res.text).toMatch(/<nav class="seo-nav"/);
@@ -246,7 +246,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
   });
 
   it('GET /aircraft/boeing-787 includes breadcrumbs + cross-refs + chrome', async () => {
-    require('../services/seoContentCache').warm({ schedule: false });
+    await require('../services/seoContentCache').warm({ schedule: false });
     const res = await request(app).get('/aircraft/boeing-787');
     expect(res.status).toBe(200);
     expect(res.text).toMatch(/<nav class="breadcrumbs"/);
@@ -259,7 +259,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
   });
 
   it('GET /aircraft/boeing-787/variants/787-9 includes variant breadcrumbs + sibling cross-refs', async () => {
-    require('../services/seoContentCache').warm({ schedule: false });
+    await require('../services/seoContentCache').warm({ schedule: false });
     const res = await request(app).get('/aircraft/boeing-787/variants/787-9');
     expect(res.status).toBe(200);
     expect(res.text).toMatch(/<nav class="breadcrumbs"/);
@@ -270,7 +270,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
   });
 
   it('GET /aircraft/boeing-787/safety includes "More about" cross-ref excluding self', async () => {
-    require('../services/seoContentCache').warm({ schedule: false });
+    await require('../services/seoContentCache').warm({ schedule: false });
     const res = await request(app).get('/aircraft/boeing-787/safety');
     expect(res.status).toBe(200);
     expect(res.text).toMatch(/More about Boeing 787/);
