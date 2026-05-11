@@ -94,39 +94,36 @@ function _formatNumber(n) {
   return Number(n).toLocaleString('en-US');
 }
 
-function _renderYearlyBreakdown(yearlyBreakdown) {
-  if (!Array.isArray(yearlyBreakdown) || yearlyBreakdown.length === 0) return '';
-  const items = yearlyBreakdown
-    .map((y) => `<li>${esc(y.year)}: ${esc(_formatNumber(y.count))} flights</li>`)
-    .join('');
-  return `<h4>5-year trend</h4><ul class="yearly-breakdown">${items}</ul>`;
-}
-
 function _renderFr24Stats(stats, opts = {}) {
   if (!stats || !stats.totalFlights) return '';
   const date = new Date(stats.fetchedAt).toISOString().slice(0, 10);
   const isRoute = opts.context === 'route';
+  const windowDays = stats.windowDays || 14;
 
+  // Explorer-tier reality: each FR24 query returns at most 20 recent flights
+  // matching the filter (within the last 14 days). The block presents this
+  // sample honestly rather than claiming worldwide-over-12-months stats we
+  // don't have. If/when the tier is upgraded (Essential: 20000 records, 2yr
+  // history), update this copy.
   const heading = isRoute
-    ? '<h3>Worldwide activity on this route (last 12 months)</h3>'
-    : '<h3>Worldwide activity (last 12 months)</h3>';
+    ? `<h3>Recent flights on this route (Flightradar24 sample)</h3>`
+    : `<h3>Recent flights (Flightradar24 sample)</h3>`;
 
   const totalLine = isRoute
-    ? `<p>Flown <strong>${esc(_formatNumber(stats.totalFlights))}</strong> times by ${esc(stats.uniqueOperators)} airlines in the past year.</p>`
-    : `<p>Operated <strong>${esc(_formatNumber(stats.totalFlights))}</strong> times globally by ${esc(stats.uniqueOperators)} airlines.</p>`;
+    ? `<p>Sampled <strong>${esc(stats.totalFlights)}</strong> recent flight${stats.totalFlights === 1 ? '' : 's'} by ${esc(stats.uniqueOperators)} airline${stats.uniqueOperators === 1 ? '' : 's'} in the last ${esc(windowDays)} days.</p>`
+    : `<p>Sampled <strong>${esc(stats.totalFlights)}</strong> recent flight${stats.totalFlights === 1 ? '' : 's'} flown by ${esc(stats.uniqueOperators)} airline${stats.uniqueOperators === 1 ? '' : 's'} in the last ${esc(windowDays)} days.</p>`;
 
   const operatorsLine = (stats.topOperators && stats.topOperators.length > 0)
-    ? `<p>Top operators: ${stats.topOperators.map((o) => `${esc(o.icao)} (${esc(_formatNumber(o.count))})`).join(', ')}</p>`
+    ? `<p>Operators in this sample: ${stats.topOperators.map((o) => `${esc(o.icao)} (${esc(o.count)})`).join(', ')}</p>`
     : '';
 
   const routesLine = (!isRoute && stats.topRoutes && stats.topRoutes.length > 0)
-    ? `<p>Top routes: ${stats.topRoutes.map((r) => `${esc(r.from)}–${esc(r.to)} (${esc(_formatNumber(r.count))})`).join(', ')}</p>`
+    ? `<p>Routes in this sample: ${stats.topRoutes.map((r) => `${esc(r.from)}–${esc(r.to)} (${esc(r.count)})`).join(', ')}</p>`
     : '';
 
-  const yearly = _renderYearlyBreakdown(stats.yearlyBreakdown);
-  const sourceLine = `<p class="data-source">Data via Flightradar24, as of ${esc(date)}.</p>`;
+  const sourceLine = `<p class="data-source">Sample data via Flightradar24, as of ${esc(date)}.</p>`;
 
-  return [heading, totalLine, operatorsLine, routesLine, yearly, sourceLine]
+  return [heading, totalLine, operatorsLine, routesLine, sourceLine]
     .filter(Boolean).join('\n');
 }
 
@@ -543,5 +540,4 @@ module.exports = {
   build,
   buildAsync,
   _renderFr24Stats,
-  _renderYearlyBreakdown,
 };

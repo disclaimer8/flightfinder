@@ -74,7 +74,7 @@ describe('fr24Service.fetchVariantStats', () => {
       totalFlights: 5,
       truncated: false,
       uniqueOperators: 3,
-      windowDays: 30,
+      windowDays: 14,
       yearlyBreakdown: null,
     });
     expect(stats.topOperators[0]).toEqual({ icao: 'ANA', count: 3 });
@@ -107,7 +107,7 @@ describe('fr24Service.fetchVariantStats', () => {
     expect(stats.topOperators).toHaveLength(5);
   });
 
-  it('passes aircraft=ICAO, 30-day window, and limit=20000 in URL params', async () => {
+  it('passes aircraft=ICAO, 14-day window, and limit=20 (Explorer tier caps) in URL params', async () => {
     mockGet.mockResolvedValueOnce({ data: { data: [] } });
     const fr24 = require('../services/fr24Service');
     await fr24.fetchVariantStats('B789');
@@ -116,15 +116,16 @@ describe('fr24Service.fetchVariantStats', () => {
     const call = mockGet.mock.calls[0];
     expect(call[0]).toBe('/flight-summary/light');
     expect(call[1].params.aircraft).toBe('B789');
-    expect(call[1].params.limit).toBe(20000);
+    expect(call[1].params.limit).toBe(20);
     expect(call[1].params.flight_datetime_from).toMatch(/^\d{4}-\d{2}-\d{2}/);
     expect(call[1].params.flight_datetime_to).toMatch(/^\d{4}-\d{2}-\d{2}/);
-    // Verify the window is roughly 30 days
+    // Verify the window is roughly 14 days (with a 60s buffer on from to dodge the
+    // "exactly at plan boundary = earlier than allowed" 400 error).
     const from = new Date(call[1].params.flight_datetime_from.replace(' ', 'T') + 'Z');
     const to = new Date(call[1].params.flight_datetime_to.replace(' ', 'T') + 'Z');
     const days = (to - from) / (24 * 3600 * 1000);
-    expect(days).toBeGreaterThan(29);
-    expect(days).toBeLessThanOrEqual(30);
+    expect(days).toBeGreaterThan(13.9);
+    expect(days).toBeLessThanOrEqual(14);
   });
 
   it('returns derived with zeros when API returns empty data array', async () => {
@@ -139,13 +140,13 @@ describe('fr24Service.fetchVariantStats', () => {
     });
   });
 
-  it('sets truncated:true when rows hit the 20000 cap', async () => {
-    const rows = Array.from({ length: 20000 }, () => ({ operating_as: 'X', orig_icao: 'AA', dest_icao: 'BB' }));
+  it('sets truncated:true when rows hit the 20-row Explorer-tier cap', async () => {
+    const rows = Array.from({ length: 20 }, () => ({ operating_as: 'X', orig_icao: 'AA', dest_icao: 'BB' }));
     mockGet.mockResolvedValueOnce({ data: { data: rows } });
     const fr24 = require('../services/fr24Service');
     const stats = await fr24.fetchVariantStats('B789');
     expect(stats.truncated).toBe(true);
-    expect(stats.totalFlights).toBe(20000);
+    expect(stats.totalFlights).toBe(20);
   });
 });
 
@@ -201,7 +202,7 @@ describe('fr24Service.fetchFamilyStats', () => {
     const stats = await fr24.fetchFamilyStats(['B737', 'B738']);
     expect(stats.totalFlights).toBe(1);
     expect(stats.uniqueOperators).toBe(1);
-    expect(stats.windowDays).toBe(30);
+    expect(stats.windowDays).toBe(14);
     expect(stats.yearlyBreakdown).toBeNull();
   });
 });

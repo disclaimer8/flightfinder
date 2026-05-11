@@ -128,23 +128,36 @@ function _deriveFromLight(rows) {
   };
 }
 
-// Explorer tier ($9/mo) provides 30 days of history. The /flight-summary/count
-// endpoint we used originally is not part of any documented tier — 403 on prod —
-// so we derive totalFlights from light rows.length. /light caps at 20000 rows
-// per query, which is more than enough at a 30-day window for any single
-// aircraft type or family in our enumeration.
-const MAX_WINDOW_DAYS = parseInt(process.env.FR24_MAX_WINDOW_DAYS || '30', 10);
+// Explorer tier ($9/mo) constraints (verified via FR24 docs + live probes 2026-05-11):
+//   - 30 days of history total
+//   - max 14-day window per query (>14d → 400 "date range cannot exceed 14 days")
+//   - 20 records per query (limit param above 20 is silently ignored)
+//   - 10 q/min rate limit
+//   - no /flight-summary/count, no /historic
+// So this is effectively a "sample mode": each fetch returns at most 20 recent
+// flights matching the filter. We treat that as a representative sample, not
+// global stats, and the renderer phrases the block accordingly.
+const MAX_WINDOW_DAYS = parseInt(process.env.FR24_MAX_WINDOW_DAYS || '14', 10);
+// Add a 60s buffer to flight_datetime_from to avoid the "exactly at plan boundary
+// = earlier than allowed" 400 error (the API compares against subscription start
+// time at second precision; round-trip latency pushes us just past it).
+const FROM_BUFFER_MS = 60_000;
 
 async function _fetchLight(filterParams, windowDays) {
   const days = Math.min(windowDays, MAX_WINDOW_DAYS);
-  const params = { ..._windowParams(days), ...filterParams, limit: 20000, sort: 'desc' };
+  const now = Date.now();
+  const params = {
+    flight_datetime_from: _formatDate(now - days * ONE_DAY_MS + FROM_BUFFER_MS),
+    flight_datetime_to:   _formatDate(now),
+    ...filterParams,
+    limit: 20,  // Explorer caps at 20 anyway — be honest about the request.
+    sort: 'desc',
+  };
   const lightRes = await _throttledGetWithRetry('/flight-summary/light', params);
   const lightRows = Array.isArray(lightRes.data?.data) ? lightRes.data.data : [];
-  // totalFlights is the rows we observed. If the 20000 cap is hit, this is a
-  // floor (we mark it with `truncated: true` so the renderer can hint "20000+").
   return {
     totalFlights: lightRows.length,
-    truncated: lightRows.length >= 20000,
+    truncated: lightRows.length >= 20,  // truncated = hit the tier cap, real total is larger
     lightRows,
     windowDays: days,
   };

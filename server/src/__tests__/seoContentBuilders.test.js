@@ -384,39 +384,44 @@ describe('seoContentBuilders — _renderFr24Stats', () => {
     expect(_renderFr24Stats({ totalFlights: 0, fetchedAt: Date.now() })).toBe('');
   });
 
-  it('renders aircraft-context HTML with thousands separator', () => {
+  it('renders aircraft-context HTML in sample mode (Explorer tier reality)', () => {
+    // Explorer tier returns at most 20 records per query — block phrases this
+    // as a sample, not as worldwide stats.
     const stats = {
-      totalFlights: 47200,
-      uniqueOperators: 84,
-      topOperators: [{ icao: 'ANA', count: 3200 }, { icao: 'UAL', count: 2800 }],
-      topRoutes: [{ from: 'RJTT', to: 'KLAX', count: 340 }],
+      totalFlights: 20,
+      uniqueOperators: 6,
+      topOperators: [{ icao: 'ANA', count: 5 }, { icao: 'UAL', count: 4 }],
+      topRoutes: [{ from: 'RJTT', to: 'KLAX', count: 2 }],
       yearlyBreakdown: null,
+      windowDays: 14,
       fetchedAt: Date.parse('2026-05-10T00:00:00Z'),
     };
     const html = _renderFr24Stats(stats, { context: 'aircraft' });
-    expect(html).toMatch(/Worldwide activity/);
-    expect(html).toMatch(/47,200/);
-    expect(html).toMatch(/by 84 airlines/);
-    expect(html).toMatch(/Top operators:/);
+    expect(html).toMatch(/Recent flights \(Flightradar24 sample\)/);
+    expect(html).toMatch(/Sampled <strong>20<\/strong>/);
+    expect(html).toMatch(/by 6 airlines/);
+    expect(html).toMatch(/last 14 days/);
+    expect(html).toMatch(/Operators in this sample:/);
     expect(html).toMatch(/ANA/);
-    expect(html).toMatch(/Top routes:/);
+    expect(html).toMatch(/Routes in this sample:/);
     expect(html).toMatch(/RJTT/);
-    expect(html).toMatch(/Data via Flightradar24, as of 2026-05-10/);
+    expect(html).toMatch(/Sample data via Flightradar24, as of 2026-05-10/);
   });
 
-  it('renders route-context HTML and skips topRoutes block', () => {
+  it('renders route-context HTML and skips routes block (the page IS the route)', () => {
     const stats = {
-      totalFlights: 847,
-      uniqueOperators: 12,
-      topOperators: [{ icao: 'BAW', count: 340 }],
+      totalFlights: 20,
+      uniqueOperators: 4,
+      topOperators: [{ icao: 'BAW', count: 8 }],
       yearlyBreakdown: null,
+      windowDays: 14,
       fetchedAt: Date.parse('2026-05-10T00:00:00Z'),
     };
     const html = _renderFr24Stats(stats, { context: 'route' });
-    expect(html).toMatch(/Worldwide activity on this route/);
-    expect(html).toMatch(/Flown.*847.*times/);
-    expect(html).toMatch(/by 12 airlines/);
-    expect(html).not.toMatch(/Top routes:/);
+    expect(html).toMatch(/Recent flights on this route/);
+    expect(html).toMatch(/Sampled <strong>20<\/strong>/);
+    expect(html).toMatch(/by 4 airlines/);
+    expect(html).not.toMatch(/Routes in this sample:/);
   });
 
   it('escapes operator/route ICAO codes', () => {
@@ -426,6 +431,7 @@ describe('seoContentBuilders — _renderFr24Stats', () => {
       topOperators: [{ icao: '<script>', count: 5 }],
       topRoutes: [{ from: '<x>', to: '<y>', count: 5 }],
       yearlyBreakdown: null,
+      windowDays: 14,
       fetchedAt: Date.now(),
     };
     const html = _renderFr24Stats(stats, { context: 'aircraft' });
@@ -434,34 +440,8 @@ describe('seoContentBuilders — _renderFr24Stats', () => {
   });
 });
 
-describe('seoContentBuilders — _renderYearlyBreakdown', () => {
-  const { _renderYearlyBreakdown } = require('../services/seoContentBuilders');
-
-  it('returns "" for null/empty', () => {
-    expect(_renderYearlyBreakdown(null)).toBe('');
-    expect(_renderYearlyBreakdown([])).toBe('');
-  });
-
-  it('renders <h4>5-year trend</h4> + <ul> with all entries', () => {
-    const html = _renderYearlyBreakdown([
-      { year: 2025, count: 47200 },
-      { year: 2024, count: 38400 },
-      { year: 2023, count: 31200 },
-    ]);
-    expect(html).toMatch(/<h4>5-year trend<\/h4>/);
-    expect(html).toMatch(/<li>2025: 47,200 flights<\/li>/);
-    expect(html).toMatch(/<li>2024: 38,400 flights<\/li>/);
-    expect(html).toMatch(/<li>2023: 31,200 flights<\/li>/);
-  });
-
-  it('handles zero-count years without crashing', () => {
-    const html = _renderYearlyBreakdown([{ year: 2021, count: 0 }]);
-    expect(html).toMatch(/<li>2021: 0 flights<\/li>/);
-  });
-});
-
 describe('seoContentBuilders — FR24 wiring in builders', () => {
-  it('bAircraft renders FR24 section when meta.fr24Stats is populated', () => {
+  it('bAircraft renders FR24 sample block when meta.fr24Stats is populated', () => {
     const meta = {
       kind: 'aircraft',
       slug: 'boeing-787',
@@ -471,22 +451,19 @@ describe('seoContentBuilders — FR24 wiring in builders', () => {
       topEvents: [],
       variants: [],
       fr24Stats: {
-        totalFlights: 47200,
-        uniqueOperators: 84,
-        topOperators: [{ icao: 'ANA', count: 3200 }],
-        topRoutes: [{ from: 'RJTT', to: 'KLAX', count: 340 }],
-        yearlyBreakdown: [
-          { year: 2025, count: 47200 },
-          { year: 2024, count: 38400 },
-        ],
+        totalFlights: 20,
+        uniqueOperators: 6,
+        topOperators: [{ icao: 'ANA', count: 5 }],
+        topRoutes: [{ from: 'RJTT', to: 'KLAX', count: 2 }],
+        yearlyBreakdown: null,
+        windowDays: 14,
         fetchedAt: Date.parse('2026-05-10T00:00:00Z'),
       },
     };
     const html = build(meta);
-    expect(html).toMatch(/Worldwide activity \(last 12 months\)/);
-    expect(html).toMatch(/47,200/);
-    expect(html).toMatch(/5-year trend/);
-    expect(html).toMatch(/Data via Flightradar24/);
+    expect(html).toMatch(/Recent flights \(Flightradar24 sample\)/);
+    expect(html).toMatch(/Sampled <strong>20<\/strong>/);
+    expect(html).toMatch(/Sample data via Flightradar24/);
   });
 
   it('bAircraft skips FR24 section when meta.fr24Stats is null', () => {
@@ -498,10 +475,10 @@ describe('seoContentBuilders — FR24 wiring in builders', () => {
       fr24Stats: null,
     };
     const html = build(meta);
-    expect(html).not.toMatch(/Worldwide activity/);
+    expect(html).not.toMatch(/Recent flights \(Flightradar24 sample\)/);
   });
 
-  it('bAircraftVariant renders FR24 section + 5-year trend', () => {
+  it('bAircraftVariant renders FR24 sample block', () => {
     const meta = {
       kind: 'aircraft-variant',
       variant: { familySlug: 'boeing-787', slug: '787-9', icao: 'B789', shortName: '787-9', fullName: 'Boeing 787-9 Dreamliner', firstFlight: '2013-09-17', capacity: '290 pax', range_km: 14140, engines: ['GE'], description: 'Stretched variant.' },
@@ -510,35 +487,35 @@ describe('seoContentBuilders — FR24 wiring in builders', () => {
       colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
       topEvents: [], allEvents: [],
       fr24Stats: {
-        totalFlights: 1000, uniqueOperators: 5, topOperators: [], topRoutes: [],
-        yearlyBreakdown: [{ year: 2025, count: 1000 }, { year: 2024, count: 800 }],
+        totalFlights: 15, uniqueOperators: 5, topOperators: [], topRoutes: [],
+        yearlyBreakdown: null, windowDays: 14,
         fetchedAt: Date.now(),
       },
     };
     const html = build(meta);
-    expect(html).toMatch(/Worldwide activity \(last 12 months\)/);
-    expect(html).toMatch(/5-year trend/);
+    expect(html).toMatch(/Recent flights \(Flightradar24 sample\)/);
+    expect(html).toMatch(/Sampled <strong>15<\/strong>/);
   });
 
-  it('bRoute renders route-context FR24 section with no Top routes block', () => {
+  it('bRoute renders route-context FR24 sample block without routes list', () => {
     const meta = {
       kind: 'route',
       pair: 'JFK-LHR',
       from: 'JFK', to: 'LHR',
       fr24Stats: {
-        totalFlights: 847, uniqueOperators: 12,
-        topOperators: [{ icao: 'BAW', count: 340 }],
-        yearlyBreakdown: null,
+        totalFlights: 12, uniqueOperators: 4,
+        topOperators: [{ icao: 'BAW', count: 6 }],
+        yearlyBreakdown: null, windowDays: 14,
         fetchedAt: Date.now(),
       },
     };
     const html = build(meta);
-    expect(html).toMatch(/Worldwide activity on this route/);
-    expect(html).toMatch(/Flown.*847/);
-    expect(html).not.toMatch(/Top routes:/);
+    expect(html).toMatch(/Recent flights on this route/);
+    expect(html).toMatch(/Sampled <strong>12<\/strong>/);
+    expect(html).not.toMatch(/Routes in this sample:/);
   });
 
-  it('bRoute renders both observed facts AND FR24 section using production field names', () => {
+  it('bRoute renders both observed facts AND FR24 sample using production field names', () => {
     const meta = {
       kind: 'route',
       pair: 'JFK-LHR',
@@ -547,17 +524,17 @@ describe('seoContentBuilders — FR24 wiring in builders', () => {
       fromName: 'New York',
       toName: 'London',
       fr24Stats: {
-        totalFlights: 847,
-        uniqueOperators: 12,
-        topOperators: [{ icao: 'BAW', count: 340 }],
-        yearlyBreakdown: null,
+        totalFlights: 12,
+        uniqueOperators: 4,
+        topOperators: [{ icao: 'BAW', count: 6 }],
+        yearlyBreakdown: null, windowDays: 14,
         fetchedAt: Date.now(),
       },
     };
     const html = build(meta);
-    expect(html).toMatch(/Worldwide activity on this route/);
-    expect(html).toMatch(/Flown.*847/);
-    expect(html).not.toMatch(/Top routes:/);
+    expect(html).toMatch(/Recent flights on this route/);
+    expect(html).toMatch(/Sampled <strong>12<\/strong>/);
+    expect(html).not.toMatch(/Routes in this sample:/);
   });
 
   it('bAircraft renders when only fr24Stats present (relaxed guard)', () => {
@@ -567,18 +544,18 @@ describe('seoContentBuilders — FR24 wiring in builders', () => {
       aircraftLabel: 'Boeing 787',
       icaoList: ['B789'],
       fr24Stats: {
-        totalFlights: 5000,
-        uniqueOperators: 30,
+        totalFlights: 18,
+        uniqueOperators: 7,
         topOperators: [],
         topRoutes: [],
-        yearlyBreakdown: null,
+        yearlyBreakdown: null, windowDays: 14,
         fetchedAt: Date.now(),
       },
     };
     const html = build(meta);
     expect(html).not.toBeNull();
-    expect(html).toMatch(/Worldwide activity \(last 12 months\)/);
-    expect(html).toMatch(/5,000/);
+    expect(html).toMatch(/Recent flights \(Flightradar24 sample\)/);
+    expect(html).toMatch(/Sampled <strong>18<\/strong>/);
   });
 });
 

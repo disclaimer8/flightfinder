@@ -162,38 +162,39 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
   it('GET /aircraft/boeing-787 includes FR24 worldwide activity when cache populated', async () => {
     const fr24Cache = require('../services/fr24CacheService');
     fr24Cache.set('family:boeing-787', {
-      totalFlights: 47200,
-      uniqueOperators: 84,
-      topOperators: [{ icao: 'ANA', count: 3200 }],
-      topRoutes: [{ from: 'RJTT', to: 'KLAX', count: 340 }],
-      yearlyBreakdown: [{ year: 2025, count: 47200 }, { year: 2024, count: 38400 }],
+      totalFlights: 20,
+      uniqueOperators: 6,
+      topOperators: [{ icao: 'ANA', count: 5 }],
+      topRoutes: [{ from: 'RJTT', to: 'KLAX', count: 2 }],
+      yearlyBreakdown: null,
+      windowDays: 14,
       fetchedAt: Date.now(),
     });
     await require('../services/seoContentCache').warm({ schedule: false });
 
     const res = await request(app).get('/aircraft/boeing-787');
     expect(res.status).toBe(200);
-    expect(res.text).toMatch(/Worldwide activity \(last 12 months\)/);
-    expect(res.text).toMatch(/47,200/);
-    expect(res.text).toMatch(/5-year trend/);
+    expect(res.text).toMatch(/Recent flights \(Flightradar24 sample\)/);
+    expect(res.text).toMatch(/Sampled <strong>20<\/strong>/);
   });
 
-  it('GET /aircraft/boeing-787/variants/787-9 includes FR24 + 5-year trend', async () => {
+  it('GET /aircraft/boeing-787/variants/787-9 includes FR24 sample block', async () => {
     const fr24Cache = require('../services/fr24CacheService');
     fr24Cache.set('variant:B789', {
-      totalFlights: 12000,
-      uniqueOperators: 25,
-      topOperators: [{ icao: 'UAL', count: 1500 }],
+      totalFlights: 15,
+      uniqueOperators: 4,
+      topOperators: [{ icao: 'UAL', count: 6 }],
       topRoutes: [],
-      yearlyBreakdown: [{ year: 2025, count: 12000 }, { year: 2024, count: 10000 }],
+      yearlyBreakdown: null,
+      windowDays: 14,
       fetchedAt: Date.now(),
     });
     await require('../services/seoContentCache').warm({ schedule: false });
 
     const res = await request(app).get('/aircraft/boeing-787/variants/787-9');
     expect(res.status).toBe(200);
-    expect(res.text).toMatch(/Worldwide activity/);
-    expect(res.text).toMatch(/5-year trend/);
+    expect(res.text).toMatch(/Recent flights \(Flightradar24 sample\)/);
+    expect(res.text).toMatch(/Sampled <strong>15<\/strong>/);
   });
 
   it('GET /routes/JFK-LHR includes FR24 route-context section when cache populated', async () => {
@@ -209,19 +210,20 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
 
     const fr24Cache = require('../services/fr24CacheService');
     fr24Cache.set('route:JFK-LHR', {
-      totalFlights: 847,
-      uniqueOperators: 12,
-      topOperators: [{ icao: 'BAW', count: 340 }],
+      totalFlights: 12,
+      uniqueOperators: 4,
+      topOperators: [{ icao: 'BAW', count: 6 }],
       yearlyBreakdown: null,
+      windowDays: 14,
       fetchedAt: Date.now(),
     });
     await require('../services/seoContentCache').warm({ schedule: false });
 
     const res = await request(app).get('/routes/jfk-lhr');
     expect(res.status).toBe(200);
-    expect(res.text).toMatch(/Worldwide activity on this route/);
-    expect(res.text).toMatch(/Flown.*847/);
-    expect(res.text).not.toMatch(/Top routes:/);
+    expect(res.text).toMatch(/Recent flights on this route/);
+    expect(res.text).toMatch(/Sampled <strong>12<\/strong>/);
+    expect(res.text).not.toMatch(/Routes in this sample:/);
   });
 
   it('GET /aircraft/boeing-787 omits FR24 section when cache empty', async () => {
@@ -231,7 +233,7 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
 
     const res = await request(app).get('/aircraft/boeing-787');
     expect(res.status).toBe(200);
-    expect(res.text).not.toMatch(/Worldwide activity/);
+    expect(res.text).not.toMatch(/Recent flights \(Flightradar24 sample\)/);
   });
 
   it('GET / includes family grid + popular routes + safety section + chrome', async () => {
