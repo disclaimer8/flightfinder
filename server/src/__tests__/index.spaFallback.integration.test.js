@@ -50,6 +50,7 @@ const FIXTURE_HTML = `<!DOCTYPE html>
     <meta name="twitter:description" content="The only flight search filtered by aircraft model." />
     <meta name="twitter:image" content="https://himaxym.com/og-image.png" />
     <meta name="twitter:image:alt" content="FlightFinder" />
+    <style>section[data-seo-bake="true"]{display:none}</style>
   </head>
   <body>
     <div id="root">
@@ -153,7 +154,9 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
     // while still serving the React shell so human visitors see the in-app
     // "not found" screen. No bake section is emitted for unknown paths.
     expect(res.status).toBe(404);
-    expect(res.text).not.toMatch(/data-seo-bake/);
+    // The CSS hide rule (selector substring) is in the template, but no
+    // bake <section> start tag should be injected for unknown paths.
+    expect(res.text).not.toMatch(/<section data-seo-bake="true"/);
   });
 
   it('GET /aircraft/boeing-787 includes FR24 worldwide activity when cache populated', async () => {
@@ -229,5 +232,55 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
     const res = await request(app).get('/aircraft/boeing-787');
     expect(res.status).toBe(200);
     expect(res.text).not.toMatch(/Worldwide activity/);
+  });
+
+  it('GET / includes family grid + popular routes + safety section + chrome', async () => {
+    require('../services/seoContentCache').warm({ schedule: false });
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/<nav class="seo-nav"/);
+    expect(res.text).toMatch(/<footer class="seo-footer"/);
+    expect(res.text).toMatch(/<h2>Aircraft families<\/h2>/);
+    expect(res.text).toMatch(/<h2>Popular routes<\/h2>/);
+    expect(res.text).toMatch(/<h2>Safety<\/h2>/);
+  });
+
+  it('GET /aircraft/boeing-787 includes breadcrumbs + cross-refs + chrome', async () => {
+    require('../services/seoContentCache').warm({ schedule: false });
+    const res = await request(app).get('/aircraft/boeing-787');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/<nav class="breadcrumbs"/);
+    expect(res.text).toMatch(/Boeing 787/);
+    // Family-page cross-ref ("Other Boeing families") now wired via
+    // seoMetaService._bakeFamilyFields propagating manufacturer.
+    expect(res.text).toMatch(/Other Boeing families/);
+    expect(res.text).toMatch(/<h3>Variants<\/h3>/);
+    expect(res.text).toMatch(/<footer class="seo-footer"/);
+  });
+
+  it('GET /aircraft/boeing-787/variants/787-9 includes variant breadcrumbs + sibling cross-refs', async () => {
+    require('../services/seoContentCache').warm({ schedule: false });
+    const res = await request(app).get('/aircraft/boeing-787/variants/787-9');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/<nav class="breadcrumbs"/);
+    expect(res.text).toMatch(/787-9/);
+    expect(res.text).toMatch(/Other variants in this family/);
+    expect(res.text).toMatch(/787-8/);
+    expect(res.text).toMatch(/787-10/);
+  });
+
+  it('GET /aircraft/boeing-787/safety includes "More about" cross-ref excluding self', async () => {
+    require('../services/seoContentCache').warm({ schedule: false });
+    const res = await request(app).get('/aircraft/boeing-787/safety');
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/More about Boeing 787/);
+    expect(res.text).toMatch(/href="\/aircraft\/boeing-787\/airlines"/);
+    expect(res.text).toMatch(/href="\/aircraft\/boeing-787\/routes"/);
+  });
+
+  it('served HTML contains both CSS hide rule AND bake section', async () => {
+    const res = await request(app).get('/aircraft/boeing-787');
+    expect(res.text).toMatch(/section\[data-seo-bake="true"\]\{display:none\}/);
+    expect(res.text).toMatch(/<section data-seo-bake="true">/);
   });
 });

@@ -1,5 +1,6 @@
 const { getFamilyList } = require('../models/aircraftFamilies');
 const { esc } = require('./seoMetaService');
+const { applyChrome } = require('./seoChrome');
 
 /**
  * Per-kind HTML emitters for the SEO content cache. Each builder returns
@@ -315,11 +316,54 @@ function bAircraftSpecs(meta, _db) {
 
 function bHome(_meta, db) {
   const routeCount = db.getRouteCount();
-  const families   = getFamilyList().length;
-  return `
+  const families = getFamilyList();
+
+  const intro = `
     <p>Search ${esc(routeCount)} observed routes worldwide, filtered by aircraft type. Pick a Boeing 737, Airbus A320, turboprop, or wide-body jet — see only flights operating that equipment.</p>
-    <p>${esc(families)} aircraft families have dedicated landing pages with operator lists, top routes, safety records, and full specifications.</p>
+    <p>${esc(families.length)} aircraft families have dedicated landing pages with operator lists, top routes, safety records, and full specifications.</p>
   `.trim();
+
+  const familyCards = `
+    <h2>Aircraft families</h2>
+    <div class="family-grid">
+      ${families.map((f) => _familyCard(f, db)).filter(Boolean).join('')}
+    </div>
+  `.trim();
+
+  let topRoutes = [];
+  try { topRoutes = db.getTopRoutesByObservedFrequency(15); } catch { topRoutes = []; }
+  const routesBlock = topRoutes.length > 0 ? `
+    <h2>Popular routes</h2>
+    <ul class="popular-routes">
+      ${topRoutes.map((r) => `<li><a href="/routes/${esc(r.from.toLowerCase())}-${esc(r.to.toLowerCase())}">${esc(r.from)}–${esc(r.to)}</a> <small>(${esc(r.count)} observed)</small></li>`).join('')}
+    </ul>
+  `.trim() : '';
+
+  const safetyBlock = `
+    <h2>Safety</h2>
+    <ul>
+      <li><a href="/safety/global">Global safety overview</a> — color-coded buckets per aircraft type</li>
+      <li><a href="/safety/feed">Recent safety events</a> — chronological feed from public datasets</li>
+    </ul>
+  `.trim();
+
+  return [intro, familyCards, routesBlock, safetyBlock].filter(Boolean).join('\n');
+}
+
+function _familyCard(f, db) {
+  const { getFamilyBySlug } = require('../models/aircraftFamilies');
+  const fullFam = getFamilyBySlug(f.slug);
+  const icaoList = (fullFam && fullFam.icaoList) || [];
+  let facts = { airlineCount: 0, routeCount: 0 };
+  try { facts = db.getAircraftFacts(icaoList); } catch {}
+  const stats = facts.airlineCount > 0
+    ? `<p class="stats">${esc(facts.airlineCount)} operators · ${esc(facts.routeCount)} city pairs</p>`
+    : '';
+  return `<article class="family-card">
+    <h3><a href="/aircraft/${esc(f.slug)}">${esc(f.label)}</a></h3>
+    <p class="manufacturer">${esc(f.manufacturer)}${f.type ? ` · ${esc(f.type)}` : ''}</p>
+    ${stats}
+  </article>`;
 }
 
 function bSafetyGlobal(_meta, _db) {
@@ -355,19 +399,20 @@ const STATIC_BUILDERS = {
 function build(meta, db) {
   if (!meta || !meta.kind) return null;
   const dbInstance = db || require('../models/db');
+  let innerHtml = null;
   const builder = STATIC_BUILDERS[meta.kind];
-  if (builder) return builder(meta);
-  if (meta.kind === 'route')              return bRoute(meta, dbInstance);
-  if (meta.kind === 'aircraft')           return bAircraft(meta, dbInstance);
-  if (meta.kind === 'aircraft-specs')     return bAircraftSpecs(meta, dbInstance);
-  if (meta.kind === 'aircraft-airlines')  return bAircraftAirlines(meta, dbInstance);
-  if (meta.kind === 'aircraft-routes')    return bAircraftRoutes(meta, dbInstance);
-  if (meta.kind === 'aircraft-safety')    return bAircraftSafety(meta, dbInstance);
-  if (meta.kind === 'aircraft-variant')   return bAircraftVariant(meta, dbInstance);
-  if (meta.kind === 'home')               return bHome(meta, dbInstance);
-  if (meta.kind === 'safety-global')      return bSafetyGlobal(meta, dbInstance);
-  if (meta.kind === 'safety-feed')        return bSafetyFeed(meta, dbInstance);
-  return null;
+  if (builder) innerHtml = builder(meta);
+  else if (meta.kind === 'route')              innerHtml = bRoute(meta, dbInstance);
+  else if (meta.kind === 'aircraft')           innerHtml = bAircraft(meta, dbInstance);
+  else if (meta.kind === 'aircraft-specs')     innerHtml = bAircraftSpecs(meta, dbInstance);
+  else if (meta.kind === 'aircraft-airlines')  innerHtml = bAircraftAirlines(meta, dbInstance);
+  else if (meta.kind === 'aircraft-routes')    innerHtml = bAircraftRoutes(meta, dbInstance);
+  else if (meta.kind === 'aircraft-safety')    innerHtml = bAircraftSafety(meta, dbInstance);
+  else if (meta.kind === 'aircraft-variant')   innerHtml = bAircraftVariant(meta, dbInstance);
+  else if (meta.kind === 'home')               innerHtml = bHome(meta, dbInstance);
+  else if (meta.kind === 'safety-global')      innerHtml = bSafetyGlobal(meta, dbInstance);
+  else if (meta.kind === 'safety-feed')        innerHtml = bSafetyFeed(meta, dbInstance);
+  return applyChrome(meta, innerHtml, dbInstance);
 }
 
 module.exports = {

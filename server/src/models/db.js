@@ -695,4 +695,44 @@ module.exports = {
       LIMIT ?
     `).all(limit);
   },
+
+  // Top routes departing from a specific airport — for /routes/{a}-{b}
+  // cross-references showing "Other routes from {orig}".
+  getTopRoutesFromAirport: (iata, limit) => {
+    if (!iata || typeof limit !== 'number' || limit <= 0) return [];
+    return db.prepare(`
+      SELECT dep_iata AS "from", arr_iata AS "to", COUNT(*) AS count
+      FROM observed_routes
+      WHERE dep_iata = ?
+      GROUP BY dep_iata, arr_iata
+      ORDER BY count DESC
+      LIMIT ?
+    `).all(String(iata).toUpperCase(), limit);
+  },
+
+  // Top routes arriving at a specific airport — for "Other routes to {dest}".
+  getTopRoutesToAirport: (iata, limit) => {
+    if (!iata || typeof limit !== 'number' || limit <= 0) return [];
+    return db.prepare(`
+      SELECT dep_iata AS "from", arr_iata AS "to", COUNT(*) AS count
+      FROM observed_routes
+      WHERE arr_iata = ?
+      GROUP BY dep_iata, arr_iata
+      ORDER BY count DESC
+      LIMIT ?
+    `).all(String(iata).toUpperCase(), limit);
+  },
+
+  // Aircraft types ranked by safety event count — for safety page cross-refs.
+  getTopAircraftBySafetyEventCount: (limit) => {
+    if (typeof limit !== 'number' || limit <= 0) return [];
+    return db.prepare(`
+      SELECT aircraft_icao_type, COUNT(*) AS count
+      FROM safety_events
+      WHERE aircraft_icao_type IS NOT NULL
+      GROUP BY aircraft_icao_type
+      ORDER BY count DESC
+      LIMIT ?
+    `).all(limit);
+  },
 };

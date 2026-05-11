@@ -125,3 +125,58 @@ describe('seoMetaService — fr24Stats enrichment', () => {
     expect(seoMeta.resolve('/routes/LHR-JFK').fr24Stats).toEqual(stats);
   });
 });
+
+describe('structuredData — BreadcrumbList for indexable kinds', () => {
+  // structuredData() returns a parsed object (not a JSON string) — callers
+  // serialize it before injecting into the <script> tag. Tolerate both forms
+  // so the tests survive a future refactor to string output.
+  function asJson(sd) {
+    return typeof sd === 'string' ? JSON.parse(sd) : sd;
+  }
+
+  it('emits BreadcrumbList for aircraft-variant kind', () => {
+    const meta = seoMeta.resolve('/aircraft/boeing-787/variants/787-9');
+    const sd = seoMeta.structuredData(meta);
+    const json = asJson(sd);
+    const bc = (json['@graph'] || [json]).find((x) => x['@type'] === 'BreadcrumbList');
+    expect(bc).toBeTruthy();
+    const itemNames = bc.itemListElement.map((i) => i.name);
+    expect(itemNames).toContain('Home');
+    expect(itemNames).toContain('Aircraft');
+    expect(itemNames.some((n) => /Boeing 787/.test(n))).toBe(true);
+    expect(itemNames.some((n) => /787-9/.test(n))).toBe(true);
+  });
+
+  it('emits BreadcrumbList for route kind', () => {
+    const meta = seoMeta.resolve('/routes/jfk-lhr');
+    const sd = seoMeta.structuredData(meta);
+    const json = asJson(sd);
+    const bc = (json['@graph'] || [json]).find((x) => x['@type'] === 'BreadcrumbList');
+    expect(bc).toBeTruthy();
+    expect(bc.itemListElement.some((i) => /JFK/.test(i.name))).toBe(true);
+  });
+});
+
+describe('inject() — bake injection survives CSS rule in template', () => {
+  it('injects bake section even when template contains CSS selector matching the attribute', () => {
+    // Template includes the production CSS rule that hides bake from JS users.
+    // Pre-fix bug: the substring `data-seo-bake="true"` matched the CSS selector,
+    // so the idempotency check incorrectly skipped injection.
+    const template = `<html><head>
+      <style>section[data-seo-bake="true"]{display:none}</style>
+      <meta name="description" content="orig" />
+      <meta name="robots" content="index" />
+      <link rel="canonical" href="https://example.com/" />
+    </head><body>
+      <div id="root">
+        <h1 style="font-size:clamp(32px,6vw,56px)">Title</h1>
+        <p style="font-size:clamp(16px,2.2vw,20px)">Subtitle</p>
+      </div>
+    </body></html>`;
+    const meta = { title: 't', description: 'd', canonical: 'https://example.com/', h1: 'h', subtitle: 's', kind: 'home' };
+    const bodyContent = '<p>baked-content-marker</p>';
+    const out = seoMeta.inject(template, meta, bodyContent);
+    expect(out).toMatch(/<section data-seo-bake="true">/);
+    expect(out).toMatch(/baked-content-marker/);
+  });
+});

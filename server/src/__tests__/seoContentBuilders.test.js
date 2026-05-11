@@ -581,3 +581,83 @@ describe('seoContentBuilders — FR24 wiring in builders', () => {
     expect(html).toMatch(/5,000/);
   });
 });
+
+describe('build() — chrome wrapping', () => {
+  it('build for aircraft kind wraps with site nav + footer', () => {
+    const meta = {
+      kind: 'aircraft',
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+      icaoList: ['B789'],
+      family: { manufacturer: 'Boeing' },
+      colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+      topEvents: [],
+      variants: [],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/<nav class="seo-nav"/);
+    expect(html).toMatch(/<footer class="seo-footer"/);
+  });
+
+  it('build for unknown/null inner returns null (no chrome wrap)', () => {
+    const meta = { kind: 'aircraft', slug: 'no-such-family', icaoList: [] };
+    expect(build(meta)).toBeNull();
+  });
+
+  it('build for variant kind includes breadcrumbs', () => {
+    const meta = {
+      kind: 'aircraft-variant',
+      variant: { familySlug: 'boeing-787', slug: '787-9', icao: 'B789', shortName: '787-9', fullName: 'Boeing 787-9 Dreamliner', firstFlight: '2013-09-17', capacity: '290 pax', range_km: 14140, engines: ['GE'], description: 'Stretched variant.' },
+      family: { name: 'Boeing 787', label: 'Boeing 787 Dreamliner', slug: 'boeing-787' },
+      icaoList: ['B789'],
+      colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+      topEvents: [], allEvents: [],
+    };
+    const html = build(meta);
+    expect(html).toMatch(/<nav class="breadcrumbs"/);
+    expect(html).toMatch(/Boeing 787/);
+    expect(html).toMatch(/787-9/);
+  });
+});
+
+describe('bHome — rich grid', () => {
+  beforeAll(() => {
+    const db = require('../models/db');
+    function seed(dep, arr, icao, airline) {
+      db.upsertObservedRoute({
+        depIata: dep, arrIata: arr, aircraftIcao: icao, airlineIata: airline, source: 'test',
+      });
+    }
+    // Seed observed routes so getTopRoutesByObservedFrequency returns rows.
+    seed('LHR', 'JFK', 'B77W', 'BA');
+    seed('JFK', 'LHR', 'B789', 'VS');
+    seed('LAX', 'NRT', 'B77W', 'JL');
+  });
+
+  it('renders all sections: intro + family grid + popular routes + safety', () => {
+    const meta = { kind: 'home' };
+    const html = build(meta);
+    expect(html).toMatch(/Search.*observed routes worldwide/);
+    expect(html).toMatch(/<h2>Aircraft families<\/h2>/);
+    expect(html).toMatch(/<h2>Popular routes<\/h2>/);
+    expect(html).toMatch(/<h2>Safety<\/h2>/);
+  });
+
+  it('family grid renders family cards with manufacturer + link', () => {
+    const html = build({ kind: 'home' });
+    expect(html).toMatch(/<article class="family-card"/);
+    expect(html).toMatch(/href="\/aircraft\/boeing-787"/);
+    expect(html).toMatch(/Boeing/);
+  });
+
+  it('popular routes section links to baked routes', () => {
+    const html = build({ kind: 'home' });
+    expect(html).toMatch(/<ul class="popular-routes"/);
+  });
+
+  it('safety section links to global + feed', () => {
+    const html = build({ kind: 'home' });
+    expect(html).toMatch(/href="\/safety\/global"/);
+    expect(html).toMatch(/href="\/safety\/feed"/);
+  });
+});

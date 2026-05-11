@@ -63,10 +63,11 @@ function _bakeFamilyFields(fam) {
   if (!fam || !fam.family) return null;
   const f = fam.family;
   return {
-    range_km: f.maxRange || f.range_km,
-    capacity: f.capacity,
-    engines:  f.engines,
-    mtow_kg:  f.mtow || f.mtow_kg,
+    range_km:     f.maxRange || f.range_km,
+    capacity:     f.capacity,
+    engines:      f.engines,
+    mtow_kg:      f.mtow || f.mtow_kg,
+    manufacturer: f.manufacturer,
   };
 }
 
@@ -632,9 +633,34 @@ function resolve(pathname) {
  * Returns null when there's no extra graph to inject (e.g. /by-aircraft,
  * /map, not-found), letting the caller skip the script tag entirely.
  */
+function _breadcrumbList(items) {
+  return {
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.name,
+      ...(it.url ? { item: it.url } : {}),
+    })),
+  };
+}
+
 function structuredData(meta) {
   const graph = [];
-  if (meta.kind === 'aircraft') {
+  if (meta.kind === 'aircraft-variant') {
+    // Variant landing breadcrumb: Home > Aircraft > <Family> > <Variant>.
+    // Family slug is taken from meta.family (set by aircraftVariantMeta) and
+    // falls back to the variant's own familySlug if family lookup ever fails.
+    const familyName = meta.family?.name || meta.family?.label || meta.variant?.familySlug;
+    const familySlug = meta.family?.slug || meta.variant?.familySlug;
+    const variantName = meta.variant?.shortName || meta.variant?.slug;
+    graph.push(_breadcrumbList([
+      { name: 'Home', url: `${BASE}/` },
+      { name: 'Aircraft', url: `${BASE}/by-aircraft` },
+      { name: familyName, url: `${BASE}/aircraft/${familySlug}` },
+      { name: variantName, url: meta.canonical },
+    ]));
+  } else if (meta.kind === 'aircraft') {
     graph.push({
       '@type': 'BreadcrumbList',
       itemListElement: [
@@ -671,6 +697,9 @@ function structuredData(meta) {
       } : {}),
     });
   } else if (meta.kind === 'route') {
+    // Breadcrumb name carries IATA pair so SERP rich result shows the route
+    // identifier (e.g. "JFK–LHR") rather than ambiguous city pairs that
+    // collide across hubs (multiple airports per metro).
     graph.push({
       '@type': 'BreadcrumbList',
       itemListElement: [
@@ -679,7 +708,7 @@ function structuredData(meta) {
         {
           '@type': 'ListItem',
           position: 3,
-          name: `${meta.fromName} to ${meta.toName}`,
+          name: `${meta.fromName} (${meta.fromIata}) to ${meta.toName} (${meta.toIata})`,
           item: meta.canonical,
         },
       ],
@@ -1129,7 +1158,10 @@ function inject(html, meta, bodyContent = null) {
   // uses createRoot().render() (not hydrateRoot), which wipes #root on mount,
   // so this section is invisible to JS-enabled users after hydration.
   // Idempotent: skip if a previous inject already ran on this html.
-  if (bodyContent && !out.includes('data-seo-bake="true"')) {
+  // Match start tag specifically — substring 'data-seo-bake="true"' alone
+  // also matches the CSS selector in client/index.html which would otherwise
+  // silently disable bake in prod.
+  if (bodyContent && !out.includes('<section data-seo-bake="true"')) {
     const subtitleClose = out.indexOf('</p>',
       out.indexOf('<p style="font-size:clamp(16px,2.2vw,20px)'));
     if (subtitleClose !== -1) {
