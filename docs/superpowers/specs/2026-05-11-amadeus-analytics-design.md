@@ -1,8 +1,37 @@
 # Amadeus Production API — Analytics Tier integration
 
 **Date:** 2026-05-11
-**Status:** Design
+**Status:** Design (amended post-impl)
 **Owner:** Denys
+
+---
+
+## Post-implementation amendment (2026-05-11, verified against prod app)
+
+A smoke test against the approved production app revealed that three of the
+six planned endpoints are unusable in Amadeus Self-Service production:
+
+| Endpoint | Status | Reason |
+|---|---|---|
+| `airport_direct_dest` | ✓ works | — |
+| `airline_routes` | ✓ works | — |
+| `most_traveled` | ✗ 404 | "Resource not found" — endpoint not enabled for self-service prod |
+| `most_booked` | ✗ 404 | same |
+| `travel_recs` | ✗ 410 GONE | "API is decommissioned and resource can not be accessible anymore" |
+
+`busiest_period` was already dropped pre-implementation due to the
+cityCode-vs-airport-IATA mismatch.
+
+**Net surviving scope:**
+- `/airport/:iata` × ~200 — direct destinations + Airport JSON-LD + sidebar
+- `/airline/:iata` × ~100 — network destinations + Airline JSON-LD + sidebar
+- Route enrichment ("Top destinations travelled from X") — **removed**
+- Travel Recommendations cross-link sidebar for routes — **removed**
+
+The two surviving endpoints still deliver the bulk of the new SEO surface
+value (JFK returns 186 direct destinations, BA returns 472 routes — real
+production data). Code referencing the deprecated endpoints has been
+removed to prevent log spam.
 
 ---
 
