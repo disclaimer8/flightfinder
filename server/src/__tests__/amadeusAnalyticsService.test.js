@@ -1,15 +1,6 @@
 const mockSdk = {
   airport: { directDestinations: { get: jest.fn() } },
   airline:  { destinations:       { get: jest.fn() } },
-  travel: {
-    analytics: {
-      airTraffic: {
-        traveled:      { get: jest.fn() },
-        booked:        { get: jest.fn() },
-      },
-    },
-  },
-  referenceData: { recommendedLocations: { get: jest.fn() } },
 };
 
 jest.mock('../services/amadeusClient', () => ({
@@ -25,8 +16,6 @@ beforeEach(() => {
   db.exec('DELETE FROM amadeus_cache; DELETE FROM amadeus_budget;');
   Object.values(mockSdk.airport).forEach(m => m.get.mockReset());
   Object.values(mockSdk.airline).forEach(m => m.get.mockReset());
-  Object.values(mockSdk.travel.analytics.airTraffic).forEach(m => m.get.mockReset());
-  mockSdk.referenceData.recommendedLocations.get.mockReset();
   delete process.env.NODE_APP_INSTANCE;
   delete process.env.AMADEUS_DAILY_BUDGET_CALLS;
   svc._resetCircuitForTests();
@@ -100,27 +89,5 @@ describe('getAirlineRoutes', () => {
     const r = await svc.getAirlineRoutes('BA');
     expect(r).toEqual(['JFK', 'LAX']);
     expect(mockSdk.airline.destinations.get).toHaveBeenCalledWith({ airlineCode: 'BA' });
-  });
-});
-
-describe('getMostTraveled / getMostBooked', () => {
-  test('keyed by origin:period', async () => {
-    mockSdk.travel.analytics.airTraffic.traveled.get.mockResolvedValue({
-      data: [{ destination: 'LHR', analytics: { travelers: { score: 50 } } }],
-    });
-    const r = await svc.getMostTraveled('MAD', '2025');
-    expect(r).toEqual([{ destination: 'LHR', analytics: { travelers: { score: 50 } } }]);
-    expect(cache.get('most_traveled', 'MAD:2025').payload).toEqual(r);
-  });
-});
-
-describe('getTravelRecommendations', () => {
-  test('keyed by sorted city list', async () => {
-    mockSdk.referenceData.recommendedLocations.get.mockResolvedValue({
-      data: [{ name: 'Lisbon', iataCode: 'LIS' }],
-    });
-    const r = await svc.getTravelRecommendations(['PAR'], 'US');
-    expect(r).toEqual([{ name: 'Lisbon', iataCode: 'LIS' }]);
-    expect(cache.get('travel_recs', 'PAR|US').payload).toEqual(r);
   });
 });

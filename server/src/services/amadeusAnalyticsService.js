@@ -1,12 +1,17 @@
 const { getClient, isEnabled } = require('./amadeusClient');
 const cache = require('../models/amadeusCache');
 
+// Production reality (verified 2026-05-11 against self-service prod app):
+//   ✓ airport_direct_dest  — works
+//   ✓ airline_routes       — works
+//   ✗ most_traveled        — 404 "Resource not found" (deprecated for self-service)
+//   ✗ most_booked          — 404 (same)
+//   ✗ travel_recs          — 410 GONE "API is decommissioned"
+// Only the two surviving endpoints are kept here. If Amadeus reanimates the
+// analytics endpoints, restore them as a follow-up.
 const TTL = {
   airport_direct_dest: 30 * 24 * 60 * 60 * 1000,
   airline_routes:      30 * 24 * 60 * 60 * 1000,
-  most_traveled:       30 * 24 * 60 * 60 * 1000,
-  most_booked:         30 * 24 * 60 * 60 * 1000,
-  travel_recs:         14 * 24 * 60 * 60 * 1000,
 };
 
 function isLeader() {
@@ -91,37 +96,6 @@ async function getAirlineRoutes(iata) {
     (r) => (r.data || []).map(x => x.iataCode).filter(Boolean));
 }
 
-async function getMostTraveled(originIata, period) {
-  const key = `${originIata.toUpperCase()}:${period}`;
-  return readOrFetch('most_traveled', key,
-    () => getClient().travel.analytics.airTraffic.traveled.get({
-      originCityCode: originIata.toUpperCase(),
-      period,
-    }),
-    (r) => r.data || []);
-}
-
-async function getMostBooked(originIata, period) {
-  const key = `${originIata.toUpperCase()}:${period}`;
-  return readOrFetch('most_booked', key,
-    () => getClient().travel.analytics.airTraffic.booked.get({
-      originCityCode: originIata.toUpperCase(),
-      period,
-    }),
-    (r) => r.data || []);
-}
-
-async function getTravelRecommendations(cityCodes, travelerCountryCode) {
-  const sorted = [...cityCodes].map(s => s.toUpperCase()).sort();
-  const key = `${sorted.join(',')}|${(travelerCountryCode || '').toUpperCase()}`;
-  return readOrFetch('travel_recs', key,
-    () => getClient().referenceData.recommendedLocations.get({
-      cityCodes: sorted.join(','),
-      travelerCountryCode: travelerCountryCode || 'US',
-    }),
-    (r) => r.data || []);
-}
-
 /**
  * Leader-only walk over the SEO enumeration sources (top airports, top airlines)
  * to refresh stale or missing rows in amadeus_cache. Budget-capped via
@@ -159,10 +133,6 @@ async function refreshStale({ airportLimit = 200, airlineLimit = 100 } = {}) {
     if (budgetExceeded()) break;
     await call(() => getAirportDirectDestinations(iata));
   }
-  for (const iata of airports) {
-    if (budgetExceeded()) break;
-    await call(() => getMostTraveled(iata, '2025'));
-  }
   for (const iata of airlines) {
     if (budgetExceeded()) break;
     await call(() => getAirlineRoutes(iata));
@@ -175,9 +145,6 @@ async function refreshStale({ airportLimit = 200, airlineLimit = 100 } = {}) {
 module.exports = {
   getAirportDirectDestinations,
   getAirlineRoutes,
-  getMostTraveled,
-  getMostBooked,
-  getTravelRecommendations,
   refreshStale,
   _resetCircuitForTests: () => { circuitOpenUntil = 0; budgetWarnedToday = ''; },
   _TTL: TTL,

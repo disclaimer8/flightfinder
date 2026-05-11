@@ -427,10 +427,7 @@ async function bAirport(meta, _db) {
   if (!iata) return null;
   const amadeus = require('./amadeusAnalyticsService');
 
-  const [directDest, mostTraveled] = await Promise.all([
-    amadeus.getAirportDirectDestinations(iata).catch(() => null),
-    amadeus.getMostTraveled(iata, '2025').catch(() => null),
-  ]);
+  const directDest = await amadeus.getAirportDirectDestinations(iata).catch(() => null);
 
   const heading = `<h1>${esc(iata)} airport — flights and destinations</h1>`;
 
@@ -443,12 +440,6 @@ async function bAirport(meta, _db) {
     destBlock = `<section><h2>Direct destinations (${esc(top.length)})</h2><p>${links}</p></section>`;
   }
 
-  let traveledBlock = '';
-  if (mostTraveled && mostTraveled.length > 0) {
-    const rows = mostTraveled.slice(0, 5).map(r => `<li>${esc(r.destination)}</li>`).join('');
-    traveledBlock = `<section><h2>Top destinations travelled from ${esc(iata)} (2025)</h2><ol>${rows}</ol></section>`;
-  }
-
   const jsonLd = `<script type="application/ld+json">${JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'Airport',
@@ -456,23 +447,7 @@ async function bAirport(meta, _db) {
     iataCode: iata,
   })}</script>`;
 
-  return [heading, destBlock, traveledBlock, jsonLd].filter(Boolean).join('\n');
-}
-
-async function bRouteAsync(meta, db) {
-  const baseHtml = bRoute(meta, db); // sync builder — returns inner HTML, no chrome yet
-  if (!meta.fromIata || !meta.toIata) return baseHtml;
-
-  const amadeus = require('./amadeusAnalyticsService');
-  const mostTraveled = await amadeus.getMostTraveled(meta.fromIata, '2025').catch(() => null);
-
-  let mostBlock = '';
-  if (mostTraveled && mostTraveled.length > 0) {
-    const rows = mostTraveled.slice(0, 5).map(r => `<li>${esc(r.destination)}</li>`).join('');
-    mostBlock = `<section><h2>Top destinations travelled from ${esc(meta.fromIata)} (2025)</h2><ol>${rows}</ol></section>`;
-  }
-
-  return [baseHtml, mostBlock].filter(Boolean).join('\n');
+  return [heading, destBlock, jsonLd].filter(Boolean).join('\n');
 }
 
 async function bAirline(meta, _db) {
@@ -551,16 +526,16 @@ async function buildAsync(meta, db) {
   const dbInstance = db || require('../models/db');
 
   // Amadeus-backed kinds: builder returns inner HTML, applyChromeAsync wraps
-  // with chrome + Amadeus-backed extras (direct dest / network dest / similar).
-  if (meta.kind === 'airport' || meta.kind === 'airline' || meta.kind === 'route') {
+  // with chrome + Amadeus-backed extras (direct dest / network dest sidebars).
+  if (meta.kind === 'airport' || meta.kind === 'airline') {
     const { applyChromeAsync } = require('./seoChrome');
-    let innerHtml;
-    if (meta.kind === 'airport')      innerHtml = await bAirport(meta, dbInstance);
-    else if (meta.kind === 'airline') innerHtml = await bAirline(meta, dbInstance);
-    else                              innerHtml = await bRouteAsync(meta, dbInstance);
+    const innerHtml = meta.kind === 'airport'
+      ? await bAirport(meta, dbInstance)
+      : await bAirline(meta, dbInstance);
     return applyChromeAsync(meta, innerHtml, dbInstance);
   }
-  // All other kinds: sync builder already calls applyChrome inside build().
+  // All other kinds (route included — Amadeus route enrichment was deprecated
+  // by Amadeus): sync builder already calls applyChrome inside build().
   return build(meta, dbInstance);
 }
 

@@ -3,17 +3,6 @@ jest.mock('../services/amadeusClient', () => ({
   getClient: jest.fn(() => ({
     airport:  { directDestinations: { get: jest.fn().mockResolvedValue({ data: [{ iataCode: 'LHR' }] }) } },
     airline:  { destinations:       { get: jest.fn().mockResolvedValue({ data: [{ iataCode: 'JFK' }] }) } },
-    travel: {
-      analytics: {
-        airTraffic: {
-          traveled: { get: jest.fn().mockResolvedValue({ data: [{ destination: 'LHR' }] }) },
-          booked:   { get: jest.fn().mockResolvedValue({ data: [{ destination: 'LHR' }] }) },
-        },
-      },
-    },
-    referenceData: {
-      recommendedLocations: { get: jest.fn().mockResolvedValue({ data: [{ name: 'Lisbon', iataCode: 'LIS' }] }) },
-    },
   })),
 }));
 

@@ -1,8 +1,6 @@
 jest.mock('../services/amadeusAnalyticsService', () => ({
   getAirlineRoutes: jest.fn(),
   getAirportDirectDestinations: jest.fn(),
-  getMostTraveled: jest.fn(),
-  getTravelRecommendations: jest.fn(),
 }));
 
 const amadeus = require('../services/amadeusAnalyticsService');

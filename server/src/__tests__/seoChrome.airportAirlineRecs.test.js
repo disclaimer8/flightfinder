@@ -1,18 +1,12 @@
 jest.mock('../services/amadeusAnalyticsService', () => ({
-  getTravelRecommendations: jest.fn(),
   getAirportDirectDestinations: jest.fn(),
   getAirlineRoutes: jest.fn(),
-  getMostTraveled: jest.fn(),
 }));
 
 const amadeus = require('../services/amadeusAnalyticsService');
 const chrome = require('../services/seoChrome');
 
-const stubDb = {
-  getSafetyFamilyCrossRefs: () => [],
-  getRouteCrossRefs: () => [],
-  getRecentSafetyFeed: () => [],
-};
+const stubDb = {};
 
 beforeEach(() => { Object.values(amadeus).forEach(fn => fn?.mockReset?.()); });
 
@@ -37,30 +31,6 @@ test('applyChromeAsync airline shows network destinations sidebar', async () => 
   expect(html).toMatch(/JFK|LAX/);
 });
 
-test('applyChromeAsync route appends Similar destinations from Travel Recs', async () => {
-  amadeus.getTravelRecommendations.mockResolvedValue([
-    { name: 'Lisbon', iataCode: 'LIS' },
-    { name: 'Madrid', iataCode: 'MAD' },
-  ]);
-  const html = await chrome.applyChromeAsync(
-    { kind: 'route', fromIata: 'JFK', toIata: 'LHR', canonical: 'x', h1: 'h', title: 't' },
-    '<p>inner</p>',
-    stubDb
-  );
-  expect(html).toMatch(/Similar destinations/i);
-  expect(html).toMatch(/Lisbon|LIS/);
-});
-
-test('applyChromeAsync route omits Similar destinations when recs null', async () => {
-  amadeus.getTravelRecommendations.mockResolvedValue(null);
-  const html = await chrome.applyChromeAsync(
-    { kind: 'route', fromIata: 'JFK', toIata: 'LHR', canonical: 'x', h1: 'h', title: 't' },
-    '<p>inner</p>',
-    stubDb
-  );
-  expect(html).not.toMatch(/Similar destinations/i);
-});
-
 test('applyChromeAsync returns sync chrome for non-Amadeus kinds (no extra fetches)', async () => {
   const html = await chrome.applyChromeAsync(
     { kind: 'aircraft', slug: 'boeing-787', canonical: 'x', h1: 'h', title: 't' },
@@ -68,7 +38,17 @@ test('applyChromeAsync returns sync chrome for non-Amadeus kinds (no extra fetch
     stubDb
   );
   expect(html).toMatch(/inner/);
-  expect(amadeus.getTravelRecommendations).not.toHaveBeenCalled();
   expect(amadeus.getAirportDirectDestinations).not.toHaveBeenCalled();
   expect(amadeus.getAirlineRoutes).not.toHaveBeenCalled();
+});
+
+test('applyChromeAsync route falls through to sync (no Amadeus extras — endpoints deprecated)', async () => {
+  const html = await chrome.applyChromeAsync(
+    { kind: 'route', fromIata: 'JFK', toIata: 'LHR', canonical: 'x', h1: 'h', title: 't' },
+    '<p>inner</p>',
+    stubDb
+  );
+  expect(html).toMatch(/inner/);
+  expect(html).not.toMatch(/Similar destinations/i);
+  expect(amadeus.getAirportDirectDestinations).not.toHaveBeenCalled();
 });
