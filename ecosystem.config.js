@@ -4,7 +4,21 @@ module.exports = {
       name: 'flightfinder',
       script: 'src/index.js',
       cwd: '/root/flightfinder/server',
-      instances: 1,
+      // Cluster mode with 2 instances → zero-downtime `pm2 reload`.
+      // wait_ready makes PM2 wait for `process.send('ready')` from the app
+      // (sent after app.listen) before killing the old worker — guarantees
+      // a worker is always serving requests.
+      // Background workers (adsbl/delay/fleet/tripAlert/etc.) are guarded
+      // by IS_LEADER in index.js so they only run on instance 0; only
+      // instance 0 writes to safety/observed_routes/etc. and fires alerts.
+      // FR24 cache + content cache warm independently per worker (in-memory),
+      // doubling FR24 credit burn — accepted trade-off (~10k/mo, well under
+      // Explorer 30k budget).
+      exec_mode: 'cluster',
+      instances: 2,
+      wait_ready: true,
+      listen_timeout: 15000,
+      kill_timeout: 10000,
       autorestart: true,
       max_memory_restart: '500M',
       env: {

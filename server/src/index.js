@@ -396,12 +396,24 @@ app.use((err, _req, res, _next) => {
 // (no warm here — moved to fire after listen() to avoid blocking pm2 health checks)
 
 if (require.main === module) {
-  app.listen(PORT, BIND_HOST, () => {
-    console.log(`Server running on ${BIND_HOST}:${PORT} [${process.env.NODE_ENV || 'development'}]`);
-    // Kick the SEO cache warm asynchronously — first few requests after a
-    // restart may render without bake content (acceptable trade for fast
-    // pm2 health-check response). Subsequent refresh interval keeps it
-    // fresh.
+  // PM2 cluster mode sets NODE_APP_INSTANCE = '0', '1', etc. In fork mode or
+  // direct node invocation it's undefined — treat as leader so workers run
+  // in dev/single-instance setups. Cluster reload guarantees zero-downtime
+  // (rolling per-worker), but background workers (ingest, alerts, bootstraps)
+  // must run only once across the cluster — guard with IS_LEADER.
+  const IS_LEADER = !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
+
+  const server = app.listen(PORT, BIND_HOST, () => {
+    console.log(`Server running on ${BIND_HOST}:${PORT} [${process.env.NODE_ENV || 'development'}]${IS_LEADER ? ' [leader]' : ' [follower]'}`);
+    // Signal PM2 that this worker is ready to serve. wait_ready in
+    // ecosystem.config.js makes PM2 hold the old worker alive until
+    // every new worker has emitted 'ready' — that's what makes reload
+    // zero-downtime.
+    if (typeof process.send === 'function') process.send('ready');
+    // Kick the SEO cache warm asynchronously per worker — each cluster
+    // instance has its own in-memory cache, so each one must warm. FR24
+    // refresh fires from within warm (fire-and-forget); per-worker burn
+    // doubles credit cost but keeps every worker's cache populated.
     if (!IS_DEV) {
       setImmediate(() => {
         try { require('./services/seoContentCache').warm(); }
@@ -410,26 +422,32 @@ if (require.main === module) {
     }
   });
 
-  // Background workers.
+  // Background workers — leader-only to avoid duplicate writes/alerts:
   //   adsblol         — observed-routes write-through (opt-in via ADSBLOL_ENABLED=1)
-  //   delayIngestion  — AeroDataBox departures → flight_observations (INGEST_ENABLED=1)
-  //   fleetBootstrap  — one-shot Mictronics → aircraft_fleet (FLEET_BOOTSTRAP=1)
-  const { startAdsbLolWorker }        = require('./workers/adsblolWorker');
-  const { startDelayIngestionWorker } = require('./workers/delayIngestionWorker');
-  const { startFleetBootstrapWorker } = require('./workers/fleetBootstrapWorker');
-  const { startTripAlertWorker }      = require('./workers/tripAlertWorker');
-  const { startOurAirportsRefreshWorker }  = require('./workers/ourAirportsRefreshWorker');
-  const { startSafetyIngestionWorker }     = require('./workers/safetyIngestionWorker');
-  const { startFaaRegistryRefreshWorker }  = require('./workers/faaRegistryRefreshWorker');
-  const { startDbMaintenanceWorker }       = require('./workers/dbMaintenanceWorker');
-  const stopAdsbLolWorker      = startAdsbLolWorker();
-  const stopDelayIngest        = startDelayIngestionWorker();
-  const stopFleetBootstrap     = startFleetBootstrapWorker();
-  const stopTripAlertWorker    = startTripAlertWorker();
-  const stopOurAirportsRefresh = startOurAirportsRefreshWorker();
-  const stopSafetyIngest       = startSafetyIngestionWorker();
-  const stopFaaRegistryRefresh = startFaaRegistryRefreshWorker();
-  const stopDbMaintenance      = startDbMaintenanceWorker();
+  //   delayIngestion  — AeroDataBox departures → flight_observations
+  //   fleetBootstrap  — one-shot Mictronics → aircraft_fleet
+  //   tripAlertWorker — sends user alerts (DUPLICATE ALERTS if run twice)
+  //   ourAirports/safety/faa/dbMaintenance — periodic refresh/maintenance
+  let stopAdsbLolWorker, stopDelayIngest, stopFleetBootstrap, stopTripAlertWorker;
+  let stopOurAirportsRefresh, stopSafetyIngest, stopFaaRegistryRefresh, stopDbMaintenance;
+  if (IS_LEADER) {
+    const { startAdsbLolWorker }            = require('./workers/adsblolWorker');
+    const { startDelayIngestionWorker }     = require('./workers/delayIngestionWorker');
+    const { startFleetBootstrapWorker }     = require('./workers/fleetBootstrapWorker');
+    const { startTripAlertWorker }          = require('./workers/tripAlertWorker');
+    const { startOurAirportsRefreshWorker } = require('./workers/ourAirportsRefreshWorker');
+    const { startSafetyIngestionWorker }    = require('./workers/safetyIngestionWorker');
+    const { startFaaRegistryRefreshWorker } = require('./workers/faaRegistryRefreshWorker');
+    const { startDbMaintenanceWorker }      = require('./workers/dbMaintenanceWorker');
+    stopAdsbLolWorker      = startAdsbLolWorker();
+    stopDelayIngest        = startDelayIngestionWorker();
+    stopFleetBootstrap     = startFleetBootstrapWorker();
+    stopTripAlertWorker    = startTripAlertWorker();
+    stopOurAirportsRefresh = startOurAirportsRefreshWorker();
+    stopSafetyIngest       = startSafetyIngestionWorker();
+    stopFaaRegistryRefresh = startFaaRegistryRefreshWorker();
+    stopDbMaintenance      = startDbMaintenanceWorker();
+  }
 
   // Load airline amenities seed on boot (cheap, idempotent).
   try {
@@ -456,29 +474,34 @@ if (require.main === module) {
   }
 
   const shutdown = () => {
-    try { stopAdsbLolWorker();       } catch { /* noop */ }
-    try { stopDelayIngest();         } catch { /* noop */ }
-    try { stopFleetBootstrap();      } catch { /* noop */ }
-    try { stopTripAlertWorker();     } catch { /* noop */ }
-    try { stopOurAirportsRefresh();  } catch { /* noop */ }
-    try { stopSafetyIngest();        } catch { /* noop */ }
-    try { stopFaaRegistryRefresh();  } catch { /* noop */ }
-    try { stopDbMaintenance();       } catch { /* noop */ }
+    // Stop accepting new requests; in-flight requests get up to kill_timeout
+    // (10s) to finish before PM2 SIGKILLs. This is what makes reload graceful.
+    if (server) server.close(() => { /* noop — exit happens via PM2 */ });
+    if (stopAdsbLolWorker)      { try { stopAdsbLolWorker();      } catch { /* noop */ } }
+    if (stopDelayIngest)        { try { stopDelayIngest();        } catch { /* noop */ } }
+    if (stopFleetBootstrap)     { try { stopFleetBootstrap();     } catch { /* noop */ } }
+    if (stopTripAlertWorker)    { try { stopTripAlertWorker();    } catch { /* noop */ } }
+    if (stopOurAirportsRefresh) { try { stopOurAirportsRefresh(); } catch { /* noop */ } }
+    if (stopSafetyIngest)       { try { stopSafetyIngest();       } catch { /* noop */ } }
+    if (stopFaaRegistryRefresh) { try { stopFaaRegistryRefresh(); } catch { /* noop */ } }
+    if (stopDbMaintenance)      { try { stopDbMaintenance();      } catch { /* noop */ } }
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT',  shutdown);
 
-  // Fire-and-forget: populate local aircraft_db (hex → ICAO type) for AeroDataBox
-  // enrichment. First boot downloads ~28MB; subsequent boots are no-ops.
-  require('./services/aircraftDbService')
-    .bootstrap()
-    .catch((err) => console.warn('[aircraftdb] bootstrap failed:', err.message));
+  if (IS_LEADER) {
+    // Fire-and-forget: populate local aircraft_db (hex → ICAO type) for AeroDataBox
+    // enrichment. First boot downloads ~28MB; subsequent boots are no-ops.
+    require('./services/aircraftDbService')
+      .bootstrap()
+      .catch((err) => console.warn('[aircraftdb] bootstrap failed:', err.message));
 
-  // Fire-and-forget: populate faa_registry (N-number → MFR/MODEL) for NTSB safety
-  // event enrichment. Gated by FAA_REGISTRY_BOOTSTRAP=1. ~30-40MB download, ~300k rows.
-  require('./services/faaRegistryService')
-    .bootstrap()
-    .catch((err) => console.warn('[faaRegistry] bootstrap failed:', err.message));
+    // Fire-and-forget: populate faa_registry (N-number → MFR/MODEL) for NTSB safety
+    // event enrichment. Gated by FAA_REGISTRY_BOOTSTRAP=1. ~30-40MB download, ~300k rows.
+    require('./services/faaRegistryService')
+      .bootstrap()
+      .catch((err) => console.warn('[faaRegistry] bootstrap failed:', err.message));
+  }
 }
 
 module.exports = app; // export for tests
