@@ -459,8 +459,35 @@ async function bAirport(meta, _db) {
   return [heading, destBlock, traveledBlock, jsonLd].filter(Boolean).join('\n');
 }
 
-// Stub — full implementation lands in Task 9. Returns null so buildAsync degrades gracefully.
-async function bAirline(_meta, _db) { return null; }
+async function bAirline(meta, _db) {
+  const iata = meta.iata;
+  if (!iata) return null;
+  const amadeus = require('./amadeusAnalyticsService');
+
+  const destinations = await amadeus.getAirlineRoutes(iata).catch(() => null);
+
+  const heading = `<h1>${esc(iata)} — destinations and fleet</h1>`;
+
+  let destBlock = '';
+  if (destinations && destinations.length > 0) {
+    const top = destinations.slice(0, 100);
+    const links = top.map(d =>
+      `<a href="/airport/${esc(String(d).toLowerCase())}">${esc(d)}</a>`
+    ).join(', ');
+    destBlock = `<section><h2>Destinations served (${esc(top.length)})</h2><p>${links}</p></section>`;
+  } else {
+    destBlock = `<p>Network data is being collected.</p>`;
+  }
+
+  const jsonLd = `<script type="application/ld+json">${JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Airline',
+    name: `${iata} Airline`,
+    iataCode: iata,
+  })}</script>`;
+
+  return [heading, destBlock, jsonLd].filter(Boolean).join('\n');
+}
 
 const STATIC_BUILDERS = {
   pricing:       bPricing,
