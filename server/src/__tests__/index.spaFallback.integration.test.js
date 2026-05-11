@@ -50,6 +50,7 @@ const FIXTURE_HTML = `<!DOCTYPE html>
     <meta name="twitter:description" content="The only flight search filtered by aircraft model." />
     <meta name="twitter:image" content="https://himaxym.com/og-image.png" />
     <meta name="twitter:image:alt" content="FlightFinder" />
+    <style>section[data-seo-bake="true"]{display:none}</style>
   </head>
   <body>
     <div id="root">
@@ -153,7 +154,9 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
     // while still serving the React shell so human visitors see the in-app
     // "not found" screen. No bake section is emitted for unknown paths.
     expect(res.status).toBe(404);
-    expect(res.text).not.toMatch(/data-seo-bake/);
+    // The CSS hide rule (selector substring) is in the template, but no
+    // bake <section> start tag should be injected for unknown paths.
+    expect(res.text).not.toMatch(/<section data-seo-bake="true"/);
   });
 
   it('GET /aircraft/boeing-787 includes FR24 worldwide activity when cache populated', async () => {
@@ -248,12 +251,9 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
     expect(res.status).toBe(200);
     expect(res.text).toMatch(/<nav class="breadcrumbs"/);
     expect(res.text).toMatch(/Boeing 787/);
-    // Family-page cross-ref ("Other Boeing families") requires
-    // meta.family.manufacturer, which seoMetaService._bakeFamilyFields
-    // currently omits — wiring gap surfaced by this integration test.
-    // The Variants sub-section below confirms in-page family content,
-    // and the Operators/Routes/Safety subpages get their own subpage
-    // cross-refs (covered separately).
+    // Family-page cross-ref ("Other Boeing families") now wired via
+    // seoMetaService._bakeFamilyFields propagating manufacturer.
+    expect(res.text).toMatch(/Other Boeing families/);
     expect(res.text).toMatch(/<h3>Variants<\/h3>/);
     expect(res.text).toMatch(/<footer class="seo-footer"/);
   });
@@ -278,18 +278,9 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
     expect(res.text).toMatch(/href="\/aircraft\/boeing-787\/routes"/);
   });
 
-  // NOTE: a "CSS hide rule present in served HTML" test was specified by
-  // the plan but cannot be added without first fixing a prod bug.
-  // client/index.html line 143 has:
-  //   <style>section[data-seo-bake="true"]{display:none}</style>
-  // and seoMetaService.inject() line 1160 guards bake injection with:
-  //   if (bodyContent && !out.includes('data-seo-bake="true"')) { … }
-  // The substring `data-seo-bake="true"` matches the CSS selector, so the
-  // idempotency check thinks bake is already injected and SKIPS it on every
-  // request in production. Adding the CSS rule to this file's FIXTURE_HTML
-  // reproduces the bug — every other test in this file then fails because
-  // the bake never lands. Fix the inject check to look for the section
-  // start tag (e.g. `<section data-seo-bake="true"`) before re-enabling
-  // this test and adding the rule to the fixture. Bug introduced by
-  // commit 3cc599f (feat(client): hide bake section from JS users via CSS).
+  it('served HTML contains both CSS hide rule AND bake section', async () => {
+    const res = await request(app).get('/aircraft/boeing-787');
+    expect(res.text).toMatch(/section\[data-seo-bake="true"\]\{display:none\}/);
+    expect(res.text).toMatch(/<section data-seo-bake="true">/);
+  });
 });

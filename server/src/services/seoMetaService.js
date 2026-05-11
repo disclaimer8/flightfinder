@@ -63,10 +63,11 @@ function _bakeFamilyFields(fam) {
   if (!fam || !fam.family) return null;
   const f = fam.family;
   return {
-    range_km: f.maxRange || f.range_km,
-    capacity: f.capacity,
-    engines:  f.engines,
-    mtow_kg:  f.mtow || f.mtow_kg,
+    range_km:     f.maxRange || f.range_km,
+    capacity:     f.capacity,
+    engines:      f.engines,
+    mtow_kg:      f.mtow || f.mtow_kg,
+    manufacturer: f.manufacturer,
   };
 }
 
@@ -1157,7 +1158,10 @@ function inject(html, meta, bodyContent = null) {
   // uses createRoot().render() (not hydrateRoot), which wipes #root on mount,
   // so this section is invisible to JS-enabled users after hydration.
   // Idempotent: skip if a previous inject already ran on this html.
-  if (bodyContent && !out.includes('data-seo-bake="true"')) {
+  // Match start tag specifically — substring 'data-seo-bake="true"' alone
+  // also matches the CSS selector in client/index.html which would otherwise
+  // silently disable bake in prod.
+  if (bodyContent && !out.includes('<section data-seo-bake="true"')) {
     const subtitleClose = out.indexOf('</p>',
       out.indexOf('<p style="font-size:clamp(16px,2.2vw,20px)'));
     if (subtitleClose !== -1) {

@@ -156,3 +156,27 @@ describe('structuredData — BreadcrumbList for indexable kinds', () => {
     expect(bc.itemListElement.some((i) => /JFK/.test(i.name))).toBe(true);
   });
 });
+
+describe('inject() — bake injection survives CSS rule in template', () => {
+  it('injects bake section even when template contains CSS selector matching the attribute', () => {
+    // Template includes the production CSS rule that hides bake from JS users.
+    // Pre-fix bug: the substring `data-seo-bake="true"` matched the CSS selector,
+    // so the idempotency check incorrectly skipped injection.
+    const template = `<html><head>
+      <style>section[data-seo-bake="true"]{display:none}</style>
+      <meta name="description" content="orig" />
+      <meta name="robots" content="index" />
+      <link rel="canonical" href="https://example.com/" />
+    </head><body>
+      <div id="root">
+        <h1 style="font-size:clamp(32px,6vw,56px)">Title</h1>
+        <p style="font-size:clamp(16px,2.2vw,20px)">Subtitle</p>
+      </div>
+    </body></html>`;
+    const meta = { title: 't', description: 'd', canonical: 'https://example.com/', h1: 'h', subtitle: 's', kind: 'home' };
+    const bodyContent = '<p>baked-content-marker</p>';
+    const out = seoMeta.inject(template, meta, bodyContent);
+    expect(out).toMatch(/<section data-seo-bake="true">/);
+    expect(out).toMatch(/baked-content-marker/);
+  });
+});
