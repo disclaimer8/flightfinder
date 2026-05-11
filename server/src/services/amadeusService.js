@@ -1,23 +1,4 @@
-const Amadeus = require('amadeus');
-
-const AMADEUS_CLIENT_ID = process.env.AMADEUS_CLIENT_ID;
-const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
-
-let amadeus = null;
-
-if (!AMADEUS_CLIENT_ID || !AMADEUS_CLIENT_SECRET) {
-  console.warn('⚠️  AMADEUS_CLIENT_ID or AMADEUS_CLIENT_SECRET is not configured. Live searches will fail.');
-} else {
-  try {
-    amadeus = new Amadeus({
-      clientId: AMADEUS_CLIENT_ID,
-      clientSecret: AMADEUS_CLIENT_SECRET,
-      hostname: process.env.AMADEUS_ENV === 'production' ? 'production' : 'test'
-    });
-  } catch (err) {
-    console.warn('⚠️  Failed to initialize Amadeus client:', err.message);
-  }
-}
+const { getClient } = require('./amadeusClient');
 
 /**
  * Search for flights using Amadeus Flight Offers Search API
@@ -28,6 +9,7 @@ if (!AMADEUS_CLIENT_ID || !AMADEUS_CLIENT_SECRET) {
  * @param {number} params.passengers        - Number of adult passengers
  */
 exports.searchFlights = async (params) => {
+  const amadeus = getClient();
   if (!amadeus) throw new Error('Amadeus API is not configured');
   const query = {
     originLocationCode: params.departure_airport,
@@ -50,6 +32,7 @@ exports.searchFlights = async (params) => {
  * @param {string|null} departureDate - optional YYYY-MM-DD
  */
 exports.flightDestinations = async (origin, departureDate) => {
+  const amadeus = getClient();
   if (!amadeus) throw new Error('Amadeus API is not configured');
   const params = { origin };
   if (departureDate) params.departureDate = departureDate;
@@ -63,6 +46,7 @@ exports.flightDestinations = async (origin, departureDate) => {
  * @param {string} destination - IATA code
  */
 exports.flightDates = async (origin, destination) => {
+  const amadeus = getClient();
   if (!amadeus) throw new Error('Amadeus API is not configured');
   const response = await amadeus.shopping.flightDates.get({ origin, destination });
   return response.data || [];
