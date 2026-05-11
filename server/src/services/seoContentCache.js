@@ -28,7 +28,7 @@ let timer = null;
  * @returns {Set<string>} the set of paths attempted this pass; refresh()
  *   uses this to determine what to prune
  */
-function warm(opts = {}) {
+async function warm(opts = {}) {
   const schedule = opts.schedule !== false;
   let paths;
   try {
@@ -63,7 +63,11 @@ function warm(opts = {}) {
     attempted.add(canonical);
 
     let html;
-    try { html = builders.build(meta); } catch (err) {
+    try {
+      // buildAsync handles airport/airline/route via awaited Amadeus reads;
+      // all other kinds delegate to the sync build() unchanged.
+      html = await builders.buildAsync(meta);
+    } catch (err) {
       try { Sentry?.captureException(err, { tags: { seo_path: p } }); } catch {}
       continue;
     }
@@ -76,7 +80,9 @@ function warm(opts = {}) {
   lastWarmedAt = Date.now();
 
   if (schedule && timer == null) {
-    timer = setInterval(refresh, REFRESH_MS);
+    timer = setInterval(() => {
+      refresh().catch((err) => console.warn(`[seo-cache] scheduled refresh error: ${err.message || err}`));
+    }, REFRESH_MS);
     if (timer.unref) timer.unref(); // don't keep the event loop alive in tests
   }
 
@@ -90,11 +96,11 @@ function warm(opts = {}) {
  * set even when its build threw). Only URLs absent from the
  * enumeration are removed.
  */
-function refresh() {
+async function refresh() {
   // Re-warm; preserve prior values for URLs whose builders failed this pass
   // (they remain in the enumerated set so we don't prune them). Only delete
   // keys that have genuinely fallen out of the enumeration.
-  const attempted = warm({ schedule: false });
+  const attempted = await warm({ schedule: false });
   for (const key of [...map.keys()]) {
     if (!attempted.has(key)) map.delete(key);
   }

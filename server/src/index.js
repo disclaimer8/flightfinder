@@ -416,8 +416,11 @@ if (require.main === module) {
     // doubles credit cost but keeps every worker's cache populated.
     if (!IS_DEV) {
       setImmediate(() => {
-        try { require('./services/seoContentCache').warm(); }
-        catch (err) { try { Sentry.captureException(err); } catch {} }
+        // warm() is async since builders for airport/airline/route await
+        // Amadeus reads — fire-and-forget with a catch so an init error
+        // can't crash the listener thread.
+        require('./services/seoContentCache').warm()
+          .catch((err) => { try { Sentry.captureException(err); } catch {} });
       });
     }
   });
