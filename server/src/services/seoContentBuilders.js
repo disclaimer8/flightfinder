@@ -422,6 +422,46 @@ function bSafetyFeed(meta, _db) {
   `.trim();
 }
 
+async function bAirport(meta, _db) {
+  const iata = meta.iata;
+  if (!iata) return null;
+  const amadeus = require('./amadeusAnalyticsService');
+
+  const [directDest, mostTraveled] = await Promise.all([
+    amadeus.getAirportDirectDestinations(iata).catch(() => null),
+    amadeus.getMostTraveled(iata, '2025').catch(() => null),
+  ]);
+
+  const heading = `<h1>${esc(iata)} airport — flights and destinations</h1>`;
+
+  let destBlock = '';
+  if (directDest && directDest.length > 0) {
+    const top = directDest.slice(0, 50);
+    const links = top.map(d =>
+      `<a href="/routes/${esc(iata.toLowerCase())}-${esc(String(d).toLowerCase())}">${esc(iata)}→${esc(d)}</a>`
+    ).join(', ');
+    destBlock = `<section><h2>Direct destinations (${esc(top.length)})</h2><p>${links}</p></section>`;
+  }
+
+  let traveledBlock = '';
+  if (mostTraveled && mostTraveled.length > 0) {
+    const rows = mostTraveled.slice(0, 5).map(r => `<li>${esc(r.destination)}</li>`).join('');
+    traveledBlock = `<section><h2>Top destinations travelled from ${esc(iata)} (2025)</h2><ol>${rows}</ol></section>`;
+  }
+
+  const jsonLd = `<script type="application/ld+json">${JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Airport',
+    name: `${iata} Airport`,
+    iataCode: iata,
+  })}</script>`;
+
+  return [heading, destBlock, traveledBlock, jsonLd].filter(Boolean).join('\n');
+}
+
+// Stub — full implementation lands in Task 9. Returns null so buildAsync degrades gracefully.
+async function bAirline(_meta, _db) { return null; }
+
 const STATIC_BUILDERS = {
   pricing:       bPricing,
   about:         bAbout,
@@ -454,8 +494,34 @@ function build(meta, db) {
   return applyChrome(meta, innerHtml, dbInstance);
 }
 
+/**
+ * Async builder entry point. Use this for any kind that needs awaited data
+ * (currently: airport, airline). Other kinds delegate to the sync `build()`
+ * unchanged. Both paths end up wrapped by applyChrome.
+ *
+ * @param {object} meta - resolved meta object
+ * @param {object} [db] - optional db override
+ * @returns {Promise<string|null>}
+ */
+async function buildAsync(meta, db) {
+  if (!meta || !meta.kind) return null;
+  const dbInstance = db || require('../models/db');
+
+  if (meta.kind === 'airport') {
+    const innerHtml = await bAirport(meta, dbInstance);
+    return applyChrome(meta, innerHtml, dbInstance);
+  }
+  if (meta.kind === 'airline') {
+    const innerHtml = await bAirline(meta, dbInstance);
+    return applyChrome(meta, innerHtml, dbInstance);
+  }
+  // All other kinds: sync builder already calls applyChrome inside build().
+  return build(meta, dbInstance);
+}
+
 module.exports = {
   build,
+  buildAsync,
   _renderFr24Stats,
   _renderYearlyBreakdown,
 };
