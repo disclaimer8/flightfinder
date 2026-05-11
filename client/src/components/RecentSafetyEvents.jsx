@@ -9,10 +9,19 @@ function dash(v) { return v == null || v === '' ? '—' : v; }
 // (bin/aircrash-sidecar). Its row shape is {id, date, aircraft_model,
 // operator, fatalities, location, source_url, lat, lon} — no severity,
 // no tail, no dep/arr ICAO. The columns below mirror that contract.
+//
+// ASN sometimes encodes fatalities as "on-board+ground" (e.g. '0+1' means
+// 0 killed on the aircraft + 1 killed on the ground). For a one-glance
+// homepage feed we just sum to a total. Non-numeric values like 'INH' fall
+// through verbatim — there's only 1 such row in 35k, not worth a parser.
 function fatalitiesCell(raw) {
   if (raw == null) return '—';
   const s = String(raw).trim();
-  if (s === '' || s === '0' || /^unknown$/i.test(s)) return '—';
+  if (s === '' || /^unknown$/i.test(s)) return '—';
+  if (/^\d+(\+\d+)*$/.test(s)) {
+    const total = s.split('+').reduce((sum, n) => sum + Number(n), 0);
+    return total === 0 ? '—' : String(total);
+  }
   return s;
 }
 

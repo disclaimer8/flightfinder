@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 describe('RecentSafetyEvents', () => {
-  it('renders 5 rows from /api/safety/global/accidents', async () => {
+  it('renders rows from /api/safety/global/accidents (limited to first 5)', async () => {
     render(<MemoryRouter><RecentSafetyEvents /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText(/Boeing 737-800/)).toBeInTheDocument());
     expect(screen.getByText('KLM')).toBeInTheDocument();
@@ -51,5 +51,24 @@ describe('RecentSafetyEvents', () => {
     // AeroBogota row has fatalities="4" — render verbatim
     const bogotaRow = screen.getByText('AeroBogota').closest('tr');
     expect(bogotaRow.querySelector('.rse-fatalities').textContent).toBe('4');
+  });
+
+  it('sums ASN on-board+ground notation (e.g. "0+1" → "1", "5+2" → "7")', async () => {
+    const FATAL_ROWS = [
+      { id: 10, date: '8 May 2026', aircraft_model: 'A321',  operator: 'Frontier', fatalities: '0+1', location: 'KDEN' },
+      { id: 11, date: '7 May 2026', aircraft_model: 'DC-3',  operator: 'AirX',     fatalities: '5+2', location: 'X' },
+      { id: 12, date: '6 May 2026', aircraft_model: 'An-2',  operator: 'AgX',      fatalities: 'INH', location: 'Y' },
+      { id: 13, date: '5 May 2026', aircraft_model: 'C172',  operator: 'ZeroSum',  fatalities: '0+0', location: 'Z' },
+    ];
+    vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ data: FATAL_ROWS }) });
+    render(<MemoryRouter><RecentSafetyEvents /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText('Frontier')).toBeInTheDocument());
+
+    expect(screen.getByText('Frontier').closest('tr').querySelector('.rse-fatalities').textContent).toBe('1');
+    expect(screen.getByText('AirX').closest('tr').querySelector('.rse-fatalities').textContent).toBe('7');
+    // Non-numeric ASN tokens fall through verbatim (rare; 1 row in 35k).
+    expect(screen.getByText('AgX').closest('tr').querySelector('.rse-fatalities').textContent).toBe('INH');
+    // '0+0' sums to 0 → em-dash, same as plain '0'.
+    expect(screen.getByText('ZeroSum').closest('tr').querySelector('.rse-fatalities').textContent).toBe('—');
   });
 });
