@@ -93,18 +93,14 @@ function enumerateSeoUrls(opts = {}) {
     console.warn('[seoUrlEnumerator] top airlines unavailable:', err.message);
   }
 
-  // /accidents/{slug} — indexable accident detail pages. Without this, the
-  // cache-warm pass never builds their bAccident HTML and bots receive the
-  // bare React shell (Soft-404 risk). ~22K entries; ~2-4 min added to warm
-  // duration. accident_narratives is in app.db (same db arg).
-  try {
-    for (const a of enumerateAccidents()) {
-      const u = new URL(a.loc);
-      set.add(u.pathname);
-    }
-  } catch (err) {
-    console.warn('[seoUrlEnumerator] accidents unavailable:', err.message);
-  }
+  // NOTE: /accidents/{slug} pages (~22K) are deliberately NOT pre-warmed —
+  // baking that many entries synchronously during boot blocks the event loop
+  // long enough that PM2's wait_ready + the deploy.yml health check both
+  // time out (verified empirically: 9-min deploy lockup). Bots get the
+  // baked <head> (title, description, canonical, JSON-LD Event with
+  // ISO startDate) which is enough for rich SERP results; body content
+  // hydrates via React CSR + /api/accidents fetch. A future TTL'd lazy-bake
+  // in seoContentCache.get() can promote these on-demand.
 
   return [...set];
 }
