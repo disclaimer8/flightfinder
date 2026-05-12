@@ -650,6 +650,50 @@ function resolve(pathname) {
     };
   }
 
+  const accidentMatch = /^\/accidents\/([^/?#]+)\/?$/.exec(pathname);
+  if (accidentMatch) {
+    const accidentSvc = require('./accidentNarrativeService');
+    const data = accidentSvc.getBySlug(accidentMatch[1]);
+    if (!data || data.indexable !== 1) return notFoundMeta();
+    const f = data.facts;
+    const escHtml = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                                        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const title = `${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''} | FlightFinder`;
+    const description = (data.narrative_text || '').slice(0, 250);
+
+    const jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: `${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''}`,
+      startDate: f.date,
+      description,
+      location: {
+        '@type': 'Place',
+        name: f.location || 'Unknown',
+        geo: f.lat && f.lon
+          ? { '@type': 'GeoCoordinates', latitude: f.lat, longitude: f.lon }
+          : undefined,
+      },
+      about: [
+        { '@type': 'Vehicle', name: f.aircraft_model },
+        f.operator ? { '@type': 'Organization', name: f.operator } : null,
+      ].filter(Boolean),
+      isAccessibleForFree: true,
+      publisher: { '@type': 'Organization', name: 'FlightFinder' },
+    }).replace(/</g, '\\u003c');
+
+    return {
+      title: escHtml(title),
+      description: escHtml(description),
+      canonical: `${BASE}/accidents/${accidentMatch[1]}`,
+      jsonLd,
+      h1: escHtml(`${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''}`),
+      robots: 'index, follow',
+      ogType: 'article',
+      kind: 'accident',
+    };
+  }
+
   // Anything else (/foo, /aircraft, /routes without a slug, typos) is an
   // unknown URL — return 404-style metadata so the server can set the real
   // HTTP status and we don't index every bot-fuzzed URL as duplicate-home.

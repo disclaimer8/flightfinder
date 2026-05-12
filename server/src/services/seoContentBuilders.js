@@ -536,8 +536,101 @@ async function buildAsync(meta, db) {
   return build(meta, dbInstance);
 }
 
+// ---------------------------------------------------------------------------
+// bAccident — SEO page builder for /accidents/:slug
+// ---------------------------------------------------------------------------
+const _accidentSvc = require('./accidentNarrativeService');
+
+function _esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function bAccident(slug) {
+  const data = _accidentSvc.getBySlug(slug);
+  if (!data) return null;
+  if (data.indexable !== 1) return null;
+
+  const f = data.facts;
+  const heroH1 = `${_esc(f.date)}: ${_esc(f.aircraft_model)} — ${_esc(f.operator || 'Unknown operator')}`;
+  const metaLine = [
+    f.fatalities && f.fatalities !== '0' ? `${_esc(f.fatalities)} fatalities` : null,
+    f.location ? _esc(f.location) : null,
+    data.phase_of_flight ? _esc(data.phase_of_flight) : null,
+  ].filter(Boolean).join(' • ');
+
+  const probableHtml = data.probable_cause
+    ? `<section class="ad-probable">
+         <h2>Probable cause</h2>
+         <blockquote>${_esc(data.probable_cause)}</blockquote>
+         <p class="ad-attrib">— NTSB Determination</p>
+       </section>`
+    : '';
+
+  const narrativeHtml = data.narrative_text
+    ? `<section class="ad-narrative">
+         <h2>Accident narrative</h2>
+         <article>${_esc(data.narrative_text)}</article>
+       </section>`
+    : '';
+
+  const factorsHtml = (data.factors && data.factors.length)
+    ? `<section class="ad-factors">
+         <h2>Contributing factors</h2>
+         <ul>${data.factors.map(x => `<li>${_esc(x)}</li>`).join('')}</ul>
+       </section>`
+    : '';
+
+  const condsHtml = (data.phase_of_flight || data.weather_summary)
+    ? `<section class="ad-conds">
+         <h2>Conditions</h2>
+         <dl>
+           ${data.phase_of_flight ? `<dt>Phase</dt><dd>${_esc(data.phase_of_flight)}</dd>` : ''}
+           ${data.weather_summary ? `<dt>Weather</dt><dd>${_esc(data.weather_summary)}</dd>` : ''}
+         </dl>
+       </section>`
+    : '';
+
+  const relA = (data.related && data.related.byAircraft || []).map(r =>
+    `<li>${_esc(r.date)} — ${_esc(r.aircraft_model)} (${_esc(r.operator || '—')})</li>`
+  ).join('');
+  const relO = (data.related && data.related.byOperator || []).map(r =>
+    `<li>${_esc(r.date)} — ${_esc(r.aircraft_model)} (${_esc(r.operator || '—')})</li>`
+  ).join('');
+  const relatedHtml = (relA || relO)
+    ? `<section class="ad-related">
+         <h2>Related events</h2>
+         ${relA ? `<h3>Same aircraft</h3><ul>${relA}</ul>` : ''}
+         ${relO ? `<h3>Same operator</h3><ul>${relO}</ul>` : ''}
+       </section>`
+    : '';
+
+  const sourceLabel = data.source === 'ntsb' ? 'NTSB' : 'Wikidata contributors';
+  const license     = data.source === 'ntsb' ? 'public domain (NTSB)' : 'CC0 (Wikidata)';
+
+  return `
+<nav class="ad-crumbs"><a href="/">Home</a> → <a href="/safety/global">Safety</a> → Accident</nav>
+<header class="ad-hero">
+  <h1>${heroH1}</h1>
+  <p class="ad-meta">${metaLine}</p>
+</header>
+${probableHtml}
+${narrativeHtml}
+${factorsHtml}
+${condsHtml}
+${relatedHtml}
+<footer class="ad-attribution">
+  <p>Investigation report by ${_esc(sourceLabel)}.
+     Original record: <a href="${_esc(data.source_url)}" rel="external">${_esc(data.source_url)}</a>.
+     This page is a structured re-presentation; facts and quotes are in the ${_esc(license)}.</p>
+</footer>
+`.trim();
+}
+
 module.exports = {
   build,
   buildAsync,
+  bAccident,
   _renderFr24Stats,
 };
