@@ -87,7 +87,12 @@ function mdbExport(mdbPath, table, outFile) {
 }
 
 async function runIngest({ skipDownload = false, mdbPath = null } = {}) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ntsb-'));
+  // os.tmpdir() returns /tmp which on many Linux boxes is a tmpfs sized at a
+  // small fraction of RAM (e.g. 256 MB). avall.mdb uncompresses to 600+ MB and
+  // fails with "write error (disk full?)". Use /var/tmp (or an explicit env
+  // override) which lives on the regular disk.
+  const tmpRoot = process.env.NTSB_TMPDIR || '/var/tmp';
+  const tmpDir = fs.mkdtempSync(path.join(tmpRoot, 'ntsb-'));
   try {
   let chosenMdb = mdbPath;
 
