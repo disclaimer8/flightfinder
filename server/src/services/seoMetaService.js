@@ -708,6 +708,10 @@ function resolve(pathname) {
       h1: escHtml(`${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''}`),
       robots: 'index, follow',
       ogType: 'article',
+      // Per-accident dynamic OG PNG — aircraft model + date + severity band.
+      // inject() picks this up and overrides og:image / twitter:image.
+      ogImage: `${BASE}/og/accident/${accidentMatch[1]}.png`,
+      ogImageAlt: `${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''} (${f.date})`,
       kind: 'accident',
       slug: accidentMatch[1],
     };

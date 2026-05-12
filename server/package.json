@@ -30,6 +30,7 @@
     "fast-xml-parser": "^5.7.0"
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@sentry/node": "^10.49.0",
     "adm-zip": "^0.5.17",
     "amadeus": "^11.0.0",
