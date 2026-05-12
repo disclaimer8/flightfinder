@@ -1,4 +1,4 @@
-const { getFamilyList } = require('../models/aircraftFamilies');
+const { getFamilyList, getFamilyByCode, slugify } = require('../models/aircraftFamilies');
 const { esc } = require('./seoMetaService');
 const { applyChrome } = require('./seoChrome');
 
@@ -408,6 +408,70 @@ function bSafetyGlobal(_meta, _db) {
   `.trim();
 }
 
+function bSafetyEvent(meta, _db) {
+  const ev = meta?.eventData;
+  if (!ev) return null;
+
+  const date = new Date(ev.occurred_at).toISOString().slice(0, 10);
+  const fam = ev.aircraft_icao_type ? getFamilyByCode(ev.aircraft_icao_type) : null;
+  const aircraftLabel = fam?.label || ev.aircraft_icao_type || 'Unknown aircraft';
+  const familySlug = fam ? slugify(fam.name) : null;
+
+  const severityLabel = ev.severity === 'fatal'
+    ? 'Fatal'
+    : ev.hull_loss === 1 ? 'Hull loss' : 'Incident';
+
+  const operator = ev.operator_name || ev.operator_icao || null;
+  const operatorIdent = ev.operator_iata || ev.operator_icao || null;
+
+  const route = (ev.dep_iata || ev.arr_iata)
+    ? `${ev.dep_iata || '—'} → ${ev.arr_iata || '—'}`
+    : null;
+
+  const sourceUrl = _safeHttpUrl(ev.report_url || '')
+    || (ev.source === 'ntsb' && ev.source_event_id
+      ? `https://www.ntsb.gov/safety/Pages/safety-overview.aspx?ev=${ev.source_event_id}`
+      : '');
+  const sourceLabel = ev.source === 'ntsb' ? 'US NTSB CAROL' : 'Aviation Safety Network / Wikidata';
+
+  // Fact list — render only rows we actually have, so stub events stay tidy.
+  const rows = [
+    ['Date', date],
+    operator ? ['Operator', operatorIdent
+      ? `<a href="/safety/global?op=${esc(operatorIdent)}">${esc(operator)}</a>`
+      : esc(operator)] : null,
+    ['Aircraft', familySlug
+      ? `<a href="/aircraft/${esc(familySlug)}">${esc(aircraftLabel)}</a>`
+      : esc(aircraftLabel)],
+    ev.registration ? ['Registration', esc(ev.registration)] : null,
+    route ? ['Route', esc(route)] : null,
+    ev.phase_of_flight ? ['Phase of flight', esc(ev.phase_of_flight)] : null,
+    ev.fatalities > 0 ? ['Fatalities', esc(ev.fatalities)] : null,
+    ev.injuries > 0 ? ['Injuries', esc(ev.injuries)] : null,
+    ['Hull loss', ev.hull_loss === 1 ? 'Yes' : 'No'],
+    ev.location_country ? ['Country', esc(ev.location_country)] : null,
+    ['Severity', esc(severityLabel)],
+  ].filter(Boolean);
+
+  const dl = `<dl class="safety-event-facts">${
+    rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')
+  }</dl>`;
+
+  const narrativeBlock = ev.narrative && ev.narrative.length > 30
+    ? `<section><h2>Probable cause</h2><p>${esc(ev.narrative)}</p></section>`
+    : '';
+
+  const sourceBlock = sourceUrl
+    ? `<p class="safety-event-source">Source: <a href="${esc(sourceUrl)}" rel="nofollow">${esc(sourceLabel)}</a>${
+        ev.source_event_id ? ` · Case ID <code>${esc(ev.source_event_id)}</code>` : ''
+      }</p>`
+    : `<p class="safety-event-source">Source: ${esc(sourceLabel)}</p>`;
+
+  const backLink = `<p><a href="/safety/feed">← Back to NTSB feed</a></p>`;
+
+  return [dl, narrativeBlock, sourceBlock, backLink].filter(Boolean).join('\n');
+}
+
 function bSafetyFeed(meta, _db) {
   if (!Array.isArray(meta.recentIncidents) || meta.recentIncidents.length === 0) return null;
   const items = meta.recentIncidents.slice(0, 10).map((i) =>
@@ -506,6 +570,7 @@ function build(meta, db) {
   else if (meta.kind === 'home')               innerHtml = bHome(meta, dbInstance);
   else if (meta.kind === 'safety-global')      innerHtml = bSafetyGlobal(meta, dbInstance);
   else if (meta.kind === 'safety-feed')        innerHtml = bSafetyFeed(meta, dbInstance);
+  else if (meta.kind === 'safety-event')       innerHtml = bSafetyEvent(meta, dbInstance);
   return applyChrome(meta, innerHtml, dbInstance);
 }
 

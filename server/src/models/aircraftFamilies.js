@@ -316,6 +316,16 @@ for (const name of familyNames) {
   if (!slugToName[legacy]) slugToName[legacy] = name;
 }
 
+// Pre-compute aircraft-code → family name lookup. The `codes` Set on each
+// family contains both ICAO (B789, A320) and IATA-ish (789, 32N) designators;
+// this index covers both so callers can pass whichever they have.
+const codeToName = {};
+for (const name of familyNames) {
+  for (const code of families[name].codes) {
+    codeToName[String(code).toUpperCase()] = name;
+  }
+}
+
 /**
  * Resolve a slug back to a family record plus its name and ICAO-only code list
  * (the 4-letter ICAO type designators that show up in observed_routes.aircraft_icao).
@@ -371,6 +381,20 @@ function getFamilyList() {
 }
 
 /**
+ * Resolve an aircraft type designator (ICAO or IATA-ish) to its family record.
+ * Returns null when the code is unknown so callers can fall back to the raw code.
+ *
+ *   getFamilyByCode('B789') → { name: 'Boeing 787', family: {...}, label: 'Boeing 787 Dreamliner' }
+ */
+function getFamilyByCode(code) {
+  if (!code || typeof code !== 'string') return null;
+  const name = codeToName[code.toUpperCase()];
+  if (!name) return null;
+  const fam = families[name];
+  return { name, family: fam, label: fam.label };
+}
+
+/**
  * Resolve an arbitrary user input (slug or display name) to the family record.
  * Accepts "a340", "A340", "Airbus A340", "Airbus A340 family".
  */
@@ -384,4 +408,4 @@ function resolveFamily(input) {
   return getFamilyBySlug(slugify(trimmed));
 }
 
-module.exports = { families, familyNames, getFamilyCodes, getFamilyRange, getFamilyList, getFamilyBySlug, resolveFamily, slugify };
+module.exports = { families, familyNames, getFamilyCodes, getFamilyRange, getFamilyList, getFamilyBySlug, getFamilyByCode, resolveFamily, slugify };

@@ -631,15 +631,29 @@ function resolve(pathname) {
 
     const date = new Date(ev.occurred_at).toISOString().slice(0, 10);
     const op = ev.operator_name || ev.operator_icao || 'Unknown operator';
-    const ac = ev.aircraft_icao_type || 'unknown aircraft';
+    // Prefer the human family label (e.g. "Boeing 787 Dreamliner") so the
+    // title/h1 don't ship raw ICAO type designators like "B789".
+    const fam = ev.aircraft_icao_type
+      ? require('../models/aircraftFamilies').getFamilyByCode(ev.aircraft_icao_type)
+      : null;
+    const ac = fam?.label || ev.aircraft_icao_type || 'unknown aircraft';
     const ap = ev.dep_iata || ev.location_country || '';
-    const sev = ev.severity === 'fatal' ? 'Fatal' : ev.hull_loss === 1 ? 'Hull loss' : 'Incident';
+    // sev is the noun that heads the title. For fatal / hull-loss we keep
+    // "Fatal accident:" / "Hull loss accident:" — the wording is meaningful.
+    // For "Incident" the trailing "accident" word was a tautology, so we
+    // drop it and just lead with "Incident:".
+    const sev = ev.severity === 'fatal'
+      ? 'Fatal accident'
+      : ev.hull_loss === 1 ? 'Hull loss accident' : 'Incident';
+    const sevSentence = ev.severity === 'fatal'
+      ? 'Fatal aviation accident'
+      : ev.hull_loss === 1 ? 'Hull-loss aviation accident' : 'Aviation incident';
 
     return {
-      title: `${sev} accident: ${op} ${ac}${ap ? ` at ${ap}` : ''} — ${date} | FlightFinder`,
-      description: `${sev} aviation accident on ${date}: ${op} operating a ${ac}${ap ? ` near ${ap}` : ''}. Aggregated from ${ev.source === 'ntsb' ? 'NTSB CAROL' : 'Aviation Safety Network / Wikidata'}.`,
+      title: `${sev}: ${op} ${ac}${ap ? ` at ${ap}` : ''} — ${date} | FlightFinder`,
+      description: `${sevSentence} on ${date}: ${op} operating a ${ac}${ap ? ` near ${ap}` : ''}. Aggregated from ${ev.source === 'ntsb' ? 'NTSB CAROL' : 'Aviation Safety Network / Wikidata'}.`,
       canonical,
-      h1: `${sev} accident: ${op} ${ac}`,
+      h1: `${sev}: ${op} ${ac}`,
       subtitle: `${date}${ap ? ` · ${ap}` : ''}`,
       robots: indexable ? 'index, follow' : 'noindex, follow',
       redirectFromLegacy: isLegacy ? canonical : null,
