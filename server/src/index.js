@@ -451,6 +451,20 @@ if (require.main === module) {
     stopSafetyIngest       = startSafetyIngestionWorker();
     stopFaaRegistryRefresh = startFaaRegistryRefreshWorker();
     stopDbMaintenance      = startDbMaintenanceWorker();
+    if (process.env.NODE_ENV !== 'test') {
+      try {
+        require('./workers/ntsbDumpWorker').start();
+        console.log('[index] ntsbDumpWorker started (leader)');
+      } catch (e) {
+        console.error('[index] ntsbDumpWorker boot failed:', e.message);
+      }
+      try {
+        require('./workers/wikidataNarrativeWorker').start();
+        console.log('[index] wikidataNarrativeWorker started (leader)');
+      } catch (e) {
+        console.error('[index] wikidataNarrativeWorker boot failed:', e.message);
+      }
+    }
   }
 
   // Load airline amenities seed on boot (cheap, idempotent).
