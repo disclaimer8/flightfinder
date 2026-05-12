@@ -126,13 +126,30 @@ export default function SafetyGlobal() {
   // Table page (independent of map filters per UX spec).
   const [fatalOnly, setFatalOnly] = useState(false);
 
+  // Map<accident_id, slug> for indexable rows on the current page. Populated
+  // by a secondary fetch to /api/accidents/slugs after the sidecar list lands.
+  // Lets the "Source" column point at /accidents/{slug} (internal) when a
+  // quality-gated narrative exists, falling back to the external NTSB/ASN URL.
+  const [accidentSlugs, setAccidentSlugs] = useState({});
+
   useEffect(() => {
     let active = true;
     setAccidents(null);
     setAccidentsErr(null);
+    setAccidentSlugs({});
     fetch(`${GLOBAL_BASE}/accidents?limit=${PAGE_SIZE}&offset=${offset}`)
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(body => { if (active) setAccidents(Array.isArray(body?.data) ? body.data : []); })
+      .then(body => {
+        if (!active) return;
+        const rows = Array.isArray(body?.data) ? body.data : [];
+        setAccidents(rows);
+        const ids = rows.map(r => r.id).filter(Boolean);
+        if (ids.length === 0) return;
+        return fetch(`${API_BASE}/api/accidents/slugs?ids=${ids.join(',')}`)
+          .then(r => r.ok ? r.json() : {})
+          .then(map => { if (active) setAccidentSlugs(map || {}); })
+          .catch(() => { /* internal link enrichment is optional */ });
+      })
       .catch(err => { if (active) setAccidentsErr(err.message); });
     return () => { active = false; };
   }, [offset]);
@@ -701,9 +718,11 @@ export default function SafetyGlobal() {
                           : <span className="safety-global__zero">{row.fatalities || '0'}</span>}
                       </td>
                       <td>
-                        {url
-                          ? <a href={url} rel="nofollow noopener noreferrer" target="_blank">link</a>
-                          : '—'}
+                        {accidentSlugs[row.id]
+                          ? <Link to={`/accidents/${accidentSlugs[row.id]}`}>Details ↗</Link>
+                          : url
+                            ? <a href={url} rel="nofollow noopener noreferrer" target="_blank">link</a>
+                            : '—'}
                       </td>
                     </tr>
                   );

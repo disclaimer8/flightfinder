@@ -34,7 +34,11 @@ export default function AccidentDetail() {
         <Link to="/">Home</Link> → <Link to="/safety/global">Safety</Link> → Accident
       </nav>
       <header className="ad-hero">
-        <h1>{f.date}: {f.aircraft_model}{f.operator ? ` — ${f.operator}` : ''}</h1>
+        <h1>
+          {f.date}: {f.aircraft_model}
+          {f.registration ? <span className="ad-reg"> ({f.registration})</span> : null}
+          {f.operator ? ` — ${f.operator}` : ''}
+        </h1>
         <p className="ad-meta">
           {(() => {
             const n = parseInt(String(f.fatalities ?? '').split('+').reduce((a, b) => a + (Number(b) || 0), 0), 10);

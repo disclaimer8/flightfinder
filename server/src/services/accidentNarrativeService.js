@@ -2,6 +2,7 @@
 const model   = require('../models/accidentNarratives');
 const sidecar = require('./sidecarAccidentsClient');
 const { normalizeNtsbFactor } = require('../utils/normalizeNtsbFactor');
+const { extractRegistration } = require('../utils/extractRegistration');
 
 function getBySlug(slug) {
   const narrative = model.getBySlug(slug);
@@ -28,7 +29,13 @@ function getBySlug(slug) {
     } catch { /* ignore */ }
   }
 
-  return { ...narrative, factors, facts, related };
+  // Hero gets a concrete tail-number when the narrative carries one (NTSB
+  // narratives consistently open with "...airplane, N1234X, ..."). Sidecar's
+  // structured registration field is sparse — narrative regex hits ~80% of
+  // US records.
+  const registration = extractRegistration(narrative.narrative_text);
+
+  return { ...narrative, factors, facts: { ...facts, registration }, related };
 }
 
 function getById(id) {
@@ -45,4 +52,8 @@ function stats() {
   return model.statsByScore();
 }
 
-module.exports = { getBySlug, getById, listIndexable, stats };
+function slugsForIds(ids) {
+  return model.getSlugsForIds(ids);
+}
+
+module.exports = { getBySlug, getById, listIndexable, stats, slugsForIds };

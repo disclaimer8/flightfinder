@@ -27,6 +27,10 @@ function fatalitiesCell(raw) {
 
 export default function RecentSafetyEvents() {
   const [rows, setRows] = useState(null);
+  // accident_id → slug for indexable narratives. Lets us wrap each row in a
+  // <Link to="/accidents/{slug}"> so /safety/global → /accidents/* internal
+  // links boost both crawl-budget routing and SEO equity flow.
+  const [slugs, setSlugs] = useState({});
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -36,8 +40,14 @@ export default function RecentSafetyEvents() {
       .then(body => {
         if (!active) return;
         const data = Array.isArray(body?.data) ? body.data : [];
-        if (data.length < 1) setError(true);
-        else setRows(data.slice(0, 5));
+        if (data.length < 1) { setError(true); return; }
+        setRows(data.slice(0, 5));
+        const ids = data.slice(0, 5).map(r => r.id).filter(Boolean);
+        if (ids.length === 0) return;
+        return fetch(`${API_BASE}/api/accidents/slugs?ids=${ids.join(',')}`)
+          .then(r => r.ok ? r.json() : {})
+          .then(map => { if (active) setSlugs(map || {}); })
+          .catch(() => { /* internal-link enrichment is optional */ });
       })
       .catch(() => { if (active) setError(true); });
     return () => { active = false; };
@@ -73,15 +83,23 @@ export default function RecentSafetyEvents() {
       </div>
       <table className="rse-table">
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={r.id ?? i}>
-              <td className="rse-date">{dash(r.date)}</td>
-              <td className="rse-operator">{dash(r.operator)}</td>
-              <td className="rse-aircraft">{dash(r.aircraft_model)}</td>
-              <td className="rse-location">{dash(r.location)}</td>
-              <td className="rse-fatalities">{fatalitiesCell(r.fatalities)}</td>
-            </tr>
-          ))}
+          {rows.map((r, i) => {
+            const slug = slugs[r.id];
+            const aircraft = dash(r.aircraft_model);
+            return (
+              <tr key={r.id ?? i}>
+                <td className="rse-date">{dash(r.date)}</td>
+                <td className="rse-operator">{dash(r.operator)}</td>
+                <td className="rse-aircraft">
+                  {slug
+                    ? <Link to={`/accidents/${slug}`} className="rse-link">{aircraft}</Link>
+                    : aircraft}
+                </td>
+                <td className="rse-location">{dash(r.location)}</td>
+                <td className="rse-fatalities">{fatalitiesCell(r.fatalities)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </section>

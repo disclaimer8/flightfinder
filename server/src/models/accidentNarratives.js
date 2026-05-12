@@ -66,6 +66,26 @@ function upsert(row) {
 
 function getBySlug(slug)   { return stmts.getBySlug.get(slug); }
 function getById(id)       { return stmts.getById.get(id); }
+
+// Bulk-fetch {id: slug} for indexable=1 narratives. Used by RecentSafetyEvents
+// and /safety/global table to rewrite external "Source" links to internal
+// /accidents/{slug} URLs. Returns plain object (handy for JSON serialization).
+function getSlugsForIds(ids) {
+  const out = {};
+  if (!Array.isArray(ids) || ids.length === 0) return out;
+  // Cap to a sane batch size so a malicious caller can't ask for 100K ids.
+  const safe = ids.slice(0, 500)
+    .map(n => Number.parseInt(n, 10))
+    .filter(Number.isFinite);
+  if (safe.length === 0) return out;
+  const placeholders = safe.map(() => '?').join(',');
+  const rows = db.prepare(
+    `SELECT accident_id, slug FROM accident_narratives
+     WHERE indexable = 1 AND accident_id IN (${placeholders})`
+  ).all(...safe);
+  for (const r of rows) out[r.accident_id] = r.slug;
+  return out;
+}
 function listIndexable({ limit = 500, offset = 0 } = {}) {
   return stmts.listIndexable.all({ limit, offset });
 }
@@ -91,4 +111,4 @@ function statsByScore() {
   };
 }
 
-module.exports = { upsert, getBySlug, getById, listIndexable, slugTaken, finalSlug, statsByScore };
+module.exports = { upsert, getBySlug, getById, listIndexable, slugTaken, finalSlug, statsByScore, getSlugsForIds };

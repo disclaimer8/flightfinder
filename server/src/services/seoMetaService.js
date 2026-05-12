@@ -689,7 +689,11 @@ function resolve(pathname) {
           : undefined,
       },
       about: [
-        { '@type': 'Vehicle', name: f.aircraft_model },
+        {
+          '@type': 'Vehicle',
+          name: f.aircraft_model,
+          ...(f.registration ? { identifier: f.registration } : {}),
+        },
         f.operator ? { '@type': 'Organization', name: f.operator } : null,
       ].filter(Boolean),
       isAccessibleForFree: true,

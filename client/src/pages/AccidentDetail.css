@@ -18,6 +18,12 @@
   line-height: 1.25;
   margin: 0 0 8px;
 }
+.ad-reg {
+  font-family: var(--font-mono, ui-monospace);
+  font-size: 0.85em;
+  color: var(--text-2);
+  font-weight: 400;
+}
 .ad-meta { color: var(--text-2); font-size: 14px; }
 .ad-meta span:not(:last-child)::after { content: ' • '; color: var(--text-3); }
 

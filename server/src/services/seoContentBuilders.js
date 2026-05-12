@@ -559,7 +559,8 @@ async function bAccident(slug) {
   if (data.indexable !== 1) return null;
 
   const f = data.facts;
-  const heroH1 = `${_esc(f.date)}: ${_esc(f.aircraft_model)} — ${_esc(f.operator || 'Unknown operator')}`;
+  const regChunk = f.registration ? ` <span class="ad-reg">(${_esc(f.registration)})</span>` : '';
+  const heroH1 = `${_esc(f.date)}: ${_esc(f.aircraft_model)}${regChunk} — ${_esc(f.operator || 'Unknown operator')}`;
   // Severity label: always show — "No fatalities" is meaningful (vs unknown).
   const fatalitiesNum = String(f.fatalities ?? '').split('+')
     .reduce((a, b) => a + (Number(b) || 0), 0);

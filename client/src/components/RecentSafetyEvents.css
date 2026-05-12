@@ -32,6 +32,8 @@
 .rse-aircraft   { color: var(--text); }
 .rse-location   { color: var(--text-2); }
 .rse-fatalities { font-family: var(--font-mono); color: var(--sev-fatal); text-align: right; width: 80px; }
+.rse-link { color: var(--link); text-decoration: none; }
+.rse-link:hover { text-decoration: underline; }
 
 .rse-loading { color: var(--text-2); padding: 16px 0; }
 

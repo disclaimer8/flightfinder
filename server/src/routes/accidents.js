@@ -14,6 +14,18 @@ router.get('/', (req, res) => {
   res.json({ data: rows, limit, offset });
 });
 
+// Bulk slug lookup — RecentSafetyEvents + /safety/global table use this to
+// rewrite external "Source" links to internal /accidents/{slug} when an
+// indexable narrative exists. Path is BEFORE /:slug to avoid catch-all.
+// Query: ?ids=1,2,3,4,5 (CSV of sidecar accident_ids).
+router.get('/slugs', (req, res) => {
+  const raw = String(req.query.ids || '').trim();
+  if (!raw) return res.json({});
+  const ids = raw.split(',').map(s => s.trim()).filter(Boolean);
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json(svc.slugsForIds(ids));
+});
+
 // Specific by numeric id — must come before /:slug
 router.get('/by-id/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
