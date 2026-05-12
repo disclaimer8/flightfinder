@@ -1,0 +1,171 @@
+/* PriceCalendar — 14-day fare bar chart. Ported from
+   design_handoff_flightfinder/preview/price-calendar.html. */
+
+.pcal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 28px 32px;
+  box-shadow: var(--shadow);
+}
+
+.pcal__hdr {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 18px;
+}
+.pcal__title {
+  font: 600 18px var(--font-ui);
+  margin: 0;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.pcal__sub {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.pcal__legend {
+  display: flex;
+  gap: 14px;
+  font: 500 11px var(--font-mono);
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.pcal__legend span::before {
+  content: '';
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+.pcal__legend-low::before  { background: var(--green); }
+.pcal__legend-mid::before  { background: var(--orange); }
+.pcal__legend-high::before { background: var(--red); }
+.pcal__legend-sel::before  { background: var(--primary); }
+
+.pcal__chart {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 4px;
+  margin-top: 12px;
+}
+.pcal__day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--bg);
+  border: 0;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  padding: 0 0 6px;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+  font: inherit;
+  color: inherit;
+  min-height: 90px;
+}
+.pcal__day:hover { transform: translateY(-2px); }
+.pcal__day:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.pcal__bar {
+  flex: 1;
+  min-height: 18px;
+  display: flex;
+  align-items: flex-end;
+  padding: 6px 4px 0;
+}
+.pcal__bar-fill {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+}
+
+.pcal__day.is-low  .pcal__bar-fill { background: var(--green); }
+.pcal__day.is-mid  .pcal__bar-fill { background: var(--orange); }
+.pcal__day.is-high .pcal__bar-fill { background: var(--red); }
+
+.pcal__price {
+  font: 600 12px var(--font-mono);
+  text-align: center;
+  margin-top: 6px;
+  color: var(--text);
+}
+.pcal__date {
+  font: 500 10px var(--font-mono);
+  text-align: center;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.pcal__day.is-selected {
+  background: var(--primary-light);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+.pcal__day.is-selected .pcal__price,
+.pcal__day.is-selected .pcal__date { color: var(--primary-dark); }
+
+.pcal__day.is-cheapest { padding-top: 18px; }
+.pcal__day.is-cheapest::after {
+  content: '↓ Cheapest';
+  position: absolute; top: 0; left: 0; right: 0;
+  background: var(--green); color: #fff;
+  font: 600 9px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 0;
+  text-align: center;
+}
+
+.pcal__hint {
+  margin-top: 14px;
+  font: 400 13px var(--font-ui);
+  color: var(--text-2);
+}
+.pcal__hint b { color: var(--green); font-weight: 600; }
+
+.pcal__summary {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.pcal__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pcal__cell-l {
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.pcal__cell-v {
+  font: 600 22px/1.1 var(--font-ui);
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.pcal__cell-v small {
+  font: 500 12px var(--font-mono);
+  color: var(--text-3);
+  margin-left: 4px;
+}
+
+@media (max-width: 720px) {
+  .pcal { padding: 20px; }
+  .pcal__chart { grid-template-columns: repeat(7, 1fr); }
+  .pcal__day:nth-child(n+8) { grid-row: 2; }
+}
