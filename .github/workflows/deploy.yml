@@ -69,6 +69,22 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             export PATH="$PATH:/usr/local/bin"
             cd ~/flightfinder
+            # Pre-deploy disk hygiene. ntsbDumpWorker creates /var/tmp/ntsb-*
+            # tmpdirs (~600MB each) and registers a `finally` cleanup, but a
+            # SIGKILL (OOM, manual stop) leaks them — and they piled up enough
+            # to make `git pull` fail with "No space left on device" twice in
+            # one hour (commits e8d35c2 and the safety-events fix retry). Nuke
+            # tmpdirs older than 1h so an in-flight backfill is unaffected.
+            df -h / | awk 'NR==2 {print "[deploy] disk before cleanup: " $4 " free of " $2}'
+            find /var/tmp -maxdepth 1 -name 'ntsb-*' -mmin +60 -exec rm -rf {} + 2>/dev/null || true
+            find /tmp     -maxdepth 1 -name 'ntsb-*' -mmin +60 -exec rm -rf {} + 2>/dev/null || true
+            # Cap systemd journal at 200MB (defaults can balloon to several GB
+            # on a long-running box) and flush pm2 logs in place.
+            journalctl --vacuum-size=200M >/dev/null 2>&1 || true
+            pm2 flush >/dev/null 2>&1 || true
+            # Compact the repo's loose-object pile so `git pull` has headroom.
+            git gc --auto --quiet 2>/dev/null || true
+            df -h / | awk 'NR==2 {print "[deploy] disk after cleanup:  " $4 " free of " $2}'
             git pull origin main
             # Write OpenSky credentials to server .env (idempotent)
             sed -i '/^OPENSKY_/d' server/.env
