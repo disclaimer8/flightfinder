@@ -224,6 +224,7 @@ app.use('/api/safety',        require('./routes/safety'));
 app.use('/api/accidents',     require('./routes/accidents'));
 app.use('/api/client-error',  require('./routes/clientError'));
 app.use('/api/admin/ingest-status', require('./routes/ingestStatus'));
+app.use('/api/admin',              require('./routes/adminAccidents'));
 app.use('/api',                   require('./routes/landingRoutes'));
 if (process.env.TRIPS_ENABLED !== '0') {
   app.use('/api/trips',       require('./routes/trips'));
