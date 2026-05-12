@@ -118,7 +118,7 @@
 }
 
 .airport-code {
-  font-size: 1.55rem;
+  font-size: 1.75rem; /* 28px per handoff .fc__iata */
   font-weight: 800;
   color: var(--text);
   line-height: 1;
@@ -126,9 +126,10 @@
 }
 
 .time {
+  font-family: var(--font-mono); /* handoff .fc__times — mono 13px */
   font-size: 0.82rem;
   color: var(--text-2);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .day-offset {
