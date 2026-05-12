@@ -111,12 +111,26 @@ async function runIngest({ skipDownload = false, mdbPath = null } = {}) {
     }
   }
 
+  // Pre-fetch sidecar ev_id → accident_id map. Filtering CSVs by this set
+  // BEFORE retaining them in memory drops peak RAM from ~1.5GB (full 92K-row
+  // NTSB dataset × 5 tables) to ~150MB (sidecar's ~30K matching events only).
+  // Without the prefilter the worker is OOM-killed (exit 137) on VPSes with
+  // <4GB free RAM.
+  const evIdToAccId = (process.env.NODE_ENV !== 'test')
+    ? sidecar.getNtsbEvIdToAccidentIdMap()
+    : null;
+  const isMatched = (ev_id) =>
+    !evIdToAccId || evIdToAccId.has(ev_id);  // test env: keep everything (mocked)
+
   const tables = {};
   for (const def of TABLE_DEFS) {
     const csvPath = path.join(csvDir, `${def.csvName}.csv`);
     if (!fs.existsSync(csvPath)) { tables[def.tableKey] = []; continue; }
-    const text = fs.readFileSync(csvPath, 'utf8');
-    tables[def.tableKey] = parseCsv(text);
+    let text = fs.readFileSync(csvPath, 'utf8');
+    let parsed = parseCsv(text);
+    text = null;  // release input string immediately so V8 GC can reclaim
+    tables[def.tableKey] = parsed.filter(r => isMatched(r.ev_id));
+    parsed = null;  // release full parsed array; only filtered subset retained
   }
 
   const records = joinNtsbTables(tables);
@@ -130,7 +144,10 @@ async function runIngest({ skipDownload = false, mdbPath = null } = {}) {
     const slice = records.slice(i, i + txnChunk);
     db.transaction(() => {
       for (const rec of slice) {
-        const accId = sidecar.getAccidentIdBySourceEventId(rec.ev_id, 'ntsb');
+        // Prefer the pre-fetched map (one-shot SELECT vs 30K LIKE queries).
+        const accId = evIdToAccId
+          ? evIdToAccId.get(rec.ev_id)
+          : sidecar.getAccidentIdBySourceEventId(rec.ev_id, 'ntsb');
         if (!accId) { unmatched++; continue; }
         const candidate = buildAccidentSlugCandidate({
           normalized_date: rec.ev_date,

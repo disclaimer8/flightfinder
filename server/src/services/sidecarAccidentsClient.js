@@ -42,6 +42,10 @@ function getStmts() {
          OR source_url LIKE '%/wiki/' || ?
       LIMIT 1
     `),
+    allNtsbUrls: d.prepare(`
+      SELECT id, source_url FROM accidents
+      WHERE source_url LIKE '%carol.ntsb.gov/event/%'
+    `),
     byAircraft: d.prepare(`
       SELECT id, date, aircraft_model, operator, location
       FROM accidents
@@ -89,7 +93,23 @@ function findRelatedByOperator(operator, excludeId) {
   return s.byOperator.all(operator, excludeId);
 }
 
+// Returns Map<ev_id, sidecar_accident_id> for all sidecar rows with a
+// carol.ntsb.gov source URL. Used by the NTSB ingest worker to pre-filter
+// CSVs so we don't keep 60K+ non-matching events in memory.
+function getNtsbEvIdToAccidentIdMap() {
+  const s = getStmts(); if (!s) return new Map();
+  const out = new Map();
+  for (const row of s.allNtsbUrls.all()) {
+    // Source URL pattern: https://carol.ntsb.gov/event/{evId}
+    // Comma-merged rows can carry multiple URLs; extract every event ID match.
+    const matches = String(row.source_url || '').matchAll(/\/event\/([^,\s/?]+)/g);
+    for (const m of matches) out.set(m[1], row.id);
+  }
+  return out;
+}
+
 module.exports = {
   getAccidentById, getAccidentIdBySourceEventId,
   findRelatedByAircraft, findRelatedByOperator,
+  getNtsbEvIdToAccidentIdMap,
 };
