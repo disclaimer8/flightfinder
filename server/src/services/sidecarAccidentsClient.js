@@ -28,7 +28,7 @@ function getStmts() {
   const d = getDb();
   if (!d) return null;
   _stmts = {
-    byId: d.prepare(`SELECT id, date, aircraft_model, operator, fatalities, location,
+    byId: d.prepare(`SELECT id, date, normalized_date, aircraft_model, operator, fatalities, location,
                             source_url, lat, lon FROM accidents WHERE id = ?`),
     byEventId_ntsb: d.prepare(`
       SELECT id FROM accidents
@@ -43,7 +43,8 @@ function getStmts() {
       LIMIT 1
     `),
     allNtsbUrls: d.prepare(`
-      SELECT id, source_url FROM accidents
+      SELECT id, source_url, normalized_date, aircraft_model, operator, location
+      FROM accidents
       WHERE source_url LIKE '%carol.ntsb.gov/event/%'
     `),
     byAircraft: d.prepare(`
@@ -93,9 +94,12 @@ function findRelatedByOperator(operator, excludeId) {
   return s.byOperator.all(operator, excludeId);
 }
 
-// Returns Map<ev_id, sidecar_accident_id> for all sidecar rows with a
-// carol.ntsb.gov source URL. Used by the NTSB ingest worker to pre-filter
-// CSVs so we don't keep 60K+ non-matching events in memory.
+// Returns Map<ev_id, {accId, normalized_date, aircraft_model, operator, location}>
+// for all sidecar rows with a carol.ntsb.gov source URL. Used by the NTSB ingest
+// worker (a) to pre-filter CSVs so we don't keep 60K+ non-matching events in
+// memory, and (b) to source slug-friendly fields (sidecar has clean
+// human-formatted `aircraft_model` like "PIPER PA 28-180" vs the MDB's terse
+// "F33A" plus ISO `normalized_date` instead of US MM/DD/YY).
 function getNtsbEvIdToAccidentIdMap() {
   const s = getStmts(); if (!s) return new Map();
   const out = new Map();
@@ -103,7 +107,14 @@ function getNtsbEvIdToAccidentIdMap() {
     // Source URL pattern: https://carol.ntsb.gov/event/{evId}
     // Comma-merged rows can carry multiple URLs; extract every event ID match.
     const matches = String(row.source_url || '').matchAll(/\/event\/([^,\s/?]+)/g);
-    for (const m of matches) out.set(m[1], row.id);
+    const value = {
+      accId: row.id,
+      normalized_date: row.normalized_date,
+      aircraft_model:  row.aircraft_model,
+      operator:        row.operator,
+      location:        row.location,
+    };
+    for (const m of matches) out.set(m[1], value);
   }
   return out;
 }

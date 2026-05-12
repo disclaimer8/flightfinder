@@ -659,13 +659,27 @@ function resolve(pathname) {
     const escHtml = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
                                         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const title = `${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''} | FlightFinder`;
-    const description = (data.narrative_text || '').slice(0, 250);
+    // Truncate at word boundary near 160 chars (Google SERP shows ~155-160).
+    // Bare slice(250) cuts mid-word ("...Both p"); slice + rfind space avoids that.
+    const description = (() => {
+      const raw = String(data.narrative_text || '').replace(/\s+/g, ' ').trim();
+      if (raw.length <= 160) return raw;
+      const cut = raw.slice(0, 160);
+      const lastSpace = cut.lastIndexOf(' ');
+      return (lastSpace > 120 ? cut.slice(0, lastSpace) : cut) + '…';
+    })();
+
+    // Schema.org Event.startDate requires ISO 8601. Sidecar's `normalized_date`
+    // is already YYYY-MM-DD when parseable; falls back to f.date if not.
+    const isoDate = (f.normalized_date && /^\d{4}-\d{2}-\d{2}$/.test(f.normalized_date))
+      ? f.normalized_date
+      : f.date;
 
     const jsonLd = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'Event',
       name: `${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''}`,
-      startDate: f.date,
+      startDate: isoDate,
       description,
       location: {
         '@type': 'Place',

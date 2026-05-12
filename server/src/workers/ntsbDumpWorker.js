@@ -149,17 +149,23 @@ async function runIngest({ skipDownload = false, mdbPath = null } = {}) {
     db.transaction(() => {
       for (const rec of slice) {
         // Prefer the pre-fetched map (one-shot SELECT vs 30K LIKE queries).
-        const accId = evIdToAccId
-          ? evIdToAccId.get(rec.ev_id)
+        // Backward-compat: map value used to be a plain accId integer; now it
+        // is an object {accId, normalized_date, aircraft_model, operator,
+        // location} carrying clean sidecar data for slug generation.
+        const sc = evIdToAccId ? evIdToAccId.get(rec.ev_id) : null;
+        const accId = sc
+          ? (typeof sc === 'object' ? sc.accId : sc)
           : sidecar.getAccidentIdBySourceEventId(rec.ev_id, 'ntsb');
         if (!accId) { unmatched++; continue; }
+        // Slug from sidecar's human-friendly data (e.g. "PIPER PA 28-180" +
+        // ISO normalized_date) — the MDB raw data gives "F33A" + "01/10/08".
         const candidate = buildAccidentSlugCandidate({
-          normalized_date: rec.ev_date,
-          aircraft_model:  rec.ev_meta.aircraft_model,
-          operator:        rec.ev_meta.operator,
-          location:        rec.ev_meta.city
+          normalized_date: (sc && sc.normalized_date) || rec.ev_date,
+          aircraft_model:  (sc && sc.aircraft_model)  || rec.ev_meta.aircraft_model,
+          operator:        (sc && sc.operator)        || rec.ev_meta.operator,
+          location:        (sc && sc.location) || (rec.ev_meta.city
             ? `${rec.ev_meta.city}, ${rec.ev_meta.state || rec.ev_meta.country}`
-            : '',
+            : ''),
         });
         const finalSlug = model.finalSlug(candidate, accId);
         model.upsert({

@@ -577,7 +577,9 @@ async function bAccident(slug) {
   const narrativeHtml = data.narrative_text
     ? `<section class="ad-narrative">
          <h2>Accident narrative</h2>
-         <article>${_esc(data.narrative_text)}</article>
+         <article>${data.narrative_text.split(/\r?\n\r?\n+/)
+           .map(p => p.trim()).filter(Boolean)
+           .map(p => `<p>${_esc(p)}</p>`).join('')}</article>
        </section>`
     : '';
 

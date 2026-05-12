@@ -53,7 +53,12 @@ export default function AccidentDetail() {
       {data.narrative_text && (
         <section className="ad-narrative">
           <h2>Accident narrative</h2>
-          <article>{data.narrative_text}</article>
+          <article>
+            {data.narrative_text.split(/\r?\n\r?\n+/).map((p, i) => {
+              const txt = p.trim();
+              return txt ? <p key={i}>{txt}</p> : null;
+            })}
+          </article>
         </section>
       )}
 
