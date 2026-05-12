@@ -75,10 +75,13 @@ describe('seoMeta for /accidents/:slug', () => {
 
   it('inject() includes JSON-LD Event script tag', async () => {
     seed({ slug: 'test' });
-    // Simulate full pipeline:
+    // Simulate full pipeline: resolve builds meta (with jsonLd), inject applies
+    // structured-data to the HTML template. buildAsync produces the bake fragment
+    // but inject operates on the full index.html template — simulate with a
+    // minimal template that has the required </head> anchor.
     const meta = seoMeta.resolve('/accidents/test');
-    const html = await builders.buildAsync(meta);
-    const injected = seoMeta.inject(html || '<html><head></head><body></body></html>', meta);
+    const template = '<html><head><title>T</title></head><body></body></html>';
+    const injected = seoMeta.inject(template, meta);
     expect(injected).toMatch(/<script type="application\/ld\+json">/);
     expect(injected).toMatch(/"@type":"Event"/);
   });
