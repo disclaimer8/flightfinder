@@ -56,7 +56,12 @@ function parseCsv(text) {
 }
 
 async function downloadDump(filename, dest) {
-  const url = `${NTSB_BASE}/${filename}`;
+  // NTSB switched (2025-ish) from a static-file URL pattern (avdata/<file>.zip)
+  // to a query-string-driven download proxy that takes the original Windows path
+  // as a URL-encoded fileID. The static URL now returns 404 even though the file
+  // listing still appears at https://data.ntsb.gov/avdata/.
+  const fileId = `C:\\avdata\\${filename}`;
+  const url = `${NTSB_BASE}/FileDirectory/DownloadFile?fileID=${encodeURIComponent(fileId)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`NTSB download ${url} → HTTP ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
