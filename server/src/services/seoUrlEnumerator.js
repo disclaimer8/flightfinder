@@ -96,4 +96,21 @@ function enumerateSeoUrls(opts = {}) {
   return [...set];
 }
 
-module.exports = { enumerateSeoUrls, STATIC_PATHS };
+function enumerateAccidents() {
+  const { db } = require('../models/db');
+  const rows = db.prepare(`
+    SELECT slug, updated_at FROM accident_narratives
+    WHERE indexable = 1
+    ORDER BY updated_at DESC
+    LIMIT 50000
+  `).all();
+  const BASE = 'https://himaxym.com';
+  return rows.map(r => ({
+    loc:        `${BASE}/accidents/${r.slug}`,
+    lastmod:    new Date((r.updated_at || 0) * 1000).toISOString().slice(0, 10),
+    changefreq: 'monthly',
+    priority:   '0.6',
+  }));
+}
+
+module.exports = { enumerateSeoUrls, enumerateAccidents, STATIC_PATHS };

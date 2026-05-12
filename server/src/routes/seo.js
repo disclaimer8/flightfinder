@@ -115,6 +115,20 @@ router.get('/sitemap.xml', async (_req, res) => {
     console.warn('[seo] aircraft-route grid unavailable for sitemap:', err.message);
   }
 
+  // Accident narrative pages — indexable=1 rows from accident_narratives.
+  try {
+    const enumerator = require('../services/seoUrlEnumerator');
+    if (typeof enumerator.enumerateAccidents === 'function') {
+      const accidentEntries = enumerator.enumerateAccidents();
+      urls.push(...accidentEntries);
+      if (process.env.NODE_ENV !== 'test') {
+        console.log(`[seo] ${accidentEntries.length} accident pages added to sitemap`);
+      }
+    }
+  } catch (err) {
+    console.warn('[seo] enumerateAccidents unavailable for sitemap:', err.message);
+  }
+
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
