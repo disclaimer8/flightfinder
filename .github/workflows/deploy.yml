@@ -85,7 +85,15 @@ jobs:
             # Compact the repo's loose-object pile so `git pull` has headroom.
             git gc --auto --quiet 2>/dev/null || true
             df -h / | awk 'NR==2 {print "[deploy] disk after cleanup:  " $4 " free of " $2}'
-            git pull origin main
+            # Discard local divergence before pulling. Prebuild scripts
+            # (scripts/build-aircraft-index.js) rewrite tracked files on the
+            # VPS each deploy; without this, the next `git pull` aborts with
+            # "Your local changes would be overwritten by merge" the moment
+            # the source-of-truth file (server/src/models/aircraftFamilies.js)
+            # changes upstream. deploy.yml never makes intentional local
+            # commits on the VPS, so a hard reset is safe.
+            git fetch origin main
+            git reset --hard origin/main
             # Write OpenSky credentials to server .env (idempotent)
             sed -i '/^OPENSKY_/d' server/.env
             # New OAuth2 credentials (basic auth deprecated 2026-03-18)
