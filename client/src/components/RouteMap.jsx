@@ -57,10 +57,26 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 // ── Route arc colours by confidence tier ────────────────────────────────────
+// Each tier renders as a triple stroke (handoff route-map glow): a faint
+// wide halo, a mid-weight body, and a bright thin core. Done by drawing
+// three polylines per route (glow → mid → core) so they composite on top
+// of each other on Leaflet's overlayPane.
 const ARC_STYLE = {
-  live:       { color: 'rgba(52,211,153,0.85)',  weight: 2.0, dashArray: null },
-  scheduled:  { color: 'rgba(99,140,200,0.55)',  weight: 1.5, dashArray: null },
-  observed:   { color: 'rgba(180,130,200,0.40)', weight: 1.2, dashArray: '4 3' },
+  live: {
+    glow: { color: 'rgba(52,211,153,0.12)', weight: 8, dashArray: null },
+    mid:  { color: 'rgba(52,211,153,0.32)', weight: 5, dashArray: null },
+    core: { color: 'rgba(167,243,208,0.95)', weight: 2, dashArray: null },
+  },
+  scheduled: {
+    glow: { color: 'rgba(99,102,241,0.12)', weight: 8, dashArray: null },
+    mid:  { color: 'rgba(99,102,241,0.22)', weight: 5, dashArray: null },
+    core: { color: 'rgba(165,180,252,0.95)', weight: 2, dashArray: null },
+  },
+  observed: {
+    glow: { color: 'rgba(180,130,200,0.08)', weight: 6, dashArray: null },
+    mid:  { color: 'rgba(180,130,200,0.18)', weight: 4, dashArray: null },
+    core: { color: 'rgba(180,130,200,0.55)', weight: 1.4, dashArray: '4 3' },
+  },
 };
 
 // ── Great-circle intermediate points (for geodesic arcs) ────────────────────
@@ -450,13 +466,19 @@ export default function RouteMap() {
         const dLon = airportsDataRef.current.crd[idx * 2 + 1];
         const pts  = geodesicPoints(ap.lat, ap.lon, dLat, dLon);
         const style = ARC_STYLE[confidence] ?? ARC_STYLE.scheduled;
-        const line = L.polyline(pts, {
-          color:       style.color,
-          weight:      style.weight,
-          dashArray:   style.dashArray,
-          interactive: false,
-        }).addTo(map);
-        routeLinesRef.current.push(line);
+        // Triple-stroke composite: glow halo → mid body → bright core.
+        // Adding in this order ensures the core paints last (on top).
+        for (const tier of ['glow', 'mid', 'core']) {
+          const s = style[tier];
+          if (!s) continue;
+          const line = L.polyline(pts, {
+            color:       s.color,
+            weight:      s.weight,
+            dashArray:   s.dashArray,
+            interactive: false,
+          }).addTo(map);
+          routeLinesRef.current.push(line);
+        }
       }
 
       // Pan origin to top-right so destination arcs have room to fan out.
@@ -581,10 +603,19 @@ export default function RouteMap() {
       });
       mapRef.current = map;
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      // Per design_handoff: split the basemap into terrain (dark_nolabels) +
+      // labels (dark_only_labels @ 35% opacity) so country/city names sit
+      // above route arcs but feel restrained against the dark canvas.
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
         attribution: '© <a href="https://carto.com">CARTO</a> | Aircraft data: AirLabs + <a href="https://adsb.lol">adsb.lol</a> (ODbL)',
         subdomains: 'abcd',
         maxZoom: 19,
+      }).addTo(map);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd',
+        maxZoom: 19,
+        opacity: 0.35,
+        pane: 'shadowPane', // sit above tiles, below overlay canvas
       }).addTo(map);
 
       const res      = await fetch(`${API_BASE}/api/map/airports`);
