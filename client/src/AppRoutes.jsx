@@ -22,6 +22,7 @@ const Attributions = lazy(() => import('./pages/legal/Attributions'));
 const SafetyFeed        = lazy(() => import('./pages/safety/SafetyFeed'));
 const SafetyEventDetail = lazy(() => import('./pages/safety/SafetyEventDetail'));
 const SafetyGlobal      = lazy(() => import('./pages/safety/SafetyGlobal'));
+const AccidentDetail    = lazy(() => import('./pages/AccidentDetail'));
 const About             = lazy(() => import('./pages/About'));
 
 export default function AppRoutes() {
@@ -45,6 +46,7 @@ export default function AppRoutes() {
         <Route path="/safety/feed"        element={<Suspense fallback={null}><SafetyFeed /></Suspense>} />
         <Route path="/safety/events/:id"  element={<Suspense fallback={null}><SafetyEventDetail /></Suspense>} />
         <Route path="/safety/global"      element={<Suspense fallback={null}><SafetyGlobal /></Suspense>} />
+        <Route path="/accidents/:slug"    element={<Suspense fallback={null}><AccidentDetail /></Suspense>} />
         <Route path="/about"              element={<Suspense fallback={null}><About /></Suspense>} />
       </Route>
       <Route path="/"       element={<Home />} />

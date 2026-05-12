@@ -1,0 +1,61 @@
+.ad-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  font-family: var(--font-ui);
+  color: var(--text);
+}
+
+.ad-crumbs {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 16px;
+}
+.ad-crumbs a { color: var(--link); text-decoration: none; }
+
+.ad-hero h1 {
+  font-size: 28px;
+  line-height: 1.25;
+  margin: 0 0 8px;
+}
+.ad-meta { color: var(--text-2); font-size: 14px; }
+.ad-meta span:not(:last-child)::after { content: ' • '; color: var(--text-3); }
+
+.ad-probable, .ad-narrative, .ad-factors, .ad-conds, .ad-related {
+  margin-top: 32px;
+}
+.ad-probable h2, .ad-narrative h2, .ad-factors h2, .ad-conds h2, .ad-related h2 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+.ad-probable blockquote {
+  border-left: 3px solid var(--sev-fatal);
+  margin: 8px 0;
+  padding: 8px 16px;
+  background: var(--surface-2);
+  font-style: italic;
+}
+.ad-attrib { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.ad-factors ul { padding-left: 20px; }
+.ad-conds dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; }
+.ad-conds dt { color: var(--text-2); font-weight: 500; }
+.ad-related h3 { font-size: 15px; margin: 16px 0 4px; color: var(--text-2); }
+
+.ad-attribution {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+  font-size: 12px;
+  color: var(--text-3);
+}
+.ad-attribution a { color: var(--link); }
+
+.ad-loading, .ad-error {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-2);
+}
+
+@media (max-width: 480px) {
+  .ad-hero h1 { font-size: 22px; }
+}
