@@ -5,7 +5,7 @@
     "build": "cd client && npm install && npm run build",
     "start": "cd server && node src/index.js",
     "install:all": "npm install --prefix client && npm install --prefix server",
-    "backfill-ntsb": "node --max-old-space-size=6144 scripts/backfill-ntsb.js"
+    "backfill-ntsb": "node --max-old-space-size=1024 scripts/backfill-ntsb.js"
   },
   "engines": {
     "node": ">=18.0.0"
