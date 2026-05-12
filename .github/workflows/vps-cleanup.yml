@@ -4,9 +4,10 @@ name: VPS one-shot cleanup
 #   - /var/lib/apport/coredump/core.*  (OOM-killed Node dumps, ~9.5GB)
 #   - /var/tmp/ntsb-*  (stale NTSB worker tmpdirs, ~6.2GB)
 #
-# Defensive: skips ntsb-tmpdir nuke if mdb-export or a ntsbDumpWorker
-# process is currently running (only deletes tmpdirs modified >10 min ago
-# in that case).
+# Defensive: skips ntsb-tmpdir nuke if a real ntsb worker process is
+# running (matches `node ... ntsbDumpWorker` specifically — earlier
+# version used `pgrep -f mdb-export` which false-matched the cleanup
+# shell itself).
 
 on:
   workflow_dispatch:
@@ -30,24 +31,23 @@ jobs:
             df -h /
             echo ""
             echo "=== coredump removal ==="
-            ls -la /var/lib/apport/coredump 2>/dev/null
             CORE_BYTES=$(du -sb /var/lib/apport/coredump 2>/dev/null | awk '{print $1}')
             rm -f /var/lib/apport/coredump/core.* 2>/dev/null
-            echo "[cleanup] removed coredumps: $((CORE_BYTES / 1024 / 1024)) MB"
-            # Disable future coredump capture from apport — useful in dev,
-            # actively harmful in prod where Node OOMs leave 2-3GB dumps.
+            echo "[cleanup] removed coredumps: $((${CORE_BYTES:-0} / 1024 / 1024)) MB"
             systemctl stop apport.service 2>/dev/null
             systemctl disable apport.service 2>/dev/null
-            echo "ProcessSizeLimit=0" > /etc/systemd/coredump.conf.d/disable.conf 2>/dev/null
-            mkdir -p /etc/systemd/coredump.conf.d/ 2>/dev/null && \
-              printf "[Coredump]\nStorage=none\nProcessSizeLimit=0\n" > /etc/systemd/coredump.conf.d/disable.conf
+            mkdir -p /etc/systemd/coredump.conf.d/
+            printf "[Coredump]\nStorage=none\nProcessSizeLimit=0\n" > /etc/systemd/coredump.conf.d/disable.conf
             systemctl daemon-reload 2>/dev/null
             echo "[cleanup] apport disabled, systemd coredump storage=none"
             echo ""
-            echo "=== ntsb tmpdir removal ==="
-            if pgrep -af 'ntsbDumpWorker|backfill-ntsb|mdb-export' >/dev/null 2>&1; then
-              echo "[cleanup] NTSB worker active — using -mmin +10 filter"
-              pgrep -af 'ntsbDumpWorker|backfill-ntsb|mdb-export'
+            echo "=== ntsb worker detection (exact match) ==="
+            # Match the node process by argv (not by shell text). Exclude pid $$
+            # belt-and-braces against this very shell.
+            ACTIVE=$(ps -eo pid,args | grep -v "^ *$$" | grep -E 'node[^ ]*(ntsbDumpWorker|backfill-ntsb\.js)' | grep -v grep)
+            if [ -n "$ACTIVE" ]; then
+              echo "[cleanup] NTSB worker active — preserving recent tmpdirs"
+              echo "$ACTIVE"
               find /var/tmp -maxdepth 1 -name 'ntsb-*' -mmin +10 -exec rm -rf {} + 2>/dev/null
             else
               echo "[cleanup] no NTSB worker — full nuke"
@@ -59,5 +59,8 @@ jobs:
             echo "=== df -h after ==="
             df -h /
             echo ""
-            echo "=== still-large files >50M after cleanup ==="
-            find / -xdev -type f -size +50M -printf '%s\t%p\n' 2>/dev/null | sort -rn | head -10 | awk '{ printf "%.0fM\t%s\n", $1/1024/1024, $2 }'
+            echo "=== pm2 list ==="
+            pm2 list 2>/dev/null
+            echo ""
+            echo "=== recent pm2 logs from any worker (last 30 lines, errors) ==="
+            pm2 logs --nostream --lines 30 --err 2>/dev/null | tail -50
