@@ -3,7 +3,12 @@ const express = require('express');
 const router  = express.Router();
 const svc     = require('../services/accidentNarrativeService');
 
-router.get('/accident-narratives-stats', (_req, res) => {
+router.get('/accident-narratives-stats', (req, res) => {
+  const adminToken = process.env.ADMIN_TOKEN;
+  if (!adminToken) return res.status(503).json({ success: false, message: 'Admin endpoint disabled' });
+  const provided = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (provided !== adminToken) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
   const s = svc.stats();
   res.json({
     total: s.total,

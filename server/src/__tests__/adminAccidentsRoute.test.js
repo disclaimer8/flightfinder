@@ -6,6 +6,14 @@ const app    = require('../index');
 
 const NOW = 1715500000;
 
+beforeAll(() => {
+  process.env.ADMIN_TOKEN = 'test-token';
+});
+
+afterAll(() => {
+  delete process.env.ADMIN_TOKEN;
+});
+
 beforeEach(() => {
   db.exec(`DELETE FROM accident_narratives`);
 });
@@ -26,12 +34,26 @@ describe('GET /api/admin/accident-narratives-stats', () => {
       phase_of_flight: null, weather_summary: null,
       fetched_at: NOW, ingested_at: NOW, updated_at: NOW,
     });
-    const res = await request(app).get('/api/admin/accident-narratives-stats');
+    const res = await request(app)
+      .get('/api/admin/accident-narratives-stats')
+      .set('Authorization', 'Bearer test-token');
     expect(res.status).toBe(200);
     expect(res.body.total).toBe(2);
     expect(res.body.indexable).toBe(1);
     expect(res.body.score_distribution['90-100']).toBe(1);
     expect(res.body.by_source.ntsb).toBe(1);
     expect(res.body.by_source.wikidata).toBe(1);
+  });
+
+  it('returns 401 when Authorization header is missing', async () => {
+    const res = await request(app).get('/api/admin/accident-narratives-stats');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 when Authorization token is wrong', async () => {
+    const res = await request(app)
+      .get('/api/admin/accident-narratives-stats')
+      .set('Authorization', 'Bearer wrong-token');
+    expect(res.status).toBe(401);
   });
 });
