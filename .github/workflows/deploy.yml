@@ -217,6 +217,7 @@ jobs:
             # hook). Install idempotently; apt-get is fast when already present.
             command -v pngquant >/dev/null 2>&1 || apt-get install -y pngquant
             command -v mdb-export >/dev/null 2>&1 || apt-get install -y mdbtools
+            command -v unzip      >/dev/null 2>&1 || apt-get install -y unzip
             # VITE_SENTRY_DSN is a build-time env — export into client build so
             # Vite bakes it into the bundle. Client code reads import.meta.env.
             cd ../client && npm install && VITE_SENTRY_DSN="${VITE_SENTRY_DSN}" npm run build

@@ -39,8 +39,9 @@ jobs:
             export PATH="$PATH:/usr/local/bin"
             cd ~/flightfinder
             echo "=== preflight ==="
-            command -v mdb-export || { echo "mdb-export missing"; exit 1; }
-            command -v unzip      || { echo "unzip missing"; exit 1; }
+            command -v mdb-export >/dev/null 2>&1 || apt-get install -y mdbtools
+            command -v unzip      >/dev/null 2>&1 || apt-get install -y unzip
+            command -v sqlite3    >/dev/null 2>&1 || apt-get install -y sqlite3
             test -f /root/flightfinder/data/accidents.db \
               || { echo "sidecar accidents.db missing — deploy not complete"; exit 1; }
             echo "=== running backfill ==="
