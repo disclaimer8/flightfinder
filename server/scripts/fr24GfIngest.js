@@ -14,6 +14,11 @@
  */
 
 const fs = require('node:fs');
+const path = require('node:path');
+
+// Load server/.env so FR24_API_KEY (and friends) are available when invoked
+// directly via cron or SSH, not just under pm2 where they're already set.
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const DEFAULT_TTL_MS  = 7 * 24 * 3600 * 1000;
 const DEFAULT_RATE_MS = 6000;
