@@ -221,6 +221,7 @@ app.use('/api/map',           require('./routes/map'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/config',        require('./routes/config'));
 app.use('/api/safety',        require('./routes/safety'));
+app.use('/api/accidents',     require('./routes/accidents'));
 app.use('/api/client-error',  require('./routes/clientError'));
 app.use('/api/admin/ingest-status', require('./routes/ingestStatus'));
 app.use('/api',                   require('./routes/landingRoutes'));
