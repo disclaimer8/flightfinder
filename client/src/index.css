@@ -57,9 +57,9 @@
   --amber-border: #fde68a;
 
   /* Type system */
-  --font-display: 'Source Serif 4', Charter, Georgia, serif;
-  --font-ui:      'Inter Tight', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono:    'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: 'Newsreader', Charter, Georgia, serif;
+  --font-ui:      'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:    'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Indigo split: --primary stays for CTAs / active states; --link for text links */
   --link: #4f46e5;
