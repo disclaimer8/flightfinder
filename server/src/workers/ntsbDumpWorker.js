@@ -66,12 +66,16 @@ async function downloadDump(filename, dest) {
   const url = `${NTSB_BASE}/FileDirectory/DownloadFile?fileID=${encodeURIComponent(fileId)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`NTSB download ${url} → HTTP ${res.status}`);
-  // Stream body to disk in chunks instead of buffering the full 94MB ArrayBuffer
-  // in the V8 heap (await res.arrayBuffer() allocates the entire response in JS
-  // memory, blowing past --max-old-space-size on tight heap configs).
-  const { Readable } = require('node:stream');
-  const { pipeline } = require('node:stream/promises');
-  await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(dest));
+  // We previously tried `pipeline(Readable.fromWeb(res.body), createWriteStream)`
+  // to avoid a 94 MB heap allocation, but it produced corrupt files (unzip then
+  // failed with no error message). With --max-old-space-size=6144 the simple
+  // arrayBuffer path is fine — ~200 MB transient is well within budget.
+  const buf = Buffer.from(await res.arrayBuffer());
+  fs.writeFileSync(dest, buf);
+  // Sanity check: NTSB avall.zip is ~94 MB; anything <1 MB means broken
+  // download (HTML error page, redirect, etc).
+  const stat = fs.statSync(dest);
+  if (stat.size < 1_000_000) throw new Error(`NTSB download too small (${stat.size}b) — likely error page`);
 }
 
 function unzip(zipPath, destDir) {
