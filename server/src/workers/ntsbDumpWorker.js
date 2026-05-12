@@ -47,7 +47,9 @@ function parseCsv(text) {
     if (row.some(v => v !== '')) rows.push(row);
   }
   if (rows.length === 0) return [];
-  const headers = rows[0];
+  // Downcase headers so downstream code can use a single case convention
+  // regardless of the MDB schema (which mixes lower / PascalCase per table).
+  const headers = rows[0].map(h => String(h).toLowerCase());
   return rows.slice(1).map(cells => {
     const obj = {};
     for (let j = 0; j < headers.length; j++) obj[headers[j]] = cells[j] ?? '';
@@ -91,14 +93,14 @@ async function runIngest({ skipDownload = false, mdbPath = null } = {}) {
   }
 
   // Table name → CSV file name mapping.
-  // The MDB table is "occurrence" (singular); we pass it to joinNtsbTables as
-  // the "occurrences" key which is what ntsbParse.js expects.
+  // NTSB MDB uses mixed-case table names; mdb-export is case-sensitive.
+  // Weather fields live INSIDE the events table (wx_cond_basic, wind_dir_deg,
+  // wind_vel_kts, vis_sm) — there is no separate weather table.
   const TABLE_DEFS = [
     { tableKey: 'events',      csvName: 'events',      mdbTable: 'events' },
     { tableKey: 'narratives',  csvName: 'narratives',  mdbTable: 'narratives' },
-    { tableKey: 'findings',    csvName: 'findings',    mdbTable: 'findings' },
-    { tableKey: 'occurrences', csvName: 'occurrence',  mdbTable: 'occurrence' },
-    { tableKey: 'weather',     csvName: 'weather',     mdbTable: 'weather' },
+    { tableKey: 'findings',    csvName: 'findings',    mdbTable: 'Findings' },
+    { tableKey: 'occurrences', csvName: 'occurrences', mdbTable: 'Occurrences' },
     { tableKey: 'aircraft',    csvName: 'aircraft',    mdbTable: 'aircraft' },
   ];
 

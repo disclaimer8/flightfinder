@@ -39,8 +39,8 @@ describe('ntsbDumpWorker.runIngest (offline path)', () => {
       if (name === 'narratives.csv') return 'ev_id,narr_accp,narr_cause\nE1,' +
         '"' + 'x'.repeat(400) + '","' + 'y'.repeat(150) + '"\n';
       if (name === 'findings.csv') return 'ev_id,finding_description,modifier_code\nE1,Loss of power,C\n';
-      if (name === 'occurrence.csv') return 'ev_id,occurrence_code,phase_no\nE1,CRZ,550\n';
-      if (name === 'weather.csv') return 'ev_id,wx_cond_basic,wind_vel_kts,wind_dir_deg,vis_sm\nE1,VMC,9,270,10\n';
+      // Use real MDB column casing — parseCsv downcases headers internally.
+      if (name === 'occurrences.csv') return 'ev_id,Occurrence_Code,Phase_of_Flight\nE1,510,550\n';
       if (name === 'aircraft.csv') return 'ev_id,acft_make,acft_model,regis_no\nE1,BEECH,F33A,N12345\n';
       return '';
     });

@@ -38,6 +38,9 @@ function joinNtsbTables(tables) {
     if (!occurrenceByEv.has(r.ev_id)) occurrenceByEv.set(r.ev_id, r);
   }
 
+  // Weather fields live INSIDE the events table (no separate weather table in
+  // the real NTSB MDB). We still accept a tables.weather Map for backwards
+  // compatibility with the test fixtures from Task 5.
   const weatherByEv = new Map();
   for (const r of tables.weather || []) weatherByEv.set(r.ev_id, r);
 
@@ -53,7 +56,7 @@ function joinNtsbTables(tables) {
     const probableCause = (narr.narr_cause || '').trim() || null;
     const findings = findingsByEv.get(ev.ev_id) || [];
     const occ      = occurrenceByEv.get(ev.ev_id);
-    const wx       = weatherByEv.get(ev.ev_id);
+    const wxRow    = weatherByEv.get(ev.ev_id) || ev;  // fall back to event row
     const acft     = aircraftByEv.get(ev.ev_id);
 
     out.push({
@@ -62,8 +65,8 @@ function joinNtsbTables(tables) {
       narrative_text: narrativeText,
       probable_cause: probableCause,
       factors_json: buildFactorsJson(findings),
-      phase_of_flight: occ?.occurrence_code || null,
-      weather_summary: buildWeatherSummary(wx),
+      phase_of_flight: occ?.phase_of_flight || occ?.occurrence_code || null,
+      weather_summary: buildWeatherSummary(wxRow),
       ev_meta: {
         city: ev.ev_city, state: ev.ev_state, country: ev.ev_country,
         lat: ev.latitude, lon: ev.longitude,
