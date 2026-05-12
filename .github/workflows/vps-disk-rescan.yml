@@ -1,0 +1,57 @@
+name: VPS disk rescan + layout
+
+# Hot-rescans the virtual disk so the guest kernel picks up any size bump
+# the hypervisor did (common when VPS plan was upgraded but growpart never
+# fired). Read-only diagnostics — does not modify the partition table.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rescan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rescan + show
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: 178.104.32.46
+          username: root
+          key: ${{ secrets.claude }}
+          script: |
+            set +e
+            echo "=== BEFORE rescan ==="
+            cat /sys/block/sda/size
+            echo "sectors above × 512 ="
+            awk '{printf "%.2f GiB\n", $1*512/1024/1024/1024}' /sys/block/sda/size
+            echo ""
+            lsblk -b -o NAME,SIZE,MOUNTPOINT
+            echo ""
+            echo "=== triggering rescan: echo 1 > /sys/block/sda/device/rescan ==="
+            echo 1 > /sys/block/sda/device/rescan
+            sleep 2
+            partprobe /dev/sda 2>/dev/null
+            sleep 1
+            echo ""
+            echo "=== AFTER rescan ==="
+            cat /sys/block/sda/size
+            awk '{printf "%.2f GiB\n", $1*512/1024/1024/1024}' /sys/block/sda/size
+            echo ""
+            lsblk -b -o NAME,SIZE,MOUNTPOINT
+            echo ""
+            echo "=== parted print free (with units MiB) ==="
+            parted /dev/sda unit MiB print free 2>&1
+            echo ""
+            echo "=== fdisk free space report ==="
+            sfdisk -F /dev/sda 2>&1
+            echo ""
+            echo "=== ALL block devices visible to kernel ==="
+            lsblk -fb -o NAME,FSTYPE,SIZE,MOUNTPOINT,MODEL
+            echo ""
+            echo "=== Hot-resize possibility check (growpart --dry-run) ==="
+            command -v growpart >/dev/null && growpart --dry-run /dev/sda 1 2>&1 || echo "growpart not installed (apt install cloud-guest-utils)"
+            echo ""
+            echo "=== Filesystem cap ==="
+            tune2fs -l /dev/sda1 2>/dev/null | grep -E "Block count|Block size|Filesystem features|Filesystem state|Last mount|Last checked" | head -10
