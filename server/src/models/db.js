@@ -329,6 +329,32 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_fr24_cache_expires ON fr24_cache(expires_at);
 `);
 
+// 2026-05-12 — accident_narratives: enrichment for sidecar accidents
+// (NTSB bulk-MDB + Wikidata SPARQL). Cross-DB FK by convention to
+// /root/flightfinder/data/accidents.db.accidents.id.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS accident_narratives (
+    accident_id      INTEGER PRIMARY KEY,
+    source           TEXT    NOT NULL,
+    source_event_id  TEXT    NOT NULL,
+    source_url       TEXT    NOT NULL,
+    slug             TEXT    NOT NULL UNIQUE,
+    narrative_text   TEXT,
+    probable_cause   TEXT,
+    factors_json     TEXT,
+    phase_of_flight  TEXT,
+    weather_summary  TEXT,
+    fetched_at       INTEGER NOT NULL,
+    quality_score    INTEGER NOT NULL DEFAULT 0,
+    indexable        INTEGER NOT NULL DEFAULT 0,
+    ingested_at      INTEGER NOT NULL,
+    updated_at       INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_an_slug         ON accident_narratives(slug);
+  CREATE INDEX IF NOT EXISTS idx_an_indexable    ON accident_narratives(indexable, fetched_at);
+  CREATE INDEX IF NOT EXISTS idx_an_source_event ON accident_narratives(source, source_event_id);
+`);
+
 // Prepared statements
 const stmts = {
   getUserByEmail:    db.prepare('SELECT * FROM users WHERE email = ?'),
