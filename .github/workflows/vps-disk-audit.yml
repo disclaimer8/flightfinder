@@ -1,0 +1,78 @@
+name: VPS disk audit
+
+# One-shot disk forensics. Lists the biggest directories at /, /root,
+# /var, /tmp, the deepest dirs in /root/flightfinder, biggest files in
+# /var/log, pm2 + apt + journal usage, and docker if installed.
+# Use `gh workflow run vps-disk-audit.yml` then `gh run view <id> --log`.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disk audit
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: 178.104.32.46
+          username: root
+          key: ${{ secrets.claude }}
+          script: |
+            set +e
+            echo "=== df -h ==="
+            df -h
+            echo ""
+            echo "=== du -h --max-depth=1 / (top 20, excluding /proc /sys /dev) ==="
+            du -h --max-depth=1 --exclude=/proc --exclude=/sys --exclude=/dev / 2>/dev/null | sort -h | tail -20
+            echo ""
+            echo "=== du -h --max-depth=1 /root (top 15) ==="
+            du -h --max-depth=1 /root 2>/dev/null | sort -h | tail -15
+            echo ""
+            echo "=== du -h --max-depth=1 /var (top 15) ==="
+            du -h --max-depth=1 /var 2>/dev/null | sort -h | tail -15
+            echo ""
+            echo "=== du -h --max-depth=1 /var/log (top 15) ==="
+            du -h --max-depth=1 /var/log 2>/dev/null | sort -h | tail -15
+            echo ""
+            echo "=== du -h --max-depth=1 /tmp + /var/tmp ==="
+            du -h --max-depth=1 /tmp /var/tmp 2>/dev/null | sort -h | tail -20
+            echo ""
+            echo "=== du -h --max-depth=2 /root/flightfinder (top 20) ==="
+            du -h --max-depth=2 /root/flightfinder 2>/dev/null | sort -h | tail -20
+            echo ""
+            echo "=== du -sh /root/flightfinder/server/data/* ==="
+            du -sh /root/flightfinder/server/data/* 2>/dev/null | sort -h
+            echo ""
+            echo "=== du -sh /root/flightfinder/client/dist /root/flightfinder/client/node_modules /root/flightfinder/server/node_modules ==="
+            du -sh /root/flightfinder/client/dist /root/flightfinder/client/node_modules /root/flightfinder/server/node_modules 2>/dev/null
+            echo ""
+            echo "=== 30 largest single files anywhere on root fs ==="
+            find / -xdev -type f -size +50M -printf '%s\t%p\n' 2>/dev/null | sort -rn | head -30 | awk '{ printf "%.0fM\t%s\n", $1/1024/1024, $2 }'
+            echo ""
+            echo "=== pm2 process list + log paths ==="
+            pm2 list 2>/dev/null
+            pm2 logs --nostream --lines 0 2>/dev/null | grep -E "log path|out log|error log" || true
+            echo ""
+            echo "=== journalctl size ==="
+            journalctl --disk-usage 2>/dev/null
+            echo ""
+            echo "=== apt cache ==="
+            du -sh /var/cache/apt 2>/dev/null
+            apt-get -s autoremove 2>/dev/null | tail -3
+            echo ""
+            echo "=== docker (if installed) ==="
+            command -v docker >/dev/null && docker system df 2>/dev/null || echo "docker not installed"
+            echo ""
+            echo "=== old kernels ==="
+            dpkg -l 'linux-image-*' 2>/dev/null | grep '^ii' | wc -l | awk '{print $1 " installed kernels"}'
+            echo ""
+            echo "=== /var/tmp/ntsb-* count + total ==="
+            ls -la /var/tmp/ntsb-* 2>/dev/null | head -5
+            du -sh /var/tmp/ntsb-* 2>/dev/null | head -10
+            echo ""
+            echo "=== /root/.npm + /root/.cache ==="
+            du -sh /root/.npm /root/.cache 2>/dev/null
