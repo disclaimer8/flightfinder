@@ -25,7 +25,7 @@ export default function SiteFooter() {
         </div>
       </div>
       <div className="site-footer-bottom">
-        © {new Date().getFullYear()} FlightFinder
+        © {new Date().getFullYear()} Flight Finder
       </div>
     </footer>
   );

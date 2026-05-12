@@ -29,7 +29,9 @@ describe('SiteLayout', () => {
     withRouter(['/safety/global']);
     expect(screen.getByTestId('site-header')).toBeInTheDocument();
     expect(screen.getByText('safety content')).toBeInTheDocument();
-    expect(screen.getAllByText(/FlightFinder/i).length).toBeGreaterThan(0);
+    // Brand wordmark is split into "Flight" + "Finder" spans (handoff styling).
+    expect(screen.getAllByText(/Flight/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Finder/i).length).toBeGreaterThan(0);
   });
 
   it('opens AuthModal when Sign in is clicked', async () => {

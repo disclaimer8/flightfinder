@@ -1,0 +1,8 @@
+<svg width="180" height="90" viewBox="0 0 180 90" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flight Finder">
+  <path d="M 14 76 Q 90 -8 166 76" fill="none" stroke="#0c1427" stroke-width="1.6" stroke-dasharray="2 5" stroke-linecap="round"></path>
+  <circle cx="14" cy="76" r="4" fill="#0c1427"></circle>
+  <circle cx="166" cy="76" r="4" fill="#0c1427"></circle>
+  <g transform="translate(90 12)" fill="#6366f1">
+    <path d="M0 -12 Q -2 -8 -2 -4 L -2 4 L -10 10 L -10 12 L -2 10 L -2 14 L -6 20 L -6 21 L 0 19 L 6 21 L 6 20 L 2 14 L 2 10 L 10 12 L 10 10 L 2 4 L 2 -4 Q 2 -8 0 -12 Z"></path>
+  </g>
+</svg>
