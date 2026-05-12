@@ -98,6 +98,26 @@ describe('seoMetaService.resolve — safety-event titles', () => {
   });
 });
 
+describe('seoContentCache.getOrBuild — lazy bake for safety-event', () => {
+  const cache = require('../services/seoContentCache');
+
+  beforeEach(() => cache._clearForTests());
+
+  it('lazily bakes /safety/events/:id and returns HTML', async () => {
+    const id = getId('sev-fatal');
+    const html = await cache.getOrBuild(`/safety/events/${id}`);
+    expect(html).not.toBeNull();
+    expect(typeof html).toBe('string');
+    expect(html).toContain('2025-09-10');
+    expect(html).toContain('Boeing 787');
+  });
+
+  it('returns null for non-existent event id', async () => {
+    const html = await cache.getOrBuild('/safety/events/9999999');
+    expect(html).toBeNull();
+  });
+});
+
 describe('seoContentBuilders — bSafetyEvent', () => {
   it('produces non-null bake HTML for safety-event kind', () => {
     const id = getId('sev-fatal');

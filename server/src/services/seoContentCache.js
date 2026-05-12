@@ -137,9 +137,15 @@ async function getOrBuild(pathname) {
   // Fast path: the pre-warmed map covers airport / airline / aircraft / route.
   const fromMap = map.get(pathname);
   if (fromMap) return fromMap;
-  // Lazy path is currently scoped to /accidents/* — other unknown URLs fall
-  // through to the React shell with whatever meta seoMetaService produced.
-  if (!/^\/accidents\/[^/]+\/?$/.test(pathname)) return null;
+  // Lazy path covers two unbounded URL families that we don't pre-warm:
+  //   /accidents/{slug}      — ~22K rows; warming blocks pm2 wait_ready
+  //   /safety/events/{id}    — ~500 indexable rows but the id-numeric form
+  //                            also legitimately hits via legacy links and
+  //                            the slug form is enumerated separately
+  const isLazyPath =
+    /^\/accidents\/[^/]+\/?$/.test(pathname) ||
+    /^\/safety\/events\/[^/]+\/?$/.test(pathname);
+  if (!isLazyPath) return null;
 
   const now = Date.now();
   const cached = lazyMap.get(pathname);
@@ -150,7 +156,7 @@ async function getOrBuild(pathname) {
 
   let meta;
   try { meta = seoMeta.resolve(pathname); } catch { return null; }
-  if (!meta || meta.kind !== 'accident') return null;
+  if (!meta || (meta.kind !== 'accident' && meta.kind !== 'safety-event')) return null;
 
   let html;
   try { html = await builders.buildAsync(meta); } catch { return null; }
