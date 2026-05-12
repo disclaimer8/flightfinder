@@ -727,6 +727,12 @@ function _breadcrumbList(items) {
 }
 
 function structuredData(meta) {
+  // Accident pages carry a pre-built Event JSON-LD string on meta.jsonLd
+  // (constructed in resolve()). Parse it back to an object so inject() can
+  // JSON.stringify it through the normal </script> escaping path.
+  if (meta.kind === 'accident' && meta.jsonLd) {
+    try { return JSON.parse(meta.jsonLd); } catch { /* fall through */ }
+  }
   const graph = [];
   if (meta.kind === 'aircraft-variant') {
     // Variant landing breadcrumb: Home > Aircraft > <Family> > <Variant>.

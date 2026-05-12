@@ -72,4 +72,14 @@ describe('seoMeta for /accidents/:slug', () => {
     expect(ld.startDate).toBeTruthy();
     expect(ld.location.geo.latitude).toBe(44.97);
   });
+
+  it('inject() includes JSON-LD Event script tag', async () => {
+    seed({ slug: 'test' });
+    // Simulate full pipeline:
+    const meta = seoMeta.resolve('/accidents/test');
+    const html = await builders.buildAsync(meta);
+    const injected = seoMeta.inject(html || '<html><head></head><body></body></html>', meta);
+    expect(injected).toMatch(/<script type="application\/ld\+json">/);
+    expect(injected).toMatch(/"@type":"Event"/);
+  });
 });
