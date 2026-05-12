@@ -93,6 +93,19 @@ function enumerateSeoUrls(opts = {}) {
     console.warn('[seoUrlEnumerator] top airlines unavailable:', err.message);
   }
 
+  // /accidents/{slug} — indexable accident detail pages. Without this, the
+  // cache-warm pass never builds their bAccident HTML and bots receive the
+  // bare React shell (Soft-404 risk). ~22K entries; ~2-4 min added to warm
+  // duration. accident_narratives is in app.db (same db arg).
+  try {
+    for (const a of enumerateAccidents()) {
+      const u = new URL(a.loc);
+      set.add(u.pathname);
+    }
+  } catch (err) {
+    console.warn('[seoUrlEnumerator] accidents unavailable:', err.message);
+  }
+
   return [...set];
 }
 
