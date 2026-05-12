@@ -36,7 +36,15 @@ export default function AccidentDetail() {
       <header className="ad-hero">
         <h1>{f.date}: {f.aircraft_model}{f.operator ? ` — ${f.operator}` : ''}</h1>
         <p className="ad-meta">
-          {f.fatalities && f.fatalities !== '0' ? <span>{f.fatalities} fatalities</span> : null}
+          {(() => {
+            const n = parseInt(String(f.fatalities ?? '').split('+').reduce((a, b) => a + (Number(b) || 0), 0), 10);
+            const isFatal = n > 0;
+            const sev = isFatal ? 'fatal' : (f.fatalities === '0' ? 'no-fatal' : 'unknown');
+            const label = isFatal
+              ? `${n} ${n === 1 ? 'fatality' : 'fatalities'}`
+              : f.fatalities === '0' ? 'No fatalities' : 'Casualties unknown';
+            return <span className={`ad-sev ad-sev--${sev}`}>{label}</span>;
+          })()}
           {f.location ? <span>{f.location}</span> : null}
           {data.phase_of_flight ? <span>{data.phase_of_flight}</span> : null}
         </p>
@@ -65,7 +73,18 @@ export default function AccidentDetail() {
       {data.factors && data.factors.length > 0 && (
         <section className="ad-factors">
           <h2>Contributing factors</h2>
-          <ul>{data.factors.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          <ul>{data.factors.map((f, i) => {
+            // Service emits {label, role: 'cause'|'factor'|null}. Fall back to
+            // plain strings if an older client somehow gets the raw shape.
+            const label = typeof f === 'string' ? f : f.label;
+            const role  = typeof f === 'string' ? null : f.role;
+            return (
+              <li key={i}>
+                {role ? <span className={`ad-role ad-role--${role}`}>{role}</span> : null}
+                <span className="ad-factor-label">{label}</span>
+              </li>
+            );
+          })}</ul>
         </section>
       )}
 

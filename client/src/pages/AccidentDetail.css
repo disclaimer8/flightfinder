@@ -21,6 +21,23 @@
 .ad-meta { color: var(--text-2); font-size: 14px; }
 .ad-meta span:not(:last-child)::after { content: ' • '; color: var(--text-3); }
 
+.ad-sev--fatal     { color: var(--sev-fatal, #c0392b); font-weight: 600; }
+.ad-sev--no-fatal  { color: var(--sev-incident, #2c7a5e); }
+.ad-sev--unknown   { color: var(--text-3); font-style: italic; }
+
+.ad-role {
+  display: inline-block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-right: 8px;
+  vertical-align: 2px;
+}
+.ad-role--cause  { background: var(--sev-fatal, #c0392b); color: white; }
+.ad-role--factor { background: var(--border-light, #e5e7eb); color: var(--text-2, #555); }
+
 .ad-probable, .ad-narrative, .ad-factors, .ad-conds, .ad-related {
   margin-top: 32px;
 }

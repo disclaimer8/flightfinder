@@ -560,8 +560,15 @@ async function bAccident(slug) {
 
   const f = data.facts;
   const heroH1 = `${_esc(f.date)}: ${_esc(f.aircraft_model)} — ${_esc(f.operator || 'Unknown operator')}`;
+  // Severity label: always show — "No fatalities" is meaningful (vs unknown).
+  const fatalitiesNum = String(f.fatalities ?? '').split('+')
+    .reduce((a, b) => a + (Number(b) || 0), 0);
+  const sevLabel = fatalitiesNum > 0
+    ? `${fatalitiesNum} ${fatalitiesNum === 1 ? 'fatality' : 'fatalities'}`
+    : f.fatalities === '0' ? 'No fatalities' : 'Casualties unknown';
+  const sevClass = fatalitiesNum > 0 ? 'fatal' : f.fatalities === '0' ? 'no-fatal' : 'unknown';
   const metaLine = [
-    f.fatalities && f.fatalities !== '0' ? `${_esc(f.fatalities)} fatalities` : null,
+    `<span class="ad-sev ad-sev--${sevClass}">${_esc(sevLabel)}</span>`,
     f.location ? _esc(f.location) : null,
     data.phase_of_flight ? _esc(data.phase_of_flight) : null,
   ].filter(Boolean).join(' • ');
@@ -586,7 +593,15 @@ async function bAccident(slug) {
   const factorsHtml = (data.factors && data.factors.length)
     ? `<section class="ad-factors">
          <h2>Contributing factors</h2>
-         <ul>${data.factors.map(x => `<li>${_esc(x)}</li>`).join('')}</ul>
+         <ul>${data.factors.map(x => {
+           // Service emits {label, role} objects; string fallback for safety.
+           const label = typeof x === 'string' ? x : x.label;
+           const role  = typeof x === 'string' ? null : x.role;
+           const badge = role
+             ? `<span class="ad-role ad-role--${role}">${role}</span> `
+             : '';
+           return `<li>${badge}<span class="ad-factor-label">${_esc(label)}</span></li>`;
+         }).join('')}</ul>
        </section>`
     : '';
 

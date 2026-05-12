@@ -43,7 +43,8 @@ describe('accidentNarrativeService.getBySlug', () => {
     expect(res.facts.fatalities).toBe('2');
     expect(res.related.byAircraft).toHaveLength(1);
     expect(res.related.byOperator).toHaveLength(1);
-    expect(res.factors).toEqual(['A']);
+    // service now normalizes raw NTSB taxonomy strings into {label, role}.
+    expect(res.factors).toEqual([{ label: 'A', role: null }]);
   });
 
   it('returns null when slug not found', () => {
