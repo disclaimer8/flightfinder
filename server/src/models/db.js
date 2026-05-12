@@ -355,6 +355,43 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_an_source_event ON accident_narratives(source, source_event_id);
 `);
 
+// fr24_gf_route_aircraft: aircraft-on-route buckets observed via FR24 for the
+// specific 182 (and future N) pairs that the AirCrash GF scraper covers. Decoupled
+// from observed_routes (which mixes ADS-B/Airlabs/AeroDataBox sources). airline_icao
+// is NOT NULL with '' sentinel because SQLite treats NULLs as distinct in
+// UNIQUE/PK — would break UPSERT idempotency.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS fr24_gf_route_aircraft (
+    dep_iata       TEXT NOT NULL,
+    arr_iata       TEXT NOT NULL,
+    aircraft_icao  TEXT NOT NULL,
+    airline_icao   TEXT NOT NULL DEFAULT '',
+    sample_size    INTEGER NOT NULL,
+    first_seen_at  INTEGER NOT NULL,
+    last_seen_at   INTEGER NOT NULL,
+    PRIMARY KEY (dep_iata, arr_iata, aircraft_icao, airline_icao)
+  );
+  CREATE INDEX IF NOT EXISTS idx_fgra_pair  ON fr24_gf_route_aircraft(dep_iata, arr_iata);
+  CREATE INDEX IF NOT EXISTS idx_fgra_fresh ON fr24_gf_route_aircraft(last_seen_at);
+`);
+
+// fr24_gf_ingest_meta: one row per ingest run for observability.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS fr24_gf_ingest_meta (
+    run_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at      INTEGER NOT NULL,
+    finished_at     INTEGER,
+    pairs_total     INTEGER,
+    pairs_queried   INTEGER,
+    pairs_skipped   INTEGER,
+    pairs_empty     INTEGER,
+    pairs_failed    INTEGER,
+    rows_upserted   INTEGER,
+    credits_used    INTEGER,
+    error_summary   TEXT
+  );
+`);
+
 // Prepared statements
 const stmts = {
   getUserByEmail:    db.prepare('SELECT * FROM users WHERE email = ?'),
@@ -491,7 +528,60 @@ const stmts = {
     ORDER BY count DESC
     LIMIT ?
   `),
+
+  fr24GfRouteFreshExists: db.prepare(`
+    SELECT 1 FROM fr24_gf_route_aircraft
+    WHERE dep_iata = ? AND arr_iata = ? AND last_seen_at >= ?
+    LIMIT 1
+  `),
+
+  upsertFr24GfRoute: db.prepare(`
+    INSERT INTO fr24_gf_route_aircraft
+      (dep_iata, arr_iata, aircraft_icao, airline_icao, sample_size, first_seen_at, last_seen_at)
+    VALUES (@dep_iata, @arr_iata, @aircraft_icao, @airline_icao, @sample_size, @first_seen_at, @last_seen_at)
+    ON CONFLICT(dep_iata, arr_iata, aircraft_icao, airline_icao) DO UPDATE SET
+      sample_size  = excluded.sample_size,
+      last_seen_at = excluded.last_seen_at
+      -- first_seen_at intentionally NOT updated: preserves age-of-first-observation for idempotent re-ingests
+  `),
+
+  writeFr24GfIngestMeta: db.prepare(`
+    INSERT INTO fr24_gf_ingest_meta
+      (started_at, finished_at, pairs_total, pairs_queried, pairs_skipped,
+       pairs_empty, pairs_failed, rows_upserted, credits_used, error_summary)
+    VALUES (@started_at, @finished_at, @pairs_total, @pairs_queried, @pairs_skipped,
+            @pairs_empty, @pairs_failed, @rows_upserted, @credits_used, @error_summary)
+  `),
 };
+
+function fr24GfRouteFreshExists(dep, arr, cutoff) {
+  return !!stmts.fr24GfRouteFreshExists.get(dep, arr, cutoff);
+}
+
+const upsertFr24GfRoutes = db.transaction((rows) => {
+  if (!rows || rows.length === 0) return 0;
+  for (const r of rows) stmts.upsertFr24GfRoute.run(r);
+  return rows.length;
+});
+
+function writeFr24GfIngestMeta(meta) {
+  const info = stmts.writeFr24GfIngestMeta.run({
+    started_at: meta.started_at,
+    finished_at: meta.finished_at ?? null,
+    pairs_total: meta.pairs_total ?? 0,
+    pairs_queried: meta.pairs_queried ?? 0,
+    pairs_skipped: meta.pairs_skipped ?? 0,
+    pairs_empty: meta.pairs_empty ?? 0,
+    pairs_failed: meta.pairs_failed ?? 0,
+    rows_upserted: meta.rows_upserted ?? 0,
+    // credits_used defaults to pairs_queried because the FR24 endpoint charges
+    // 1 credit per query; explicit 0 is preserved by ?? (only undefined/null falls through).
+    credits_used: meta.credits_used ?? meta.pairs_queried ?? 0,
+    error_summary: meta.error_summary ?? null,
+  });
+  // Narrow bigint→number; run_id is AUTOINCREMENT so stays well below 2^53.
+  return Number(info.lastInsertRowid);
+}
 
 // Bulk insert helper — wraps a transaction around N upsertAircraft calls. Used by the
 // aircraftDbService bootstrap to land ~500k rows in one go (~1s on a laptop).
@@ -852,4 +942,8 @@ module.exports = {
     }
     return out;
   },
+
+  fr24GfRouteFreshExists,
+  upsertFr24GfRoutes,
+  writeFr24GfIngestMeta,
 };

@@ -243,11 +243,49 @@ async function fetchRouteStats(orig, dest, _opts = {}) {
   }
 }
 
+// Aggregates per-flight observations for a route into derived buckets of
+// shape [{ aircraft_icao, airline_icao, sample_size }]. TOS isolation is
+// preserved: raw lightRows never leave this module — only the per-(ac,al)
+// counts cross the boundary, which are derived stats just like DerivedStats.
+//
+// Return semantics:
+//   null  → could not fetch (disabled, missing args, HTTP/transport error)
+//   []    → fetched OK but no usable per-flight aircraft data
+//   [...] → at least one bucket
+//
+// Callers MUST distinguish null vs []: null = failure (count as failed),
+// [] = empty FR24 result (count as empty).
+async function fetchRouteAircraftBuckets(orig, dest) {
+  if (!isEnabled()) { _logDisabledOnce(); return null; }
+  if (!orig || !dest) return null;
+
+  try {
+    const { lightRows } = await _fetchLight({ routes: `${orig}-${dest}` }, MAX_WINDOW_DAYS);
+    if (!Array.isArray(lightRows) || lightRows.length === 0) return [];
+    const buckets = new Map();
+    for (const r of lightRows) {
+      // Field-name drift: `/light` docs say `type` + `operated_as`, but production
+      // probes have also seen `aircraft_icao_type` + `operating_as`. Accept both.
+      const ac = r.aircraft_icao_type || r.type;
+      const al = r.operating_as || r.operated_as || '';
+      if (!ac) continue;
+      const key = `${ac}|${al}`;
+      if (!buckets.has(key)) buckets.set(key, { aircraft_icao: ac, airline_icao: al, sample_size: 0 });
+      buckets.get(key).sample_size++;
+    }
+    return [...buckets.values()];
+  } catch (err) {
+    _logFetchError('fetchRouteAircraftBuckets', `${orig}-${dest}`, err);
+    return null;
+  }
+}
+
 module.exports = {
   isEnabled,
   fetchVariantStats,
   fetchFamilyStats,
   fetchRouteStats,
+  fetchRouteAircraftBuckets,
   // Internal — exposed only for testing
   _internal: { _throttledGet, _client, FR24_BASE, THROTTLE_INTERVAL_MS },
 };
