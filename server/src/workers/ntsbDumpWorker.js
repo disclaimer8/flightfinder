@@ -216,6 +216,21 @@ async function runIngest({ skipDownload = false, mdbPath = null } = {}) {
 }
 
 function start() {
+  // In-process NTSB ingest is OFF by default. Running it inside the web
+  // server process death-loops: avall.mdb parse needs ~6GB of V8 heap
+  // (see package.json:backfill-ntsb), the server runs without that cap,
+  // V8 OOMs mid-table-parse, pm2 restarts, the orphaned /var/tmp/ntsb-*
+  // dir leaks ~775MB, and the cycle repeats every ~3 minutes — filling
+  // a 38GB disk to zero in ~4h. Observed twice in prod 2026-05-12.
+  //
+  // The canonical refresh path is `gh workflow run backfill-ntsb.yml`
+  // (scripts/backfill-ntsb.js launched with --max-old-space-size=6144).
+  // Set NTSB_DUMP_AUTOSTART=1 only if you re-enable in-process ingest
+  // with a proper heap cap on the pm2 process.
+  if (process.env.NTSB_DUMP_AUTOSTART !== '1') {
+    console.log('[ntsbDumpWorker] in-process autostart disabled (set NTSB_DUMP_AUTOSTART=1 to enable). Use `gh workflow run backfill-ntsb.yml` for refresh.');
+    return;
+  }
   const intervalMs = 24 * 3600 * 1000;
   const run = async () => {
     try {
