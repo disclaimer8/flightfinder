@@ -66,8 +66,12 @@ async function downloadDump(filename, dest) {
   const url = `${NTSB_BASE}/FileDirectory/DownloadFile?fileID=${encodeURIComponent(fileId)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`NTSB download ${url} → HTTP ${res.status}`);
-  const buf = Buffer.from(await res.arrayBuffer());
-  fs.writeFileSync(dest, buf);
+  // Stream body to disk in chunks instead of buffering the full 94MB ArrayBuffer
+  // in the V8 heap (await res.arrayBuffer() allocates the entire response in JS
+  // memory, blowing past --max-old-space-size on tight heap configs).
+  const { Readable } = require('node:stream');
+  const { pipeline } = require('node:stream/promises');
+  await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(dest));
 }
 
 function unzip(zipPath, destDir) {
