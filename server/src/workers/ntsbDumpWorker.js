@@ -123,7 +123,7 @@ async function runIngest({ skipDownload = false, mdbPath = null } = {}) {
     const slice = records.slice(i, i + txnChunk);
     db.transaction(() => {
       for (const rec of slice) {
-        const accId = sidecar.getAccidentIdBySourceEventId(rec.ev_id);
+        const accId = sidecar.getAccidentIdBySourceEventId(rec.ev_id, 'ntsb');
         if (!accId) { unmatched++; continue; }
         const candidate = buildAccidentSlugCandidate({
           normalized_date: rec.ev_date,

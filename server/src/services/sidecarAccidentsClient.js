@@ -1,33 +1,45 @@
 'use strict';
 
-// Read-only access to /root/flightfinder/data/accidents.db (aircrash-sidecar DB).
-// In NODE_ENV=test we return nulls — tests mock this module's exports.
+const fs = require('node:fs');
 
-let sidecarDb = null;
+let _db = null;
+let _stmts = null;
+let _initAttempted = false;
 
 function getDb() {
-  if (sidecarDb) return sidecarDb;
+  if (_db) return _db;
   if (process.env.NODE_ENV === 'test') return null;
   const path = process.env.SIDECAR_ACCIDENTS_DB
     || '/root/flightfinder/data/accidents.db';
-  const Database = require('better-sqlite3');
-  sidecarDb = new Database(path, { readonly: true, fileMustExist: true });
-  return sidecarDb;
+  if (!fs.existsSync(path)) return null;
+  try {
+    const Database = require('better-sqlite3');
+    _db = new Database(path, { readonly: true, fileMustExist: true });
+    return _db;
+  } catch (e) {
+    console.warn('[sidecarAccidentsClient] open failed:', e.message);
+    return null;
+  }
 }
 
-const stmts = (() => {
+function getStmts() {
+  if (_stmts || _initAttempted) return _stmts;
+  _initAttempted = true;
   const d = getDb();
   if (!d) return null;
-  return {
-    byId: d.prepare(`
-      SELECT id, date, aircraft_model, operator, fatalities, location,
-             source_url, lat, lon
-      FROM accidents WHERE id = ?
-    `),
-    byEventId: d.prepare(`
+  _stmts = {
+    byId: d.prepare(`SELECT id, date, aircraft_model, operator, fatalities, location,
+                            source_url, lat, lon FROM accidents WHERE id = ?`),
+    byEventId_ntsb: d.prepare(`
       SELECT id FROM accidents
       WHERE source_url LIKE '%/event/' || ? || '%'
          OR source_url LIKE '%/event/' || ?
+      LIMIT 1
+    `),
+    byEventId_wikidata: d.prepare(`
+      SELECT id FROM accidents
+      WHERE source_url LIKE '%/wiki/' || ? || '%'
+         OR source_url LIKE '%/wiki/' || ?
       LIMIT 1
     `),
     byAircraft: d.prepare(`
@@ -51,24 +63,30 @@ const stmts = (() => {
       LIMIT 5
     `),
   };
-})();
+  return _stmts;
+}
 
 function getAccidentById(id) {
-  if (!stmts) return null;
-  return stmts.byId.get(id);
+  const s = getStmts(); if (!s) return null;
+  return s.byId.get(id);
 }
-function getAccidentIdBySourceEventId(evId) {
-  if (!stmts) return null;
-  const row = stmts.byEventId.get(evId, evId);
+
+function getAccidentIdBySourceEventId(evId, source) {
+  // Backward-compat: source defaults to 'ntsb' if not given (existing NTSB worker).
+  const s = getStmts(); if (!s) return null;
+  const stmt = source === 'wikidata' ? s.byEventId_wikidata : s.byEventId_ntsb;
+  const row = stmt.get(evId, evId);
   return row ? row.id : null;
 }
-function findRelatedByAircraft(model, excludeId) {
-  if (!stmts || !model) return [];
-  return stmts.byAircraft.all(model.split(/\s+/).slice(0, 2).join(' '), excludeId);
+
+function findRelatedByAircraft(modelStr, excludeId) {
+  const s = getStmts(); if (!s || !modelStr) return [];
+  return s.byAircraft.all(modelStr.split(/\s+/).slice(0, 2).join(' '), excludeId);
 }
+
 function findRelatedByOperator(operator, excludeId) {
-  if (!stmts || !operator) return [];
-  return stmts.byOperator.all(operator, excludeId);
+  const s = getStmts(); if (!s || !operator) return [];
+  return s.byOperator.all(operator, excludeId);
 }
 
 module.exports = {

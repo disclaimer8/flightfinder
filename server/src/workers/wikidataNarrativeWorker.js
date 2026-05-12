@@ -38,7 +38,7 @@ async function runIngest() {
   let unmatched = 0;
 
   for (const rec of records) {
-    const accId = sidecar.getAccidentIdBySourceEventId(rec.q_id);
+    const accId = sidecar.getAccidentIdBySourceEventId(rec.q_id, 'wikidata');
     if (!accId) { unmatched++; continue; }
 
     const candidate = buildAccidentSlugCandidate({
