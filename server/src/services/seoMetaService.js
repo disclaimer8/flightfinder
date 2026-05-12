@@ -691,6 +691,7 @@ function resolve(pathname) {
       robots: 'index, follow',
       ogType: 'article',
       kind: 'accident',
+      slug: accidentMatch[1],
     };
   }
 

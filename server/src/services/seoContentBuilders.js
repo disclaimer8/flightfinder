@@ -531,6 +531,12 @@ async function buildAsync(meta, db) {
       : await bAirline(meta, dbInstance);
     return applyChromeAsync(meta, innerHtml, dbInstance);
   }
+  // Accident narrative pages: bAccident is async (DB lookup) but doesn't need
+  // the Amadeus-backed chrome extras, so wrap with the sync applyChrome.
+  if (meta.kind === 'accident') {
+    const innerHtml = await bAccident(meta.slug);
+    return applyChrome(meta, innerHtml, dbInstance);
+  }
   // All other kinds (route included — Amadeus route enrichment was deprecated
   // by Amadeus): sync builder already calls applyChrome inside build().
   return build(meta, dbInstance);
