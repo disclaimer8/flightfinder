@@ -124,17 +124,65 @@ function get(pathname) {
   return map.get(pathname) || null;
 }
 
+// Lazy-bake cache for /accidents/{slug} pages — deliberately NOT pre-warmed
+// (22K entries × ~5ms each blocks the event loop long enough that PM2
+// wait_ready times out on deploy). First bot hit triggers buildAsync; result
+// is cached in an LRU+TTL map. Subsequent hits are served instantly.
+const LAZY_MAX = 5000;
+const LAZY_TTL_MS = 24 * 3600 * 1000;
+const lazyMap = new Map();
+
+async function getOrBuild(pathname) {
+  if (!pathname) return null;
+  // Fast path: the pre-warmed map covers airport / airline / aircraft / route.
+  const fromMap = map.get(pathname);
+  if (fromMap) return fromMap;
+  // Lazy path is currently scoped to /accidents/* — other unknown URLs fall
+  // through to the React shell with whatever meta seoMetaService produced.
+  if (!/^\/accidents\/[^/]+\/?$/.test(pathname)) return null;
+
+  const now = Date.now();
+  const cached = lazyMap.get(pathname);
+  if (cached && cached.expiresAt > now) {
+    cached.lastAccess = now;
+    return cached.html;
+  }
+
+  let meta;
+  try { meta = seoMeta.resolve(pathname); } catch { return null; }
+  if (!meta || meta.kind !== 'accident') return null;
+
+  let html;
+  try { html = await builders.buildAsync(meta); } catch { return null; }
+  if (html == null) return null;
+
+  lazyMap.set(pathname, { html, expiresAt: now + LAZY_TTL_MS, lastAccess: now });
+  // Cheap O(n) LRU eviction (n ≤ LAZY_MAX). With 5000 entries this is ~50µs
+  // amortized over insertions, much simpler than wiring up an actual LRU lib.
+  if (lazyMap.size > LAZY_MAX) {
+    let oldestKey = null;
+    let oldestAccess = Infinity;
+    for (const [k, v] of lazyMap) {
+      if (v.lastAccess < oldestAccess) { oldestAccess = v.lastAccess; oldestKey = k; }
+    }
+    if (oldestKey) lazyMap.delete(oldestKey);
+  }
+  return html;
+}
+
 function stats() {
   return {
     // map.size counts both canonical-URL and pathname keys per page (~2× page count).
     size: map.size,
     pageCount: Math.round(map.size / 2),
+    lazySize: lazyMap.size,
     lastWarmedAt,
   };
 }
 
 function _clearForTests() {
   map.clear();
+  lazyMap.clear();
   if (timer) { clearInterval(timer); timer = null; }
   lastWarmedAt = 0;
 }
@@ -143,4 +191,4 @@ function _injectForTests(key, html) {
   map.set(key, html);
 }
 
-module.exports = { warm, refresh, get, stats, _clearForTests, _injectForTests };
+module.exports = { warm, refresh, get, getOrBuild, stats, _clearForTests, _injectForTests };

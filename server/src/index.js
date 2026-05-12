@@ -323,14 +323,17 @@ if (!IS_DEV) {
   const seoMeta = require('./services/seoMetaService');
   const seoContentCache = require('./services/seoContentCache');
 
-  const spaFallback = (req, res) => {
+  const spaFallback = async (req, res) => {
     const meta = seoMeta.resolve(req.path);
 
     if (meta.redirectFromLegacy) {
       return res.redirect(301, meta.redirectFromLegacy);
     }
 
-    const bodyContent = seoContentCache.get(req.path);
+    // getOrBuild = synchronous Map lookup for pre-warmed kinds + lazy bake
+    // for accident URLs that aren't pre-warmed (would block deploy). Awaits
+    // bAccident() on first hit (~5-15ms), serves from in-memory cache after.
+    const bodyContent = await seoContentCache.getOrBuild(req.path);
     let html = seoMeta.inject(readIndexHtml(), meta, bodyContent);
     const q = req.query || {};
     // Query-string variants collapse to the route's canonical — otherwise
