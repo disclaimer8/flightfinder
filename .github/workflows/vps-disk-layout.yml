@@ -1,0 +1,65 @@
+name: VPS disk layout (read-only)
+
+# Inspects partition table, free space, mount points, and likely
+# big-file candidates BEFORE planning any repartition. Read-only.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disk layout
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: 178.104.32.46
+          username: root
+          key: ${{ secrets.claude }}
+          script: |
+            set +e
+            echo "=== lsblk -fb -o NAME,FSTYPE,SIZE,FSAVAIL,FSUSE%,MOUNTPOINT,UUID,PARTTYPENAME ==="
+            lsblk -fb -o NAME,FSTYPE,SIZE,FSAVAIL,FSUSE%,MOUNTPOINT,UUID,PARTTYPENAME
+            echo ""
+            echo "=== parted -l (partition table + free) ==="
+            parted -l 2>&1
+            echo ""
+            echo "=== fdisk -l /dev/sda ==="
+            fdisk -l /dev/sda 2>&1 | head -30
+            echo ""
+            echo "=== Free space on /dev/sda via parted ==="
+            parted /dev/sda unit MiB print free 2>&1
+            echo ""
+            echo "=== sfdisk dump /dev/sda ==="
+            sfdisk -d /dev/sda 2>&1
+            echo ""
+            echo "=== df -hT (filesystems + types) ==="
+            df -hT --output=source,fstype,size,used,avail,pcent,target | grep -vE "tmpfs|udev|overlay"
+            echo ""
+            echo "=== /etc/fstab ==="
+            cat /etc/fstab
+            echo ""
+            echo "=== Open file handles into /root/flightfinder (top 10 by size of file) ==="
+            lsof +D /root/flightfinder 2>/dev/null | awk '{print $9}' | sort -u | head -20
+            echo ""
+            echo "=== Likely move candidates ==="
+            du -sh /root/flightfinder/server/data 2>/dev/null
+            du -sh /root/.npm /root/.cache /root/go 2>/dev/null
+            du -sh /var/log/journal 2>/dev/null
+            du -sh /var/tmp 2>/dev/null
+            du -sh /var/lib/apport 2>/dev/null
+            echo ""
+            echo "=== app.db WAL state (must be checkpointed before any move) ==="
+            ls -la /root/flightfinder/server/data/app.db /root/flightfinder/server/data/app.db-wal /root/flightfinder/server/data/app.db-shm 2>/dev/null
+            echo ""
+            echo "=== Kernel + GRUB version (matters if we touch boot partition) ==="
+            uname -a
+            command -v grub-mkconfig >/dev/null && echo "GRUB installed" || echo "no GRUB CLI"
+            echo ""
+            echo "=== VPS provider hints (Hetzner/DO/Linode/etc.) ==="
+            grep -E "PRETTY_NAME|VERSION_ID" /etc/os-release
+            dmidecode -s system-manufacturer 2>/dev/null
+            dmidecode -s system-product-name 2>/dev/null
