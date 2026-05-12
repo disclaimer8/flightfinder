@@ -46,6 +46,11 @@ jobs:
               || { echo "sidecar accidents.db missing — deploy not complete"; exit 1; }
             echo "=== memory before ==="
             free -m
+            echo "=== disk usage ==="
+            df -h /tmp /var/tmp /root
+            echo "=== cleanup stale ntsb-* tmpdirs ==="
+            ls -la /tmp/ntsb-* /var/tmp/ntsb-* 2>/dev/null || true
+            rm -rf /tmp/ntsb-* /var/tmp/ntsb-* 2>/dev/null || true
             echo "=== top processes by RSS ==="
             ps -e -o rss,comm --sort=-rss | head -10
             echo "=== running backfill ==="
