@@ -192,6 +192,35 @@ describe('getMergedEventsForFamily', () => {
     expect(lionAir.occurred_at).toBe(t_old);
   });
 
+  test('fatal-first slice preserves ALL fatal even when recent saturates the cap', () => {
+    // 5 distinct fatal events from older years + 100 modern incidents.
+    // Total candidates > limit=100. Naive date-DESC slice would drop the
+    // 5 older fatal events; the fatal-first reservation guarantees they stay.
+    const fatalRows = [
+      { id: 1, normalized_date: '2018-10-29', operator: 'Lion Air',         fatalities: '189', aircraft_model: 'Boeing 737 MAX 8' },
+      { id: 2, normalized_date: '2019-03-10', operator: 'Ethiopian',        fatalities: '157', aircraft_model: 'Boeing 737 MAX' },
+      { id: 3, normalized_date: '2020-01-08', operator: 'Ukraine Intl',     fatalities: '176', aircraft_model: 'Boeing 737-800' },
+      { id: 4, normalized_date: '2024-12-29', operator: 'Jeju Air',         fatalities: '173', aircraft_model: 'Boeing 737-800' },
+      { id: 5, normalized_date: '2010-05-22', operator: 'Air India Charters', fatalities: '158', aircraft_model: 'Boeing 737-800' },
+    ];
+    const recentRows = Array.from({ length: 100 }, (_, i) => ({
+      id: 90000 + i, normalized_date: '2026-04-15', operator: `Op${i}`,
+      fatalities: '0', aircraft_model: 'Boeing 737-800',
+    }));
+    sidecar.findAccidentsByFamilyPatterns
+      .mockImplementationOnce(() => fatalRows)
+      .mockImplementationOnce(() => recentRows);
+    const out = svc.getMergedEventsForFamily({
+      icaoList: ['B738'], familyName: 'Boeing 737', limit: 100,
+    });
+    expect(out).toHaveLength(100);
+    const fatalCount = out.filter((e) => e.fatalities > 0).length;
+    expect(fatalCount).toBe(5);
+    expect(out.filter((e) => e.fatalities === 189)).toHaveLength(1);
+    expect(out.filter((e) => e.fatalities === 157)).toHaveLength(1);
+    expect(out.filter((e) => e.fatalities === 173)).toHaveLength(1);
+  });
+
   test('slash-family expands patterns before calling sidecar', () => {
     svc.getMergedEventsForFamily({ icaoList: [], familyName: 'ATR 42/72', fatalOnly: true });
     expect(sidecar.findAccidentsByFamilyPatterns).toHaveBeenCalledWith(

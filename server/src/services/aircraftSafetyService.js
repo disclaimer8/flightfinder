@@ -212,13 +212,37 @@ function getMergedEventsForFamily(opts) {
   }
 
   // Sort by occurred_at DESC; events without a date land at the bottom.
-  merged.sort((a, b) => {
+  const byDateDesc = (a, b) => {
     const av = a.occurred_at == null ? -Infinity : a.occurred_at;
     const bv = b.occurred_at == null ? -Infinity : b.occurred_at;
     return bv - av;
-  });
+  };
+  merged.sort(byDateDesc);
 
-  return merged.slice(0, Math.max(0, Math.min(500, limit | 0) || 100));
+  const cap = Math.max(0, Math.min(500, limit | 0) || 100);
+
+  // When the page wants a mixed list (fatalOnly=false), naively slicing the
+  // date-DESC array loses every fatal hull loss older than the most-recent
+  // N incidents — exactly the failure mode that hid Lion Air 2018 /
+  // Ethiopian 2019 on the Boeing 737 page (1.6K rows of recent low-severity
+  // incidents pushed all older fatal events past position 100). Preserve
+  // every fatal event first, then fill the remaining quota with
+  // recent-non-fatal events. Both halves stay date-DESC sorted.
+  if (fatalOnly) return merged.slice(0, cap);
+
+  const isFatal = (ev) => (ev.fatalities || 0) > 0
+    || ev.severity === 'fatal' || ev.hull_loss === 1;
+  const fatalSlice = merged.filter(isFatal);
+  const nonFatalSlice = merged.filter((ev) => !isFatal(ev));
+  const fatalKept = fatalSlice.slice(0, cap);
+  const slotsLeft = Math.max(0, cap - fatalKept.length);
+  const nonFatalKept = nonFatalSlice.slice(0, slotsLeft);
+
+  // Final list: union both halves and sort once more so the rendered
+  // timeline interleaves correctly by date.
+  const out = [...fatalKept, ...nonFatalKept];
+  out.sort(byDateDesc);
+  return out;
 }
 
 module.exports = {
