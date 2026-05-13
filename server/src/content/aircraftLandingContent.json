@@ -58,5 +58,166 @@
       { "q": "How many seats does an A320 have?", "a": "Capacity ranges from 124 (A319 in dual-class) to 244 (A321neo in high-density). The standard A320 seats 150-180; the A321 seats 185-220 in typical layouts." },
       { "q": "When was the A320 family introduced?", "a": "The A320 entered service with Air France in April 1988. The A321 followed in 1994, the A319 in 1996. The neo family entered service with the A320neo in 2016." }
     ]
+  },
+
+  "boeing-787": {
+    "variants": [
+      { "name": "787-8",  "firstFlight": "2009", "seats": "242-359", "range_nm": 7305, "status": "in service" },
+      { "name": "787-9",  "firstFlight": "2013", "seats": "296-420", "range_nm": 7635, "status": "in service" },
+      { "name": "787-10", "firstFlight": "2017", "seats": "330-440", "range_nm": 6430, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2024-03-11", "flight": "LATAM Airlines 800", "operator": "LATAM Airlines", "variant": "787-9", "fatalities": 0, "summary": "Sudden pitch-down upset injured 50 passengers (12 seriously) en route Sydney to Auckland; NTSB attributed the event to an inadvertent flight-control input from a flight attendant's meal tray.", "slug": null },
+      { "date": "2013-01-07", "flight": "Japan Airlines 008 (battery fire)", "operator": "Japan Airlines", "variant": "787-8", "fatalities": 0, "summary": "A lithium-ion auxiliary power unit battery caught fire on the ground at Boston Logan, triggering a worldwide grounding of all 787s for approximately four months while Boeing redesigned the battery containment system.", "slug": null },
+      { "date": "2013-01-16", "flight": "All Nippon Airways 692", "operator": "All Nippon Airways", "variant": "787-8", "fatalities": 0, "summary": "Main battery failure forced an emergency landing at Takamatsu Airport, Japan; all 137 occupants evacuated safely, confirming systemic battery issues that reinforced the worldwide grounding.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Boeing 787 Dreamliner",
+      "html": "<p>The Boeing 787 Dreamliner, which entered service with All Nippon Airways in October 2011, was the first commercial aircraft to use a composite fuselage (approximately 50% composite by weight). The composite structure allows higher cabin pressure (6,000 ft equivalent vs. 8,000 ft on aluminium jets) and higher humidity, reducing passenger fatigue on long-haul flights.</p><p>A systemic lithium-ion battery problem grounded all 787s for four months in 2013 until Boeing introduced a redesigned containment system. As of 2025 the 787 has accumulated no fatal passenger accidents — a notable record for a wide-body with over 1,100 aircraft delivered. The 787-9 is the dominant variant, and carriers including United, Air New Zealand, and Singapore Airlines use the type on ultra-long routes beyond 7,000 nm. Boeing's current 787 order backlog stands at over 600 aircraft.</p>"
+    },
+    "faq": [
+      { "q": "Is the Boeing 787 safe?", "a": "The 787 has an excellent safety record with zero fatal passenger accidents through 2025 across more than 1,100 aircraft in service. A worldwide grounding in 2013 addressed battery fire risks; the redesigned containment system resolved the issue. The LATAM 800 upset in 2024 injured passengers but caused no fatalities." },
+      { "q": "How many fatal Boeing 787 accidents have there been?", "a": "As of 2025, the 787 has not been involved in any fatal passenger accidents since entering service in 2011, making it one of the safest wide-body aircraft by fatality record. The most serious incident was the 2013 battery grounding, which involved no passenger injuries." },
+      { "q": "Which airline has the largest 787 fleet?", "a": "United Airlines operates the world's largest 787 fleet with over 90 aircraft. All Nippon Airways and Japan Airlines together operate more than 100 787s, and Ethiopian Airlines is one of the largest African operators of the type." },
+      { "q": "What's the difference between the 787-8 and 787-9?", "a": "The 787-9 is stretched by about 6 metres compared to the 787-8, seating roughly 40-60 more passengers and offering a greater range (7,635 nm vs. 7,305 nm). The 787-10 is a further stretch optimised for medium-to-long-haul high-density routes with reduced range." },
+      { "q": "How many seats does a Boeing 787 have?", "a": "Seat counts vary widely by configuration: the 787-8 typically seats 242-359, the 787-9 seats 296-420, and the 787-10 seats 330-440 in high-density layouts. Most two-class configurations seat around 280-330 passengers." },
+      { "q": "When was the Boeing 787 introduced?", "a": "The 787-8 entered commercial service with All Nippon Airways on 26 October 2011, making the first revenue flight on the Tokyo–Hong Kong route. The 787-9 entered service with Air New Zealand in July 2014, and the 787-10 with Singapore Airlines in April 2018." }
+    ]
+  },
+
+  "airbus-a380": {
+    "variants": [
+      { "name": "A380-800", "firstFlight": "2005", "seats": "555-853", "range_nm": 8200, "status": "in service" },
+      { "name": "A380-800F", "firstFlight": "2009", "seats": "0", "range_nm": 5600, "status": "out of production" }
+    ],
+    "notableIncidents": [
+      { "date": "2010-11-04", "flight": "Qantas 32", "operator": "Qantas", "variant": "A380-841", "fatalities": 0, "summary": "An uncontained engine failure in the No. 2 Rolls-Royce Trent 900 caused extensive damage to the wing and multiple aircraft systems; the crew landed the aircraft safely at Singapore Changi with all 469 occupants unharmed.", "slug": null },
+      { "date": "2017-09-30", "flight": "Air France 66", "operator": "Air France", "variant": "A380-861", "fatalities": 0, "summary": "An engine fan hub fractured at cruise altitude over Greenland, shedding the fan cowling; the crew diverted safely to Goose Bay, Canada with no injuries among 520 occupants.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Airbus A380",
+      "html": "<p>The Airbus A380, the world's largest commercial passenger aircraft, entered service with Singapore Airlines in October 2007. Its double-deck cabin can seat up to 853 passengers in a single-class layout, though most airlines configure it for 450-600 seats across three or four classes. Airbus ceased production in 2021 after delivering 251 aircraft, as the twin-engine wide-body market proved more economical for most routes.</p><p>Emirates is by far the dominant A380 operator, with over 120 delivered (the largest operator) and a firm commitment to keep them in service through the 2030s. Around 190 A380s remain in commercial service as of 2024 globally. The type has an outstanding safety record — no fatal passenger accidents in over 15 years of service. Qantas Flight 32 in 2010 (uncontained engine failure, zero fatalities) remains the most significant safety event in the aircraft's history.</p>"
+    },
+    "faq": [
+      { "q": "Is the Airbus A380 safe?", "a": "The A380 has an excellent safety record with zero fatal passenger accidents across more than 250 aircraft and over 15 years of service. The most serious incident, Qantas 32 in 2010, involved an uncontained engine failure but resulted in no fatalities among 469 occupants. The A380 has the lowest hull-loss rate of any wide-body aircraft by departures." },
+      { "q": "How many fatal Airbus A380 accidents have there been?", "a": "As of 2025, no A380 has been involved in a fatal passenger accident since the type entered service in 2007. The Qantas 32 engine failure in 2010 was the most serious incident and produced no fatalities. No A380 has ever been written off due to a crash." },
+      { "q": "Which airline has the largest A380 fleet?", "a": "Emirates operates by far the largest A380 fleet with 116 aircraft, representing nearly half of all A380s ever built. British Airways (12), Qantas (12), and Singapore Airlines (19) are the next-largest operators." },
+      { "q": "What's the difference between the A380-800 and A380-800F?", "a": "The A380-800 is the passenger variant in service today. The A380-800F was a planned freighter variant that was cancelled before entry into service after FedEx and UPS cancelled their orders in 2007. No A380-800F was ever delivered to a freight operator." },
+      { "q": "How many seats does an Airbus A380 have?", "a": "In a typical three-class configuration an A380 seats around 500-550 passengers. Emirates operates a four-class configuration with 615 seats including 14 private suites. The maximum certified capacity is 853 seats in a single-class layout, though no airline has configured it that densely." },
+      { "q": "When was the Airbus A380 introduced?", "a": "The A380 entered commercial service on 25 October 2007 with Singapore Airlines on the Singapore–Sydney route. The first Airbus A380 flight took place on 27 April 2005. Airbus delivered the last A380 to Emirates in December 2021, ending production." }
+    ]
+  },
+
+  "airbus-a350": {
+    "variants": [
+      { "name": "A350-900",    "firstFlight": "2013", "seats": "300-440", "range_nm": 8100, "status": "in service" },
+      { "name": "A350-900ULR", "firstFlight": "2018", "seats": "161-253", "range_nm": 9700, "status": "in service" },
+      { "name": "A350-1000",   "firstFlight": "2016", "seats": "369-480", "range_nm": 8700, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2024-01-02", "flight": "Japan Airlines 516", "operator": "Japan Airlines", "variant": "A350-941", "fatalities": 0, "summary": "Collided on the runway at Tokyo Haneda Airport with a Japan Coast Guard Bombardier Q300; all 379 occupants of the A350 evacuated safely within 18 minutes as the aircraft burned, while 5 of 6 Coast Guard crew members perished in the smaller aircraft.", "slug": null },
+      { "date": "2024-09-02", "flight": "Cathay Pacific 383", "operator": "Cathay Pacific", "variant": "A350-1000", "fatalities": 0, "summary": "Trent XWB fuel-hose rupture caused engine fire in cruise; diverted safely to Hong Kong.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Airbus A350 XWB",
+      "html": "<p>The Airbus A350 XWB (Extra Wide Body) entered service with Qatar Airways in January 2015. Its fuselage is approximately 53% carbon-fibre-reinforced polymer by weight — the highest composite fraction of any mainline wide-body — which, combined with Rolls-Royce Trent XWB engines, gives a fuel burn roughly 25% better per seat than the aircraft it replaces (A330, 777-200ER).</p><p>The A350-900ULR (Ultra Long Range), operated exclusively by Singapore Airlines, holds the record for the world's longest scheduled passenger flight: Singapore to Newark at 8,942 nm (16,561 km) / 18 hours 45 minutes. The A350-1000, the stretched variant, entered service with Qatar Airways in February 2018. As of 2025 more than 600 A350s have been delivered, with Airbus holding a backlog exceeding 700 further orders. The Japan Airlines 516 runway collision at Haneda (2024) was the type's first hull loss, though all 379 passengers evacuated safely.</p>"
+    },
+    "faq": [
+      { "q": "Is the Airbus A350 safe?", "a": "The A350 has an excellent safety record. In the Japan Airlines 516 collision at Tokyo Haneda (2024) all 379 passengers and crew evacuated the burning aircraft safely within 18 minutes — a testament to the type's emergency evacuation design. No A350 passenger has ever been fatally injured in an accident involving the aircraft itself." },
+      { "q": "How many fatal Airbus A350 accidents have there been?", "a": "As of 2025, no A350 passenger or crew member has died in an accident involving the aircraft. The Japan Airlines 516 collision at Haneda Airport on 2 January 2024 destroyed the aircraft but resulted in zero fatalities among the 379 A350 occupants; 5 fatalities occurred aboard the smaller Coast Guard aircraft it collided with on the runway." },
+      { "q": "Which airline has the largest A350 fleet?", "a": "Qatar Airways operates the largest A350 fleet with over 70 aircraft. Cathay Pacific, Singapore Airlines, and Lufthansa are also major operators, each with 30-50 A350s. Singapore Airlines is the sole operator of the ultra-long-range A350-900ULR variant." },
+      { "q": "What's the difference between the A350-900 and A350-1000?", "a": "The A350-1000 is approximately 7 metres longer than the A350-900, carrying around 40-60 additional passengers in comparable layouts and offering a range of 8,700 nm versus 8,100 nm. The A350-900ULR is a specialist long-range variant of the -900 with additional fuel capacity for flights beyond 9,000 nm." },
+      { "q": "How many seats does an Airbus A350 have?", "a": "Most A350-900s seat 300-370 passengers in a three-class layout. The A350-1000 typically seats 330-410 in three classes. The A350-900ULR is configured with as few as 161 seats in Singapore Airlines' premium-heavy layout to maximise range on 17-19 hour flights." },
+      { "q": "When was the Airbus A350 introduced?", "a": "The A350-900 entered commercial service with Qatar Airways on 15 January 2015. The A350-900ULR entered service with Singapore Airlines in October 2018, operating the world's longest non-stop passenger route. The A350-1000 entered service with Qatar Airways in February 2018." }
+    ]
+  },
+
+  "boeing-777": {
+    "variants": [
+      { "name": "777-200",   "firstFlight": "1994", "seats": "305-440", "range_nm": 5240, "status": "in service" },
+      { "name": "777-200ER", "firstFlight": "1996", "seats": "301-440", "range_nm": 7725, "status": "in service" },
+      { "name": "777-200LR", "firstFlight": "2005", "seats": "301-440", "range_nm": 9395, "status": "in service" },
+      { "name": "777-300",   "firstFlight": "1997", "seats": "368-550", "range_nm": 6030, "status": "in service" },
+      { "name": "777-300ER", "firstFlight": "2003", "seats": "396-550", "range_nm": 7370, "status": "in service" },
+      { "name": "777F",      "firstFlight": "2008", "seats": "0",       "range_nm": 4970, "status": "in service" },
+      { "name": "777X-8",    "firstFlight": "2020", "seats": "350-426", "range_nm": 8730, "status": "in service" },
+      { "name": "777X-9",    "firstFlight": "2020", "seats": "426-426", "range_nm": 7285, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2014-07-17", "flight": "Malaysia Airlines 17", "operator": "Malaysia Airlines", "variant": "777-200ER", "fatalities": 298, "summary": "Shot down over eastern Ukraine by a Russian-made Buk surface-to-air missile; the JIT investigation concluded the missile system belonged to Russia's 53rd Anti-Aircraft Missile Brigade.", "slug": null },
+      { "date": "2014-03-08", "flight": "Malaysia Airlines 370", "operator": "Malaysia Airlines", "variant": "777-200ER", "fatalities": 239, "summary": "Disappeared over the southern Indian Ocean en route from Kuala Lumpur to Beijing; the largest underwater search in aviation history has found only debris, and the cause of the disappearance has not been officially determined.", "slug": null },
+      { "date": "2013-07-06", "flight": "Asiana Airlines 214", "operator": "Asiana Airlines", "variant": "777-200ER", "fatalities": 3, "summary": "Struck a seawall short of runway 28L at San Francisco International Airport during approach; 3 passengers died (two of whom were struck by rescue vehicles after surviving the crash), 187 were injured.", "slug": null },
+      { "date": "2021-02-20", "flight": "United Airlines 328", "operator": "United Airlines", "variant": "777-200", "fatalities": 0, "summary": "A Pratt & Whitney PW4000 engine suffered an uncontained fan-blade failure shortly after departure from Denver, scattering debris over suburban Broomfield; all 231 on board landed safely and the PW4000-powered 777 was grounded pending inspection.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Boeing 777",
+      "html": "<p>The Boeing 777, which entered service with United Airlines in June 1995, was the world's first fly-by-wire Boeing and the first commercial aircraft designed entirely with computer-aided design tools. Its GE90-115B engine is the most powerful turbofan ever certified, producing 115,300 lbf of thrust. The 777-300ER became the workhorse of long-haul aviation for Emirates, Qatar Airways, and Air France-KLM.</p><p>The 777X, Boeing's next-generation variant with folding wingtips and composite wings, has faced repeated delays; the 777-9 remains in flight testing; Boeing expects first delivery to launch customer Lufthansa in 2027 after multiple regulatory delays. The 777F freighter remains one of the best-selling cargo aircraft, with FedEx and UPS among major operators. Despite high-profile losses (MH370 and MH17 in 2014), both were caused by non-airworthiness factors, and the airframe itself has an exceptional structural safety record.</p>"
+    },
+    "faq": [
+      { "q": "Is the Boeing 777 safe?", "a": "The 777 airframe has an excellent structural safety record. The two highest-profile losses in 2014 — MH370 (disappearance) and MH17 (missile strike) — were not caused by aircraft deficiencies. Asiana 214 in 2013 was attributed to pilot error on approach. The hull-loss rate for the 777 is among the lowest of any wide-body jet per departure." },
+      { "q": "How many fatal Boeing 777 accidents have there been?", "a": "Including MH370 and MH17, the 777 has been involved in accidents resulting in approximately 540 fatalities since 1995 — but both MH incidents involved hostile action or unexplained disappearance, not airframe failure. The only accident directly attributable to approach/landing was Asiana 214 (3 fatalities, 2013)." },
+      { "q": "Which airline has the largest 777 fleet?", "a": "Emirates operates the world's largest 777 fleet with over 130 aircraft, predominantly 777-300ERs. United Airlines and Air France-KLM are the next-largest operators, each with 50-80 aircraft." },
+      { "q": "What's the difference between the 777-200ER and 777-300ER?", "a": "The 777-300ER is stretched by about 10 metres compared to the 777-200ER, seating roughly 100 more passengers. The -300ER trades range for capacity (7,370 nm vs. 7,725 nm), making it ideal for high-density long-haul routes. The -300ER uses more powerful GE90-115B engines and has a higher MTOW." },
+      { "q": "How many seats does a Boeing 777 have?", "a": "The 777-200ER typically seats 305-440 depending on configuration; Emirates' popular two-class 777-300ER seats 427 passengers in business and economy. High-density single-class 777-300s can seat over 500. The 777X-9 will seat approximately 426 in a typical two-class layout." },
+      { "q": "When was the Boeing 777 introduced?", "a": "The 777-200 entered service with United Airlines on 7 June 1995. The extended-range 777-200ER entered service in 1997, and the stretched 777-300 in 1998. The 777-300ER, the dominant variant, entered service with Air France in April 2004." }
+    ]
+  },
+
+  "boeing-747": {
+    "variants": [
+      { "name": "747-100", "firstFlight": "1969", "seats": "366-550", "range_nm": 6000, "status": "out of production" },
+      { "name": "747-200", "firstFlight": "1971", "seats": "366-550", "range_nm": 6857, "status": "out of production" },
+      { "name": "747-300", "firstFlight": "1982", "seats": "400-624", "range_nm": 6328, "status": "out of production" },
+      { "name": "747-400", "firstFlight": "1988", "seats": "416-660", "range_nm": 7260, "status": "in service" },
+      { "name": "747-400F", "firstFlight": "1993", "seats": "0",       "range_nm": 4450, "status": "in service" },
+      { "name": "747-8I",  "firstFlight": "2011", "seats": "467-605", "range_nm": 8000, "status": "in service" },
+      { "name": "747-8F",  "firstFlight": "2010", "seats": "0",       "range_nm": 4390, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "1977-03-27", "flight": "KLM 4805 / Pan Am 1736", "operator": "KLM / Pan Am", "variant": "747-200", "fatalities": 583, "summary": "Two 747s collided on the runway at Tenerife Los Rodeos Airport in fog; the KLM aircraft attempted takeoff without clearance. The deadliest accident in aviation history.", "slug": null },
+      { "date": "1985-08-12", "flight": "Japan Air Lines 123", "operator": "Japan Air Lines", "variant": "747SR-100", "fatalities": 520, "summary": "Rear pressure bulkhead failure caused loss of all four hydraulic systems; the aircraft flew uncontrolled for 32 minutes before crashing into Mount Takamagahara. The deadliest single-aircraft accident in history.", "slug": null },
+      { "date": "1983-09-01", "flight": "Korean Air 007", "operator": "Korean Air", "variant": "747-230B", "fatalities": 269, "summary": "Strayed into Soviet airspace due to a navigational error and was shot down by a Soviet Su-15 interceptor near Sakhalin Island.", "slug": null },
+      { "date": "1996-07-17", "flight": "TWA 800", "operator": "Trans World Airlines", "variant": "747-131", "fatalities": 230, "summary": "Centre fuel tank exploded shortly after departure from New York JFK, breaking the aircraft apart over the Atlantic; investigation attributed ignition to an electrical fault in the fuel quantity indication system.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Boeing 747",
+      "html": "<p>The Boeing 747 — the \"Queen of the Skies\" — transformed mass long-haul travel when Pan American World Airways introduced it in January 1970. Its distinctive upper deck and four-engine layout made it the world's largest commercial aircraft for 37 years, until the A380. The 747-400, the most-produced variant, dominated intercontinental routes for three decades.</p><p>Passenger 747s have largely retired from scheduled service: British Airways retired its last 747-400 in 2020, KLM in 2020, and Qantas in 2020. The final 747 — a 747-8F freighter delivered to Atlas Air on 31 January 2023 — ended 54 years of production. The last passenger 747 (a 747-8I) was delivered to Korean Air in 2017. Freighter variants thrive: the 747-8F and 747-400F remain among the most capable all-cargo jets, operated by UPS, FedEx, Atlas Air, and Cargolux. The 747 carried more passengers than any other aircraft type in history before its gradual retirement.</p>"
+    },
+    "faq": [
+      { "q": "Is the Boeing 747 safe?", "a": "For its era the 747 had an industry-standard safety record; early variants suffered higher hull-loss rates that improved significantly with the 747-400. The Tenerife disaster (1977) and JAL 123 (1985) are the two deadliest aviation accidents ever recorded, but both involved external factors (ATC miscommunication and improper repair) rather than inherent airframe flaws. Modern 747 freighter variants have a strong safety record." },
+      { "q": "How many fatal Boeing 747 accidents have there been?", "a": "Across all 747 variants since 1970, there have been over 60 hull losses with fatalities. The deadliest events are Tenerife (583), JAL 123 (520), TWA 800 (230), and Korean Air 007 (269). Most fatal 747 accidents occurred with older -100, -200, and -SP variants now retired from passenger service." },
+      { "q": "Which airline has the largest 747 fleet?", "a": "Among freighter operators, Atlas Air and UPS Airlines are the largest 747 operators with around 50 aircraft each. In passenger service, Korean Air remains one of the last major operators of the 747-8I. Lufthansa was the launch customer for the 747-8I but retired its fleet in 2023." },
+      { "q": "What's the difference between the 747-400 and 747-8?", "a": "The 747-8 (Intercontinental for passengers, 8F for freight) is stretched by 5.6 metres compared to the 747-400, carries roughly 50 more passengers, and uses GEnx-2B engines delivering approximately 16% better fuel efficiency. The 747-8 also has a redesigned upper deck and winglets, while the 747-400 had distinctive winglets introduced on the -400 variant." },
+      { "q": "How many seats does a Boeing 747 have?", "a": "A typical three-class 747-400 seats around 416 passengers; British Airways operated a four-class 747-400 with 345 seats. The 747-8I in Lufthansa's configuration seats 364 in four classes. In high-density single-class charter layouts, the 747-400 can seat over 600 passengers." },
+      { "q": "When was the Boeing 747 introduced?", "a": "The 747-100 entered commercial service with Pan American World Airways on 22 January 1970, on the New York–London route. The first 747 flight took place on 9 February 1969 from Everett, Washington. The most recent variant, the 747-8I, entered service with Lufthansa in June 2012." }
+    ]
+  },
+
+  "airbus-a330": {
+    "variants": [
+      { "name": "A330-200",    "firstFlight": "1997", "seats": "246-406", "range_nm": 7250, "status": "in service" },
+      { "name": "A330-200F",   "firstFlight": "2009", "seats": "0",       "range_nm": 4000, "status": "in service" },
+      { "name": "A330-300",    "firstFlight": "1992", "seats": "277-440", "range_nm": 5925, "status": "in service" },
+      { "name": "A330-800neo", "firstFlight": "2018", "seats": "220-406", "range_nm": 8150, "status": "in service" },
+      { "name": "A330-900neo", "firstFlight": "2017", "seats": "260-460", "range_nm": 7200, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2009-06-01", "flight": "Air France 447", "operator": "Air France", "variant": "A330-203", "fatalities": 228, "summary": "Stalled into the Atlantic Ocean after pitot tube icing caused unreliable airspeed indications and the crew failed to recover from an upset; all 228 occupants perished and the wreckage was not recovered until 2011.", "slug": null },
+      { "date": "2009-06-30", "flight": "Yemenia 626", "operator": "Yemenia", "variant": "A330-243", "fatalities": 152, "summary": "Crashed into the Indian Ocean near Comoros on approach to Moroni; the sole survivor, a 12-year-old girl, was found floating in the sea. Investigation cited poor crew resource management and approach in unstable conditions.", "slug": null },
+      { "date": "2010-05-12", "flight": "Afriqiyah Airways 771", "operator": "Afriqiyah Airways", "variant": "A330-202", "fatalities": 103, "summary": "Crashed short of runway 09 at Tripoli International Airport on final approach; one child survived. Investigation cited controlled flight into terrain due to crew failure to maintain approach procedures.", "slug": null },
+      { "date": "1994-06-30", "flight": "Airbus A330 certification test (A'Zaire)", "operator": "Interavia / Airbus", "variant": "A330-300", "fatalities": 7, "summary": "A pre-delivery test flight at Toulouse-Blagnac crashed during a simulated engine-out go-around at low speed and altitude; all 7 crew members perished. This was a test aircraft, not a revenue service flight.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Airbus A330neo",
+      "html": "<p>The Airbus A330neo (\"new engine option\") entered service with TAP Air Portugal in November 2018, offering around 14% better fuel efficiency per seat than the A330ceo (current engine option) variants it supplements. The A330neo uses Rolls-Royce Trent 7000 engines paired with new Airspace cabin features and sharklet wingtips.</p><p>Two neo variants exist: the A330-900neo (stretched, seating 260-460) and the smaller A330-800neo (seating 220-406, range 8,150 nm), which targets routes where the 787-8 or A350-900 may be oversized. Demand for the -800neo has been limited — fewer than 20 orders as of 2025 — while the -900neo has over 200 orders. The A330ceo family remains in wide service with carriers including Cathay Pacific, China Eastern, and Turkish Airlines. Air France 447 (2009) was the type's deadliest accident and led to major changes in upset recovery training requirements globally.</p>"
+    },
+    "faq": [
+      { "q": "Is the Airbus A330 safe?", "a": "The A330 has a strong overall safety record across more than 1,500 aircraft delivered since 1993. Air France 447 (2009, 228 fatalities) was the most significant accident and prompted major industry-wide changes to stall recovery and pitot tube replacement programmes. Since those changes the A330 has had no further fatal stall-related accidents." },
+      { "q": "How many fatal Airbus A330 accidents have there been?", "a": "The A330 has been involved in a small number of fatal accidents since entering service in 1993. The deadliest were Air France 447 (228 fatalities, 2009) and Yemenia 626 (152 fatalities, 2009). A 1994 certification test crash killed 7, but this was not a revenue flight." },
+      { "q": "Which airline has the largest A330 fleet?", "a": "China Eastern, China Southern, and Turkish Airlines each operate among the largest A330 fleets globally, each with 50-80 aircraft. TAP Air Portugal was the A330neo launch customer. Cathay Pacific remains one of the largest Western operators of the A330-300." },
+      { "q": "What's the difference between the A330-900neo and A330-800neo?", "a": "The A330-900neo is the longer variant, seating 260-460 passengers with a range of 7,200 nm — comparable to the 787-9. The A330-800neo is shorter, seating 220-406 with greater range (8,150 nm), targeting thinner ultra-long-haul routes. Both use Rolls-Royce Trent 7000 engines and share the same neo-standard Airspace cabin." },
+      { "q": "How many seats does an Airbus A330 have?", "a": "The A330-300 typically seats 277-440 passengers; most airlines configure it for around 290-335 in two or three classes. The A330-200 seats 246-406. The A330-900neo in a typical two-class layout seats around 287-300 passengers, while TAP Air Portugal operates it with 298 seats." },
+      { "q": "When was the Airbus A330 introduced?", "a": "The A330-300 entered service with Air Inter (France) on 17 January 1994. The shorter A330-200 entered service with Monarch Airlines in April 1998. The A330-900neo entered commercial service with TAP Air Portugal on 26 November 2018." }
+    ]
   }
 }

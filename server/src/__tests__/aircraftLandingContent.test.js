@@ -184,25 +184,26 @@ describe('aircraftLandingContent — airbus-a320-family', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test 3: boeing-787 control — no enrichment blocks present
+// Test 3: boeing-787 — now has enrichment content
 // ---------------------------------------------------------------------------
-describe('aircraftLandingContent — boeing-787 (control, no enrichment)', () => {
+describe('aircraftLandingContent — boeing-787 (enriched)', () => {
   let html;
   beforeAll(() => {
     html = build(b787Meta, mockDb);
   });
 
-  it('HTML does NOT contain "Variants and specifications"', () => {
-    expect(html).not.toMatch(/Variants and specifications/);
+  it('HTML contains "Variants and specifications" h2', () => {
+    expect(html).toMatch(/Variants and specifications/);
   });
 
-  it('HTML does NOT contain "Notable accidents and incidents"', () => {
-    expect(html).not.toMatch(/Notable accidents and incidents/);
+  it('variant table contains 787-8, 787-9, 787-10', () => {
+    expect(html).toContain('787-8');
+    expect(html).toContain('787-9');
+    expect(html).toContain('787-10');
   });
 
-  it('HTML does NOT contain "About the 737 MAX" or "About the A320neo family"', () => {
-    expect(html).not.toContain('About the 737 MAX');
-    expect(html).not.toContain('About the A320neo family');
+  it('HTML contains "About the Boeing 787 Dreamliner" callout heading', () => {
+    expect(html).toContain('About the Boeing 787 Dreamliner');
   });
 
   it('standard chrome still wraps output (nav + footer)', () => {
@@ -315,16 +316,111 @@ describe('aircraftLandingContent — JSON-LD schema', () => {
     expect(itemList.itemListElement).toHaveLength(8);
   });
 
-  it('boeing-787 (control): no enriched JSON-LD block in baked output', () => {
+  it('boeing-787 (enriched): @graph has a FAQPage with 6 questions and ItemList with 3 variant entries', () => {
     const html = build(b787Meta, mockDb);
     const blocks = extractJsonLd(html);
-    // Control page should not have any body-embedded JSON-LD (only head JSON-LD via inject())
-    // We confirm by checking no block has an @graph with FAQPage or ItemList from enrichment
-    const enrichedBlock = blocks.find((b) =>
-      b['@context'] === 'https://schema.org' &&
-      b['@graph'] &&
-      b['@graph'].some((n) => n['@type'] === 'ItemList' || n['@type'] === 'FAQPage')
-    );
-    expect(enrichedBlock).toBeUndefined();
+    const graphBlock = blocks.find((b) => b['@context'] === 'https://schema.org' && b['@graph']);
+    expect(graphBlock).toBeDefined();
+    const faqPage = graphBlock['@graph'].find((n) => n['@type'] === 'FAQPage');
+    expect(faqPage).toBeDefined();
+    expect(faqPage.mainEntity).toHaveLength(6);
+    const itemList = graphBlock['@graph'].find((n) => n['@type'] === 'ItemList');
+    expect(itemList).toBeDefined();
+    expect(itemList.itemListElement).toHaveLength(3);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Test 6: All 8 enriched slugs load via bAircraft and produce a variants table
+// ---------------------------------------------------------------------------
+describe('aircraftLandingContent — all 8 enriched slugs render variants table', () => {
+  const enrichedSlugs = [
+    {
+      slug: 'boeing-737',
+      aircraftLabel: 'Boeing 737',
+      icaoList: ['B737', 'B38M'],
+      firstVariant: '737-700',
+    },
+    {
+      slug: 'airbus-a320-family',
+      aircraftLabel: 'Airbus A320 family',
+      icaoList: ['A319', 'A320', 'A321'],
+      firstVariant: 'A319',
+    },
+    {
+      slug: 'boeing-787',
+      aircraftLabel: 'Boeing 787',
+      icaoList: ['B788', 'B789'],
+      firstVariant: '787-8',
+    },
+    {
+      slug: 'airbus-a380',
+      aircraftLabel: 'Airbus A380',
+      icaoList: ['A388'],
+      firstVariant: 'A380-800',
+    },
+    {
+      slug: 'airbus-a350',
+      aircraftLabel: 'Airbus A350',
+      icaoList: ['A359', 'A35K'],
+      firstVariant: 'A350-900',
+    },
+    {
+      slug: 'boeing-777',
+      aircraftLabel: 'Boeing 777',
+      icaoList: ['B772', 'B773', 'B77W'],
+      firstVariant: '777-200',
+    },
+    {
+      slug: 'boeing-747',
+      aircraftLabel: 'Boeing 747',
+      icaoList: ['B741', 'B742', 'B743', 'B744', 'B748'],
+      firstVariant: '747-100',
+    },
+    {
+      slug: 'airbus-a330',
+      aircraftLabel: 'Airbus A330',
+      icaoList: ['A332', 'A333', 'A338', 'A339'],
+      firstVariant: 'A330-200',
+    },
+  ];
+
+  for (const aircraft of enrichedSlugs) {
+    // Capture loop variable for async beforeAll
+    const { slug, aircraftLabel, icaoList, firstVariant } = aircraft;
+
+    describe(`${slug}`, () => {
+      let html;
+      beforeAll(() => {
+        const meta = {
+          kind: 'aircraft',
+          slug,
+          aircraftLabel,
+          icaoList,
+          colorBand: { bucket: 'green', label: 'No fatal hull losses on record', lastFatalDate: null },
+          topEvents: [],
+          variants: [],
+          fr24Stats: null,
+        };
+        html = build(meta, mockDb);
+      });
+
+      it('produces "Variants and specifications" heading', () => {
+        expect(html).toMatch(/Variants and specifications/);
+      });
+
+      it(`first variant "${firstVariant}" appears in the variants table`, () => {
+        expect(html).toContain(firstVariant);
+      });
+
+      it('produces "Notable accidents and incidents" heading', () => {
+        expect(html).toMatch(/Notable accidents and incidents/);
+      });
+
+      it('produces 6 FAQ questions', () => {
+        const faqCount = (html.match(/<dt>/g) || []).length;
+        expect(faqCount).toBe(6);
+      });
+    });
+  }
 });
