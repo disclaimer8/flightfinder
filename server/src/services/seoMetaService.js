@@ -149,9 +149,18 @@ function aircraftMeta(slug) {
   const icaoList = fam ? fam.icaoList : [];
   const family   = _bakeFamilyFields(fam);
   // Safety enrichment — fatal events power the colorBand + topEvents the bake
-  // pipeline renders into the static fallback. Wrapped in try/catch so a DB
-  // hiccup degrades to no badge instead of breaking the whole page resolve.
-  const fatalEvents = _safeDb((d) => d.getFatalEventsByIcaoList(icaoList));
+  // pipeline renders into the static fallback. Merges safety_events with the
+  // AirCrash sidecar so colorBand reflects global hull losses, not just the
+  // US-centric NTSB+FR24 feed.
+  let fatalEvents = [];
+  try {
+    fatalEvents = require('./aircraftSafetyService').getMergedEventsForFamily({
+      icaoList,
+      familyName: fam?.name,
+      fatalOnly: true,
+      limit: 100,
+    });
+  } catch { /* degrade to no badge */ }
   const variants = getVariantsByFamilySlug(slug);
   return {
     title: `${label} flights, routes and safety record | FlightFinder`,
@@ -245,10 +254,29 @@ function aircraftSafetyMeta(slug) {
     safetyEventCount = undefined; // builder degrades to null
   }
   // Pull both fatal-only and full event lists for the safety pillar page.
-  // Same try/catch degradation pattern as aircraftMeta — DB issues yield empty
-  // arrays so colorBand defaults to "green / no record" instead of crashing.
-  const fatalEvents = _safeDb((d) => d.getFatalEventsByIcaoList(icaoList));
-  const allEvents   = _safeDb((d) => d.getAllEventsByIcaoList(icaoList, 100));
+  // Uses aircraftSafetyService.getMergedEventsForFamily so events from the
+  // AirCrash sidecar (ASN/B3A/Wikidata, global) merge with safety_events
+  // (NTSB CAROL + FR24, US-centric). Without the merge the page silently
+  // omits every international hull loss (e.g. Air India 787-8 Ahmedabad).
+  const aircraftSafetyService = require('./aircraftSafetyService');
+  let fatalEvents = [];
+  let allEvents = [];
+  try {
+    fatalEvents = aircraftSafetyService.getMergedEventsForFamily({
+      icaoList,
+      familyName: fam.name,
+      fatalOnly: true,
+      limit: 200,
+    });
+    allEvents = aircraftSafetyService.getMergedEventsForFamily({
+      icaoList,
+      familyName: fam.name,
+      limit: 100,
+    });
+  } catch {
+    // Degrades to empty arrays so colorBand defaults to "green / no record"
+    // instead of crashing — same pattern as the original _safeDb wrap.
+  }
   const variants = getVariantsByFamilySlug(slug);
   return {
     title: `${label} safety record — accidents and incidents | FlightFinder`,
@@ -302,8 +330,25 @@ function aircraftVariantMeta(familySlug, variantSlug) {
   const v = getVariantBySlug(familySlug, variantSlug);
   if (!fam || !v) return notFoundMeta();
 
-  const fatalEvents = _safeDb((d) => d.getFatalEventsByIcaoList([v.icao]));
-  const allEvents   = _safeDb((d) => d.getAllEventsByIcaoList([v.icao], 100));
+  // Variant pages show family-level safety record — variants are members
+  // of the family and the events tie to the family in both data sources.
+  // Merge safety_events + AirCrash so international hull losses surface.
+  let fatalEvents = [];
+  let allEvents = [];
+  try {
+    const safetySvc = require('./aircraftSafetyService');
+    fatalEvents = safetySvc.getMergedEventsForFamily({
+      icaoList: [v.icao],
+      familyName: fam.name,
+      fatalOnly: true,
+      limit: 100,
+    });
+    allEvents = safetySvc.getMergedEventsForFamily({
+      icaoList: [v.icao],
+      familyName: fam.name,
+      limit: 100,
+    });
+  } catch { /* degrade silently */ }
 
   return {
     title: `${v.fullName} — flights, routes and safety record | FlightFinder`,

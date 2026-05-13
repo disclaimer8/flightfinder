@@ -67,6 +67,24 @@ function getStmts() {
         normalized_date DESC
       LIMIT 5
     `),
+    // Used by aircraftSafetyService to surface ASN/B3A/Wikidata events on
+    // /aircraft/{slug}/safety pages — safety_events alone misses every
+    // non-NTSB accident (e.g. the Air India 787-8 Ahmedabad 2025-06-12 hull
+    // loss). The LIKE pattern is matched against the human-formatted
+    // aircraft_model AND the canonicalised aircraft_canonical column so we
+    // catch both 'BOEING 787-9' and 'BOEING 787 9' variants.
+    byFamilyName: d.prepare(`
+      SELECT id, date, normalized_date, aircraft_model, operator, fatalities,
+             location, source_url
+      FROM accidents
+      WHERE LOWER(aircraft_model)     LIKE '%' || LOWER(?) || '%'
+         OR LOWER(aircraft_canonical) LIKE '%' || LOWER(?) || '%'
+      ORDER BY
+        CASE WHEN normalized_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+             THEN 0 ELSE 1 END,
+        normalized_date DESC
+      LIMIT ?
+    `),
   };
   return _stmts;
 }
@@ -92,6 +110,23 @@ function findRelatedByAircraft(modelStr, excludeId) {
 function findRelatedByOperator(operator, excludeId) {
   const s = getStmts(); if (!s || !operator) return [];
   return s.byOperator.all(operator, excludeId);
+}
+
+/**
+ * Find AirCrash accidents matching an aircraft-family name pattern (e.g.
+ * 'Boeing 787', 'Airbus A320'). Returns raw accident rows — the caller is
+ * expected to normalise them into the safety_events shape via
+ * aircraftSafetyService.adaptAccidentToEvent.
+ *
+ * @param {string} familyName  Free-text pattern to LIKE-match aircraft_model
+ *                             and aircraft_canonical. The trimmed
+ *                             ' family' / ' (all variants)' suffix on
+ *                             family names is the caller's responsibility.
+ * @param {number} [limit=200] Hard cap on rows returned.
+ */
+function findAccidentsByFamilyName(familyName, limit = 200) {
+  const s = getStmts(); if (!s || !familyName) return [];
+  return s.byFamilyName.all(familyName, familyName, Math.max(1, Math.min(500, limit | 0)));
 }
 
 // Returns Map<ev_id, {accId, normalized_date, aircraft_model, operator, location}>
@@ -122,5 +157,6 @@ function getNtsbEvIdToAccidentIdMap() {
 module.exports = {
   getAccidentById, getAccidentIdBySourceEventId,
   findRelatedByAircraft, findRelatedByOperator,
+  findAccidentsByFamilyName,
   getNtsbEvIdToAccidentIdMap,
 };

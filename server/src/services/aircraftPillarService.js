@@ -1,6 +1,6 @@
 'use strict';
 const obr = require('../models/observedRoutes');
-const safety = require('../models/safetyEvents');
+const aircraftSafetyService = require('./aircraftSafetyService');
 const openFlights = require('./openFlightsService');
 const { getFamilyBySlug } = require('../models/aircraftFamilies');
 const aircraftSpecs = require('../data/aircraftSpecs.json');
@@ -89,8 +89,16 @@ function getSafetyForAircraft(slug, { limit = 100 } = {}) {
   const fam = getFamilyBySlug(slug);
   if (!fam) return [];
   const codes = (fam.icaoTypes || fam.icaoList || []).map((c) => c.toUpperCase());
-  if (codes.length === 0) return [];
-  return safety.getByAircraftCodes(codes, { limit });
+  // Merge NTSB+FR24 (safety_events) and global ASN/B3A/Wikidata (AirCrash
+  // accidents) so the page surfaces international hull losses that the
+  // US-centric safety_events table never sees. The family name (e.g.
+  // "Boeing 787") is used as a LIKE pattern against aircraft_model on the
+  // AirCrash side.
+  return aircraftSafetyService.getMergedEventsForFamily({
+    icaoList: codes,
+    familyName: fam.name,
+    limit,
+  });
 }
 
 module.exports = {
