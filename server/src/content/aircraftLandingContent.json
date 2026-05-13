@@ -219,5 +219,282 @@
       { "q": "How many seats does an Airbus A330 have?", "a": "The A330-300 typically seats 277-440 passengers; most airlines configure it for around 290-335 in two or three classes. The A330-200 seats 246-406. The A330-900neo in a typical two-class layout seats around 287-300 passengers, while TAP Air Portugal operates it with 298 seats." },
       { "q": "When was the Airbus A330 introduced?", "a": "The A330-300 entered service with Air Inter (France) on 17 January 1994. The shorter A330-200 entered service with Monarch Airlines in April 1998. The A330-900neo entered commercial service with TAP Air Portugal on 26 November 2018." }
     ]
+  },
+
+  "boeing-757": {
+    "variants": [
+      { "name": "757-200",   "firstFlight": "1982", "seats": "200-239", "range_nm": 3929, "status": "in service" },
+      { "name": "757-200PF", "firstFlight": "1987", "seats": "0",       "range_nm": 3900, "status": "in service" },
+      { "name": "757-300",   "firstFlight": "1998", "seats": "243-289", "range_nm": 3395, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "1996-02-06", "flight": "Birgenair 301",          "operator": "Birgenair",        "variant": "757-225",  "fatalities": 189, "summary": "Crashed into the Atlantic Ocean shortly after departure from Puerto Plata, Dominican Republic; a wasp nest had blocked the captain's pitot tube during the aircraft's three-week ground stop, feeding false airspeed data and causing crew confusion that ended in a stall.", "slug": null },
+      { "date": "1995-12-20", "flight": "American Airlines 965",  "operator": "American Airlines", "variant": "757-223",  "fatalities": 159, "summary": "Struck a mountain near Buga, Colombia, during descent into Cali; crew accidentally cleared the FMS waypoints and then selected a waypoint that turned the aircraft directly into the Andes at night.", "slug": null },
+      { "date": "1996-10-02", "flight": "Aeroperú 603",           "operator": "Aeroperú",         "variant": "757-23A",  "fatalities": 70,  "summary": "Crashed into the Pacific Ocean off Lima after maintenance workers left adhesive tape over the static ports, depriving the crew of reliable altimeter and airspeed data; the crew flew for over 30 minutes without knowing their altitude.", "slug": null },
+      { "date": "2001-09-11", "flight": "American Airlines 77",   "operator": "American Airlines", "variant": "757-223",  "fatalities": 64,  "summary": "Hijacked by al-Qaeda operatives and deliberately flown into the Pentagon as part of the September 11 attacks; all 64 onboard (58 passengers including 5 hijackers, 6 crew) and 125 Pentagon personnel were killed.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Boeing 757",
+      "html": "<p>The Boeing 757 entered service with Eastern Air Lines on 1 January 1983 as a narrow-body replacement for the 727. Despite sharing its cockpit type-rating with the wide-body 767, the 757 filled a unique performance niche: its Rolls-Royce RB211 or Pratt & Whitney PW2000 engines gave it exceptional climb performance and the ability to operate from short, high-altitude airstrips that challenge other narrow-bodies.</p><p>Two pitot-tube-related accidents in 1996 — Birgenair 301 and Aeroperú 603 — both arising from blocked or covered static ports, prompted significant changes to aircraft maintenance and airspeed-unreliability procedures. The stretched 757-300, introduced in 1999, never matched the -200's popularity; production of all 757 variants ended in 2004 after 1,050 deliveries. Delta Air Lines now operates the world's largest remaining passenger 757 fleet, using the type extensively on transatlantic routes to smaller European cities.</p>"
+    },
+    "faq": [
+      { "q": "Is the Boeing 757 safe?", "a": "The 757 has a solid overall safety record across more than 1,000 aircraft delivered. Two high-profile pitot-tube accidents in 1996 (Birgenair 301 and Aeroperú 603) led to industry-wide changes in maintenance procedures and unreliable-airspeed training. No airworthiness-related fatal accident has occurred with the 757 since those changes." },
+      { "q": "How many fatal Boeing 757 accidents have there been?", "a": "The 757 has been involved in a small number of fatal hull losses since 1983. The highest-fatality events were Birgenair 301 (189, 1996), American Airlines 77 on 9/11 (189, 2001), American Airlines 965 Cali (159, 1995), and Aeroperú 603 (70, 1996). The 757-300 has had no fatal accidents." },
+      { "q": "Which airline has the largest 757 fleet?", "a": "Delta Air Lines operates the world's largest passenger 757 fleet, with over 120 aircraft (757-200s and 757-300s) as of 2024. United Airlines is the next-largest US operator with around 60 aircraft. American Airlines retired its entire 757 fleet in 2020." },
+      { "q": "What's the difference between the 757-200 and 757-300?", "a": "The 757-300 is stretched by 7.1 metres, adding roughly 50 seats over the -200 while using the same engines and fuel capacity — which reduces range from about 3,900 nm to 3,400 nm. The -300 is optimised for high-density domestic routes. Only 55 757-300s were built; over 900 of the 1,050 delivered were the -200 variant." },
+      { "q": "How many seats does a Boeing 757 have?", "a": "The 757-200 typically seats 200-239 passengers depending on layout; many two-class configurations seat around 180-200. The stretched 757-300 seats 243-289 in a dense single-class layout. Some charter operators configure the 757-200 for up to 239 seats in a high-density arrangement." },
+      { "q": "When was the Boeing 757 introduced?", "a": "The 757-200 entered service with Eastern Air Lines on 1 January 1983. The stretched 757-300 entered service with Condor in March 1999. A dedicated freighter variant, the 757-200PF, entered service in 1987. Production of all 757 variants ended in October 2004." }
+    ]
+  },
+
+  "boeing-767": {
+    "variants": [
+      { "name": "767-200",    "firstFlight": "1981", "seats": "181-255", "range_nm": 3850,  "status": "out of production" },
+      { "name": "767-200ER",  "firstFlight": "1984", "seats": "181-255", "range_nm": 6385,  "status": "in service" },
+      { "name": "767-300",    "firstFlight": "1986", "seats": "269-351", "range_nm": 3900,  "status": "in service" },
+      { "name": "767-300ER",  "firstFlight": "1986", "seats": "218-351", "range_nm": 5980,  "status": "in service" },
+      { "name": "767-300F",   "firstFlight": "1995", "seats": "0",       "range_nm": 3225,  "status": "in service" },
+      { "name": "767-400ER",  "firstFlight": "1999", "seats": "245-375", "range_nm": 5625,  "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "1991-05-26", "flight": "Lauda Air 004",                  "operator": "Lauda Air",          "variant": "767-3Z9ER", "fatalities": 223, "summary": "A thrust reverser on the left engine deployed uncommanded at cruise altitude over Thailand, causing the aircraft to break apart in-flight; all 223 occupants perished. The accident exposed a previously unknown failure mode and led Boeing to redesign 767 thrust-reverser controls.", "slug": null },
+      { "date": "1996-11-23", "flight": "Ethiopian Airlines 961",          "operator": "Ethiopian Airlines", "variant": "767-260ER", "fatalities": 125, "summary": "Hijacked by three Ethiopian nationals seeking asylum, the aircraft ran out of fuel and ditched in the Indian Ocean near Grande Comore. Of 175 on board, 125 died; many survivors drowned because passengers inflated their life-jackets inside the cabin before exiting, preventing them from surfacing.", "slug": null },
+      { "date": "2001-09-11", "flight": "American Airlines 11",            "operator": "American Airlines", "variant": "767-223ER", "fatalities": 92,  "summary": "Hijacked by al-Qaeda operatives after departure from Boston Logan and deliberately flown into the North Tower of the World Trade Center as part of the September 11 attacks; all 92 onboard were killed.", "slug": null },
+      { "date": "2001-09-11", "flight": "United Airlines 175",             "operator": "United Airlines",   "variant": "767-222",   "fatalities": 65,  "summary": "Hijacked by al-Qaeda operatives after departure from Boston Logan and deliberately flown into the South Tower of the World Trade Center as part of the September 11 attacks; all 65 onboard were killed.", "slug": null },
+      { "date": "1983-07-23", "flight": "Air Canada 143 (Gimli Glider)",  "operator": "Air Canada",         "variant": "767-233",   "fatalities": 0,   "summary": "Ran out of fuel at 41,000 ft after ground crews confused kilograms with pounds when calculating fuel load; the crew glided the unpowered aircraft to a safe landing at a former RCAF base at Gimli, Manitoba — no fatalities.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Boeing 767",
+      "html": "<p>The Boeing 767 entered service with United Airlines in September 1982 as the first Boeing wide-body with a two-crew glass cockpit, eliminating the flight engineer position. Its fuselage cross-section — wider than a narrow-body but narrower than a 747 — seats seven abreast in a 2-3-2 economy layout and was the first twin-aisle Boeing designed for 180-minute ETOPS operations, opening the North Atlantic to twin-engine jets.</p><p>The 767-300ER became the backbone of medium-haul wide-body fleets through the 1990s and 2000s; Delta Air Lines remains the world's largest passenger 767 operator with over 65 aircraft, using the type on transatlantic routes. FedEx and UPS operate large fleets of 767-300F freighters. A total of roughly 1,240 767s have been delivered, and production continues for the 767-300F freighter and the KC-46 Pegasus military tanker variant. The Gimli Glider (1983) — an Air Canada 767 that ran out of fuel due to a unit-conversion error — landed safely and is one of aviation's most remarkable survival stories.</p>"
+    },
+    "faq": [
+      { "q": "Is the Boeing 767 safe?", "a": "The 767 has a strong safety record across its 40+ year service life. The Lauda Air 004 thrust-reverser accident in 1991 led to a significant design fix that has prevented recurrence. No fatal structural accident has occurred with the 767 since those changes. The type has an excellent record on transatlantic routes where it has operated for decades." },
+      { "q": "How many fatal Boeing 767 accidents have there been?", "a": "The 767 has been involved in a small number of fatal hull losses. The most significant were Lauda Air 004 (223 fatalities, 1991), Ethiopian Airlines 961 hijacking/ditching (125, 1996), and two 767s deliberately crashed on 9/11 (United 175 into WTC South Tower and American 11 into WTC North Tower, combined 157 passengers and crew). The Gimli Glider (1983) was a zero-fatality event." },
+      { "q": "Which airline has the largest 767 fleet?", "a": "Delta Air Lines is the world's largest passenger 767 operator with over 65 aircraft, primarily 767-300ERs and 767-400ERs. United Airlines is the second-largest passenger operator with around 53 aircraft. FedEx and UPS are the largest freighter operators of 767-300Fs." },
+      { "q": "What's the difference between the 767-300ER and 767-400ER?", "a": "The 767-400ER is a further 6.4-metre stretch of the -300ER, seating around 245-375 passengers versus 218-351 on the -300ER. The -400ER has a slightly shorter range (5,625 nm vs 5,980 nm) but greater payload. Only Delta and United operate the 767-400ER; it was never exported outside the US." },
+      { "q": "How many seats does a Boeing 767 have?", "a": "The 767-200 seats 181-255 depending on configuration. The 767-300ER, the most common passenger variant, typically seats 218-290 in two or three classes. The 767-400ER seats 245-375. Most airlines configure their 767-300ERs for around 210-260 passengers in a two-class layout." },
+      { "q": "When was the Boeing 767 introduced?", "a": "The 767-200 entered service with United Airlines on 8 September 1982, on the Chicago–Denver route. The extended-range -200ER entered service in 1984, the stretched -300 in 1986, and the -300ER in 1988. The -400ER, the final and longest passenger variant, entered service with Delta Air Lines in 2000." }
+    ]
+  },
+
+  "airbus-a220": {
+    "variants": [
+      { "name": "A220-100", "firstFlight": "2013", "seats": "100-135", "range_nm": 3400, "status": "in service" },
+      { "name": "A220-300", "firstFlight": "2015", "seats": "120-160", "range_nm": 3400, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2024-12-23", "flight": "Swiss International LX1885", "operator": "Swiss International Air Lines", "variant": "A220-300", "fatalities": 1, "summary": "A PW1500G engine suffered an uncontained failure at FL400, flooding the cabin with smoke during a Bucharest–Zurich flight; the aircraft made an emergency landing at Graz, Austria. All 79 occupants evacuated, but one cabin crew member died on 30 December from brain damage caused by oxygen deprivation — the first fatal accident in the A220's history.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Airbus A220",
+      "html": "<p>The Airbus A220 — originally the Bombardier C Series — was designed in Canada specifically for the 100-160-seat market segment that mainline jets typically underserve. The C Series CS100 (now A220-100) first flew in September 2013 and entered service with Swiss International Air Lines in July 2016; Airbus acquired a majority stake in the programme in 2018 and rebranded both variants under the A220 family name.</p><p>The A220 is the first purpose-built aircraft in its size class to use advanced composite materials (46% by weight), Pratt & Whitney PW1500G geared turbofans, and a wide single-aisle cabin offering a 2-3 seat arrangement — wider than rival regional jets. Its exceptional fuel burn and range enable thin transatlantic routes previously unviable for regional aircraft. As of late 2024 the type had accumulated over 2.5 million flight hours across 389 aircraft without a fatal accident attributable to airframe design — a remarkable record for a relatively new type, though a PW1500G engine failure on a Swiss A220-300 in December 2024 resulted in one crew fatality.</p>"
+    },
+    "faq": [
+      { "q": "Is the Airbus A220 safe?", "a": "The A220 has an outstanding safety record. From its entry into service in July 2016 through late 2024 — over 2.5 million flight hours — no hull-loss accident occurred. In December 2024 a Swiss A220-300 suffered an engine failure that required an emergency landing at Graz; one cabin crew member died from smoke-inhalation injuries, marking the type's first fatal event. The investigation identified a previously unknown fault in the PW1500G engine gear system." },
+      { "q": "How many fatal Airbus A220 accidents have there been?", "a": "As of 2025, the A220 has been involved in one fatal accident: the Swiss International LX1885 engine failure at Graz in December 2024, which resulted in one crew fatality. No A220 has ever been destroyed in a crash. Prior to this event the type had an eight-year fatality-free record across hundreds of aircraft." },
+      { "q": "Which airline has the largest A220 fleet?", "a": "Delta Air Lines operates the world's largest A220 fleet with over 80 aircraft, deployed primarily on domestic US routes. JetBlue and Air France are the next-largest operators with around 55-60 A220s each. airBaltic is the largest European A220-300 operator, and Swiss International Air Lines is the sole operator of both the A220-100 and A220-300." },
+      { "q": "What's the difference between the A220-100 and A220-300?", "a": "The A220-300 is approximately 3.7 metres longer than the A220-100, seating 120-160 passengers versus 100-135 on the -100. Both share the same cockpit, systems, and PW1500G engines. The A220-300 has become by far the more popular variant; the A220-100 is operated only by Swiss International Air Lines and a handful of other carriers." },
+      { "q": "How many seats does an Airbus A220 have?", "a": "The A220-100 seats 100-135 passengers depending on layout. The A220-300, the dominant variant, seats 120-160 with most airlines configuring it for around 130-145 in a two-class layout. The 2-3 seat arrangement gives economy passengers noticeably more width than a typical narrow-body." },
+      { "q": "When was the Airbus A220 introduced?", "a": "The A220-100 (then Bombardier CS100) entered service with Swiss International Air Lines in July 2016. The A220-300 (then CS300) entered service with airBaltic in December 2016. Airbus rebranded the family as the A220 in July 2018 following its acquisition of a majority stake in the programme from Bombardier." }
+    ]
+  },
+
+  "airbus-a319": {
+    "variants": [
+      { "name": "A319-100",  "firstFlight": "1995", "seats": "124-156", "range_nm": 3700, "status": "in service" },
+      { "name": "A319neo",   "firstFlight": "2017", "seats": "120-150", "range_nm": 3750, "status": "in service" },
+      { "name": "A319CJ",    "firstFlight": "1995", "seats": "8-50",    "range_nm": 5950, "status": "in service" }
+    ],
+    "notableIncidents": [],
+    "variantCallout": {
+      "title": "About the Airbus A319",
+      "html": "<p>The Airbus A319 is a shortened variant of the A320 family, seating 124-156 passengers while retaining the same cockpit, systems, and type rating. Its maiden flight was on 25 March 1995, and it entered service with Swissair in April 1996. The A319 trades capacity for range, carrying 3,700 nm in its standard form — enough for thin transatlantic routes — and up to 5,950 nm in the A319CJ corporate jet configuration.</p><p>American Airlines operates the world's largest A319 fleet with over 130 aircraft. Despite its 30-year service history the A319ceo has a remarkably clean safety record: as of 2025 no fatal hull-loss accident has been confirmed involving the A319 variant specifically, making it one of the safest commercial jets by that measure. The A319neo, powered by CFM LEAP-1A or Pratt & Whitney PW1100G engines, entered service in 2018 but has seen limited orders compared to the A320neo and A321neo, as airlines typically prefer the larger variants for better unit economics.</p>"
+    },
+    "faq": [
+      { "q": "Is the Airbus A319 safe?", "a": "The A319 has an excellent safety record. As of 2025 no fatal hull-loss accident specific to the A319 variant has been confirmed across its 30-year service life. Incidents involving the broader A320 family that have sometimes been attributed to the A319 typically involved other variants (A320-200 or A321). The type's safety profile is consistent with the A320 family standard." },
+      { "q": "How many fatal Airbus A319 accidents have there been?", "a": "As of 2025, no fatal hull-loss crash is confirmed specifically for the A319 variant, making it one of very few commercial aircraft types to complete three decades of service without a fatal crash directly attributed to the airframe. Some hull losses involving the broader A320 family have affected A319-registered aircraft but the A319 has not been destroyed in a crash causing passenger fatalities." },
+      { "q": "Which airline has the largest A319 fleet?", "a": "American Airlines operates the world's largest A319 fleet with over 130 aircraft as of late 2025. United Airlines and Delta Air Lines are the next-largest US operators with around 80 and 57 aircraft respectively. easyJet is one of the largest European A319 operators." },
+      { "q": "What's the difference between the A319 and A320?", "a": "The A319 is 3.77 metres shorter than the A320, seating 124-156 passengers versus 150-180 for the A320. Both share the same cockpit and type rating (pilots can fly both on a single licence endorsement). The A319 trades about 30 seats for marginally better range and the ability to serve thinner routes and shorter runways more economically." },
+      { "q": "How many seats does an Airbus A319 have?", "a": "The A319 typically seats 124-156 passengers depending on configuration. Most two-class layouts seat around 128-138 passengers, while high-density single-class charter layouts can reach 156. The A319CJ corporate variant is usually fitted for 8-50 passengers in premium configurations." },
+      { "q": "When was the Airbus A319 introduced?", "a": "The A319 made its first flight on 25 March 1995 and entered commercial service with Swissair in April 1996. The A319neo (new engine option) entered service with launch customer easyJet in May 2018. Cumulative orders for the A319 family exceed 1,500 aircraft." }
+    ]
+  },
+
+  "airbus-a320": {
+    "variants": [
+      { "name": "A320-100", "firstFlight": "1987", "seats": "150-164", "range_nm": 2300, "status": "out of production" },
+      { "name": "A320-200", "firstFlight": "1987", "seats": "150-180", "range_nm": 3300, "status": "in service" },
+      { "name": "A320neo",  "firstFlight": "2014", "seats": "150-194", "range_nm": 3500, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2007-07-17", "flight": "TAM 3054",               "operator": "TAM",                "variant": "A320-233", "fatalities": 199, "summary": "Overran runway 35L at São Paulo–Congonhas in heavy rain with one thrust reverser deactivated; the aircraft struck the TAM Express cargo building. The deadliest accident in Brazilian aviation history.", "slug": null },
+      { "date": "2014-12-28", "flight": "Indonesia AirAsia 8501", "operator": "Indonesia AirAsia", "variant": "A320-216", "fatalities": 162, "summary": "Crashed into the Java Sea after repeated rudder travel limiter faults caused an upset; the crew's response was inconsistent, and the aircraft stalled and entered a steep descent from which recovery was not achieved. All 162 on board perished.", "slug": null },
+      { "date": "2015-03-24", "flight": "Germanwings 9525",        "operator": "Germanwings",        "variant": "A320-211", "fatalities": 150, "summary": "Deliberately flown into the French Alps by the first officer after he locked the captain out of the cockpit; all 150 occupants killed. Led to industry-wide changes requiring two authorised crew members on the flight deck at all times.", "slug": null },
+      { "date": "2009-01-15", "flight": "US Airways 1549",        "operator": "US Airways",         "variant": "A320-214", "fatalities": 0,   "summary": "Lost thrust to both engines after a bird strike on departure from LaGuardia; Captain Sullenberger ditched in the Hudson River — all 155 occupants survived in the 'Miracle on the Hudson'.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Airbus A320 and A320neo",
+      "html": "<p>The Airbus A320 — the aircraft that pioneered fly-by-wire controls and side-stick input in a commercial airliner — first flew on 22 February 1987 and entered service with Air France in April 1988. Its digital flight envelope protections, which physically prevent pilots from exceeding structural limits, represented a major philosophical departure from the Boeing approach and sparked an industry debate about automation that continues today.</p><p>The A320neo (new engine option) entered service with Lufthansa in January 2016, pairing the existing fuselage with CFM LEAP-1A or Pratt & Whitney PW1100G geared turbofans for roughly 16-20% better fuel burn per seat than the A320ceo. Sharklet wingtip devices, standard on the neo, contribute around 4% of that gain. The A320 family as a whole — covering A318, A319, A320, and A321 — is the world's best-selling single-aisle jet programme, with over 10,000 aircraft ordered and more than 8,000 delivered. The A320 single variant page covers the baseline fuselage; accidents involving A319 or A321 airframes appear on their respective pages.</p>"
+    },
+    "faq": [
+      { "q": "Is the Airbus A320 safe?", "a": "The A320 has a strong safety record across its 37-year service life with over 6,000 aircraft in service. Notable fatal events — TAM 3054, AirAsia 8501, and Germanwings 9525 — were caused by runway excursion, crew misresponse to an upset, and deliberate pilot action respectively. No A320 fatal accident has been attributed to an airframe design flaw." },
+      { "q": "How many fatal Airbus A320 accidents have there been?", "a": "The A320 variant specifically has been involved in approximately a dozen fatal hull-loss accidents since 1988. The most significant were TAM 3054 (199 fatalities, 2007), AirAsia 8501 (162, 2014), and Germanwings 9525 (150, 2015). Incidents involving the A319 or A321 variants are covered on their respective aircraft pages." },
+      { "q": "Which airline has the largest A320 fleet?", "a": "IndiGo operates the world's largest fleet of A320-family aircraft (including A320s), with over 300 A320 and A320neo combined. easyJet, Wizz Air, and American Airlines each operate over 200 A320-family aircraft. American Airlines is the world's largest overall A320-family operator by combined ceo and neo count." },
+      { "q": "What's the difference between the A320ceo and A320neo?", "a": "The A320neo (new engine option, introduced 2016) uses CFM LEAP-1A or PW1100G geared turbofan engines in place of the A320ceo's CFM56 or IAE V2500, delivering roughly 16-20% lower fuel burn. Standard sharklet wingtips on the neo contribute an additional 4% efficiency gain. The cabin is identical and the type rating is shared between ceo and neo." },
+      { "q": "How many seats does an Airbus A320 have?", "a": "The A320 typically seats 150-180 passengers. Most legacy carrier two-class layouts seat around 150-165; low-cost carrier single-class configurations reach 180-186. The A320neo in high-density layouts can seat up to 194 passengers, though most airlines use fewer seats for passenger comfort." },
+      { "q": "When was the Airbus A320 introduced?", "a": "The A320-100 entered service with Air France on 18 April 1988 — the first fly-by-wire airliner in regular commercial service. The A320-200 (with wingtip fences and extra fuel) followed shortly after. The A320neo entered service with Lufthansa on 25 January 2016." }
+    ]
+  },
+
+  "airbus-a321": {
+    "variants": [
+      { "name": "A321-100",  "firstFlight": "1993", "seats": "185-220", "range_nm": 2700, "status": "out of production" },
+      { "name": "A321-200",  "firstFlight": "1995", "seats": "185-220", "range_nm": 3200, "status": "in service" },
+      { "name": "A321neo",   "firstFlight": "2016", "seats": "180-244", "range_nm": 4000, "status": "in service" },
+      { "name": "A321LR",    "firstFlight": "2018", "seats": "180-220", "range_nm": 4000, "status": "in service" },
+      { "name": "A321XLR",   "firstFlight": "2022", "seats": "180-220", "range_nm": 4700, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2015-10-31", "flight": "Metrojet 9268",  "operator": "Metrojet (Kogalymavia)", "variant": "A321-231", "fatalities": 224, "summary": "Destroyed by an improvised explosive device in the hold 22 minutes after departure from Sharm el-Sheikh, Egypt, en route to St Petersburg; debris scattered across northern Sinai. ISIS's Sinai affiliate claimed responsibility. The deadliest single aviation incident in Egyptian airspace.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Airbus A321XLR",
+      "html": "<p>The Airbus A321 is the longest member of the A320 family, stretching the A320 fuselage by about 7 metres to seat 185-244 passengers. It entered service with Lufthansa in January 1994, initially in the -100 form; the heavier, longer-range -200 followed in 1996. The A321neo (2016) brought new-generation engines and sharklets, transforming the type from a medium-haul domestic jet to a capable medium-haul performer.</p><p>The A321XLR — Extra Long Range — entered service in October 2024, becoming the first single-aisle aircraft capable of transatlantic flying with a full revenue payload. Its rear-centre fuel tank gives a range of 4,700 nm, enough to fly New York to Rome or Berlin to Bangkok non-stop. American Airlines is the world's largest A321 operator with over 300 aircraft; the A321neo is currently Airbus's best-selling individual variant by active order count. The Metrojet 9268 bombing over Sinai in 2015 (224 fatalities) remains the A321's deadliest event, and was a deliberate act of terrorism rather than an airworthiness failure.</p>"
+    },
+    "faq": [
+      { "q": "Is the Airbus A321 safe?", "a": "The A321 has a strong airworthiness record. The deadliest event in its history — Metrojet 9268 over Sinai (2015, 224 fatalities) — was caused by a terrorist bomb in the hold, not an aircraft failure. No A321 has been destroyed due to an airframe design defect. The type has been in continuous commercial service since 1994 with a low hull-loss rate per departure." },
+      { "q": "How many fatal Airbus A321 accidents have there been?", "a": "The A321 has been involved in a very small number of fatal hull losses since 1994. The most significant event was Metrojet 9268 (224 fatalities, 2015), which was a terrorist bombing. A small number of runway excursions and approach accidents have involved A321s, but the type's overall fatal record is among the best of any single-aisle jet." },
+      { "q": "Which airline has the largest A321 fleet?", "a": "American Airlines is the world's largest A321 operator with over 300 aircraft (combining ceo and neo variants) as of 2025. Wizz Air, IndiGo, Delta Air Lines, and China Southern each operate 80-160 A321neos. American has orders for over 200 additional A321neos making it the largest North American A321neo customer." },
+      { "q": "What's the difference between the A321neo and A321XLR?", "a": "The A321XLR (Extra Long Range, in service from October 2024) adds a structural rear-centre fuel tank that increases range from 4,000 nm on the A321neo to 4,700 nm — enabling transatlantic flying with a full load. The A321LR achieves up to 4,000 nm using three removable auxiliary centre-section fuel tanks. The XLR's tank is permanent and integral to the airframe." },
+      { "q": "How many seats does an Airbus A321 have?", "a": "The A321 seats 185-220 in typical two-class configurations. High-density single-class layouts can reach 244 seats on the A321neo. The A321XLR in most planned configurations seats 180-220 passengers, trading some density for the fuel volume required for transatlantic range." },
+      { "q": "When was the Airbus A321 introduced?", "a": "The A321-100 entered service with Lufthansa on 27 January 1994. The longer-range A321-200 followed in 1996. The A321neo entered service on 9 May 2016 with Lufthansa. The A321XLR entered service with Iberia in October 2024, becoming the first transatlantic-capable single-aisle jet in regular airline service." }
+    ]
+  },
+
+  "atr-42-72": {
+    "variants": [
+      { "name": "ATR 42-300", "firstFlight": "1984", "seats": "42-50",  "range_nm": 716,  "status": "in service" },
+      { "name": "ATR 42-500", "firstFlight": "1994", "seats": "48-50",  "range_nm": 780,  "status": "in service" },
+      { "name": "ATR 42-600", "firstFlight": "2009", "seats": "48-50",  "range_nm": 780,  "status": "in service" },
+      { "name": "ATR 72-200", "firstFlight": "1988", "seats": "64-74",  "range_nm": 825,  "status": "in service" },
+      { "name": "ATR 72-500", "firstFlight": "1996", "seats": "68-74",  "range_nm": 825,  "status": "in service" },
+      { "name": "ATR 72-600", "firstFlight": "2009", "seats": "70-78",  "range_nm": 825,  "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2023-01-15", "flight": "Yeti Airlines 691",       "operator": "Yeti Airlines",       "variant": "ATR 72-500",  "fatalities": 72, "summary": "Stalled and crashed on approach to Pokhara International Airport, Nepal; all 72 on board perished. Investigation found the captain had accidentally placed both engines into feather (zero thrust) configuration while troubleshooting a false engine warning, causing total thrust loss at low altitude.", "slug": null },
+      { "date": "2010-11-04", "flight": "Aero Caribbean 883",      "operator": "Aero Caribbean",      "variant": "ATR 72-212",  "fatalities": 68, "summary": "En route from Santiago to Havana, the aircraft entered severe icing conditions, lost control at cruise, and crashed in central Cuba; all 68 onboard were killed in the second-deadliest ATR accident on record.", "slug": null },
+      { "date": "2014-07-23", "flight": "TransAsia 222",            "operator": "TransAsia Airways",   "variant": "ATR 72-500",  "fatalities": 48, "summary": "Crashed into buildings on approach to Magong Airport, Taiwan, during Typhoon Matmo; the crew descended below minimum descent altitude without visual contact with the runway. 48 of 58 on board were killed.", "slug": null },
+      { "date": "2015-02-04", "flight": "TransAsia 235",            "operator": "TransAsia Airways",   "variant": "ATR 72-600",  "fatalities": 43, "summary": "Lost power on one engine shortly after takeoff from Taipei Songshan; the crew mistakenly shut down the remaining good engine, leaving the aircraft with no thrust. The ATR 72 clipped a highway bridge and ditched in the Keelung River — 43 of 58 on board were killed, 15 survived.", "slug": null },
+      { "date": "2012-04-02", "flight": "UTair 120",               "operator": "UTair Aviation",      "variant": "ATR 72-201",  "fatalities": 33, "summary": "Crashed shortly after takeoff from Tyumen, Russia, in icing conditions; cause attributed to ground de-icing failure and aerodynamic stall. 31 passengers and 2 crew were killed; 12 survived.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the ATR 42 and ATR 72",
+      "html": "<p>ATR — Avions de Transport Régional, a Franco-Italian joint venture between Airbus and Leonardo — introduced the ATR 42-300 on 9 December 1985 with Air Littoral, following its first flight on 16 August 1984. The stretched ATR 72, which seats up to 78 passengers, followed in October 1989 with Finnair as the launch customer. Both types use two Pratt & Whitney Canada turboprop engines in a high-wing configuration optimised for short, unprepared, or high-altitude airstrips that jets cannot serve economically.</p><p>The current -600 generation (ATR 42-600 and ATR 72-600), launched in 2007 and entering service in 2012, adds a full glass cockpit, PW127M engines, and a new cabin. Wings Air of Indonesia is the world's largest ATR operator; IndiGo operates 50 ATR 72-600s in India for routes to smaller cities. As of 2025 more than 1,500 ATRs of all variants have been delivered. The type's accident record includes several high-profile crashes linked to incorrect engine-management procedures and approach below minimums, prompting ATR and regulators to introduce mandatory simulator training for engine-failure scenarios.</p>"
+    },
+    "faq": [
+      { "q": "Is the ATR 42/72 safe?", "a": "The ATR 42/72 family has a mixed safety record. The type serves demanding routes — short runways, mountainous terrain, adverse weather — that carry inherently higher risk than mainline hub-to-hub operations. Several high-profile accidents (TransAsia 222 and 235, Yeti Airlines 691) were caused by pilot handling of engine failures rather than airframe defects. Ice accretion in known-icing conditions was identified as a factor in some earlier North American accidents." },
+      { "q": "How many fatal ATR 42/72 accidents have there been?", "a": "The ATR 42/72 family has been involved in numerous fatal accidents over its 40-year history, primarily linked to approach and landing in poor conditions, ice contamination, and incorrect engine-failure procedures. Three recent high-fatality events are Yeti Airlines 691 (72 fatalities, 2023), TransAsia 222 (48, 2014), and TransAsia 235 (43, 2015)." },
+      { "q": "Which airline has the largest ATR 42/72 fleet?", "a": "Wings Air (Indonesia) is the world's largest ATR operator, with over 60 ATR 72s. IndiGo (India) operates 50 ATR 72-600s and is expanding its regional fleet. airBaltic formerly operated a large ATR fleet but transitioned to a mono-type A220 operation. ATR has delivered aircraft to operators in over 100 countries." },
+      { "q": "What's the difference between the ATR 42 and ATR 72?", "a": "The ATR 72 is a stretched ATR 42 with a 4.5-metre fuselage extension, carrying 64-78 passengers versus 42-50 for the ATR 42. Both share the same type rating and cockpit layout. The ATR 72's range is marginally better but similar (~825 nm); the larger variant is more economical on routes that support its higher capacity." },
+      { "q": "How many seats does an ATR 42/72 have?", "a": "The ATR 42-600 seats 48-50 passengers in a single-class layout. The ATR 72-600 seats 70-78 passengers, with most airline configurations set at 72 or 78. Both types use a 2-2 seat arrangement (four abreast) in a relatively narrow fuselage." },
+      { "q": "When was the ATR 42/72 introduced?", "a": "The ATR 42-300 entered service on 9 December 1985 with Air Littoral of France. The ATR 72 entered service with Finnair on 27 October 1989. The current -600 generation of both types entered commercial service in 2012. As of 2025 ATR continues production of the -600 variants at its Toulouse facility." }
+    ]
+  },
+
+  "bombardier-crj": {
+    "variants": [
+      { "name": "CRJ-100", "firstFlight": "1991", "seats": "50",    "range_nm": 1500, "status": "out of production" },
+      { "name": "CRJ-200", "firstFlight": "1995", "seats": "50",    "range_nm": 1650, "status": "out of production" },
+      { "name": "CRJ-700", "firstFlight": "1999", "seats": "64-78", "range_nm": 1530, "status": "in service" },
+      { "name": "CRJ-900", "firstFlight": "2001", "seats": "76-90", "range_nm": 1350, "status": "in service" },
+      { "name": "CRJ-1000","firstFlight": "2008", "seats": "97-104","range_nm": 1350, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2004-11-21", "flight": "China Eastern 5210", "operator": "China Eastern Airlines", "variant": "CRJ-200ER", "fatalities": 55, "summary": "Crashed into a lake in Baotou's Nanhai Park shortly after takeoff; frost contamination on the wings caused a stall because no de-icing had been performed despite the aircraft being parked overnight in sub-zero temperatures. 53 occupants and 2 people on the ground were killed.", "slug": null },
+      { "date": "2006-08-27", "flight": "Comair 5191",       "operator": "Comair",                 "variant": "CRJ-100",   "fatalities": 49, "summary": "Took off from Runway 26 at Lexington, Kentucky — a short, unlit runway not authorised for commercial use — instead of the assigned Runway 22; the aircraft could not become airborne before the runway end and crashed. 47 passengers and 2 of 3 crew were killed; the sole survivor was the first officer.", "slug": null },
+      { "date": "2004-10-14", "flight": "Pinnacle 3701",     "operator": "Pinnacle Airlines",      "variant": "CRJ-200ER", "fatalities": 2,  "summary": "Crew on a repositioning flight climbed the aircraft to its maximum operating altitude of 41,000 ft, causing both engines to flame out due to low airspeed at high altitude; neither engine could be restarted and the aircraft crashed near Jefferson City, Missouri. Both pilots were killed; no passengers were on board.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Bombardier CRJ Family",
+      "html": "<p>The Bombardier CRJ (Canadair Regional Jet) was derived from the Canadair Challenger 600 business jet and first flew as the CRJ-100 on 10 May 1991. It entered service with Lufthansa CityLine in November 1992 and transformed regional aviation in North America, enabling scope-clause-compliant 50-seat jet service on thousands of thin routes previously served only by turboprops.</p><p>The larger CRJ-700 (2001), CRJ-900 (2003), and CRJ-1000 (2010) series extended the family's range and capacity while retaining type-rating commonality. MHI RJ Aviation Group (Mitsubishi Heavy Industries) acquired the CRJ programme from Bombardier in 2020; production has since concluded. As of 2025 SkyWest Airlines is the world's largest CRJ operator with over 200 CRJ-700s and CRJ-900s, followed by Endeavor Air. The CRJ-200 fleet is rapidly retiring in the US, while the CRJ-900 remains a primary regional workhorse for Delta Connection and United Express carriers.</p>"
+    },
+    "faq": [
+      { "q": "Is the Bombardier CRJ safe?", "a": "The CRJ family has a reasonable safety record for a type that has operated millions of regional flights. The two deadliest accidents — China Eastern 5210 (55 fatalities, 2004) and Comair 5191 (49, 2006) — were caused by winter ground operations failures and wrong-runway departure respectively, not airframe defects. The CRJ-700 and -900 series have a cleaner record than the original 50-seat variants." },
+      { "q": "How many fatal Bombardier CRJ accidents have there been?", "a": "The CRJ family has been involved in a small number of fatal hull-loss accidents across its 30-year service history. The most significant were China Eastern 5210 (55 fatalities, 2004), Comair 5191 (49, 2006), and Pinnacle 3701 (2 fatalities, 2004). The CRJ-700 and -900 have not been involved in fatal hull losses." },
+      { "q": "Which airline has the largest CRJ fleet?", "a": "SkyWest Airlines is the world's largest CRJ operator, with over 200 CRJ-700s and CRJ-900s operating under the Delta Connection, United Express, and Alaska Eagle brands. Endeavor Air (a Delta subsidiary) is the largest CRJ-900 operator. Iberia Express is the largest European CRJ-1000 operator." },
+      { "q": "What's the difference between the CRJ-700 and CRJ-900?", "a": "The CRJ-900 is a stretched CRJ-700, carrying 76-90 passengers versus 64-78 for the -700. The -900 has reinforced structure and landing gear to handle the higher weights; range is similar at around 1,350-1,530 nm. Both variants share a common type rating, enabling CRJ-qualified pilots to fly either aircraft with minimal additional training." },
+      { "q": "How many seats does a Bombardier CRJ have?", "a": "The original CRJ-100 and CRJ-200 seat exactly 50 passengers in a 1-2 arrangement. The CRJ-700 seats 64-78, the CRJ-900 seats 76-90, and the CRJ-1000 seats 97-104. The CRJ-550 is a special low-density variant of the CRJ-700 configured for 50 passengers with premium seating, operated by United Express and Delta Connection." },
+      { "q": "When was the Bombardier CRJ introduced?", "a": "The CRJ-100 entered commercial service with Lufthansa CityLine in November 1992. The CRJ-200 (upgraded engines) followed in 1995. The larger CRJ-700 series entered service with Brit Air in 2001, the CRJ-900 with Mesa Air in 2003, and the CRJ-1000 with Brit Air in 2010. MHI RJ acquired the programme from Bombardier in 2020." }
+    ]
+  },
+
+  "bombardier-dash-8": {
+    "variants": [
+      { "name": "Dash 8-100", "firstFlight": "1983", "seats": "37-39", "range_nm": 715,  "status": "out of production" },
+      { "name": "Dash 8-200", "firstFlight": "1994", "seats": "37-39", "range_nm": 715,  "status": "out of production" },
+      { "name": "Dash 8-300", "firstFlight": "1987", "seats": "50-56", "range_nm": 900,  "status": "out of production" },
+      { "name": "Q400",       "firstFlight": "1998", "seats": "70-90", "range_nm": 1297, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2009-02-12", "flight": "Colgan Air 3407",  "operator": "Colgan Air",          "variant": "Q400",    "fatalities": 50, "summary": "Stalled on approach to Buffalo Niagara International Airport in icing conditions; the crew's inappropriate response to stick-shaker activation — pulling back instead of pushing forward — deepened the stall. All 49 on board were killed plus one person on the ground. The accident led to the US Airline Safety and Federal Aviation Administration Extension Act of 2010, significantly raising first-officer qualification standards.", "slug": null },
+      { "date": "2013-02-21", "flight": "SCAT Airlines 760","operator": "SCAT Airlines",       "variant": "Dash 8-300","fatalities": 21, "summary": "Crashed near Almaty, Kazakhstan, during a VOR approach in low visibility; the crew descended below minimum safe altitude and struck terrain. All 21 on board were killed.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Bombardier Dash 8 / Q400",
+      "html": "<p>The de Havilland Canada DHC-8 Dash 8 first flew on 20 June 1983 and entered service with NorOntario Airlines in October 1984, filling a gap between small turboprops and regional jets. Bombardier acquired de Havilland Canada in 1992 and developed the greatly enlarged Q400, which rolled out in November 1997 and entered service with Wideroe of Norway in 2000. The 'Q' prefix denotes the active noise-and-vibration suppression system that makes the Q400 comparable in cabin comfort to a regional jet.</p><p>Longview Aviation Capital (parent of Viking Air) acquired the Q Series programme from Bombardier in 2019; production continues in Calgary, Alberta, as the De Havilland Canada Dash 8-400. The Q400 is the dominant remaining variant in new production. Wideroe of Norway, Horizon Air, and Air Canada Express are among the largest Q400 operators. Colgan Air 3407 (2009) was the most significant accident involving the type and drove landmark regulatory changes to crew qualification requirements in the United States.</p>"
+    },
+    "faq": [
+      { "q": "Is the Bombardier Dash 8 / Q400 safe?", "a": "The Q400 has a reasonable safety record for a regional turboprop. Colgan Air 3407 (2009, 50 fatalities) was the most serious accident and led to major US regulatory reforms. Earlier Dash 8-100/300 variants had a higher accident rate, particularly in icing conditions. The Q400 generation has significantly improved systems and an active vibration suppression system." },
+      { "q": "How many fatal Bombardier Dash 8 accidents have there been?", "a": "The Dash 8 family has been involved in a moderate number of fatal accidents across its 40-year history, with earlier variants having higher accident rates. The most significant Q400 accident is Colgan Air 3407 (50 fatalities, 2009). SCAT Airlines 760 (21 fatalities, 2013) involved the Dash 8-300 variant." },
+      { "q": "Which airline has the largest Dash 8 / Q400 fleet?", "a": "Wideroe of Norway operates one of the world's largest Q400 fleets with around 40 aircraft, serving remote Norwegian communities. Air Canada Express (operated by Jazz Aviation) and Horizon Air are among the largest North American operators. De Havilland Canada (formerly Longview Aviation Capital) continues to manufacture new Q400s." },
+      { "q": "What's the difference between the Dash 8-300 and Q400?", "a": "The Q400 is substantially larger than the Dash 8-300, carrying 70-90 passengers versus 50-56, and its PW150A engines are far more powerful, giving it regional-jet-like speeds (360 kt cruise vs 287 kt). The Q400 also has the active noise-and-vibration suppression system ('Q' designation) and a redesigned glass cockpit, making it essentially an all-new aircraft sharing only the Dash 8 heritage name." },
+      { "q": "How many seats does a Bombardier Dash 8 / Q400 have?", "a": "The Dash 8-100 and -200 seat 37-39 passengers; the -300 seats 50-56. The Q400 typically seats 70-82 in standard layouts, with a 90-seat high-density option. Most airline configurations use 74-78 seats in a 2-2 arrangement." },
+      { "q": "When was the Bombardier Dash 8 introduced?", "a": "The Dash 8-100 entered service with NorOntario Airlines on 23 October 1984. The stretched Dash 8-300 followed in 1989. The Q400, the current production variant, entered service with Wideroe of Norway in 2000. De Havilland Canada continues to produce new Q400s (rebadged DHC-8-400) at its Calgary facility." }
+    ]
+  },
+
+  "embraer-e170-e175": {
+    "variants": [
+      { "name": "E170",     "firstFlight": "2002", "seats": "70-78",  "range_nm": 2150, "status": "in service" },
+      { "name": "E175",     "firstFlight": "2003", "seats": "78-88",  "range_nm": 2200, "status": "in service" },
+      { "name": "E175-E2",  "firstFlight": "2019", "seats": "80-88",  "range_nm": 2735, "status": "in service" }
+    ],
+    "notableIncidents": [],
+    "variantCallout": {
+      "title": "About the Embraer E170 and E175",
+      "html": "<p>The Embraer E170 first flew on 19 February 2002 and entered service with LOT Polish Airlines in March 2004, kicking off the E-Jet era that redefined regional aviation. The E175, a 3.8-metre stretch seating up to 88 passengers, followed in July 2005 with Air Canada. Both types offer a 2-2 seat arrangement — meaning every passenger gets a window or aisle seat — that gives the E-Jet family its reputation for comfort above turboprops and older regional jets.</p><p>The E175 has become the dominant regional jet in North America, where scope clause restrictions between major carriers and their regional partners cap aircraft weight and seat count in ways that favour the E175 over larger regional jets. SkyWest Airlines is the world's largest E-Jet operator with over 260 aircraft; Republic Airways, Envoy Air, and Horizon Air together operate hundreds more E175s under United Express, American Eagle, and Alaska Eagle branding. As of 2025 the E170 and E175 family has accumulated no fatal hull-loss accidents across more than 20 years of service — an exceptional safety record for a widely operated regional jet fleet.</p>"
+    },
+    "faq": [
+      { "q": "Is the Embraer E170/E175 safe?", "a": "The Embraer E170 and E175 have an outstanding safety record. As of 2025 — more than 20 years of commercial operation — neither type has been involved in a fatal hull-loss accident. Incidents have been minor, typically involving runway excursions or bird strikes with no fatalities, making the E170/E175 family one of the safest regional jets in service." },
+      { "q": "How many fatal Embraer E170/E175 accidents have there been?", "a": "As of 2025, no fatal hull-loss accident has been recorded involving the Embraer E170 or E175 variants. The type has been in service since 2004 across hundreds of aircraft, primarily in North America, Europe, and Asia, without a passenger fatality directly attributable to an accident involving these aircraft." },
+      { "q": "Which airline has the largest E170/E175 fleet?", "a": "SkyWest Airlines operates over 260 E-Jets (primarily E175s), making it the world's largest E-Jet operator. Republic Airways and Envoy Air each operate over 130 E175s for American Eagle and United Express. In Europe, Helvetic Airways and Régional d'Europe are significant E175 operators." },
+      { "q": "What's the difference between the E170 and E175?", "a": "The E175 is stretched by 3.8 metres compared to the E170, adding up to 10 additional seats while sharing the same cockpit and type rating. The E175 is the dominant variant in North America due to its size fitting precisely within scope clause weight limits that many US major-carrier contracts impose on regional flying." },
+      { "q": "How many seats does an Embraer E170/E175 have?", "a": "The E170 seats 70-78 passengers in a 2-2 single-class layout. The E175 seats 76-88 passengers, with the US regional standard often being exactly 76 seats in a two-class layout to comply with scope clause weight restrictions. All passengers on both types get either a window or an aisle seat, with no middle seat." },
+      { "q": "When was the Embraer E170/E175 introduced?", "a": "The E170 entered service with LOT Polish Airlines in March 2004 on European routes. The E175 entered service with Air Canada in July 2005. The E175-E2 (second-generation with new Pratt & Whitney PW1700G engines) entered service with Helvetic Airways in January 2021." }
+    ]
+  },
+
+  "embraer-e190-e195": {
+    "variants": [
+      { "name": "E190",     "firstFlight": "2004", "seats": "96-114",  "range_nm": 2450, "status": "in service" },
+      { "name": "E195",     "firstFlight": "2004", "seats": "108-122", "range_nm": 2300, "status": "in service" },
+      { "name": "E190-E2",  "firstFlight": "2016", "seats": "96-114",  "range_nm": 2850, "status": "in service" },
+      { "name": "E195-E2",  "firstFlight": "2019", "seats": "120-146", "range_nm": 2600, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2010-08-24", "flight": "Henan Airlines 8387", "operator": "Henan Airlines", "variant": "E190-LR", "fatalities": 44, "summary": "Crashed short of runway 30 at Yichun Lindu Airport, China, in radiation fog; the captain descended below minimum descent altitude without visual contact and struck trees 1,100 m from the threshold. 44 of 96 on board were killed in the resulting fire. This remains the deadliest and only fatal hull-loss accident in the E190/E195 family's history.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the Embraer E190 and E195",
+      "html": "<p>The Embraer E190 first flew on 12 March 2004 and entered service with JetBlue in March 2006, quickly becoming the backbone of the American carrier's fleet on East Coast routes. The E195, a further 2.6-metre stretch, entered service with Flybe in July 2006. Both types share the same General Electric CF34-10E engines and type rating as the E170/E175 family, while having a different, larger wing, horizontal stabiliser, and landing gear to handle higher weights.</p><p>The E-Jet E2 generation, powered by Pratt & Whitney PW1900G geared turbofans, entered service with Wideroe (E190-E2) in April 2018 and with Azul (E195-E2) in September 2019. The E195-E2 seats up to 146 passengers and has a range of 2,600 nm, competing directly with the lower end of the A220-300 market. Azul Brazilian Airlines is the largest E190/E195 operator with over 55 aircraft. The Henan Airlines 8387 CFIT accident in 2010 (44 fatalities) was the E190's first and, as of 2025, only fatal hull loss.</p>"
+    },
+    "faq": [
+      { "q": "Is the Embraer E190/E195 safe?", "a": "The E190/E195 family has a strong safety record. The only fatal hull-loss accident in the type's 20-year history is Henan Airlines 8387 (2010, 44 fatalities), which was a controlled-flight-into-terrain approach accident in fog attributable to crew decision-making rather than any aircraft system failure. No E190-E2 or E195-E2 has been involved in a fatal accident." },
+      { "q": "How many fatal Embraer E190/E195 accidents have there been?", "a": "As of 2025, one fatal hull-loss accident has been recorded: Henan Airlines 8387 (44 fatalities, August 2010), in which an E190 struck terrain short of Yichun runway in fog. This is the deadliest and only fatal crash in the type's history. The E190-E2 and E195-E2 variants have no fatal accidents." },
+      { "q": "Which airline has the largest E190/E195 fleet?", "a": "Azul Brazilian Airlines is the largest E190/E195 operator with over 55 first-generation E190s and E195s. KLM Cityhopper operates the largest E195-E2 fleet in Europe. Helvetic Airways and Porter Airlines are significant operators of both first-generation and E2 variants." },
+      { "q": "What's the difference between the E190 and E195?", "a": "The E195 is stretched by 2.6 metres compared to the E190, adding about 12-15 additional seats. Both share the same cockpit, engines, and type rating. The E195-E2 in particular has become a strong competitor to the A220-300 for orders in the 120-150 seat market, with Pratt & Whitney PW1900G engines giving around 25% better fuel burn than the first-generation variant." },
+      { "q": "How many seats does an Embraer E190/E195 have?", "a": "The E190 seats 96-114 passengers in a 2-2 layout; most airline configurations use around 96-106 in two classes. The E195 seats 108-122, while the E195-E2, with a slightly wider cross-section, seats 120-146. All E-Jet variants maintain the 2-2 arrangement with no middle seat." },
+      { "q": "When was the Embraer E190/E195 introduced?", "a": "The E190 entered service with JetBlue in March 2006 on routes from New York. The E195 entered service with Flybe in July 2006. The next-generation E190-E2 entered service with Wideroe of Norway in April 2018, and the E195-E2 entered service with Azul Brazilian Airlines in September 2019." }
+    ]
   }
 }
