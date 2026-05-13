@@ -42,3 +42,41 @@
   .rse-date { width: auto; }
   .rse-location { display: none; }
 }
+
+/* Mobile: ditch the table-fit-into-5-cols cram, switch to a stacked card
+ * per event. Location comes back (it's useful context). Fatalities float
+ * top-right as a strong color-cued badge.
+ *
+ * Markup stays a <table> for desktop + a11y; we just reflow via display
+ * overrides. Each row becomes a self-contained card with hierarchy:
+ *   header line:  DATE · FATALITIES (right-aligned)
+ *   line 2:       Operator
+ *   line 3:       Aircraft  (linked to /accidents/{slug} when available)
+ *   line 4:       Location  (muted) */
+@media (max-width: 640px) {
+  .rse-table, .rse-table tbody { display: block; }
+  .rse-table tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "date     fatal"
+      "operator fatal"
+      "aircraft aircraft"
+      "location location";
+    column-gap: 12px;
+    row-gap: 2px;
+    padding: 12px;
+    margin-bottom: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+  }
+  .rse-table tr:last-child { margin-bottom: 0; }
+  .rse-table td { display: block; padding: 0; }
+
+  .rse-date       { grid-area: date; font-size: 11px; color: var(--text-3); }
+  .rse-operator   { grid-area: operator; font-weight: 600; font-size: 13px; }
+  .rse-aircraft   { grid-area: aircraft; font-size: 13px; }
+  .rse-location   { grid-area: location; display: block; font-size: 12px; color: var(--text-2); }
+  .rse-fatalities { grid-area: fatal; align-self: center; font-size: 14px; text-align: right; width: auto; }
+}

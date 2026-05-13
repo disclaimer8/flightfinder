@@ -135,4 +135,12 @@
   .field {
     width: 100%;
   }
+
+  /* Taller map on mobile — there's only one viewport-meaningful element
+   * on the page (the map), so it deserves more height than the 60vh
+   * desktop default. Min-height keeps it usable in landscape too. */
+  .mapContainer {
+    height: 70vh;
+    min-height: 360px;
+  }
 }
