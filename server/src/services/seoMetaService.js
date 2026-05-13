@@ -911,15 +911,35 @@ function resolve(pathname, searchParams) {
       ? f.normalized_date
       : f.date;
 
-    const jsonLd = JSON.stringify({
-      '@context': 'https://schema.org',
+    const slug = accidentMatch[1];
+    const canonical = `${BASE}/accidents/${slug}`;
+
+    const newsArticle = {
+      '@type': 'NewsArticle',
+      headline: title,
+      datePublished: new Date(data.ingested_at * 1000).toISOString(),
+      dateModified: new Date(data.updated_at * 1000).toISOString(),
+      author: { '@type': 'Organization', name: 'FlightFinder Editorial', url: BASE },
+      publisher: {
+        '@type': 'Organization',
+        name: 'FlightFinder',
+        url: BASE,
+        logo: { '@type': 'ImageObject', url: `${BASE}/og-image.png` },
+      },
+      image: `${BASE}/og/accident/${slug}.png`,
+      articleBody: String(data.narrative_text || '').slice(0, 5000),
+      mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+      articleSection: 'Aviation Safety',
+    };
+
+    const event = {
       '@type': 'Event',
       name: `${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''}`,
       startDate: isoDate,
       description,
       // Per-accident OG PNG — same URL the og:image meta uses. Required for
       // Google rich-result eligibility on Event schema.
-      image: `${BASE}/og/accident/${accidentMatch[1]}.png`,
+      image: `${BASE}/og/accident/${slug}.png`,
       location: {
         '@type': 'Place',
         name: f.location || 'Unknown',
@@ -937,22 +957,37 @@ function resolve(pathname, searchParams) {
       ].filter(Boolean),
       isAccessibleForFree: true,
       publisher: { '@type': 'Organization', name: 'FlightFinder' },
+    };
+
+    const breadcrumb = {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: BASE },
+        { '@type': 'ListItem', position: 2, name: 'Aviation safety', item: `${BASE}/safety/global` },
+        { '@type': 'ListItem', position: 3, name: 'Accidents', item: `${BASE}/accidents` },
+        { '@type': 'ListItem', position: 4, name: event.name.slice(0, 100) },
+      ],
+    };
+
+    const jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [newsArticle, event, breadcrumb],
     }).replace(/</g, '\\u003c');
 
     return {
       title: escHtml(title),
       description: escHtml(description),
-      canonical: `${BASE}/accidents/${accidentMatch[1]}`,
+      canonical,
       jsonLd,
       h1: escHtml(`${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''}`),
       robots: 'index, follow',
       ogType: 'article',
       // Per-accident dynamic OG PNG — aircraft model + date + severity band.
       // inject() picks this up and overrides og:image / twitter:image.
-      ogImage: `${BASE}/og/accident/${accidentMatch[1]}.png`,
+      ogImage: `${BASE}/og/accident/${slug}.png`,
       ogImageAlt: `${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''} (${f.date})`,
       kind: 'accident',
-      slug: accidentMatch[1],
+      slug,
     };
   }
 

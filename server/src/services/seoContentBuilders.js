@@ -1,4 +1,4 @@
-const { getFamilyList, getFamilyByCode, slugify } = require('../models/aircraftFamilies');
+const { getFamilyList, getFamilyByCode, slugify, resolveFamily } = require('../models/aircraftFamilies');
 const { esc } = require('./seoMetaService');
 const { applyChrome } = require('./seoChrome');
 const airlineAircraftService = require('./airlineAircraftService');
@@ -918,11 +918,26 @@ async function buildAsync(meta, db) {
 // bAccident — SEO page builder for /accidents/:slug
 // ---------------------------------------------------------------------------
 const _accidentSvc = require('./accidentNarrativeService');
+// openFlightsService only exposes getAirlineByIcao — no name-based lookup.
+// Operator → airline cross-link is skipped until a fuzzy-name helper exists.
 
 function _esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
                   .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Free-text aircraft strings from accident sources include variant suffixes
+// ("BOEING 737-800") that resolveFamily can't match. Strip the variant
+// suffix to get the manufacturer + base model that aircraftFamilies indexes.
+function normalizeForFamily(rawModel) {
+  if (!rawModel || typeof rawModel !== 'string') return '';
+  const tokens = rawModel.trim().split(/\s+/);
+  if (tokens.length < 2) return rawModel.trim();
+  const [mfr, modelToken] = tokens;
+  // Strip variant suffix from the model token: '737-800' → '737', 'A321-271NX' → 'A321'
+  const baseModel = modelToken.replace(/[-\s].*$/, '');
+  return [mfr, baseModel].join(' ');
 }
 
 async function bAccident(slug) {
@@ -1005,6 +1020,36 @@ async function bAccident(slug) {
   const sourceLabel = data.source === 'ntsb' ? 'NTSB' : 'Wikidata contributors';
   const license     = data.source === 'ntsb' ? 'public domain (NTSB)' : 'CC0 (Wikidata)';
 
+  // --- Internal-link cluster (SEO) ----------------------------------------
+  // Similar accidents: same aircraft_model, different slug, indexable=1.
+  const similarAccidents = _accidentSvc.listSimilarByAircraft(
+    f.aircraft_model, slug, 5
+  );
+
+  // Aircraft cross-link: resolve free-text aircraft_model → family slug.
+  // Free-text strings from accident sources include variant suffixes that
+  // resolveFamily can't match; normalizeForFamily strips them first.
+  const familyResult = resolveFamily(normalizeForFamily(f.aircraft_model));
+  const aircraftSlug  = familyResult ? slugify(familyResult.name) : null;
+  const aircraftLabel = familyResult ? familyResult.name : null;
+
+  const similarItems = similarAccidents.map(r =>
+    `<li><a href="/accidents/${_esc(r.slug)}">${_esc(r.date)}: ${_esc(r.aircraft_model)} — ${_esc(r.operator || 'unknown')}</a></li>`
+  ).join('');
+
+  const aircraftLinkItem = (aircraftSlug && aircraftLabel)
+    ? `<li><a href="/aircraft/${_esc(aircraftSlug)}/safety">More ${_esc(aircraftLabel)} safety records</a></li>`
+    : '';
+
+  const relatedClusterHtml = (similarItems || aircraftLinkItem)
+    ? `<section class="accident__related">
+         <h2>Related</h2>
+         <ul>
+           ${similarItems}${aircraftLinkItem}
+         </ul>
+       </section>`
+    : '';
+
   return `
 <nav class="ad-crumbs"><a href="/">Home</a> → <a href="/safety/global">Safety</a> → Accident</nav>
 <header class="ad-hero">
@@ -1016,6 +1061,7 @@ ${narrativeHtml}
 ${factorsHtml}
 ${condsHtml}
 ${relatedHtml}
+${relatedClusterHtml}
 <footer class="ad-attribution">
   <p>Investigation report by ${_esc(sourceLabel)}.
      Original record: <a href="${_esc(data.source_url)}" rel="external">${_esc(data.source_url)}</a>.
