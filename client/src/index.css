@@ -163,3 +163,18 @@ select,
 textarea {
   min-height: 44px;
 }
+
+/* ─── Keyboard focus indicator (WCAG 2.4.7) ──────────────────────
+ * Default :focus-visible ring for every focusable element that
+ * doesn't already define one. :where() keeps specificity at zero so
+ * component-level :focus / :focus-visible rules always win cleanly.
+ *
+ * Only :focus-visible (keyboard nav) — mouse clicks don't draw the
+ * ring. Color matches the link/CTA hue so it reads as "interactive
+ * affordance" not "validation error". outline-offset puts the ring
+ * outside the element edge so rounded corners look right.
+ */
+:where(a, button, input, select, textarea, summary, [role="button"], [role="link"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
