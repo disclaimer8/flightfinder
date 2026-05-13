@@ -620,7 +620,19 @@ function resolve(pathname, searchParams) {
     };
   }
   if (pathname === '/trips' || pathname === '/trips/') {
-    return { ...HOME, kind: 'trips', canonical: `${BASE}/trips`, robots: 'noindex, follow' };
+    // Private/auth-gated area — keep noindex but emit proper title/H1 so the
+    // SSR shell doesn't fall through to the home title (footer/nav exposes
+    // /trips and Googlebot will visit even with noindex; cleaner signal).
+    return {
+      title: 'My Trips · FlightFinder',
+      description: 'Track upcoming flights with delay alerts and live status. Pro feature — sign in to manage your trips.',
+      canonical: `${BASE}/trips`,
+      h1: 'My Trips',
+      subtitle: 'Track upcoming flights with delay alerts and live status.',
+      robots: 'noindex, follow',
+      ogType: 'website',
+      kind: 'trips',
+    };
   }
   if (pathname === '/subscribe/return') {
     return { ...HOME, kind: 'subscribe', canonical: `${BASE}/pricing`, robots: 'noindex, nofollow' };
