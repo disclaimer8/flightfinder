@@ -297,6 +297,12 @@ if (!IS_DEV) {
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('index.html')) {
         res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+      } else if (filePath.endsWith('/robots.txt') || filePath.endsWith('/sitemap.xml')) {
+        // Routing-critical files: an immutable 1y cache means a robots.txt or
+        // sitemap.xml change takes a year to reach Cloudflare clients (caught
+        // the hard way on 2026-05-13). 5-minute cache + 1h stale-revalidate
+        // gets changes out fast without per-request fs hits.
+        res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
       } else if (filePath.includes('/content/landing/')) {
         // Path-stable static content. Re-validate hourly so copy edits
         // propagate within an hour, with stale-while-revalidate so users
