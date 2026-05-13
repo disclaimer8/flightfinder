@@ -23,6 +23,41 @@ const safetyModel = require('../models/safetyEvents');
 const sidecar = require('./sidecarAccidentsClient');
 
 /**
+ * Expand a family name into LIKE patterns that catch the family's accident
+ * rows. Most families are 1:1 ('Boeing 787' → ['Boeing 787']) but slash-
+ * collated keys and meta-families need splitting:
+ *   'Embraer E170/E175' → ['Embraer E170', 'Embraer E175']
+ *   'ATR 42/72'         → ['ATR 42', 'ATR 72']
+ *   'Airbus A320 family'→ ['Airbus A319', 'Airbus A320', 'Airbus A321']
+ *   'Bombardier Dash 8' → ['Dash 8', 'Q400']  (Q400 is the -400 marketing name)
+ */
+function expandFamilyPatterns(familyName) {
+  if (!familyName || typeof familyName !== 'string') return [];
+  const name = familyName.trim();
+
+  if (/^airbus a320 family/i.test(name)) {
+    return ['Airbus A319', 'Airbus A320', 'Airbus A321'];
+  }
+  if (/^bombardier dash 8/i.test(name)) {
+    return ['Dash 8', 'Q400'];
+  }
+
+  // Slash-collated: split the last whitespace-separated token on '/' and
+  // re-attach the prefix to each part.
+  if (name.includes('/')) {
+    const lastSpace = name.lastIndexOf(' ');
+    const slashToken = lastSpace === -1 ? name : name.slice(lastSpace + 1);
+    const prefix = lastSpace === -1 ? '' : name.slice(0, lastSpace + 1);
+    const parts = slashToken.split('/').map((p) => p.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      return parts.map((p) => (prefix + p).trim());
+    }
+  }
+
+  return [name];
+}
+
+/**
  * Parse the messy free-text fatalities field used by AirCrash. Handles:
  *   "241+19"   → 260  (passengers + ground, very common in hull-loss reports)
  *   "0"        → 0
@@ -144,16 +179,25 @@ function dedupe(events) {
 function getMergedEventsForFamily(opts) {
   const { icaoList, familyName, fatalOnly = false, limit = 100 } = opts || {};
 
+  // Safety events side. When fatalOnly we still pull everything and filter in
+  // JS — safety_events row volumes per family are small (low thousands max).
   const safe = (Array.isArray(icaoList) && icaoList.length > 0)
     ? safetyModel.getByAircraftCodes(icaoList, { limit: 500 })
     : [];
 
+  // AirCrash side. Two query paths:
+  //   - fatalOnly: ALL fatal rows (no recency cutoff). Busy families like
+  //     Boeing 737 (1.6K rows) would otherwise drop 7-year-old hull losses
+  //     off the back of date-DESC + LIMIT 500.
+  //   - default: top-500 recent rows.
   let acc = [];
   if (familyName) {
+    const patterns = expandFamilyPatterns(familyName);
     try {
-      acc = sidecar.findAccidentsByFamilyName(familyName, 500)
-        .map(adaptAccidentToEvent)
-        .filter(Boolean);
+      const rows = fatalOnly
+        ? sidecar.findAccidentsByFamilyPatterns(patterns, { fatalOnly: true })
+        : sidecar.findAccidentsByFamilyPatterns(patterns, { limit: 500 });
+      acc = rows.map(adaptAccidentToEvent).filter(Boolean);
     } catch { /* sidecar unavailable in test envs */ }
   }
 
@@ -175,6 +219,7 @@ function getMergedEventsForFamily(opts) {
 }
 
 module.exports = {
+  expandFamilyPatterns,
   parseFatalities,
   parseDateToEpoch,
   adaptAccidentToEvent,

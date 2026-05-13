@@ -2,7 +2,7 @@ jest.mock('../models/safetyEvents', () => ({
   getByAircraftCodes: jest.fn(),
 }));
 jest.mock('../services/sidecarAccidentsClient', () => ({
-  findAccidentsByFamilyName: jest.fn(),
+  findAccidentsByFamilyPatterns: jest.fn(),
 }));
 
 const safetyEvents = require('../models/safetyEvents');
@@ -12,7 +12,32 @@ const svc = require('../services/aircraftSafetyService');
 beforeEach(() => {
   jest.clearAllMocks();
   safetyEvents.getByAircraftCodes.mockReturnValue([]);
-  sidecar.findAccidentsByFamilyName.mockReturnValue([]);
+  sidecar.findAccidentsByFamilyPatterns.mockReturnValue([]);
+});
+
+describe('expandFamilyPatterns', () => {
+  test('simple family → single pattern', () => {
+    expect(svc.expandFamilyPatterns('Boeing 787')).toEqual(['Boeing 787']);
+    expect(svc.expandFamilyPatterns('Airbus A320')).toEqual(['Airbus A320']);
+  });
+  test('slash-collated → split + prefixed', () => {
+    expect(svc.expandFamilyPatterns('Embraer E170/E175')).toEqual(['Embraer E170', 'Embraer E175']);
+    expect(svc.expandFamilyPatterns('ATR 42/72')).toEqual(['ATR 42', 'ATR 72']);
+    expect(svc.expandFamilyPatterns('Embraer E190/E195')).toEqual(['Embraer E190', 'Embraer E195']);
+  });
+  test('Airbus A320 family meta → A319/A320/A321 individual patterns', () => {
+    expect(svc.expandFamilyPatterns('Airbus A320 family')).toEqual([
+      'Airbus A319', 'Airbus A320', 'Airbus A321',
+    ]);
+  });
+  test('Bombardier Dash 8 → Dash 8 + Q400 marketing alias', () => {
+    expect(svc.expandFamilyPatterns('Bombardier Dash 8')).toEqual(['Dash 8', 'Q400']);
+  });
+  test('empty / non-string → empty array', () => {
+    expect(svc.expandFamilyPatterns(null)).toEqual([]);
+    expect(svc.expandFamilyPatterns('')).toEqual([]);
+    expect(svc.expandFamilyPatterns(123)).toEqual([]);
+  });
 });
 
 describe('parseFatalities', () => {
@@ -110,7 +135,7 @@ describe('getMergedEventsForFamily', () => {
     safetyEvents.getByAircraftCodes.mockReturnValue([
       { id: 7, occurred_at: t1, aircraft_icao_type: 'B789', operator_iata: 'UA', fatalities: 0, severity: 'incident', hull_loss: 0 },
     ]);
-    sidecar.findAccidentsByFamilyName.mockReturnValue([
+    sidecar.findAccidentsByFamilyPatterns.mockReturnValue([
       { id: 41900, normalized_date: '2025-06-12', aircraft_model: 'Boeing 787-8', operator: 'Air India', fatalities: '241+19' },
     ]);
     const out = svc.getMergedEventsForFamily({
@@ -133,8 +158,32 @@ describe('getMergedEventsForFamily', () => {
     expect(out.map(e => e.id)).toEqual([2]);
   });
 
+  test('fatalOnly path calls sidecar with fatalOnly:true (no recency LIMIT)', () => {
+    svc.getMergedEventsForFamily({ icaoList: ['B738'], familyName: 'Boeing 737', fatalOnly: true });
+    expect(sidecar.findAccidentsByFamilyPatterns).toHaveBeenCalledWith(
+      ['Boeing 737'],
+      expect.objectContaining({ fatalOnly: true }),
+    );
+  });
+
+  test('default path uses LIMIT, not fatalOnly', () => {
+    svc.getMergedEventsForFamily({ icaoList: ['B738'], familyName: 'Boeing 737' });
+    const call = sidecar.findAccidentsByFamilyPatterns.mock.calls[0];
+    expect(call[0]).toEqual(['Boeing 737']);
+    expect(call[1].fatalOnly).toBeFalsy();
+    expect(typeof call[1].limit).toBe('number');
+  });
+
+  test('slash-family expands patterns before calling sidecar', () => {
+    svc.getMergedEventsForFamily({ icaoList: [], familyName: 'ATR 42/72', fatalOnly: true });
+    expect(sidecar.findAccidentsByFamilyPatterns).toHaveBeenCalledWith(
+      ['ATR 42', 'ATR 72'],
+      expect.objectContaining({ fatalOnly: true }),
+    );
+  });
+
   test('no icaoList → still queries sidecar by family name', () => {
-    sidecar.findAccidentsByFamilyName.mockReturnValue([
+    sidecar.findAccidentsByFamilyPatterns.mockReturnValue([
       { id: 99, normalized_date: '2024-01-01', fatalities: '0' },
     ]);
     const out = svc.getMergedEventsForFamily({
@@ -150,7 +199,7 @@ describe('getMergedEventsForFamily', () => {
       { id: 1, occurred_at: 1000, fatalities: 0 },
     ]);
     const out = svc.getMergedEventsForFamily({ icaoList: ['B789'], familyName: '' });
-    expect(sidecar.findAccidentsByFamilyName).not.toHaveBeenCalled();
+    expect(sidecar.findAccidentsByFamilyPatterns).not.toHaveBeenCalled();
     expect(out).toHaveLength(1);
   });
 
@@ -158,7 +207,7 @@ describe('getMergedEventsForFamily', () => {
     safetyEvents.getByAircraftCodes.mockReturnValue([
       { id: 1, occurred_at: 1000, fatalities: 0 },
     ]);
-    sidecar.findAccidentsByFamilyName.mockImplementation(() => { throw new Error('sidecar down'); });
+    sidecar.findAccidentsByFamilyPatterns.mockImplementation(() => { throw new Error('sidecar down'); });
     const out = svc.getMergedEventsForFamily({ icaoList: ['B789'], familyName: 'Boeing 787' });
     expect(out).toHaveLength(1);
   });
@@ -168,7 +217,7 @@ describe('getMergedEventsForFamily', () => {
     safetyEvents.getByAircraftCodes.mockReturnValue([
       { id: 10, occurred_at: t, operator_name: 'Air India', fatalities: 0, severity: 'incident' },
     ]);
-    sidecar.findAccidentsByFamilyName.mockReturnValue([
+    sidecar.findAccidentsByFamilyPatterns.mockReturnValue([
       { id: 41900, normalized_date: '2025-06-12', operator: 'Air India', fatalities: '241+19' },
     ]);
     const out = svc.getMergedEventsForFamily({

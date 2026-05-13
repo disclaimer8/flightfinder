@@ -67,26 +67,55 @@ function getStmts() {
         normalized_date DESC
       LIMIT 5
     `),
-    // Used by aircraftSafetyService to surface ASN/B3A/Wikidata events on
-    // /aircraft/{slug}/safety pages — safety_events alone misses every
-    // non-NTSB accident (e.g. the Air India 787-8 Ahmedabad 2025-06-12 hull
-    // loss). The LIKE pattern is matched against the human-formatted
-    // aircraft_model AND the canonicalised aircraft_canonical column so we
-    // catch both 'BOEING 787-9' and 'BOEING 787 9' variants.
-    byFamilyName: d.prepare(`
+  };
+  return _stmts;
+}
+
+// Per-arity prepared-statement cache for findAccidentsByFamilyPatterns. Each
+// pattern needs its own pair of `?` binds (aircraft_model + aircraft_canonical),
+// so the SQL shape depends on N. Built lazily so we only prepare arities we
+// actually use (typically 1-3 patterns per family).
+const _familyStmtCache = { generic: new Map(), fatal: new Map() };
+function _prepFamilyStmt(d, patternCount, fatalOnly) {
+  const bucket = fatalOnly ? _familyStmtCache.fatal : _familyStmtCache.generic;
+  const cached = bucket.get(patternCount);
+  if (cached) return cached;
+
+  const orClauses = Array(patternCount).fill(
+    "(LOWER(aircraft_model) LIKE '%' || LOWER(?) || '%' OR LOWER(aircraft_canonical) LIKE '%' || LOWER(?) || '%')"
+  ).join(' OR ');
+
+  let sql;
+  if (fatalOnly) {
+    // Fatal events: ALL-time, no LIMIT. Busy families (Boeing 737 = 1.6K
+    // rows) would otherwise lose 7-year-old hull losses like Lion Air 2018
+    // and Ethiopian 2019 to the date-DESC recency cutoff.
+    sql = `
       SELECT id, date, normalized_date, aircraft_model, operator, fatalities,
              location, source_url
       FROM accidents
-      WHERE LOWER(aircraft_model)     LIKE '%' || LOWER(?) || '%'
-         OR LOWER(aircraft_canonical) LIKE '%' || LOWER(?) || '%'
+      WHERE (${orClauses}) AND CAST(fatalities AS INTEGER) > 0
+      ORDER BY CAST(fatalities AS INTEGER) DESC,
+        CASE WHEN normalized_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+             THEN 0 ELSE 1 END,
+        normalized_date DESC
+    `;
+  } else {
+    sql = `
+      SELECT id, date, normalized_date, aircraft_model, operator, fatalities,
+             location, source_url
+      FROM accidents
+      WHERE ${orClauses}
       ORDER BY
         CASE WHEN normalized_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
              THEN 0 ELSE 1 END,
         normalized_date DESC
       LIMIT ?
-    `),
-  };
-  return _stmts;
+    `;
+  }
+  const stmt = d.prepare(sql);
+  bucket.set(patternCount, stmt);
+  return stmt;
 }
 
 function getAccidentById(id) {
@@ -113,20 +142,37 @@ function findRelatedByOperator(operator, excludeId) {
 }
 
 /**
- * Find AirCrash accidents matching an aircraft-family name pattern (e.g.
- * 'Boeing 787', 'Airbus A320'). Returns raw accident rows — the caller is
- * expected to normalise them into the safety_events shape via
- * aircraftSafetyService.adaptAccidentToEvent.
+ * Find AirCrash accidents matching ANY of a set of family-name patterns.
+ * Each pattern LIKE-matches against both aircraft_model and aircraft_canonical
+ * (so a single pattern of 'Boeing 787' catches both 'BOEING 787-9' and the
+ * canonical 'BOEING 787 9' variants).
  *
- * @param {string} familyName  Free-text pattern to LIKE-match aircraft_model
- *                             and aircraft_canonical. The trimmed
- *                             ' family' / ' (all variants)' suffix on
- *                             family names is the caller's responsibility.
- * @param {number} [limit=200] Hard cap on rows returned.
+ * Multi-pattern matters for families whose `name` doesn't itself appear in
+ * raw accident text — e.g. 'Embraer E170/E175' needs to be split into
+ * ['E170', 'E175'], and 'ATR 42/72' into ['ATR 42', 'ATR 72'].
+ *
+ * @param {string[]} patterns   Free-text patterns to search.
+ * @param {object}   [opts]
+ * @param {boolean}  [opts.fatalOnly=false]  Pre-filter in SQL to fatalities > 0,
+ *                                            no LIMIT (returns every fatal row).
+ * @param {number}   [opts.limit=500]         Applied only when fatalOnly=false.
  */
-function findAccidentsByFamilyName(familyName, limit = 200) {
-  const s = getStmts(); if (!s || !familyName) return [];
-  return s.byFamilyName.all(familyName, familyName, Math.max(1, Math.min(500, limit | 0)));
+function findAccidentsByFamilyPatterns(patterns, opts = {}) {
+  const s = getStmts(); if (!s) return [];
+  const cleanPatterns = (patterns || [])
+    .map((p) => String(p || '').trim())
+    .filter(Boolean);
+  if (cleanPatterns.length === 0) return [];
+  const fatalOnly = !!opts.fatalOnly;
+  const limit = Math.max(1, Math.min(2000, opts.limit | 0)) || 500;
+  const d = getDb(); if (!d) return [];
+  const stmt = _prepFamilyStmt(d, cleanPatterns.length, fatalOnly);
+  // Bind order: for each pattern, two `?` (aircraft_model + aircraft_canonical).
+  // Then, when generic (not fatal-only), one more `?` for LIMIT.
+  const binds = [];
+  for (const p of cleanPatterns) { binds.push(p, p); }
+  if (!fatalOnly) binds.push(limit);
+  return stmt.all(...binds);
 }
 
 // Returns Map<ev_id, {accId, normalized_date, aircraft_model, operator, location}>
@@ -157,6 +203,6 @@ function getNtsbEvIdToAccidentIdMap() {
 module.exports = {
   getAccidentById, getAccidentIdBySourceEventId,
   findRelatedByAircraft, findRelatedByOperator,
-  findAccidentsByFamilyName,
+  findAccidentsByFamilyPatterns,
   getNtsbEvIdToAccidentIdMap,
 };
