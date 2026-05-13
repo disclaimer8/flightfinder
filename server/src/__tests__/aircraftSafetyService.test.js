@@ -158,20 +158,38 @@ describe('getMergedEventsForFamily', () => {
     expect(out.map(e => e.id)).toEqual([2]);
   });
 
-  test('fatalOnly path calls sidecar with fatalOnly:true (no recency LIMIT)', () => {
+  test('fatalOnly path calls sidecar with fatalOnly:true ONLY (no recency)', () => {
     svc.getMergedEventsForFamily({ icaoList: ['B738'], familyName: 'Boeing 737', fatalOnly: true });
-    expect(sidecar.findAccidentsByFamilyPatterns).toHaveBeenCalledWith(
-      ['Boeing 737'],
-      expect.objectContaining({ fatalOnly: true }),
-    );
+    const calls = sidecar.findAccidentsByFamilyPatterns.mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0][1]).toMatchObject({ fatalOnly: true });
   });
 
-  test('default path uses LIMIT, not fatalOnly', () => {
+  test('default path calls sidecar TWICE: all-time fatal + recency top-N', () => {
     svc.getMergedEventsForFamily({ icaoList: ['B738'], familyName: 'Boeing 737' });
-    const call = sidecar.findAccidentsByFamilyPatterns.mock.calls[0];
-    expect(call[0]).toEqual(['Boeing 737']);
-    expect(call[1].fatalOnly).toBeFalsy();
-    expect(typeof call[1].limit).toBe('number');
+    const calls = sidecar.findAccidentsByFamilyPatterns.mock.calls;
+    expect(calls).toHaveLength(2);
+    const optsList = calls.map((c) => c[1]);
+    expect(optsList.some((o) => o.fatalOnly === true)).toBe(true);
+    expect(optsList.some((o) => !o.fatalOnly && typeof o.limit === 'number')).toBe(true);
+  });
+
+  test('default path surfaces old fatal events outside recency window', () => {
+    const t_old = Date.parse('2018-10-29T00:00:00Z');
+    sidecar.findAccidentsByFamilyPatterns
+      .mockImplementationOnce(() => [
+        { id: 41527, normalized_date: '2018-10-29', operator: 'Lion Air', fatalities: '189', aircraft_model: 'Boeing 737 MAX 8' },
+      ])
+      .mockImplementationOnce(() => Array.from({ length: 100 }, (_, i) => ({
+        id: 90000 + i, normalized_date: '2026-04-15', operator: 'Recent Op',
+        fatalities: '0', aircraft_model: 'Boeing 737-800',
+      })));
+    const out = svc.getMergedEventsForFamily({
+      icaoList: ['B738'], familyName: 'Boeing 737', limit: 100,
+    });
+    const lionAir = out.find((e) => e.fatalities === 189);
+    expect(lionAir).toBeDefined();
+    expect(lionAir.occurred_at).toBe(t_old);
   });
 
   test('slash-family expands patterns before calling sidecar', () => {

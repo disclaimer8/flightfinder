@@ -185,19 +185,22 @@ function getMergedEventsForFamily(opts) {
     ? safetyModel.getByAircraftCodes(icaoList, { limit: 500 })
     : [];
 
-  // AirCrash side. Two query paths:
-  //   - fatalOnly: ALL fatal rows (no recency cutoff). Busy families like
-  //     Boeing 737 (1.6K rows) would otherwise drop 7-year-old hull losses
-  //     off the back of date-DESC + LIMIT 500.
-  //   - default: top-500 recent rows.
+  // AirCrash side. We always union the all-time fatal-only set with the
+  // recency-bounded list (when fatalOnly=false) so popular families like
+  // Boeing 737 (1.6K rows) don't drop 7-year-old hull losses such as
+  // Lion Air 2018 / Ethiopian 2019 off the date-DESC + LIMIT tail. The
+  // dedupe pass collapses any overlap between the two query results.
   let acc = [];
   if (familyName) {
     const patterns = expandFamilyPatterns(familyName);
     try {
-      const rows = fatalOnly
-        ? sidecar.findAccidentsByFamilyPatterns(patterns, { fatalOnly: true })
+      const fatalRows = sidecar.findAccidentsByFamilyPatterns(
+        patterns, { fatalOnly: true },
+      );
+      const recentRows = fatalOnly
+        ? []   // fatal-only callers don't need recency padding
         : sidecar.findAccidentsByFamilyPatterns(patterns, { limit: 500 });
-      acc = rows.map(adaptAccidentToEvent).filter(Boolean);
+      acc = [...fatalRows, ...recentRows].map(adaptAccidentToEvent).filter(Boolean);
     } catch { /* sidecar unavailable in test envs */ }
   }
 
