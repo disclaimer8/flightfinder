@@ -9,13 +9,14 @@ function fmtDate(ms) { return new Date(ms).toISOString().slice(0, 10); }
 export default function AircraftSafety() {
   const { slug } = useParams();
   const [data, setData] = useState(null);
+  const [label, setLabel] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let active = true;
     fetch(`${API}/api/aircraft/${slug}/safety`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((j) => { if (active) setData(j.data); })
+      .then((j) => { if (active) { setData(j.data); setLabel(j.label || slug); } })
       .catch((e) => { if (active) setError(e.message); });
     return () => { active = false; };
   }, [slug]);
@@ -26,13 +27,14 @@ export default function AircraftSafety() {
   const fatal = data.filter((e) => e.severity === 'fatal').length;
   const hullLoss = data.filter((e) => e.hull_loss === 1).length;
   const incidents = data.length - fatal - hullLoss;
+  const displayLabel = label || slug;
 
   return (
     <main className="ac-pillar">
       <nav className="ac-pillar__breadcrumb" aria-label="Breadcrumb">
         <Link to="/">Home</Link>{' › '}
         <Link to="/by-aircraft">By aircraft</Link>{' › '}
-        <Link to={`/aircraft/${slug}`}>{slug}</Link>{' › '}
+        <Link to={`/aircraft/${slug}`}>{displayLabel}</Link>{' › '}
         <span>Safety</span>
       </nav>
       <p className="ac-pillar__intro">
@@ -56,7 +58,9 @@ export default function AircraftSafety() {
                   </strong>
                 </Link>
                 <div className="ac-pillar__route-meta">
-                  {ev.aircraft_icao_type} &middot; {ev.location_country || 'unknown location'}
+                  {ev.aircraft_icao_type || ev.aircraft_model_text || 'Unknown type'}
+                  {' '}&middot;{' '}
+                  {ev.location_text || ev.location_country || 'unknown location'}
                 </div>
               </li>
             ))}
@@ -68,7 +72,7 @@ export default function AircraftSafety() {
       <section className="ac-pillar__cross">
         <h2 className="eyebrow eyebrow--strong">Explore further</h2>
         <ul>
-          <li><Link to={`/aircraft/${slug}`}>&#8592; Back to {slug} overview</Link></li>
+          <li><Link to={`/aircraft/${slug}`}>&#8592; Back to {displayLabel} overview</Link></li>
           <li><Link to={`/aircraft/${slug}/airlines`}>Airlines that operate this aircraft &#8594;</Link></li>
           <li><Link to={`/aircraft/${slug}/routes`}>Routes flown by this aircraft &#8594;</Link></li>
           <li><Link to={`/aircraft/${slug}/specs`}>Specifications &#8594;</Link></li>

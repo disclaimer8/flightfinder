@@ -63,7 +63,15 @@ router.get('/aircraft/:slug/routes', (req, res) => {
 
 router.get('/aircraft/:slug/safety', (req, res) => {
   const slug = String(req.params.slug || '').toLowerCase();
-  res.json({ success: true, data: aircraftPillarService.getSafetyForAircraft(slug) });
+  const fam = require('../models/aircraftFamilies').getFamilyBySlug(slug);
+  // label = the human display name (e.g. "Boeing 787 Dreamliner") consumed
+  // by the React breadcrumb. Falls back to slug for safe-degraded rendering.
+  const label = fam?.family?.label || fam?.name || slug;
+  res.json({
+    success: true,
+    label,
+    data: aircraftPillarService.getSafetyForAircraft(slug),
+  });
 });
 
 router.get('/aircraft/:slug/specs', (req, res) => {
