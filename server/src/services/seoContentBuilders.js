@@ -639,6 +639,35 @@ async function bAirline(meta, _db) {
     }
   } catch { /* non-fatal */ }
 
+  // Hub airports section: top 5 departure airports in last 90d.
+  let hubsBlock = '';
+  try {
+    const hubs = airlineAircraftService.getTopHubsForAirline({ iataAirline: iata, limit: 5 });
+    if (hubs.length > 0) {
+      const items = hubs.map(h => {
+        const loc = h.country ? `${esc(h.city)}, ${esc(h.country)}` : esc(h.city);
+        return `<li>${esc(h.iata)} · ${loc} · ${esc(h.pair_count)} route${h.pair_count === 1 ? '' : 's'}</li>`;
+      }).join('');
+      hubsBlock = `<section><h2>Hub airports</h2><ul>${items}</ul></section>`;
+    }
+  } catch { /* non-fatal */ }
+
+  // Top destinations section: top 5 arrival airports in last 90d.
+  let topDestBlock = '';
+  try {
+    const dests = airlineAircraftService.getTopDestinationsForAirline({ iataAirline: iata, limit: 5 });
+    if (dests.length > 0) {
+      const items = dests.map(d => {
+        const loc = d.country ? `${esc(d.city)}, ${esc(d.country)}` : esc(d.city);
+        return `<li>${esc(d.iata)} · ${loc} · ${esc(d.pair_count)} route${d.pair_count === 1 ? '' : 's'}</li>`;
+      }).join('');
+      topDestBlock = `<section><h2>Top destinations</h2><ul>${items}</ul></section>`;
+    }
+  } catch { /* non-fatal */ }
+
+  // Safety record section: cross-link to filtered safety page.
+  const safetyBlock = `<section><h2>Safety record</h2><p>Recent accident and incident reports involving ${esc(iata)} aircraft.</p><p><a href="/safety/global?op=${esc(iata)}">View safety database →</a></p></section>`;
+
   const jsonLd = `<script type="application/ld+json">${JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'Airline',
@@ -646,7 +675,7 @@ async function bAirline(meta, _db) {
     iataCode: iata,
   })}</script>`;
 
-  return [heading, destBlock, topAircraftBlock, jsonLd].filter(Boolean).join('\n');
+  return [heading, destBlock, topAircraftBlock, hubsBlock, topDestBlock, safetyBlock, jsonLd].filter(Boolean).join('\n');
 }
 
 /**

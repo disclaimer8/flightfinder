@@ -22,7 +22,15 @@ jest.mock('../services/openFlightsService', () => ({
 }));
 
 const { db }                   = require('../models/db');
-const { getCombo, listValidCombinations, getTopAircraftForAirline, buildValidComboSet, _resetValidCombosCache } = require('../services/airlineAircraftService');
+const {
+  getCombo,
+  listValidCombinations,
+  getTopAircraftForAirline,
+  getTopHubsForAirline,
+  getTopDestinationsForAirline,
+  buildValidComboSet,
+  _resetValidCombosCache,
+} = require('../services/airlineAircraftService');
 const openFlightsService        = require('../services/openFlightsService');
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -455,4 +463,79 @@ test('buildValidComboSet: builds lowercase iata:icao_aircraft keys', () => {
   expect(set.has('ba:a388')).toBe(true);
   expect(set.has('fr:b738')).toBe(true);
   expect(set.has('BA:A388')).toBe(false);
+});
+
+// ── Test 15: getTopHubsForAirline — returns top dep airports desc ─────────────
+//
+// Insert 3 departure airports (LHR 3 routes, JFK 2 routes, LAX 1 route) for BAW.
+// Expects: result sorted desc by pair_count, city/country enriched from getAirport.
+test('getTopHubsForAirline: returns top departure airports by pair count, descending', () => {
+  // LHR as dep: 3 distinct arr
+  insertRow('LHR', 'JFK', 'A388', 'BAW', now - 1 * day);
+  insertRow('LHR', 'LAX', 'A388', 'BAW', now - 1 * day);
+  insertRow('LHR', 'SIN', 'A388', 'BAW', now - 1 * day);
+  // JFK as dep: 2 distinct arr
+  insertRow('JFK', 'LHR', 'A388', 'BAW', now - 1 * day);
+  insertRow('JFK', 'LAX', 'A388', 'BAW', now - 1 * day);
+  // LAX as dep: 1 distinct arr
+  insertRow('LAX', 'SIN', 'A388', 'BAW', now - 1 * day);
+
+  openFlightsService.getAirline.mockImplementation((iata) => (iata === 'BA' ? BA_AIRLINE : null));
+  openFlightsService.getAirport.mockImplementation((iata) => AIRPORTS[iata?.toUpperCase()] || null);
+
+  const result = getTopHubsForAirline({ iataAirline: 'BA', sinceMs: now - 90 * day, limit: 3 });
+
+  expect(result).toHaveLength(3);
+  expect(result[0].iata).toBe('LHR');
+  expect(result[0].pair_count).toBe(3);
+  expect(result[0].city).toBe('London');
+  expect(result[0].country).toBe('GB');
+  expect(result[1].iata).toBe('JFK');
+  expect(result[1].pair_count).toBe(2);
+  expect(result[2].iata).toBe('LAX');
+  expect(result[2].pair_count).toBe(1);
+});
+
+// ── Test 16: getTopHubsForAirline — unresolvable airline → [] ────────────────
+test('getTopHubsForAirline: unresolvable airline returns empty array', () => {
+  openFlightsService.getAirline.mockReturnValue(null);
+  const result = getTopHubsForAirline({ iataAirline: 'XX', sinceMs: now - 90 * day });
+  expect(result).toEqual([]);
+});
+
+// ── Test 17: getTopDestinationsForAirline — returns top arr airports desc ─────
+//
+// Insert routes where JFK appears as arr 3 times, SIN 2 times, SYD 1 time.
+// Expects: result sorted desc by pair_count, city/country enriched.
+test('getTopDestinationsForAirline: returns top arrival airports by pair count, descending', () => {
+  // JFK as arr: 3 distinct dep
+  insertRow('LHR', 'JFK', 'A388', 'BAW', now - 1 * day);
+  insertRow('LAX', 'JFK', 'A388', 'BAW', now - 1 * day);
+  insertRow('SIN', 'JFK', 'A388', 'BAW', now - 1 * day);
+  // SIN as arr: 2 distinct dep
+  insertRow('LHR', 'SIN', 'A388', 'BAW', now - 1 * day);
+  insertRow('JFK', 'SIN', 'A388', 'BAW', now - 1 * day);
+  // SYD as arr: 1 distinct dep
+  insertRow('LHR', 'SYD', 'A388', 'BAW', now - 1 * day);
+
+  openFlightsService.getAirline.mockImplementation((iata) => (iata === 'BA' ? BA_AIRLINE : null));
+  openFlightsService.getAirport.mockImplementation((iata) => AIRPORTS[iata?.toUpperCase()] || null);
+
+  const result = getTopDestinationsForAirline({ iataAirline: 'BA', sinceMs: now - 90 * day, limit: 3 });
+
+  expect(result).toHaveLength(3);
+  expect(result[0].iata).toBe('JFK');
+  expect(result[0].pair_count).toBe(3);
+  expect(result[0].city).toBe('New York');
+  expect(result[1].iata).toBe('SIN');
+  expect(result[1].pair_count).toBe(2);
+  expect(result[2].iata).toBe('SYD');
+  expect(result[2].pair_count).toBe(1);
+});
+
+// ── Test 18: getTopDestinationsForAirline — unresolvable airline → [] ─────────
+test('getTopDestinationsForAirline: unresolvable airline returns empty array', () => {
+  openFlightsService.getAirline.mockReturnValue(null);
+  const result = getTopDestinationsForAirline({ iataAirline: 'XX', sinceMs: now - 90 * day });
+  expect(result).toEqual([]);
 });

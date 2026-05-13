@@ -265,6 +265,96 @@ exports.buildValidComboSet = function buildValidComboSet(combos) {
   return new Set(combos.map(c => `${c.iata.toLowerCase()}:${c.icao_aircraft.toLowerCase()}`));
 };
 
+/**
+ * Return the top departure airports (hubs) for an airline in the given window,
+ * ordered by distinct (dep_iata, arr_iata) pair count descending.
+ *
+ * CRITICAL: observed_routes.airline_iata stores ICAO codes; we accept IATA input
+ * and convert via getAirline().
+ *
+ * @param {object} opts
+ * @param {string} opts.iataAirline - IATA airline code (e.g. 'BA')
+ * @param {number} [opts.sinceMs]   - epoch ms lower bound; defaults to 90 days ago
+ * @param {number} [opts.limit]     - max airports to return (default 5)
+ * @returns {Array<{iata: string, city: string, country: string|null, pair_count: number}>}
+ */
+exports.getTopHubsForAirline = function getTopHubsForAirline({ iataAirline, sinceMs, limit = 5 } = {}) {
+  if (!iataAirline) return [];
+
+  const airlineRecord = openFlightsService.getAirline(String(iataAirline).toUpperCase());
+  if (!airlineRecord || !airlineRecord.icao) return [];
+
+  const airlineIcao = String(airlineRecord.icao).toUpperCase();
+  const since       = Number.isFinite(Number(sinceMs)) ? Number(sinceMs) : (Date.now() - WINDOW_90D_MS);
+  const lim         = Math.max(1, Number(limit) || 5);
+
+  const rows = db.prepare(`
+    SELECT dep_iata,
+           COUNT(DISTINCT dep_iata || '|' || arr_iata) AS pair_count
+    FROM observed_routes
+    WHERE UPPER(airline_iata) = ?
+      AND seen_at > ?
+    GROUP BY dep_iata
+    ORDER BY pair_count DESC
+    LIMIT ?
+  `).all(airlineIcao, since, lim);
+
+  return rows.map(r => {
+    const ap = openFlightsService.getAirport(r.dep_iata);
+    return {
+      iata:       r.dep_iata,
+      city:       ap?.city    || r.dep_iata,
+      country:    ap?.country || null,
+      pair_count: r.pair_count,
+    };
+  });
+};
+
+/**
+ * Return the top arrival airports (destinations) for an airline in the given window,
+ * ordered by distinct (dep_iata, arr_iata) pair count descending.
+ *
+ * CRITICAL: observed_routes.airline_iata stores ICAO codes; we accept IATA input
+ * and convert via getAirline().
+ *
+ * @param {object} opts
+ * @param {string} opts.iataAirline - IATA airline code (e.g. 'BA')
+ * @param {number} [opts.sinceMs]   - epoch ms lower bound; defaults to 90 days ago
+ * @param {number} [opts.limit]     - max airports to return (default 5)
+ * @returns {Array<{iata: string, city: string, country: string|null, pair_count: number}>}
+ */
+exports.getTopDestinationsForAirline = function getTopDestinationsForAirline({ iataAirline, sinceMs, limit = 5 } = {}) {
+  if (!iataAirline) return [];
+
+  const airlineRecord = openFlightsService.getAirline(String(iataAirline).toUpperCase());
+  if (!airlineRecord || !airlineRecord.icao) return [];
+
+  const airlineIcao = String(airlineRecord.icao).toUpperCase();
+  const since       = Number.isFinite(Number(sinceMs)) ? Number(sinceMs) : (Date.now() - WINDOW_90D_MS);
+  const lim         = Math.max(1, Number(limit) || 5);
+
+  const rows = db.prepare(`
+    SELECT arr_iata,
+           COUNT(DISTINCT dep_iata || '|' || arr_iata) AS pair_count
+    FROM observed_routes
+    WHERE UPPER(airline_iata) = ?
+      AND seen_at > ?
+    GROUP BY arr_iata
+    ORDER BY pair_count DESC
+    LIMIT ?
+  `).all(airlineIcao, since, lim);
+
+  return rows.map(r => {
+    const ap = openFlightsService.getAirport(r.arr_iata);
+    return {
+      iata:       r.arr_iata,
+      city:       ap?.city    || r.arr_iata,
+      country:    ap?.country || null,
+      pair_count: r.pair_count,
+    };
+  });
+};
+
 /** Clears the in-process combo cache. Exposed for test isolation only. */
 exports._resetValidCombosCache = function _resetValidCombosCache() {
   _validCombosCache.clear();
