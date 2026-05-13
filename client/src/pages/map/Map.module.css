@@ -1,0 +1,112 @@
+/* ── Map page layout ──────────────────────────────────────────────── */
+
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+/* ── Filter row ───────────────────────────────────────────────────── */
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  width: 280px;
+}
+
+.field label {
+  font: 500 11px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+
+.field input[type="search"] {
+  width: 100%;
+  padding: 7px 32px 7px 10px;
+  font: 400 14px var(--font-ui);
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 120ms ease;
+}
+
+.field input[type="search"]:focus {
+  border-color: var(--link);
+}
+
+/* ── Clear button ─────────────────────────────────────────────────── */
+
+.clear {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.clear:hover {
+  color: var(--text);
+  background: var(--border-light);
+}
+
+/* ── Skeleton / empty state placeholders (used by Task 4 map layer) ── */
+
+.skel {
+  background: var(--border-light);
+  border-radius: var(--r);
+  animation: skel-pulse 1.4s ease-in-out infinite;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 400 15px var(--font-ui);
+  color: var(--text-3);
+  padding: 48px 24px;
+  text-align: center;
+}
+
+@keyframes skel-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .filterRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .field {
+    width: 100%;
+  }
+}
