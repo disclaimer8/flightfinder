@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const { enumerateSeoUrls } = require('../services/seoUrlEnumerator');
+const { enumerateSeoUrls, enumerateAirlineAircraftMatrix } = require('../services/seoUrlEnumerator');
 
 const router = express.Router();
 
@@ -131,6 +131,17 @@ router.get('/sitemap.xml', async (_req, res) => {
     }
   } catch (err) {
     console.warn('[seo] aircraft-route grid unavailable for sitemap:', err.message);
+  }
+
+  // Airline × Aircraft matrix pages — (airline, aircraft) combos with >= 5 routes.
+  try {
+    const matrixEntries = enumerateAirlineAircraftMatrix();
+    urls.push(...matrixEntries);
+    if (process.env.NODE_ENV !== 'test' && matrixEntries.length > 0) {
+      console.log(`[seo] ${matrixEntries.length} airline-aircraft matrix pages added to sitemap`);
+    }
+  } catch (err) {
+    console.warn('[seo] airline-aircraft matrix unavailable for sitemap:', err.message);
   }
 
   // Accident narrative pages — indexable=1 rows from accident_narratives.

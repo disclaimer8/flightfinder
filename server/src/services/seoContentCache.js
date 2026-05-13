@@ -137,14 +137,18 @@ async function getOrBuild(pathname) {
   // Fast path: the pre-warmed map covers airport / airline / aircraft / route.
   const fromMap = map.get(pathname);
   if (fromMap) return fromMap;
-  // Lazy path covers two unbounded URL families that we don't pre-warm:
-  //   /accidents/{slug}      — ~22K rows; warming blocks pm2 wait_ready
-  //   /safety/events/{id}    — ~500 indexable rows but the id-numeric form
-  //                            also legitimately hits via legacy links and
-  //                            the slug form is enumerated separately
+  // Lazy path covers unbounded URL families that we don't pre-warm:
+  //   /accidents/{slug}               — ~22K rows; warming blocks pm2 wait_ready
+  //   /safety/events/{id}             — ~500 indexable rows but the id-numeric form
+  //                                     also legitimately hits via legacy links and
+  //                                     the slug form is enumerated separately
+  //   /airline/{iata}/aircraft/{icao} — 256 matrix pages; sitemap-advertised but
+  //                                     not pre-warmed; built on first bot hit and
+  //                                     cached to avoid repeated SQLite lookups
   const isLazyPath =
     /^\/accidents\/[^/]+\/?$/.test(pathname) ||
-    /^\/safety\/events\/[^/]+\/?$/.test(pathname);
+    /^\/safety\/events\/[^/]+\/?$/.test(pathname) ||
+    /^\/airline\/[a-z0-9]{2,3}\/aircraft\/[a-z][a-z0-9]{2,5}\/?$/i.test(pathname);
   if (!isLazyPath) return null;
 
   const now = Date.now();
@@ -156,7 +160,7 @@ async function getOrBuild(pathname) {
 
   let meta;
   try { meta = seoMeta.resolve(pathname); } catch { return null; }
-  if (!meta || (meta.kind !== 'accident' && meta.kind !== 'safety-event')) return null;
+  if (!meta || (meta.kind !== 'accident' && meta.kind !== 'safety-event' && meta.kind !== 'airline-aircraft')) return null;
 
   let html;
   try { html = await builders.buildAsync(meta); } catch { return null; }

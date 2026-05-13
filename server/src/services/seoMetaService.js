@@ -30,6 +30,7 @@ const safety = require('../models/safetyEvents');
 const db = require('../models/db');
 const { colorBand, topNotable } = require('./safetyRating');
 const { buildEventSlug, parseEventIdFromSlug } = require('../utils/eventSlug');
+const airlineAircraftService = require('./airlineAircraftService');
 
 function _safeDb(fn, fallback = []) {
   try { return fn(db); }
@@ -470,6 +471,79 @@ function airportMeta(iata) {
   };
 }
 
+/**
+ * /airline/:iata/aircraft/:icao — airline × aircraft matrix landing page.
+ *
+ * @param {string} iata  - airline IATA code (already uppercased)
+ * @param {string} icao  - aircraft ICAO type code (already uppercased)
+ */
+function airlineAircraftMeta(iata, icao) {
+  const currentYear = new Date().getFullYear();
+  const al = openFlightsService.getAirline(iata);
+  const aircraft = getFamilyByCode(icao);
+
+  // Noindex fallback when either side is unresolvable. Kind is still set so
+  // the bAirlineAircraft builder can render a graceful "no data" page.
+  if (!al) {
+    return {
+      title: `${esc(iata)}/${esc(icao)} routes | FlightFinder`,
+      description: `Routes for ${esc(iata)} on the ${esc(icao)}.`,
+      canonical: `${BASE}/airline/${iata.toLowerCase()}/aircraft/${icao.toLowerCase()}`,
+      h1: `${esc(iata)} routes on the ${esc(icao)}`,
+      subtitle: '',
+      robots: 'noindex, follow',
+      ogType: 'website',
+      kind: 'airline-aircraft',
+      iata,
+      icao,
+    };
+  }
+  if (!aircraft) {
+    const airlineName = al.name || iata;
+    return {
+      title: `${airlineName} ${icao} routes | FlightFinder`,
+      description: `Routes flown by ${airlineName} on the ${icao}.`,
+      canonical: `${BASE}/airline/${iata.toLowerCase()}/aircraft/${icao.toLowerCase()}`,
+      h1: `${airlineName} routes on the ${icao}`,
+      subtitle: '',
+      robots: 'noindex, follow',
+      ogType: 'website',
+      kind: 'airline-aircraft',
+      iata,
+      icao,
+    };
+  }
+
+  // Pre-detect thin combos (< 5 distinct route pairs) so the head <meta robots>
+  // is correct without relying on the builder to mutate meta after the fact.
+  // listValidCombinations is backed by a SQLite query and cheap to call here.
+  let isThinCombo = false;
+  try {
+    const validCombos = airlineAircraftService.listValidCombinations({ minPairs: 5 });
+    isThinCombo = !validCombos.some(
+      (c) => c.iata === iata && c.icao_aircraft === icao,
+    );
+  } catch {
+    // If the service is unavailable (e.g. test env without DB), fall through
+    // and let the builder's inline <meta> be the sole robots signal.
+  }
+
+  const airlineName  = al.name;
+  const aircraftName = aircraft.name;
+  return {
+    title:       `${airlineName} ${aircraftName} routes (${currentYear}) | FlightFinder`,
+    description: `All routes flown by ${airlineName} on the ${aircraftName} in the last 90 days.`,
+    canonical:   `${BASE}/airline/${iata.toLowerCase()}/aircraft/${icao.toLowerCase()}`,
+    h1:          `${airlineName} routes on the ${aircraftName}`,
+    subtitle:    '',
+    robots:      isThinCombo ? 'noindex, follow' : 'index, follow',
+    ogType:      'website',
+    kind:        'airline-aircraft',
+    iata,
+    icao,
+  };
+}
+
 function airlineMeta(iata) {
   const upper = iata.toUpperCase();
   // Prefer the human carrier name from OpenFlights for title + H1. Falls back
@@ -593,6 +667,12 @@ function resolve(pathname, searchParams) {
 
   const airportMatch = /^\/airport\/([a-z]{3})\/?$/i.exec(pathname);
   if (airportMatch) return airportMeta(airportMatch[1].toLowerCase());
+
+  // Airline × Aircraft matrix landing: MUST precede the bare /airline/:iata catch-all.
+  const airlineAircraftMatch = /^\/airline\/([a-z0-9]{2,3})\/aircraft\/([a-z][a-z0-9]{2,5})\/?$/i.exec(pathname);
+  if (airlineAircraftMatch) {
+    return airlineAircraftMeta(airlineAircraftMatch[1].toUpperCase(), airlineAircraftMatch[2].toUpperCase());
+  }
 
   const airlineMatch = /^\/airline\/([a-z0-9]{2,3})\/?$/i.exec(pathname);
   if (airlineMatch) return airlineMeta(airlineMatch[1].toLowerCase());

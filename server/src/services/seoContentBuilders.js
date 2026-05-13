@@ -1,6 +1,7 @@
 const { getFamilyList, getFamilyByCode, slugify } = require('../models/aircraftFamilies');
 const { esc } = require('./seoMetaService');
 const { applyChrome } = require('./seoChrome');
+const airlineAircraftService = require('./airlineAircraftService');
 const {
   getEnrichmentForSlug,
   renderVariantsTable,
@@ -597,6 +598,204 @@ async function bAirline(meta, _db) {
   return [heading, destBlock, jsonLd].filter(Boolean).join('\n');
 }
 
+/**
+ * /airline/:iata/aircraft/:icao — airline × aircraft matrix landing page.
+ * Synchronous: airlineAircraftService.getCombo() is SQLite (better-sqlite3, sync).
+ *
+ * @param {object} meta - must include iata, icao (from airlineAircraftMeta)
+ * @param {object} _db  - unused (service has its own db reference)
+ * @returns {string} HTML inner content
+ */
+function bAirlineAircraft(meta, _db) {
+  const { iata, icao } = meta;
+  const data = airlineAircraftService.getCombo({
+    iataAirline:  iata,
+    icaoAircraft: icao,
+    sinceMs:      Date.now() - 90 * 86400000,
+  });
+
+  if (!data) {
+    // Downgrade robots on the way out so the chain picks it up.
+    meta.robots = 'noindex, follow';
+    return `
+<section class="landing-airline-aircraft__no-data">
+  <h1>${esc(meta.h1)}</h1>
+  <p>No routes found for this airline and aircraft combination in the last 90 days.</p>
+</section>
+<meta name="robots" content="noindex, follow">`.trim();
+  }
+
+  const { airline, aircraft, summary, routes } = data;
+
+  // ── Hero ──────────────────────────────────────────────────────────────────
+  const heroSection = `
+<section class="landing-airline-aircraft__hero">
+  <h1>${esc(airline.name)} routes on the ${esc(aircraft.name)}</h1>
+  <p>${esc(String(summary.n_pairs))} routes across ${esc(String(summary.n_airports))} airports in the last 90 days.</p>
+</section>`.trim();
+
+  // ── Routes table ──────────────────────────────────────────────────────────
+  const routeRows = routes.map(r => `
+    <tr>
+      <td><a href="/search?from=${esc(r.dep.iata)}&amp;to=${esc(r.arr.iata)}">${esc(r.dep.iata)}</a></td>
+      <td>${esc(r.arr.iata)}</td>
+      <td>${esc(new Date(r.last_seen_at).toISOString().slice(0, 10))}</td>
+      <td>${esc(String(r.distance_km))}</td>
+    </tr>`).join('');
+
+  const routesSection = `
+<section class="landing-airline-aircraft__routes">
+  <h2>Routes flown</h2>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Departure</th>
+        <th scope="col">Arrival</th>
+        <th scope="col">Last seen</th>
+        <th scope="col">Distance (km)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${routeRows}
+    </tbody>
+  </table>
+</section>`.trim();
+
+  // ── Mini map placeholder ──────────────────────────────────────────────────
+  const mapSection = `
+<section class="landing-airline-aircraft__map">
+  <h2>Route map</h2>
+  <div id="airline-aircraft-map"></div>
+</section>`.trim();
+
+  // ── Airline card ──────────────────────────────────────────────────────────
+  const airlineSection = `
+<section class="landing-airline-aircraft__airline">
+  <h2>${esc(airline.name)}</h2>
+  ${airline.country ? `<p>${esc(airline.country)}</p>` : ''}
+  <p><a href="/airline/${esc(airline.iata.toLowerCase())}">View all ${esc(airline.name)} routes →</a></p>
+</section>`.trim();
+
+  // ── Aircraft card ─────────────────────────────────────────────────────────
+  const aircraftSlug = slugify(aircraft.name);
+  const aircraftSection = `
+<section class="landing-airline-aircraft__aircraft">
+  <h2>${esc(aircraft.name)}</h2>
+  ${aircraft.category ? `<p>Category: ${esc(aircraft.category)}</p>` : ''}
+  <p><a href="/aircraft/${esc(aircraftSlug)}">View ${esc(aircraft.name)} routes and specs →</a></p>
+</section>`.trim();
+
+  // ── FAQ ───────────────────────────────────────────────────────────────────
+  // Compute top 5 departure and arrival airports by frequency.
+  const depFreq = {};
+  const arrFreq = {};
+  for (const r of routes) {
+    depFreq[r.dep.iata] = (depFreq[r.dep.iata] || 0) + 1;
+    arrFreq[r.arr.iata] = (arrFreq[r.arr.iata] || 0) + 1;
+  }
+  const top5dep = Object.entries(depFreq).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k);
+  const top5arr = Object.entries(arrFreq).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k);
+
+  const faqQ1 = `How many routes does ${airline.name} fly on the ${aircraft.name}?`;
+  const faqA1 = `${airline.name} operates ${summary.n_pairs} route${summary.n_pairs === 1 ? '' : 's'} on the ${aircraft.name} based on observations in the last 90 days.`;
+
+  const longestRoute = summary.longest;
+  const faqQ2 = `What is the longest route?`;
+  const faqA2 = longestRoute
+    ? `The longest route is ${longestRoute.dep}→${longestRoute.arr} at ${longestRoute.distance_km} km.`
+    : `Route distance data is not available.`;
+
+  const shortestRoute = summary.shortest;
+  const faqQ3 = `What is the shortest route?`;
+  const faqA3 = shortestRoute
+    ? `The shortest route is ${shortestRoute.dep}→${shortestRoute.arr} at ${shortestRoute.distance_km} km.`
+    : `Route distance data is not available.`;
+
+  const faqQ4 = `Which airports does ${airline.name} use for the ${aircraft.name}?`;
+  const faqA4Top5dep = top5dep.join(', ');
+  const faqA4Top5arr = top5arr.join(', ');
+  const faqA4 = `Top departure airports: ${faqA4Top5dep}. Top arrival airports: ${faqA4Top5arr}.`;
+
+  const faqDetails = [
+    [faqQ1, faqA1],
+    [faqQ2, faqA2],
+    [faqQ3, faqA3],
+    [faqQ4, faqA4],
+  ].map(([q, a]) => `
+  <details>
+    <summary>${esc(q)}</summary>
+    <p>${esc(a)}</p>
+  </details>`).join('');
+
+  const faqSection = `
+<section class="landing-airline-aircraft__faq">
+  <h2>Frequently asked questions</h2>
+  ${faqDetails}
+</section>`.trim();
+
+  // ── Internal links / breadcrumbs ──────────────────────────────────────────
+  const crumbsSection = `
+<section class="landing-airline-aircraft__crumbs">
+  <nav aria-label="Breadcrumb">
+    <ol>
+      <li><a href="/">Home</a></li>
+      <li><a href="/by-aircraft">Airlines</a></li>
+      <li><a href="/airline/${esc(airline.iata.toLowerCase())}">${esc(airline.name)}</a></li>
+      <li><a href="/by-aircraft">Aircraft</a></li>
+      <li>${esc(aircraft.name)}</li>
+    </ol>
+  </nav>
+</section>`.trim();
+
+  // ── JSON-LD ───────────────────────────────────────────────────────────────
+  const BASE_URL = 'https://himaxym.com';
+
+  const breadcrumbList = {
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home',     item: `${BASE_URL}/` },
+      { '@type': 'ListItem', position: 2, name: 'Airlines', item: `${BASE_URL}/by-aircraft` },
+      { '@type': 'ListItem', position: 3, name: airline.name, item: `${BASE_URL}/airline/${airline.iata.toLowerCase()}` },
+      { '@type': 'ListItem', position: 4, name: 'Aircraft', item: `${BASE_URL}/by-aircraft` },
+      { '@type': 'ListItem', position: 5, name: aircraft.name, item: `${BASE_URL}/airline/${airline.iata.toLowerCase()}/aircraft/${icao.toLowerCase()}` },
+    ],
+  };
+
+  const itemList = {
+    '@type': 'ItemList',
+    itemListElement: routes.map((r, i) => ({
+      '@type':    'ListItem',
+      position:   i + 1,
+      name:       `${r.dep.iata}→${r.arr.iata}`,
+      item: {
+        '@type': 'Thing',
+        name:    `${r.dep.iata}→${r.arr.iata}`,
+        url:     `${BASE_URL}/search?from=${r.dep.iata}&to=${r.arr.iata}`,
+      },
+    })),
+  };
+
+  const faqPage = {
+    '@type': 'FAQPage',
+    mainEntity: [
+      { '@type': 'Question', name: faqQ1, acceptedAnswer: { '@type': 'Answer', text: faqA1 } },
+      { '@type': 'Question', name: faqQ2, acceptedAnswer: { '@type': 'Answer', text: faqA2 } },
+      { '@type': 'Question', name: faqQ3, acceptedAnswer: { '@type': 'Answer', text: faqA3 } },
+      { '@type': 'Question', name: faqQ4, acceptedAnswer: { '@type': 'Answer', text: faqA4 } },
+    ],
+  };
+
+  // Escape </script> inside JSON-LD to prevent HTML parser from closing the
+  // script block prematurely when airline/aircraft names contain injection text.
+  const jsonLdRaw = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph':   [breadcrumbList, itemList, faqPage],
+  }).replace(/<\/script>/gi, '<\\/script>');
+  const jsonLd = `<script type="application/ld+json">${jsonLdRaw}</script>`;
+
+  return [heroSection, routesSection, mapSection, airlineSection, aircraftSection, faqSection, crumbsSection, jsonLd].join('\n');
+}
+
 const STATIC_BUILDERS = {
   pricing:       bPricing,
   about:         bAbout,
@@ -627,6 +826,7 @@ function build(meta, db) {
   else if (meta.kind === 'safety-global')      innerHtml = bSafetyGlobal(meta, dbInstance);
   else if (meta.kind === 'safety-feed')        innerHtml = bSafetyFeed(meta, dbInstance);
   else if (meta.kind === 'safety-event')       innerHtml = bSafetyEvent(meta, dbInstance);
+  else if (meta.kind === 'airline-aircraft')   innerHtml = bAirlineAircraft(meta, dbInstance);
   return applyChrome(meta, innerHtml, dbInstance);
 }
 

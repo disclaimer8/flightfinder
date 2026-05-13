@@ -2,6 +2,8 @@
 const { getFamilyList } = require('../models/aircraftFamilies');
 const { getAllVariants } = require('../models/aircraftVariants');
 
+const BASE = 'https://himaxym.com';
+
 const STATIC_PATHS = [
   '/',
   '/by-aircraft',
@@ -105,6 +107,30 @@ function enumerateSeoUrls(opts = {}) {
   return [...set];
 }
 
+/**
+ * Returns sitemap entries for all valid airline × aircraft matrix pages.
+ * Uses listValidCombinations with default 90-day window and minPairs:5.
+ *
+ * @returns {Array<{loc, priority, changefreq, lastmod}>}
+ */
+function enumerateAirlineAircraftMatrix() {
+  try {
+    const combos = require('./airlineAircraftService').listValidCombinations({ minPairs: 5 });
+    const today = new Date().toISOString().slice(0, 10);
+    return combos.map(c => ({
+      // Lowercase to match canonical emitted by airlineAircraftMeta —
+      // sitemap loc and canonical disagreeing on case is a soft SEO smell.
+      loc:        `${BASE}/airline/${String(c.iata).toLowerCase()}/aircraft/${String(c.icao_aircraft).toLowerCase()}`,
+      priority:   '0.5',
+      changefreq: 'weekly',
+      lastmod:    today,
+    }));
+  } catch (err) {
+    console.warn('[seoUrlEnumerator] airline-aircraft matrix unavailable:', err.message);
+    return [];
+  }
+}
+
 function enumerateAccidents() {
   const { db } = require('../models/db');
   const rows = db.prepare(`
@@ -122,4 +148,4 @@ function enumerateAccidents() {
   }));
 }
 
-module.exports = { enumerateSeoUrls, enumerateAccidents, STATIC_PATHS };
+module.exports = { enumerateSeoUrls, enumerateAccidents, enumerateAirlineAircraftMatrix, STATIC_PATHS };
