@@ -1,0 +1,150 @@
+/* ============================================================
+ * FlightFinder — Colors & Type Tokens
+ * Source of truth: FLIGHT/client/src/index.css + styles/typography.css
+ * ============================================================ */
+
+/* ─── Webfonts (Google) ─────────────────────────────────────── */
+/* Cyrillic-friendly stack. All three families ship Cyrillic + Latin Extended. */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap');
+
+:root {
+  /* ── Brand / primary (indigo) ───────────────────────────── */
+  --primary:        #6366f1;
+  --primary-dark:   #4f46e5;
+  --primary-light:  #eef2ff;
+  --primary-ring:   rgba(99, 102, 241, 0.18);
+  --link:           #4f46e5;
+
+  /* ── Navy (chrome — site header, dark sections, footer) ── */
+  --navy:           #0c1427;
+  --navy-2:         #152040;
+
+  /* ── Surfaces & neutrals ────────────────────────────────── */
+  --bg:             #f8fafc;   /* page background */
+  --card:           #ffffff;   /* card / panel surface */
+  --border:         #e2e8f0;   /* default 1px hairline */
+  --border-light:   #f1f5f9;   /* subtle separator */
+
+  /* ── Foreground / text ──────────────────────────────────── */
+  --text:           #0f172a;   /* fg1 — primary copy & headings */
+  --text-2:         #475569;   /* fg2 — secondary, descriptions */
+  --text-3:         #94a3b8;   /* fg3 — muted, eyebrows, hints */
+
+  /* ── Semantic / status ──────────────────────────────────── */
+  --green:          #10b981;
+  --green-bg:       #ecfdf5;
+  --orange:         #f59e0b;
+  --orange-bg:      #fffbeb;
+  --red:            #ef4444;
+  --red-bg:         #fef2f2;
+
+  --amber-text:     #92400e;
+  --amber-bg:       #fffbeb;
+  --amber-border:   #fde68a;
+
+  /* Safety severity aliases */
+  --sev-fatal:      var(--red);
+  --sev-hull:       var(--orange);
+  --sev-incident:   var(--text-3);
+
+  /* ── Radii ──────────────────────────────────────────────── */
+  --r-sm: 6px;
+  --r:    10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  /* ── Shadows ────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow:    0 1px 3px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.10), 0 2px 4px -1px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.10), 0 4px 6px -2px rgba(0,0,0,0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.12), 0 10px 10px -5px rgba(0,0,0,0.04);
+
+  /* ── Spacing (8pt-ish; not declared as tokens in source — derived) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Z-index ────────────────────────────────────────────── */
+  --z-dropdown: 200;
+  --z-modal:    1000;
+
+  /* ── Type families ──────────────────────────────────────── */
+  --font-display: 'Newsreader', Charter, Georgia, serif;
+  --font-ui:      'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:    'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* IMPORTANT — at the time of import the live site uses `--font-display`
+   * for headings BUT the production CSS overrides h1/h2 to also use
+   * Inter Tight. The display serif is reserved for editorial moments
+   * (large hero quotes, About page lead). Use it sparingly. */
+
+  /* ── Semantic type roles (size / weight / line-height) ──── */
+  --h1-size: 44px;  --h1-weight: 700;  --h1-lh: 1.1;
+  --h2-size: 28px;  --h2-weight: 700;  --h2-lh: 1.2;
+  --h3-size: 20px;  --h3-weight: 600;  --h3-lh: 1.3;
+  --h4-size: 16px;  --h4-weight: 600;  --h4-lh: 1.4;
+  --body-size:    16px; --body-weight: 400; --body-lh: 1.5;
+  --body-sm-size: 14px; --body-sm-weight: 400; --body-sm-lh: 1.5;
+  --caption-size: 12px; --caption-weight: 400; --caption-lh: 1.4;
+  --eyebrow-size: 11px; --eyebrow-weight: 500; /* uppercase, mono, 0.08em */
+}
+
+/* ─── Semantic element defaults ─────────────────────────────── */
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--body-size);
+  line-height: var(--body-lh);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1 { font: var(--h1-weight) var(--h1-size)/var(--h1-lh) var(--font-ui); letter-spacing: -0.02em; color: var(--text); }
+h2 { font: var(--h2-weight) var(--h2-size)/var(--h2-lh) var(--font-ui); letter-spacing: -0.01em; color: var(--text); }
+h3 { font: var(--h3-weight) var(--h3-size)/var(--h3-lh) var(--font-ui); color: var(--text); }
+h4 { font: var(--h4-weight) var(--h4-size)/var(--h4-lh) var(--font-ui); color: var(--text); }
+p  { font: var(--body-weight) var(--body-size)/var(--body-lh) var(--font-ui); color: var(--text); }
+small { font: 400 var(--body-sm-size)/var(--body-sm-lh) var(--font-ui); color: var(--text-2); }
+
+code, kbd, pre, samp {
+  font-family: var(--font-mono);
+}
+
+/* The signature mono uppercase eyebrow used across the product:
+ * section headers, card eyebrows, table column labels, ribbons. */
+.eyebrow {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.eyebrow--md     { font-size: 12px; }
+.eyebrow--sm     { font-size: 10px; letter-spacing: 0.06em; }
+.eyebrow--strong { color: var(--text-2); }
+
+/* Editorial display serif — opt-in only (About lead, hero quotes). */
+.display-serif {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+
+/* Numeric & code-like values (prices, counts, IATA codes) use mono. */
+.numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Link style — uses --link (slightly darker than --primary). */
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }

@@ -69,27 +69,27 @@ test('no filters: 6 rows across 3 pairs returns 3 routes with correct counts', (
 
   expect(routes).toHaveLength(3);
 
-  const lhrJfk = routes.find(r => r.dep_iata === 'LHR' && r.arr_iata === 'JFK');
+  const lhrJfk = routes.find(r => r.dep.iata === 'LHR' && r.arr.iata === 'JFK');
   expect(lhrJfk).toBeDefined();
   expect(lhrJfk.airline_count).toBe(2);   // BA + AA
   expect(lhrJfk.aircraft_count).toBe(2);  // B789 + A320
   expect(lhrJfk.last_seen_at).toBe(now - 1 * day);
 
-  const lhrCdg = routes.find(r => r.dep_iata === 'LHR' && r.arr_iata === 'CDG');
+  const lhrCdg = routes.find(r => r.dep.iata === 'LHR' && r.arr.iata === 'CDG');
   expect(lhrCdg).toBeDefined();
   expect(lhrCdg.airline_count).toBe(2);   // BA + VS
   expect(lhrCdg.aircraft_count).toBe(2);  // A320 + B789
   expect(lhrCdg.last_seen_at).toBe(now - 1 * day);
 
-  const jfkCdg = routes.find(r => r.dep_iata === 'JFK' && r.arr_iata === 'CDG');
+  const jfkCdg = routes.find(r => r.dep.iata === 'JFK' && r.arr.iata === 'CDG');
   expect(jfkCdg).toBeDefined();
   expect(jfkCdg.airline_count).toBe(1);   // AA only
   expect(jfkCdg.aircraft_count).toBe(2);  // B788 + B789
   expect(jfkCdg.last_seen_at).toBe(now - 2 * day);
 
   // Verify coords are passed through
-  expect(lhrJfk.dep_lat).toBe(AIRPORTS.LHR.lat);
-  expect(lhrJfk.arr_lon).toBe(AIRPORTS.JFK.lon);
+  expect(lhrJfk.dep.lat).toBe(AIRPORTS.LHR.lat);
+  expect(lhrJfk.arr.lon).toBe(AIRPORTS.JFK.lon);
 });
 
 // ── Test 2: Airline filter — only matching rows aggregate ────────────────────
@@ -103,11 +103,11 @@ test('airline filter restricts aggregation; lowercase input works', () => {
   const routes = aggregateForMap({ airline: 'ba' });
 
   expect(routes).toHaveLength(2);
-  const iatas = routes.map(r => `${r.dep_iata}-${r.arr_iata}`).sort();
+  const iatas = routes.map(r => `${r.dep.iata}-${r.arr.iata}`).sort();
   expect(iatas).toEqual(['LHR-CDG', 'LHR-JFK']);
 
   // AA's JFK→CDG row must NOT appear
-  expect(routes.find(r => r.dep_iata === 'JFK' && r.arr_iata === 'CDG')).toBeUndefined();
+  expect(routes.find(r => r.dep.iata === 'JFK' && r.arr.iata === 'CDG')).toBeUndefined();
 });
 
 // ── Test 3: Aircraft filter — only matching rows aggregate ───────────────────
@@ -121,11 +121,11 @@ test('aircraft filter restricts aggregation; lowercase input works', () => {
   const routes = aggregateForMap({ aircraft: 'a320' });
 
   expect(routes).toHaveLength(2);
-  const iatas = routes.map(r => `${r.dep_iata}-${r.arr_iata}`).sort();
+  const iatas = routes.map(r => `${r.dep.iata}-${r.arr.iata}`).sort();
   expect(iatas).toEqual(['JFK-CDG', 'LHR-JFK']);
 
   // B789 row (LHR→CDG) must NOT appear
-  expect(routes.find(r => r.dep_iata === 'LHR' && r.arr_iata === 'CDG')).toBeUndefined();
+  expect(routes.find(r => r.dep.iata === 'LHR' && r.arr.iata === 'CDG')).toBeUndefined();
 });
 
 // ── Test 4: Coord-miss drop ──────────────────────────────────────────────────
@@ -150,8 +150,8 @@ test('pairs with unknown airport coords are dropped; valid pair is returned', ()
 
   // Only LHR→JFK should survive
   expect(routes).toHaveLength(1);
-  expect(routes[0].dep_iata).toBe('LHR');
-  expect(routes[0].arr_iata).toBe('JFK');
+  expect(routes[0].dep.iata).toBe('LHR');
+  expect(routes[0].arr.iata).toBe('JFK');
 
   // console.info should have been called (dropped 3 pairs)
   expect(infoSpy).toHaveBeenCalledTimes(1);

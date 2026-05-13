@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>FlightFinder · UI Kit</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="SiteHeader.jsx"></script>
+<script type="text/babel" src="SiteFooter.jsx"></script>
+<script type="text/babel" src="SearchForm.jsx"></script>
+<script type="text/babel" src="FlightCard.jsx"></script>
+<script type="text/babel" src="FilterChip.jsx"></script>
+<script type="text/babel" src="Primitives.jsx"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+const SAMPLE_FLIGHTS = [
+  { from:'LHR', to:'JFK', depart:'09:35', arrive:'12:50', airline:'British Airways · BA 175', duration:'7h 35m', stops:0, aircraft:'Boeing 787‑9', aircraftType:'wide-body', price:612 },
+  { from:'LHR', to:'JFK', depart:'10:10', arrive:'13:30', airline:'Virgin Atlantic · VS 3',   duration:'7h 50m', stops:0, aircraft:'Airbus A350‑1000', aircraftType:'wide-body', price:589 },
+  { from:'LHR', to:'JFK', depart:'14:25', arrive:'19:45', airline:'Aer Lingus · EI 105',      duration:'9h 50m', stops:1, aircraft:'Airbus A321XLR',  aircraftType:'jet', price:418 },
+  { from:'LHR', to:'JFK', depart:'18:55', arrive:'22:20', airline:'Delta · DL 2',             duration:'7h 25m', stops:0, aircraft:'Airbus A330‑900', aircraftType:'wide-body', price:734 },
+];
+
+function HomePage({ go, search, setSearch }) {
+  return (
+    <>
+      <div className="hero">
+        <div className="hero__inner">
+          <h1 className="hero__h1">Find flights by aircraft type</h1>
+          <p className="hero__sub">Search routes worldwide, filtered by aircraft model.</p>
+          <SearchForm
+            from={search.from}
+            to={search.to}
+            date={search.date}
+            pax={search.pax}
+            onChange={(p) => setSearch({ ...search, ...p, ...(p.swap && { from: search.to, to: search.from }) })}
+            onSubmit={() => go('results')}
+          />
+        </div>
+      </div>
+      <PageContainer>
+        <h2 className="h2">Popular routes</h2>
+        <RouteTileGrid
+          tiles={['LHR → JFK','SFO → NRT','LAX → SYD','SIN → CDG','HND → SHA','DXB → LHR','MAD → DOH','MEX → MIA']}
+          onClick={() => go('route')}
+        />
+        <h2 className="h2">Explore by aircraft</h2>
+        <RouteTileGrid
+          tiles={['Boeing 787 Dreamliner','Airbus A350','Airbus A220','Boeing 737 MAX','ATR 72','Embraer E195']}
+          onClick={() => go('aircraft')}
+        />
+      </PageContainer>
+    </>
+  );
+}
+
+function ResultsPage({ go }) {
+  const [sort, setSort] = useState('Best');
+  return (
+    <>
+      <div className="results-bar">
+        <div className="results-bar__title">LHR → JFK · Tue, May 5, 2026 · 1 passenger</div>
+        <FilterChipRow
+          filters={[
+            { label: 'Stops', value: 'Direct' },
+            { label: 'Airlines', value: null },
+            { label: 'Aircraft', value: 'Wide‑body' },
+            { label: 'Time', value: null },
+          ]}
+          onClear={() => {}}
+        />
+        <SortMenu value={sort} onChange={setSort} />
+      </div>
+      <PageContainer>
+        <Breadcrumb items={[
+          { label: 'Home', onClick: () => go('home') },
+          { label: 'Search' },
+        ]} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 12 }}>
+          {SAMPLE_FLIGHTS.map((f, i) => (
+            <FlightCard key={i} flight={f} onBook={() => alert('Booking ' + f.airline)} />
+          ))}
+        </div>
+      </PageContainer>
+    </>
+  );
+}
+
+function AircraftPage({ go }) {
+  return (
+    <PageContainer>
+      <Breadcrumb items={[
+        { label: 'Home', onClick: () => go('home') },
+        { label: 'By aircraft', onClick: () => go('home') },
+        { label: 'Boeing 787 Dreamliner' },
+      ]} />
+      <CategoryPill>Boeing · Wide‑body</CategoryPill>
+      <TitleBlock
+        title="Boeing 787 Dreamliner flights and routes"
+        subtitle="The 787 family is the modern long‑haul choice: lower cabin altitude, larger windows, and routes that open city pairs the 747 never could."
+        cta={<button className="btn btn--primary" onClick={() => go('results')}>Search flights on the Boeing 787 Dreamliner</button>}
+      />
+
+      <h2 className="h2">About the Boeing 787 Dreamliner</h2>
+      <p style={{ color: 'var(--text-2)', lineHeight: 1.55, maxWidth: 760 }}>
+        The 787 family (787‑8, 787‑9, 787‑10) is a composite‑fuselage twin‑aisle twin designed around long‑haul fuel
+        efficiency. The 787‑9 is the most common variant, seating roughly 270 to 310 passengers in three classes with a
+        range near 7,500 nautical miles. Its lower cabin altitude of about 6,000 feet and higher humidity reduce jetlag.
+      </p>
+
+      <h2 className="h2">Recent safety events for the Boeing 787 Dreamliner</h2>
+      <SafetyEvent
+        date="29 Mar 2026"
+        op="UNITED AIRLINES INC"
+        location="Pacific Ocean, United States"
+        link="Read the UNITED AIRLINES INC 29 Mar 2026 report"
+      />
+      <p style={{ marginTop: 12, color: 'var(--text-3)', fontSize: 13 }}>
+        Source: <a style={{ color: 'var(--link)' }} href="#">global aviation safety dataset</a> (Aviation Safety Network, B3A, Wikidata).
+      </p>
+
+      <h2 className="h2">Top routes flown by the Boeing 787 Dreamliner</h2>
+      <p style={{ color: 'var(--text-3)', maxWidth: 720, marginTop: -4 }}>
+        City pairs we've observed most often in the last 14 days. Click any route to see flights.
+      </p>
+      <RouteTileGrid
+        tiles={['CAN → SIN','HND → LAX','HND → SHA','LHR → LAX','LIM → MAD','MAD → DOH','NRT → LAX','PVG → SIN','SHA → HND','SIN → PVG']}
+        onClick={() => go('route')}
+      />
+
+      <h2 className="h2">Frequently asked questions about the Boeing 787 Dreamliner</h2>
+      <FAQ items={[
+        { q: 'How many passengers fit on a 787?', a: 'It varies by variant. The 787‑8 typically seats 240 to 260 in three classes. The 787‑9, the most common variant, carries 270 to 310. The stretched 787‑10 reaches 320 to 350.' },
+        { q: "What's different about the 787 cabin experience?", a: 'Lower cabin altitude (~6,000 ft), higher humidity, larger electronically dimmable windows, and quieter cabin than older generations.' },
+        { q: "What's the range of the 787‑9?", a: 'Around 7,500 nautical miles, enabling routes like Perth → London nonstop on a single fuel load.' },
+      ]} />
+    </PageContainer>
+  );
+}
+
+function RoutePage({ go }) {
+  return (
+    <PageContainer>
+      <Breadcrumb items={[
+        { label: 'Home', onClick: () => go('home') },
+        { label: 'Routes' },
+        { label: 'LHR → JFK' },
+      ]} />
+      <CategoryPill>Route</CategoryPill>
+      <TitleBlock
+        title="London to New York flights"
+        subtitle="Direct and connecting flights from London Heathrow Airport (LHR) to John F Kennedy International Airport (JFK). Compare airlines, aircraft types, and fares on one page."
+        cta={<button className="btn btn--primary" onClick={() => go('results')}>Search LHR → JFK flights</button>}
+      />
+
+      <h2 className="h2">Booking tips for London → New York</h2>
+      <p style={{ color: 'var(--text-2)', lineHeight: 1.55, maxWidth: 760 }}>
+        For most economy fares on London to New York, booking roughly three to eight weeks ahead tends to hit the sweet
+        spot on price, with last‑minute fares rising sharply in the final two weeks. Tuesday, Wednesday, and Saturday
+        departures are usually cheaper than Fridays and Sundays.
+      </p>
+
+      <h2 className="h2">Frequently asked questions about LHR → JFK</h2>
+      <FAQ items={[
+        { q: 'How long does the flight from London to New York take?', a: 'Flight time depends on routing, aircraft type, and whether the flight is direct or connecting. A direct flight typically reflects great‑circle distance plus winds.' },
+        { q: 'Which airlines fly from London to New York?', a: 'British Airways, Virgin Atlantic, American, Delta, JetBlue, Aer Lingus, and others operate the city pair.' },
+        { q: 'Are there direct flights from London to New York?', a: 'Yes — direct flights run multiple times per day from LHR to JFK.' },
+        { q: 'What is the cheapest month to fly from London to New York?', a: 'Mid‑January through mid‑March, and the first three weeks of November, are typically the lowest‑fare windows.' },
+      ]} />
+    </PageContainer>
+  );
+}
+
+function SafetyPage({ go }) {
+  return (
+    <PageContainer>
+      <TitleBlock
+        title="Global aviation safety"
+        subtitle="Aggregated from the Aviation Safety Network, B3A, and Wikidata. Updated weekly. Read‑only reference dataset of accidents and incidents worldwide — alongside the NTSB feed for U.S. official records."
+      />
+      <Callout>
+        Commercial aviation flies roughly <b>100,000 flights per day</b>; the global fatal accident rate has averaged
+        about <b>one per million flights</b> in the past decade (IATA, 2024). The events below are the rare, recorded ones.
+      </Callout>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 24 }}>
+        <StatCard title="Top 10 aircraft by accident count" rows={[
+          { name: 'BOEING 737 800', count: 172, fatal: 736 },
+          { name: 'BOEING 737',     count: 130, fatal: 0 },
+          { name: 'de Havilland Canada DHC‑6 Twin Otter 300', count: 81,  fatal: 256 },
+          { name: 'AIRBUS A320 232', count: 63,  fatal: 66 },
+          { name: 'Antonov An‑26',   count: 51,  fatal: 555 },
+        ]} />
+        <StatCard title="Top 10 operators by accident count" rows={[
+          { name: 'Delta Air Lines',     count: 190, fatal: 0 },
+          { name: 'United Airlines',     count: 170, fatal: 12 },
+          { name: 'American Airlines',   count: 162, fatal: 0 },
+          { name: 'SOUTHWEST AIRLINES CO', count: 126, fatal: 2 },
+          { name: 'Ryanair',             count: 60,  fatal: 0 },
+        ]} />
+      </div>
+    </PageContainer>
+  );
+}
+
+function PricingPage({ go }) {
+  return (
+    <PageContainer>
+      <TitleBlock
+        title="Pricing"
+        subtitle="Free to search. Pro unlocks the full safety dataset, alerts, and developer access."
+      />
+      <PricingGrid
+        onSubscribe={(t) => alert('Subscribe: ' + t)}
+        tiers={[
+          { tier: 'free', eyebrow: 'Free', price: '$0', cadence: 'forever',
+            features: ['5 searches per day', 'Basic safety data', 'Save up to 3 trips'], cta: 'Get started' },
+          { tier: 'pro', eyebrow: 'Pro', price: '$8', cadence: '/ month', highlight: true,
+            features: ['Unlimited searches', 'Full safety dataset', 'Alerts & saved searches', 'API access'] },
+          { tier: 'pro_lifetime', eyebrow: 'Pro Lifetime', price: '$249', cadence: 'one‑time',
+            features: ['Everything in Pro', 'Lifetime updates', '127 slots left of 500'] },
+        ]}
+      />
+    </PageContainer>
+  );
+}
+
+function App() {
+  const [page, setPage] = useState('home');
+  const [search, setSearch] = useState({
+    from: 'London Heathrow (LHR)',
+    to: 'New York JFK (JFK)',
+    date: 'Tue, May 5, 2026',
+    pax: 1,
+  });
+
+  const go = (p) => {
+    if (p === 'safety') return setPage('safety');
+    if (p === 'pricing') return setPage('pricing');
+    if (p === 'aircraft') return setPage('aircraft');
+    if (p === 'route') return setPage('route');
+    if (p === 'results') return setPage('results');
+    setPage('home');
+  };
+
+  return (
+    <div className="site">
+      <SiteHeader activeNav={page} onNav={go} />
+      <main className="main" data-screen-label={page}>
+        {page === 'home' && <HomePage go={go} search={search} setSearch={setSearch} />}
+        {page === 'results' && <ResultsPage go={go} />}
+        {page === 'aircraft' && <AircraftPage go={go} />}
+        {page === 'route' && <RoutePage go={go} />}
+        {page === 'safety' && <SafetyPage go={go} />}
+        {page === 'pricing' && <PricingPage go={go} />}
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

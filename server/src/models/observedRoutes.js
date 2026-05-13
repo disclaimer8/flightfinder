@@ -236,9 +236,8 @@ function topFamiliesForPair(dep, arr, sinceMs, limit = 8) {
  * @param {string} [opts.aircraft] - ICAO aircraft type filter (case-insensitive)
  * @param {number} [opts.sinceMs]  - epoch ms lower bound for seen_at (default 0)
  * @returns {Array<{
- *   dep_iata: string, arr_iata: string,
- *   dep_lat: number, dep_lon: number,
- *   arr_lat: number, arr_lon: number,
+ *   dep: {iata: string, lat: number, lon: number, city: string|null},
+ *   arr: {iata: string, lat: number, lon: number, city: string|null},
  *   airline_count: number, aircraft_count: number,
  *   last_seen_at: number,
  * }>}
@@ -298,12 +297,8 @@ function aggregateForMap({ airline, aircraft, sinceMs } = {}) {
       continue;
     }
     result.push({
-      dep_iata: entry.dep_iata,
-      arr_iata: entry.arr_iata,
-      dep_lat: dep.lat,
-      dep_lon: dep.lon,
-      arr_lat: arr.lat,
-      arr_lon: arr.lon,
+      dep: { iata: entry.dep_iata, lat: dep.lat, lon: dep.lon, city: dep.city || null },
+      arr: { iata: entry.arr_iata, lat: arr.lat, lon: arr.lon, city: arr.city || null },
       airline_count: entry.airlines.size,
       aircraft_count: entry.aircraft.size,
       last_seen_at: entry.last_seen_at,

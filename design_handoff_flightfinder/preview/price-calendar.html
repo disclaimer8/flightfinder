@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Flight Finder · Price Calendar</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 48px; background: var(--bg); font-family: var(--font-ui); color: var(--text); display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; }
+  .wrap { width: 880px; background: var(--card); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 28px 32px; box-shadow: var(--shadow); }
+  .hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; }
+  .hdr h2 { font: 600 18px var(--font-ui); margin: 0; letter-spacing: -0.01em; }
+  .hdr .sub { font: 500 11px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+  .legend { display: flex; gap: 14px; font: 500 11px var(--font-mono); color: var(--text-3); letter-spacing: 0.04em; margin-bottom: 8px; }
+  .legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .legend .low::before  { background: var(--green); }
+  .legend .mid::before  { background: var(--orange); }
+  .legend .high::before { background: var(--red); }
+  .legend .sel::before  { background: var(--primary); }
+
+  .chart { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; margin-top: 12px; }
+  .day {
+    position: relative;
+    display: flex; flex-direction: column; align-items: stretch;
+    cursor: pointer;
+    background: var(--bg);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    padding-bottom: 6px;
+    transition: transform 0.12s ease;
+  }
+  .day:hover { transform: translateY(-2px); }
+  .day__bar { flex: 1; min-height: 18px; display: flex; align-items: flex-end; padding: 6px 4px 0; }
+  .day__bar-fill { width: 100%; border-radius: 3px 3px 0 0; }
+  .day__price { font: 600 12px var(--font-mono); text-align: center; margin-top: 6px; color: var(--text); }
+  .day__date  { font: 500 10px var(--font-mono); text-align: center; color: var(--text-3); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
+  .day.is-low  .day__bar-fill { background: var(--green); }
+  .day.is-mid  .day__bar-fill { background: var(--orange); }
+  .day.is-high .day__bar-fill { background: var(--red); }
+  .day.is-selected {
+    background: var(--primary-light);
+    box-shadow: inset 0 0 0 2px var(--primary);
+  }
+  .day.is-selected .day__price { color: var(--primary-dark); }
+  .day.is-selected .day__date  { color: var(--primary-dark); }
+  .day.is-cheapest::after {
+    content: '↓ Cheapest';
+    position: absolute; top: 0; left: 0; right: 0;
+    background: var(--green); color: #fff;
+    font: 600 9px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 2px 0; text-align: center;
+  }
+  .day.is-cheapest { padding-top: 18px; }
+
+  .summary { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border-light); display: flex; gap: 32px; }
+  .summary__cell { display: flex; flex-direction: column; gap: 2px; }
+  .summary__l { font: 500 10px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+  .summary__v { font: 600 22px/1.1 var(--font-ui); color: var(--text); letter-spacing: -0.01em; }
+  .summary__v small { font: 500 12px var(--font-mono); color: var(--text-3); margin-left: 4px; }
+
+  .hint { margin-top: 14px; font: 400 13px var(--font-ui); color: var(--text-2); }
+  .hint b { color: var(--green); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hdr">
+    <h2>Цены по дате · LHR → JFK</h2>
+    <div class="sub">14 days · economy</div>
+  </div>
+  <div class="legend">
+    <span class="low">Дёшево</span>
+    <span class="mid">Средне</span>
+    <span class="high">Дорого</span>
+    <span class="sel">Выбрано</span>
+  </div>
+
+  <div class="chart" id="chart"></div>
+
+  <div class="hint" id="hint"></div>
+
+  <div class="summary">
+    <div class="summary__cell">
+      <div class="summary__l">Cheapest in range</div>
+      <div class="summary__v" id="cheap">—</div>
+    </div>
+    <div class="summary__cell">
+      <div class="summary__l">Average</div>
+      <div class="summary__v" id="avg">—</div>
+    </div>
+    <div class="summary__cell">
+      <div class="summary__l">Selected</div>
+      <div class="summary__v" id="sel">—</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const startDate = new Date('2026-05-04');
+const PRICES = [612, 589, 418, 489, 524, 678, 734, 612, 589, 432, 489, 612, 689, 758];
+const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+const min = Math.min(...PRICES);
+const max = Math.max(...PRICES);
+const avg = Math.round(PRICES.reduce((s,p) => s + p, 0) / PRICES.length);
+const cheapestIdx = PRICES.indexOf(min);
+
+let selectedIdx = cheapestIdx;
+
+function bucket(p) {
+  const t1 = min + (max - min) * 0.34;
+  const t2 = min + (max - min) * 0.67;
+  if (p <= t1) return 'low';
+  if (p <= t2) return 'mid';
+  return 'high';
+}
+
+function fmtDate(i) {
+  const d = new Date(startDate);
+  d.setDate(d.getDate() + i);
+  return { dow: DOW[(d.getDay() + 6) % 7], day: d.getDate(), full: d.toDateString().slice(0,15) };
+}
+
+function render() {
+  const chart = document.getElementById('chart');
+  chart.innerHTML = '';
+  PRICES.forEach((p, i) => {
+    const b = bucket(p);
+    const heightPct = 25 + ((p - min) / (max - min || 1)) * 75; // 25–100% bar height
+    const date = fmtDate(i);
+    const el = document.createElement('div');
+    el.className = 'day is-' + b + (i === selectedIdx ? ' is-selected' : '') + (i === cheapestIdx ? ' is-cheapest' : '');
+    el.innerHTML = `
+      <div class="day__bar"><div class="day__bar-fill" style="height: ${heightPct}%"></div></div>
+      <div class="day__price">$${p}</div>
+      <div class="day__date">${date.dow} ${date.day}</div>`;
+    el.addEventListener('click', () => { selectedIdx = i; render(); });
+    chart.appendChild(el);
+  });
+
+  document.getElementById('cheap').innerHTML = `$${min}<small>· ${fmtDate(cheapestIdx).dow} ${fmtDate(cheapestIdx).day}</small>`;
+  document.getElementById('avg').innerHTML   = `$${avg}<small>/ day</small>`;
+  document.getElementById('sel').innerHTML   = `$${PRICES[selectedIdx]}<small>· ${fmtDate(selectedIdx).full}</small>`;
+
+  const sd = fmtDate(selectedIdx);
+  const sp = PRICES[selectedIdx];
+  const diff = sp - min;
+  document.getElementById('hint').innerHTML = diff === 0
+    ? `<b>${sd.dow} ${sd.day}</b> — самый дешёвый день в окне ($${sp}).`
+    : `На <b>${sd.dow} ${sd.day}</b> цена $${sp}. Если сдвинуть на <b>${fmtDate(cheapestIdx).dow} ${fmtDate(cheapestIdx).day}</b>, сэкономишь <b>$${diff}</b>.`;
+}
+
+render();
+</script>
+</body>
+</html>

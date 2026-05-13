@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Flight Finder · Route Map</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: var(--navy); font-family: var(--font-ui); color: #fff; }
+  #map { position: absolute; inset: 0; background: #0a1020; }
+  .overlay {
+    position: absolute; top: 24px; left: 24px; z-index: 500;
+    background: rgba(12, 20, 39, 0.82);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--r-lg);
+    padding: 18px 22px;
+    color: #fff;
+    max-width: 320px;
+  }
+  .overlay__eyebrow { font: 500 10px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; }
+  .overlay__title { font: 600 22px var(--font-ui); letter-spacing: -0.01em; margin: 0 0 6px; }
+  .overlay__sub { font: 400 13px/1.5 var(--font-ui); color: rgba(255,255,255,0.7); margin: 0 0 14px; }
+  .overlay__legend { display: flex; gap: 16px; font: 500 11px var(--font-mono); letter-spacing: 0.04em; color: rgba(255,255,255,0.7); }
+  .overlay__legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: 1px; margin-right: 6px; }
+  .overlay__legend .dot.is-hub { background: #6366f1; box-shadow: 0 0 0 4px rgba(99,102,241,0.25); }
+  .overlay__legend .dot.is-node { background: #fff; opacity: 0.85; }
+
+  .stats {
+    position: absolute; right: 24px; top: 24px; z-index: 500;
+    display: flex; gap: 10px;
+  }
+  .stat-pill {
+    background: rgba(12, 20, 39, 0.82);
+    backdrop-filter: blur(8px) saturate(140%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--r);
+    padding: 10px 14px;
+    color: #fff; min-width: 110px;
+  }
+  .stat-pill__l { font: 500 10px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; }
+  .stat-pill__v { font: 600 22px/1.1 var(--font-ui); letter-spacing: -0.01em; margin-top: 2px; }
+
+  /* Leaflet marker overrides */
+  .ff-node {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #ffffff; box-shadow: 0 0 0 4px rgba(255,255,255,0.18);
+  }
+  .ff-hub {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #6366f1; box-shadow: 0 0 0 8px rgba(99,102,241,0.25), 0 0 24px rgba(99,102,241,0.6);
+  }
+  .ff-label {
+    background: transparent; border: 0; box-shadow: none;
+    color: rgba(255,255,255,0.9);
+    font: 500 11px var(--font-mono); letter-spacing: 0.08em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+    pointer-events: none; white-space: nowrap;
+  }
+  .ff-tooltip {
+    background: rgba(12, 20, 39, 0.94) !important;
+    color: #fff !important; border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 8px !important; padding: 8px 12px !important;
+    font: 500 12px var(--font-ui) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .ff-tooltip::before { display: none; }
+  .ff-tooltip strong { font: 600 14px var(--font-ui); display: block; margin-bottom: 2px; letter-spacing: -0.01em; }
+  .ff-tooltip span { font: 500 10px var(--font-mono); letter-spacing: 0.12em; color: #94a3b8; text-transform: uppercase; }
+
+  .leaflet-control-attribution { background: rgba(12,20,39,0.6) !important; color: rgba(255,255,255,0.5) !important; }
+  .leaflet-control-attribution a { color: rgba(255,255,255,0.7) !important; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="overlay">
+  <div class="overlay__eyebrow">London Heathrow · LHR</div>
+  <h1 class="overlay__title">Direct routes</h1>
+  <p class="overlay__sub">14-day rolling window. Arc width scales by daily frequency.</p>
+  <div class="overlay__legend">
+    <span><span class="dot is-hub"></span>Hub</span>
+    <span><span class="dot is-node"></span>Destination</span>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat-pill"><div class="stat-pill__l">Destinations</div><div class="stat-pill__v">8</div></div>
+  <div class="stat-pill"><div class="stat-pill__l">Daily flights</div><div class="stat-pill__v">142</div></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const HUB = { iata: 'LHR', city: 'London',     lat: 51.470,  lng: -0.454 };
+const DEST = [
+  { iata: 'JFK', city: 'New York',    lat: 40.642, lng: -73.778, daily: 28 },
+  { iata: 'DXB', city: 'Dubai',       lat: 25.252, lng: 55.364,  daily: 16 },
+  { iata: 'NRT', city: 'Tokyo',       lat: 35.766, lng: 140.385, daily: 12 },
+  { iata: 'SYD', city: 'Sydney',      lat: -33.946, lng: 151.177, daily: 6  },
+  { iata: 'CDG', city: 'Paris',       lat: 49.012, lng: 2.550,   daily: 22 },
+  { iata: 'MIA', city: 'Miami',       lat: 25.795, lng: -80.290, daily: 8  },
+  { iata: 'SIN', city: 'Singapore',   lat: 1.359,  lng: 103.989, daily: 10 },
+  { iata: 'GRU', city: 'São Paulo',   lat: -23.435, lng: -46.473, daily: 4  },
+];
+
+const map = L.map('map', {
+  zoomControl: false, attributionControl: true,
+  worldCopyJump: true, minZoom: 2,
+}).setView([30, 5], 2.5);
+
+L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+  { subdomains: 'abcd', attribution: '© OpenStreetMap · Carto', maxZoom: 18 }
+).addTo(map);
+
+L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
+  { subdomains: 'abcd', opacity: 0.35, maxZoom: 18 }
+).addTo(map);
+
+// Great-circle arc between two lat/lng points (spherical-linear interpolation)
+function gcArc(a, b, n = 80) {
+  const φ1 = a.lat * Math.PI / 180, λ1 = a.lng * Math.PI / 180;
+  const φ2 = b.lat * Math.PI / 180, λ2 = b.lng * Math.PI / 180;
+  const x1 = Math.cos(φ1) * Math.cos(λ1), y1 = Math.cos(φ1) * Math.sin(λ1), z1 = Math.sin(φ1);
+  const x2 = Math.cos(φ2) * Math.cos(λ2), y2 = Math.cos(φ2) * Math.sin(λ2), z2 = Math.sin(φ2);
+  const d = Math.acos(x1*x2 + y1*y2 + z1*z2);
+  if (d === 0) return [[a.lat, a.lng]];
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const f = i / n;
+    const A = Math.sin((1 - f) * d) / Math.sin(d);
+    const B = Math.sin(f * d) / Math.sin(d);
+    const x = A*x1 + B*x2, y = A*y1 + B*y2, z = A*z1 + B*z2;
+    const lat = Math.atan2(z, Math.sqrt(x*x + y*y)) * 180 / Math.PI;
+    const lng = Math.atan2(y, x) * 180 / Math.PI;
+    pts.push([lat, lng]);
+  }
+  return pts;
+}
+
+// Draw arcs
+DEST.forEach(d => {
+  const w = Math.max(1.4, Math.min(3.6, d.daily / 8));
+  // Glow underlay
+  L.polyline(gcArc(HUB, d), { color: '#6366f1', weight: w + 6, opacity: 0.12, smoothFactor: 1.4 }).addTo(map);
+  L.polyline(gcArc(HUB, d), { color: '#6366f1', weight: w + 3, opacity: 0.22, smoothFactor: 1.4 }).addTo(map);
+  // Core stroke
+  L.polyline(gcArc(HUB, d), { color: '#a5b4fc', weight: w,     opacity: 0.95, smoothFactor: 1.4 }).addTo(map);
+});
+
+// Destination markers
+DEST.forEach(d => {
+  const icon = L.divIcon({ className: '', html: '<div class="ff-node"></div>', iconSize: [10,10], iconAnchor: [5,5] });
+  L.marker([d.lat, d.lng], { icon })
+    .bindTooltip(`<strong>${d.iata}</strong><span>${d.city} · ${d.daily}/day</span>`,
+      { className: 'ff-tooltip', direction: 'top', offset: [0, -8], opacity: 1 })
+    .addTo(map);
+
+  // City label
+  L.marker([d.lat, d.lng], {
+    icon: L.divIcon({ className: 'ff-label', html: d.iata, iconSize: [40, 14], iconAnchor: [-10, 6] }),
+    interactive: false,
+  }).addTo(map);
+});
+
+// Hub
+const hubIcon = L.divIcon({ className: '', html: '<div class="ff-hub"></div>', iconSize: [14,14], iconAnchor: [7,7] });
+L.marker([HUB.lat, HUB.lng], { icon: hubIcon })
+  .bindTooltip(`<strong>${HUB.iata}</strong><span>${HUB.city} · Hub</span>`,
+    { className: 'ff-tooltip', direction: 'top', offset: [0, -10], opacity: 1 })
+  .addTo(map);
+L.marker([HUB.lat, HUB.lng], {
+  icon: L.divIcon({ className: 'ff-label', html: HUB.iata, iconSize: [40,14], iconAnchor: [-12, 8] }),
+  interactive: false,
+}).addTo(map);
+</script>
+</body>
+</html>
