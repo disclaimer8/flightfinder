@@ -20,7 +20,7 @@
  * links, which the fallback additionally marks as noindex via a separate
  * layer in server/src/index.js).
  */
-const { getFamilyBySlug, getFamilyList } = require('../models/aircraftFamilies');
+const { getFamilyBySlug, getFamilyList, getFamilyByCode } = require('../models/aircraftFamilies');
 const { getVariantBySlug, getVariantsByFamilySlug } = require('../models/aircraftVariants');
 const openFlightsService = require('./openFlightsService');
 const aircraftRouteService = require('./aircraftRouteService');
@@ -492,14 +492,71 @@ function airlineMeta(iata) {
 }
 
 /**
+ * Filter-aware metadata for /map?airline=XX and/or ?aircraft=ICAO.
+ * Returns the static MAP object when no recognised filter params are present.
+ *
+ * noindex is applied for any filtered variant so Google doesn't crawl
+ * the combinatorial query-string space.
+ */
+function mapFilterMeta(searchParams) {
+  const airlineParam  = searchParams?.airline  ? String(searchParams.airline).trim()  : '';
+  const aircraftParam = searchParams?.aircraft ? String(searchParams.aircraft).trim() : '';
+
+  if (!airlineParam && !aircraftParam) return MAP;
+
+  // Resolve airline name from IATA code.
+  const airlineRecord = airlineParam
+    ? openFlightsService.getAirline(airlineParam)
+    : null;
+  const airlineName = airlineRecord?.name || airlineParam.toUpperCase() || '';
+
+  // Resolve aircraft family from ICAO type code.
+  // Strip trailing " family" from .name so "Airbus A320 family" → "Airbus A320".
+  const familyRecord = aircraftParam
+    ? getFamilyByCode(aircraftParam.toUpperCase())
+    : null;
+  const familyFullName = familyRecord
+    ? familyRecord.name.replace(/ family$/i, '').trim()
+    : '';
+  // For combined titles we only want the bare code (e.g. "A380"), not "Airbus A380".
+  const aircraftCode = aircraftParam.toUpperCase();
+
+  let title, description;
+
+  if (airlineName && familyFullName) {
+    // Combined: "British Airways A380 route map · FlightFinder"
+    // Use bare ICAO code so "Airbus" doesn't repeat after the airline name.
+    title       = `${airlineName} ${aircraftCode} route map · FlightFinder`;
+    description = `All routes flown by ${airlineName} on the ${familyFullName} in the last 90 days.`;
+  } else if (airlineName) {
+    // Airline only: "British Airways route map · FlightFinder"
+    title       = `${airlineName} route map · FlightFinder`;
+    description = `All routes flown by ${airlineName} in the last 90 days.`;
+  } else {
+    // Aircraft only: "Airbus A320 routes · FlightFinder"
+    const displayName = familyFullName || aircraftCode;
+    title       = `${displayName} routes · FlightFinder`;
+    description = `Routes flown by the ${displayName} worldwide in the last 90 days.`;
+  }
+
+  return {
+    ...MAP,
+    title,
+    description,
+    robots: 'noindex, follow',
+  };
+}
+
+/**
  * Resolve metadata for a given request path.
- * @param {string} pathname — URL pathname (no query)
+ * @param {string} pathname     — URL pathname (no query)
+ * @param {object} [searchParams] — parsed query-string object (req.query)
  * @returns {{title,description,canonical,h1,subtitle,robots}}
  */
-function resolve(pathname) {
+function resolve(pathname, searchParams) {
   if (!pathname || pathname === '/' || pathname === '') return HOME;
   if (pathname === '/by-aircraft' || pathname === '/by-aircraft/') return BY_AIRCRAFT;
-  if (pathname === '/map' || pathname === '/map/') return MAP;
+  if (pathname === '/map' || pathname === '/map/') return mapFilterMeta(searchParams);
   if (pathname === '/search' || pathname === '/search/') return SEARCH;
 
   const acAirlinesMatch = /^\/aircraft\/([^/?#]+)\/airlines\/?$/.exec(pathname);

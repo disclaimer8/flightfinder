@@ -331,7 +331,7 @@ if (!IS_DEV) {
   const seoContentCache = require('./services/seoContentCache');
 
   const spaFallback = async (req, res) => {
-    const meta = seoMeta.resolve(req.path);
+    const meta = seoMeta.resolve(req.path, req.query);
 
     if (meta.redirectFromLegacy) {
       return res.redirect(301, meta.redirectFromLegacy);
