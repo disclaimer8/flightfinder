@@ -65,15 +65,19 @@ export default function SiteHeader({ variant, scrolled, onSignInClick, onSignUpC
         </Link>
 
         <nav className="site-header-nav" aria-label="Primary">
-          {navItems.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`site-header-link${isActive(location.pathname, searchParams, item) ? ' site-header-link--active' : ''}`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map(item => {
+            const active = isActive(location.pathname, searchParams, item);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                aria-current={active ? 'page' : undefined}
+                className={`site-header-link${active ? ' site-header-link--active' : ''}`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="site-header-actions">
@@ -121,9 +125,18 @@ export default function SiteHeader({ variant, scrolled, onSignInClick, onSignUpC
             >×</button>
           </div>
           <nav className="site-header-drawer-nav" aria-label="Mobile">
-            {navItems.map(item => (
-              <Link key={item.path} to={item.path}>{item.label}</Link>
-            ))}
+            {navItems.map(item => {
+              const active = isActive(location.pathname, searchParams, item);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
             {user ? (
               <>
                 <Link to="/trips">My Trips</Link>
