@@ -334,8 +334,11 @@ function distinctAirlinesWithCounts(sinceMs) {
     ORDER BY count DESC
   `).all(since);
 
+  // observed_routes.airline_iata column actually stores ICAO codes despite
+  // its name (e.g. 'DLH' not 'LH', 'AAL' not 'AA'). See memory
+  // feedback_observed-routes-airline-column-icao.md. Lookup via ICAO.
   return rows.map((row) => {
-    const airline = openFlightsService.getAirline(row.airline_iata);
+    const airline = openFlightsService.getAirlineByIcao(row.airline_iata);
     return {
       iata: row.airline_iata,
       name: airline?.name || row.airline_iata,

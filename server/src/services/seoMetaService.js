@@ -504,9 +504,13 @@ function mapFilterMeta(searchParams) {
 
   if (!airlineParam && !aircraftParam) return MAP;
 
-  // Resolve airline name from IATA code.
+  // Resolve airline name. /map filter URLs carry ICAO codes (e.g. 'DLH')
+  // because observed_routes.airline_iata is actually ICAO (see memory
+  // feedback_observed-routes-airline-column-icao.md). Try ICAO first, then
+  // fall back to IATA for any legacy URLs that may still carry IATA codes.
   const airlineRecord = airlineParam
-    ? openFlightsService.getAirline(airlineParam)
+    ? (openFlightsService.getAirlineByIcao(airlineParam)
+       || openFlightsService.getAirline(airlineParam))
     : null;
   const airlineName = airlineRecord?.name || airlineParam.toUpperCase() || '';
 

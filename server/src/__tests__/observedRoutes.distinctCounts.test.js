@@ -51,14 +51,19 @@ function insertRow(dep, arr, aircraft, airline, seenAt = now - day) {
 beforeEach(() => {
   db.exec(`DELETE FROM observed_routes WHERE source = '${SOURCE}'`);
   jest.clearAllMocks();
-  // Default airline name lookup
-  openFlightsService.getAirline.mockImplementation((iata) => {
+  // Default airline name lookup. observed_routes.airline_iata column actually
+  // stores ICAO codes (see memory feedback_observed-routes-airline-column-icao),
+  // so distinctAirlinesWithCounts now resolves via getAirlineByIcao. We mock
+  // both functions so callers that fall back to getAirline still get sane
+  // values, but the actual call path uses getAirlineByIcao.
+  openFlightsService.getAirlineByIcao.mockImplementation((icao) => {
     const airlines = {
-      BA: { name: 'British Airways', iata: 'BA' },
-      AA: { name: 'American Airlines', iata: 'AA' },
+      BA: { name: 'British Airways', icao: 'BA' },
+      AA: { name: 'American Airlines', icao: 'AA' },
     };
-    return airlines[iata?.toUpperCase()] || null;
+    return airlines[icao?.toUpperCase()] || null;
   });
+  openFlightsService.getAirline.mockImplementation(() => null);
   // getFamilyByCode mock is set at the top of the file
 });
 
@@ -94,8 +99,9 @@ test('distinctAirlinesWithCounts: returns airlines sorted by count DESC with res
 });
 
 test('distinctAirlinesWithCounts: unknown airline iata falls back to raw iata as name', () => {
-  // 'ZZ' is not in the mock airlinesMap
+  // 'ZZ' is not in the mock airlinesMap (neither ICAO nor IATA)
   insertRow('LHR', 'SYD', 'B789', 'ZZ', now - 1 * day);
+  openFlightsService.getAirlineByIcao.mockImplementation(() => null);
   openFlightsService.getAirline.mockImplementation(() => null);
 
   const result = distinctAirlinesWithCounts(now - 30 * day);
