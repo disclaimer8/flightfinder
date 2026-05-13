@@ -25,6 +25,7 @@ const { getVariantBySlug, getVariantsByFamilySlug } = require('../models/aircraf
 const openFlightsService = require('./openFlightsService');
 const aircraftRouteService = require('./aircraftRouteService');
 const { AIRCRAFT_FAQ, ROUTE_FAQ, interpolate } = require('../content/landingFaq');
+const { getEnrichmentForSlug } = require('./aircraftLandingEnrichment');
 const safety = require('../models/safetyEvents');
 const db = require('../models/db');
 const { colorBand, topNotable } = require('./safetyRating');
@@ -939,8 +940,11 @@ function structuredData(meta) {
     // FAQPage mirrors the visible FAQ block on the landing page — must
     // stay in sync with client/src/content/landingCopy.js so Google
     // doesn't flag it.
+    // Body builder (seoContentBuilders.bAircraft) emits a richer FAQPage
+    // for enriched slugs; suppress the generic head version here to avoid
+    // duplicate-mainEntity markup that can trigger a manual action.
     const faq = AIRCRAFT_FAQ[meta.slug];
-    if (Array.isArray(faq) && faq.length > 0) {
+    if (Array.isArray(faq) && faq.length > 0 && !getEnrichmentForSlug(meta.slug)) {
       graph.push({
         '@type': 'FAQPage',
         mainEntity: faq.map((qa) => ({

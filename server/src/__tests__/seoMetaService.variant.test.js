@@ -157,6 +157,39 @@ describe('structuredData — BreadcrumbList for indexable kinds', () => {
   });
 });
 
+describe('structuredData — FAQPage suppression for enriched slugs', () => {
+  function asJson(sd) {
+    return typeof sd === 'string' ? JSON.parse(sd) : sd;
+  }
+  function faqPages(sd) {
+    const json = asJson(sd);
+    return (json['@graph'] || [json]).filter((x) => x['@type'] === 'FAQPage');
+  }
+
+  it('boeing-737 (enriched): structuredData emits zero FAQPage in head block', () => {
+    const meta = seoMeta.resolve('/aircraft/boeing-737');
+    const sd = seoMeta.structuredData(meta);
+    expect(faqPages(sd)).toHaveLength(0);
+  });
+
+  it('boeing-787 (unenriched): structuredData still emits the head FAQPage', () => {
+    // boeing-787 has AIRCRAFT_FAQ entries but no enrichment — head FAQ must be preserved.
+    const meta = seoMeta.resolve('/aircraft/boeing-787');
+    const sd = seoMeta.structuredData(meta);
+    // boeing-787 may or may not have AIRCRAFT_FAQ entries; the important thing
+    // is that the guard does NOT suppress it (no enrichment exists for this slug).
+    // If the FAQ array is present and non-empty, it should appear; if it's absent
+    // (no AIRCRAFT_FAQ entry) the count is 0 — either is fine, just not suppressed by guard.
+    const { AIRCRAFT_FAQ } = require('../content/landingFaq');
+    const hasFaq = Array.isArray(AIRCRAFT_FAQ['boeing-787']) && AIRCRAFT_FAQ['boeing-787'].length > 0;
+    if (hasFaq) {
+      expect(faqPages(sd)).toHaveLength(1);
+    } else {
+      expect(faqPages(sd)).toHaveLength(0);
+    }
+  });
+});
+
 describe('inject() — bake injection survives CSS rule in template', () => {
   it('injects bake section even when template contains CSS selector matching the attribute', () => {
     // Template includes the production CSS rule that hides bake from JS users.

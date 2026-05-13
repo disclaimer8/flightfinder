@@ -1,6 +1,15 @@
 const { getFamilyList, getFamilyByCode, slugify } = require('../models/aircraftFamilies');
 const { esc } = require('./seoMetaService');
 const { applyChrome } = require('./seoChrome');
+const {
+  getEnrichmentForSlug,
+  renderVariantsTable,
+  renderNotableIncidents,
+  renderVariantCallout,
+  renderEnhancedFAQ,
+  buildVariantsItemListLD,
+  buildFAQPageLD,
+} = require('./aircraftLandingEnrichment');
 
 /**
  * Per-kind HTML emitters for the SEO content cache. Each builder returns
@@ -208,16 +217,63 @@ function bAircraft(meta, db) {
   const routeLabels = topRoutes.map((r) => `${esc(r.from)}-${esc(r.to)}`).join(', ');
   const label = meta.aircraftLabel || meta.slug || 'this aircraft';
 
+  // 1. Existing "About" block (operator count, top routes)
   const factsBlock = haveFacts ? `
     <p>The ${esc(label)} is operated by ${esc(facts.airlineCount)} airline${facts.airlineCount === 1 ? '' : 's'} across ${esc(facts.routeCount)} city pair${facts.routeCount === 1 ? '' : 's'} in our observed-flights dataset (last 14 days).</p>
     ${routeLabels ? `<p>Top routes: ${routeLabels}.</p>` : ''}
   `.trim() : '';
 
+  // 5. Existing safety / variants / FR24 blocks (unchanged)
   const safetyBlock = _renderSafetyBand(meta) + _renderTopEvents(meta.topEvents);
   const variantsBlock = _renderVariantsList(meta.variants);
   const fr24Block = _renderFr24Stats(meta.fr24Stats, { context: 'aircraft' });
 
-  return [factsBlock, safetyBlock, variantsBlock, fr24Block].filter(Boolean).join('\n').trim();
+  // Enrichment path — only populated for slugs present in aircraftLandingContent.json
+  const enriched = getEnrichmentForSlug(meta.slug);
+
+  if (!enriched) {
+    // No enrichment: return existing template output unchanged.
+    return [factsBlock, safetyBlock, variantsBlock, fr24Block].filter(Boolean).join('\n').trim();
+  }
+
+  // 2. NEW: Variants table
+  const variantsTableBlock = renderVariantsTable(enriched.variants);
+  // 3. NEW: Notable accidents
+  const incidentsBlock = renderNotableIncidents(enriched.notableIncidents);
+  // 4. NEW: Variant callout
+  const calloutBlock = renderVariantCallout(enriched.variantCallout);
+  // 6. NEW: Enhanced FAQ (replaces template FAQ for enriched slugs)
+  const faqBlock = renderEnhancedFAQ(enriched.faq);
+
+  // Inline JSON-LD: variants ItemList + enhanced FAQPage.
+  // Embedded in body (inside data-seo-bake section) so tests can parse it
+  // from the build() output without needing inject(). The seoMetaService
+  // also emits its own FAQPage in <head> — for enriched slugs we override
+  // with the richer 6-Q set here; Google will use the most specific signal.
+  const ldGraph = [];
+  const variantsLD = buildVariantsItemListLD(enriched.variants, meta.slug);
+  if (variantsLD) ldGraph.push(variantsLD);
+  const faqLD = buildFAQPageLD(enriched.faq);
+  if (faqLD) ldGraph.push(faqLD);
+
+  const jsonLdBlock = ldGraph.length > 0
+    ? `<script type="application/ld+json">${JSON.stringify({
+        '@context': 'https://schema.org',
+        '@graph': ldGraph,
+      }).replace(/<\/(script)/gi, '<\\/$1')}</script>`
+    : '';
+
+  return [
+    factsBlock,
+    variantsTableBlock,
+    incidentsBlock,
+    calloutBlock,
+    safetyBlock,
+    variantsBlock,
+    fr24Block,
+    faqBlock,
+    jsonLdBlock,
+  ].filter(Boolean).join('\n').trim();
 }
 
 function bAircraftAirlines(meta, db) {
