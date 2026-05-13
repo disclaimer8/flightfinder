@@ -439,6 +439,7 @@ if (require.main === module) {
   //   ourAirports/safety/faa/dbMaintenance — periodic refresh/maintenance
   let stopAdsbLolWorker, stopDelayIngest, stopFleetBootstrap, stopTripAlertWorker;
   let stopOurAirportsRefresh, stopSafetyIngest, stopFaaRegistryRefresh, stopDbMaintenance;
+  let stopAircrashSidecarHealth;
   if (IS_LEADER) {
     const { startAdsbLolWorker }            = require('./workers/adsblolWorker');
     const { startDelayIngestionWorker }     = require('./workers/delayIngestionWorker');
@@ -448,6 +449,7 @@ if (require.main === module) {
     const { startSafetyIngestionWorker }    = require('./workers/safetyIngestionWorker');
     const { startFaaRegistryRefreshWorker } = require('./workers/faaRegistryRefreshWorker');
     const { startDbMaintenanceWorker }      = require('./workers/dbMaintenanceWorker');
+    const { startAircrashSidecarHealthWorker } = require('./workers/aircrashSidecarHealthWorker');
     stopAdsbLolWorker      = startAdsbLolWorker();
     stopDelayIngest        = startDelayIngestionWorker();
     stopFleetBootstrap     = startFleetBootstrapWorker();
@@ -456,6 +458,7 @@ if (require.main === module) {
     stopSafetyIngest       = startSafetyIngestionWorker();
     stopFaaRegistryRefresh = startFaaRegistryRefreshWorker();
     stopDbMaintenance      = startDbMaintenanceWorker();
+    stopAircrashSidecarHealth = startAircrashSidecarHealthWorker();
     if (process.env.NODE_ENV !== 'test') {
       try {
         require('./workers/ntsbDumpWorker').start();
@@ -508,6 +511,7 @@ if (require.main === module) {
     if (stopSafetyIngest)       { try { stopSafetyIngest();       } catch { /* noop */ } }
     if (stopFaaRegistryRefresh) { try { stopFaaRegistryRefresh(); } catch { /* noop */ } }
     if (stopDbMaintenance)      { try { stopDbMaintenance();      } catch { /* noop */ } }
+    if (stopAircrashSidecarHealth) { try { stopAircrashSidecarHealth(); } catch { /* noop */ } }
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT',  shutdown);
