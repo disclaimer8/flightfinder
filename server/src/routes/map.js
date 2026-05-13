@@ -3,12 +3,17 @@
 const express = require('express');
 const router  = express.Router();
 const ctrl    = require('../controllers/mapController');
+const mapRoutesCtrl = require('../controllers/mapRoutesController');
 
 // GET /api/map/airports        — compact airport list for route map
 router.get('/airports',    ctrl.getAirports);
 
-// GET /api/map/routes          — top destinations from an origin
-router.get('/routes',      ctrl.getRoutes);
+// GET /api/map/routes          — aggregated dep-arr pairs for the interactive map
+//                                ?airline=IATA (≤4 chars)&aircraft=ICAO (≤6 chars), 90d window
+router.get('/routes',      mapRoutesCtrl.getRoutes);
+
+// GET /api/map/filters         — top-200 airlines + all aircraft types for typeaheads
+router.get('/filters',     mapRoutesCtrl.getFilters);
 
 // GET /api/map/hub-network     — undirected edges between top-200 hubs (baseline graph)
 router.get('/hub-network', ctrl.getHubNetwork);

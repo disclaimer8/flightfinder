@@ -12,7 +12,7 @@
  */
 
 const { db } = require('./db');
-const { getFamilyBySlug, getFamilyList } = require('./aircraftFamilies');
+const { getFamilyBySlug, getFamilyList, getFamilyByCode } = require('./aircraftFamilies');
 const openFlightsService = require('../services/openFlightsService');
 
 /**
@@ -315,12 +315,83 @@ function aggregateForMap({ airline, aircraft, sinceMs } = {}) {
   return result;
 }
 
+/**
+ * Top airlines observed in the time window, enriched with human-readable name.
+ *
+ * SELECT airline_iata, COUNT(*) AS count
+ * FROM observed_routes
+ * WHERE seen_at > ? AND airline_iata IS NOT NULL
+ * GROUP BY airline_iata ORDER BY count DESC
+ *
+ * Name lookup via openFlightsService.getAirline(iata)?.name; falls back to
+ * the raw IATA code when the lookup misses.
+ *
+ * @param {number} sinceMs - epoch ms lower bound for seen_at
+ * @returns {Array<{iata: string, name: string, count: number}>}
+ */
+function distinctAirlinesWithCounts(sinceMs) {
+  const since = Number(sinceMs) || 0;
+  const rows = db.prepare(`
+    SELECT airline_iata, COUNT(*) AS count
+    FROM observed_routes
+    WHERE seen_at > ? AND airline_iata IS NOT NULL
+    GROUP BY airline_iata
+    ORDER BY count DESC
+  `).all(since);
+
+  return rows.map((row) => {
+    const airline = openFlightsService.getAirline(row.airline_iata);
+    return {
+      iata: row.airline_iata,
+      name: airline?.name || row.airline_iata,
+      count: row.count,
+    };
+  });
+}
+
+/**
+ * All aircraft types observed in the time window, enriched with a human-
+ * readable label from aircraftFamilies.
+ *
+ * SELECT aircraft_icao, COUNT(*) AS count
+ * FROM observed_routes
+ * WHERE seen_at > ? AND aircraft_icao IS NOT NULL
+ * GROUP BY aircraft_icao ORDER BY count DESC
+ *
+ * Label lookup via getFamilyByCode(icao)?.label; falls back to the raw ICAO
+ * code when unknown.
+ *
+ * @param {number} sinceMs - epoch ms lower bound for seen_at
+ * @returns {Array<{icao: string, label: string, count: number}>}
+ */
+function distinctAircraftWithCounts(sinceMs) {
+  const since = Number(sinceMs) || 0;
+  const rows = db.prepare(`
+    SELECT aircraft_icao, COUNT(*) AS count
+    FROM observed_routes
+    WHERE seen_at > ? AND aircraft_icao IS NOT NULL
+    GROUP BY aircraft_icao
+    ORDER BY count DESC
+  `).all(since);
+
+  return rows.map((row) => {
+    const family = getFamilyByCode(row.aircraft_icao);
+    return {
+      icao: row.aircraft_icao,
+      label: family?.label || row.aircraft_icao,
+      count: row.count,
+    };
+  });
+}
+
 module.exports = {
   countComboByPairAndFamily,
   getByPairAndFamily,
   listQualifyingCombos,
   topFamiliesForPair,
   aggregateForMap,
+  distinctAirlinesWithCounts,
+  distinctAircraftWithCounts,
 
   getRowsByAircraftCodes(codes, sinceMs) {
     if (!Array.isArray(codes) || codes.length === 0) return [];
