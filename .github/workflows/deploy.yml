@@ -231,11 +231,14 @@ jobs:
             if [ ! -f "$LIVE" ]; then
               echo "[deploy] first-deploy: seeding accidents.db from repo"
               cp "$SEED" "$LIVE"
-            elif ! cmp -s "$SEED" "$LIVE" 2>/dev/null && [ "$(sha256sum < "$SEED")" != "$(sha256sum < "$LIVE")" ]; then
-              echo "[deploy] seed accidents.db hash changed — replacing"
-              cp "$SEED" "$LIVE.new"
-              mv -f "$LIVE.new" "$LIVE"
+            else
+              echo "[deploy] accidents.db live file present — leaving alone (manual upload + canonical migration is authoritative; see reference_aircrash-db-upload-recipe)"
             fi
+            # Note: the previous "seed-hash-changed -> replace live" branch was
+            # removed 2026-05-13 because it silently destroyed every manual
+            # upload + migrate of accidents.db on the next deploy. Live state
+            # is now authoritative once seeded; the seed only matters for
+            # disaster recovery (data/ wiped).
             cd /root/flightfinder/server
             # pngquant is needed by client/scripts/optimize-images.mjs (postbuild
             # hook). Install idempotently; apt-get is fast when already present.
