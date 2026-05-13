@@ -47,8 +47,12 @@ function getStmts() {
       FROM accidents
       WHERE source_url LIKE '%carol.ntsb.gov/event/%'
     `),
+    // Selects normalized_date so the AirCrash adapter can produce a valid
+    // occurred_at epoch; without it, related-event lists render as
+    // 1970-01-01 in the UI because parseDateToEpoch sees undefined.
     byAircraft: d.prepare(`
-      SELECT id, date, aircraft_model, operator, location
+      SELECT id, date, normalized_date, aircraft_model, operator, fatalities,
+             location, source_url
       FROM accidents
       WHERE LOWER(aircraft_model) LIKE '%' || LOWER(?) || '%' AND id != ?
       ORDER BY
@@ -58,7 +62,8 @@ function getStmts() {
       LIMIT 5
     `),
     byOperator: d.prepare(`
-      SELECT id, date, aircraft_model, operator, location
+      SELECT id, date, normalized_date, aircraft_model, operator, fatalities,
+             location, source_url
       FROM accidents
       WHERE operator = ? AND id != ?
       ORDER BY

@@ -5,13 +5,18 @@ import { loadFamilies, findFamilySlugForModel } from '../../utils/aircraftFamili
 import './SafetyEventDetail.css';
 
 function RelatedItem({ ev }) {
+  // occurredAt is null for AirCrash rows whose normalized_date is partial
+  // ('xx Sep 2012') — render a dash rather than the 1970-01-01 epoch zero.
+  const dateLabel = Number.isFinite(ev.occurredAt)
+    ? new Date(ev.occurredAt).toISOString().slice(0, 10)
+    : '—';
   return (
     <li>
       <Link to={`/safety/events/${ev.slug || ev.id}`}>
         <span className={`safety-badge safety-badge--${ev.severity}`}>{ev.severityLabel}</span>
-        <span>{new Date(ev.occurredAt).toISOString().slice(0, 10)}</span>
+        <span>{dateLabel}</span>
         <span>{ev.operator?.name || '—'}</span>
-        <span>{ev.location?.country || '—'}</span>
+        <span>{ev.location?.country || ev.location?.text || '—'}</span>
       </Link>
     </li>
   );
@@ -100,7 +105,7 @@ export default function SafetyEventDetail() {
         <div>
           <dt>Aircraft</dt>
           <dd>
-            {dash(event.aircraft.icaoType)}
+            {dash(event.aircraft.icaoType || event.aircraft.modelText)}
             {familySlug && (
               <Link to={`/aircraft/${familySlug}`} className="safety-detail__crosslink">
                 View aircraft history →
@@ -121,7 +126,7 @@ export default function SafetyEventDetail() {
         <div><dt>Fatalities</dt><dd>{event.fatalities}</dd></div>
         <div><dt>Injuries</dt><dd>{event.injuries}</dd></div>
         <div><dt>Hull loss</dt><dd>{event.hullLoss ? 'Yes' : 'No'}</dd></div>
-        <div><dt>Country</dt><dd>{dash(event.location.country)}</dd></div>
+        <div><dt>Location</dt><dd>{dash(event.location.country || event.location.text)}</dd></div>
       </dl>
 
       {event.narrative && (
@@ -143,7 +148,7 @@ export default function SafetyEventDetail() {
           {related.sameAircraftType?.length > 0 && (
             <section className="safety-detail__related">
               <h2 className="eyebrow eyebrow--strong">
-                Other events on the {event.aircraft.icaoType}
+                Other events on the {event.aircraft.icaoType || event.aircraft.modelText || 'same type'}
               </h2>
               <ul className="safety-detail__related-list">
                 {related.sameAircraftType.map((e) => (
