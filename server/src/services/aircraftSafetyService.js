@@ -245,6 +245,15 @@ function getMergedEventsForFamily(opts) {
   return out;
 }
 
+// Count merged events (both sources) that fall within the given sinceMs window.
+function countMergedForFamily({ icaoList, familyName, sinceMs }) {
+  // limit:500 = the internal cap of getMergedEventsForFamily; 90d window for any family fits well under this
+  const events = getMergedEventsForFamily({ icaoList, familyName, limit: 500 });
+  return events.reduce((n, ev) => (
+    typeof ev.occurred_at === 'number' && ev.occurred_at >= sinceMs ? n + 1 : n
+  ), 0);
+}
+
 module.exports = {
   expandFamilyPatterns,
   parseFatalities,
@@ -252,4 +261,5 @@ module.exports = {
   adaptAccidentToEvent,
   dedupe,
   getMergedEventsForFamily,
+  countMergedForFamily,
 };

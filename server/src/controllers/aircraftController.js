@@ -2,9 +2,10 @@ const aircraftData = require('../models/aircraftData');
 const { resolveFamily, slugify, families: famDict, getFamilyList } = require('../models/aircraftFamilies');
 const openFlights  = require('../services/openFlightsService');
 const geocoding    = require('../services/geocodingService');
-const cacheService = require('../services/cacheService');
-const db           = require('../models/db');
-const safety       = require('../models/safetyEvents');
+const cacheService        = require('../services/cacheService');
+const db                  = require('../models/db');
+const safety              = require('../models/safetyEvents');
+const aircraftSafetyService = require('../services/aircraftSafetyService');
 
 exports.getAllAircraft = (req, res) => {
   const aircraft = Object.entries(aircraftData).map(([code, data]) => ({
@@ -207,7 +208,7 @@ exports.getIndexStats = (_req, res) => {
 
       const routeCount     = db.countRoutesByAircraft(codes, sinceMs90d);
       const operatorCount  = db.countOperatorsByAircraft(codes, sinceMs90d);
-      const safetyCount90d = safety.countByAircraftCodes(codes, sinceMs90d);
+      const safetyCount90d = aircraftSafetyService.countMergedForFamily({ icaoList: codes, familyName: fam.label, sinceMs: sinceMs90d });
       const routes14d      = db.countRoutesByAircraft(codes, sinceMs14d);
 
       stats[fam.slug] = { routeCount, operatorCount, safetyCount90d };

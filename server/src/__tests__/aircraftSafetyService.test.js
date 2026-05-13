@@ -274,3 +274,58 @@ describe('getMergedEventsForFamily', () => {
     expect(out[0].fatalities).toBe(260);    // higher-fatality version kept
   });
 });
+
+describe('countMergedForFamily', () => {
+  const sinceMs = Date.parse('2026-01-01T00:00:00Z');
+
+  test('empty inputs → 0', () => {
+    const count = svc.countMergedForFamily({ icaoList: [], familyName: '', sinceMs });
+    expect(count).toBe(0);
+  });
+
+  test('filters out events older than sinceMs', () => {
+    safetyEvents.getByAircraftCodes.mockReturnValue([
+      { id: 1, occurred_at: Date.parse('2025-06-12T00:00:00Z'), fatalities: 260, severity: 'fatal', hull_loss: 1 },
+    ]);
+    const count = svc.countMergedForFamily({ icaoList: ['B789'], familyName: 'Boeing 787', sinceMs });
+    expect(count).toBe(0);
+  });
+
+  test('counts events at or newer than sinceMs', () => {
+    const tNew = Date.parse('2026-02-01T00:00:00Z');
+    const tOld = Date.parse('2025-12-31T00:00:00Z');
+    safetyEvents.getByAircraftCodes.mockReturnValue([
+      { id: 1, occurred_at: tNew, fatalities: 5, severity: 'fatal',    hull_loss: 1 },
+      { id: 2, occurred_at: tOld, fatalities: 0, severity: 'incident', hull_loss: 0 },
+    ]);
+    const count = svc.countMergedForFamily({ icaoList: ['B789'], familyName: 'Boeing 787', sinceMs });
+    expect(count).toBe(1);
+  });
+
+  test('counts events exactly at sinceMs boundary', () => {
+    safetyEvents.getByAircraftCodes.mockReturnValue([
+      { id: 1, occurred_at: sinceMs, fatalities: 0, severity: 'incident', hull_loss: 0 },
+    ]);
+    const count = svc.countMergedForFamily({ icaoList: ['B789'], familyName: 'Boeing 787', sinceMs });
+    expect(count).toBe(1);
+  });
+
+  test('events with null occurred_at are not counted', () => {
+    safetyEvents.getByAircraftCodes.mockReturnValue([
+      { id: 1, occurred_at: null, fatalities: 5, severity: 'fatal', hull_loss: 1 },
+    ]);
+    const count = svc.countMergedForFamily({ icaoList: ['B789'], familyName: 'Boeing 787', sinceMs });
+    expect(count).toBe(0);
+  });
+
+  test('sidecar AirCrash row inside 90d window is included in count', () => {
+    sidecar.findAccidentsByFamilyPatterns.mockReturnValue([
+      { id: 1, normalized_date: '2026-05-01', date: '2026-05-01', aircraft_model: 'Boeing 737-800', operator: 'Test Air', fatalities: '0', location: 'Test', source_url: 'https://example.com/1', lat: 0, lon: 0 },
+    ]);
+    const count = svc.countMergedForFamily({
+      icaoList: [], familyName: 'Boeing 737 family',
+      sinceMs: Date.parse('2026-02-01T00:00:00Z'),
+    });
+    expect(count).toBeGreaterThanOrEqual(1);
+  });
+});
