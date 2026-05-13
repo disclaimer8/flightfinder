@@ -32,6 +32,7 @@ import re
 import sqlite3
 import sys
 from collections import defaultdict
+from urllib.parse import urlparse
 
 _DIGIT_RE = re.compile(r"\d+")
 _LEADING_DIGITS = re.compile(r'^\s*(\d+)')
@@ -67,10 +68,17 @@ def _score(row: dict) -> int:
     op = row.get("operator_canonical") or ""
     if op.strip():
         s += 10
+    # Hostname-based check (not substring) so a URL like
+    # http://attacker.com/?ref=aviation-safety.net doesn't false-match.
+    # urlparse returns '' for unparseable input, which is also safe.
     url = row.get("source_url") or ""
-    if "aviation-safety.net" in url:
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except (ValueError, TypeError):
+        host = ""
+    if host == "aviation-safety.net" or host.endswith(".aviation-safety.net"):
         s += 5
-    elif "carol.ntsb.gov" in url:
+    elif host == "carol.ntsb.gov" or host.endswith(".carol.ntsb.gov"):
         s += 2
     lat = row.get("lat")
     if lat is not None and lat != 0:
