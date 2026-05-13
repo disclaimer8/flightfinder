@@ -10,8 +10,12 @@
 // ── Module-level mocks ────────────────────────────────────────────────────────
 
 jest.mock('../services/airlineAircraftService', () => ({
-  getCombo:              jest.fn(),
-  listValidCombinations: jest.fn(),
+  getCombo:                  jest.fn(),
+  listValidCombinations:     jest.fn(),
+  getTopAircraftForAirline:  jest.fn(),
+  buildValidComboSet:        jest.fn((combos) =>
+    new Set((combos || []).map(c => `${c.iata.toLowerCase()}:${c.icao_aircraft.toLowerCase()}`))
+  ),
 }));
 
 // Minimal openFlightsService stub (seoContentBuilders may indirectly load it
@@ -269,5 +273,132 @@ describe('enumerateAirlineAircraftMatrix — sitemap smoke', () => {
       expect(e.changefreq).toBe('weekly');
       expect(e.lastmod).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
+  });
+});
+
+// ── Test 6: bAircraftAirlines — matrix-aware operator links ──────────────────
+//
+// bAircraftAirlines renders <a href="/airline/{iata}/aircraft/{icao}"> for operators
+// that have a valid matrix combo, and plain text for operators that do not.
+
+const openFlightsService = require('../services/openFlightsService');
+
+describe('bAircraftAirlines — matrix-aware operator links', () => {
+  // Fake db stub: getAircraftOperators returns two operators stored as ICAO codes.
+  const fakeDb = {
+    getAircraftOperators: jest.fn().mockReturnValue([
+      { airline: 'BAW', count: 42 }, // BA — has matrix page
+      { airline: 'RYR', count: 15 }, // FR — no matrix page
+    ]),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    fakeDb.getAircraftOperators.mockReturnValue([
+      { airline: 'BAW', count: 42 },
+      { airline: 'RYR', count: 15 },
+    ]);
+
+    // BA has a matrix page for B738; FR does not.
+    airlineAircraftService.listValidCombinations.mockReturnValue([
+      { iata: 'BA', icao_aircraft: 'B738', n_pairs: 10 },
+    ]);
+
+    // Resolve ICAO → airline record
+    openFlightsService.getAirlineByIcao.mockImplementation((icao) => {
+      if (icao === 'BAW') return { iata: 'BA', name: 'British Airways', icao: 'BAW' };
+      if (icao === 'RYR') return { iata: 'FR', name: 'Ryanair', icao: 'RYR' };
+      return null;
+    });
+  });
+
+  test('/aircraft/boeing-737 HTML contains anchor to /airline/ba/aircraft/b738 for BA', () => {
+    const html = builders.build({
+      kind: 'aircraft-airlines',
+      slug: 'boeing-737',
+      aircraftLabel: 'Boeing 737',
+      icaoList: ['B738'],
+    }, fakeDb);
+
+    expect(html).toMatch(/<a href="\/airline\/ba\/aircraft\/b738"[^>]*>British Airways<\/a>/);
+  });
+
+  test('operator without matrix page (Ryanair) renders as plain text — no anchor', () => {
+    const html = builders.build({
+      kind: 'aircraft-airlines',
+      slug: 'boeing-737',
+      aircraftLabel: 'Boeing 737',
+      icaoList: ['B738'],
+    }, fakeDb);
+
+    // Ryanair has no matrix page — must not be wrapped in <a>
+    expect(html).not.toMatch(/<a [^>]*>Ryanair<\/a>/);
+    // But the name must still appear as plain text in the output
+    expect(html).toMatch(/Ryanair/);
+  });
+
+  test('family with multiple ICAOs links whichever ICAO has a valid combo', () => {
+    // Suppose B77W is valid for BA but B772 is not
+    airlineAircraftService.listValidCombinations.mockReturnValue([
+      { iata: 'BA', icao_aircraft: 'B77W', n_pairs: 8 },
+    ]);
+
+    const html = builders.build({
+      kind: 'aircraft-airlines',
+      slug: 'boeing-777',
+      aircraftLabel: 'Boeing 777',
+      icaoList: ['B772', 'B77W'],
+    }, fakeDb);
+
+    expect(html).toMatch(/href="\/airline\/ba\/aircraft\/b77w"/);
+  });
+});
+
+// ── Test 7: bAirline — "Top aircraft flown" section ─────────────────────────
+//
+// bAirline renders a "Top aircraft flown by {airline}" section with matrix-aware
+// links for combos that exist, and plain text for those that don't.
+
+describe('bAirline — Top aircraft flown section', () => {
+  // Mock amadeusAnalyticsService to avoid network calls.
+  beforeAll(() => {
+    jest.mock('../services/amadeusAnalyticsService', () => ({
+      getAirlineRoutes:            jest.fn().mockResolvedValue([]),
+      getAirportDirectDestinations: jest.fn().mockResolvedValue([]),
+    }));
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // getTopAircraftForAirline returns B738 (valid combo) and A320 (no combo).
+    airlineAircraftService.getTopAircraftForAirline.mockReturnValue([
+      { icao_aircraft: 'B738', name: 'Boeing 737', n_pairs: 12 },
+      { icao_aircraft: 'A320', name: 'Airbus A320', n_pairs: 5 },
+    ]);
+
+    // Only B738 has a valid matrix page for FR.
+    airlineAircraftService.listValidCombinations.mockReturnValue([
+      { iata: 'FR', icao_aircraft: 'B738', n_pairs: 12 },
+    ]);
+  });
+
+  test('HTML contains "Top aircraft flown" section with link to /airline/fr/aircraft/b738', async () => {
+    const html = await builders.buildAsync({ kind: 'airline', iata: 'FR' }, {});
+    expect(html).toMatch(/Top aircraft flown by/i);
+    expect(html).toMatch(/<a href="\/airline\/fr\/aircraft\/b738"[^>]*>Boeing 737<\/a>/);
+  });
+
+  test('aircraft without a matrix page (A320) renders as plain text — no anchor', async () => {
+    const html = await builders.buildAsync({ kind: 'airline', iata: 'FR' }, {});
+    // A320 has no matrix page for FR — plain text, no link
+    expect(html).not.toMatch(/<a [^>]*>Airbus A320<\/a>/);
+    expect(html).toMatch(/Airbus A320/);
+  });
+
+  test('section absent when getTopAircraftForAirline returns empty list', async () => {
+    airlineAircraftService.getTopAircraftForAirline.mockReturnValue([]);
+    const html = await builders.buildAsync({ kind: 'airline', iata: 'FR' }, {});
+    expect(html).not.toMatch(/Top aircraft flown/i);
   });
 });

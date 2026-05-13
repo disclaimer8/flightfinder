@@ -281,10 +281,36 @@ function bAircraftAirlines(meta, db) {
   if (!Array.isArray(meta.icaoList) || meta.icaoList.length === 0) return null;
   const ops = db.getAircraftOperators(meta.icaoList, 20);
   if (ops.length === 0) return null;
-  const items = ops
-    .map((o) => `<li>${esc(o.airline)} — ${esc(o.count)} observed flight${o.count === 1 ? '' : 's'}</li>`)
-    .join('');
+
+  // Build a Set of "iata:icao" keys from valid matrix combos for O(1) lookup.
+  const openFlightsService = require('./openFlightsService');
+  const validCombos = airlineAircraftService.listValidCombinations({ minPairs: 5 });
+  const validSet = airlineAircraftService.buildValidComboSet(validCombos);
+
   const label = meta.aircraftLabel || meta.slug || 'this aircraft';
+
+  const items = ops.map((o) => {
+    // o.airline is the ICAO code stored in airline_iata column — resolve to IATA.
+    const airlineRecord = openFlightsService.getAirlineByIcao(o.airline);
+    const airlineIata   = airlineRecord?.iata;
+    const displayName   = airlineRecord?.name || o.airline;
+
+    // Find the first aircraft ICAO in this family's icaoList that has a valid matrix page.
+    let matrixIcao = null;
+    if (airlineIata) {
+      for (const icao of meta.icaoList) {
+        const key = `${airlineIata.toLowerCase()}:${icao.toLowerCase()}`;
+        if (validSet.has(key)) { matrixIcao = icao; break; }
+      }
+    }
+
+    const nameHtml = matrixIcao && airlineIata
+      ? `<a href="/airline/${esc(airlineIata.toLowerCase())}/aircraft/${esc(matrixIcao.toLowerCase())}">${esc(displayName)}</a>`
+      : esc(displayName);
+
+    return `<li>${nameHtml} — ${esc(o.count)} observed flight${o.count === 1 ? '' : 's'}</li>`;
+  }).join('');
+
   return `
     <p>${esc(ops.length)} airline${ops.length === 1 ? '' : 's'} observed operating the ${esc(label)} in the last 14 days, ranked by flight frequency:</p>
     <ul>${items}</ul>
@@ -588,6 +614,31 @@ async function bAirline(meta, _db) {
     destBlock = `<p>Network data is being collected.</p>`;
   }
 
+  // Top aircraft section: query observed_routes for this airline's fleet,
+  // link to matrix pages where a valid combo (≥5 pairs) exists.
+  let topAircraftBlock = '';
+  try {
+    const topAircraft = airlineAircraftService.getTopAircraftForAirline({ iataAirline: iata, limit: 6 });
+    if (topAircraft.length > 0) {
+      // Build valid combo set for O(1) lookup.
+      const validCombos = airlineAircraftService.listValidCombinations({ minPairs: 5 });
+      const validSet = airlineAircraftService.buildValidComboSet(validCombos);
+
+      const airlineIataLower = iata.toLowerCase();
+      const items = topAircraft.map(ac => {
+        const key = `${airlineIataLower}:${ac.icao_aircraft.toLowerCase()}`;
+        const nameLabel = esc(ac.name);
+        const nameHtml = validSet.has(key)
+          ? `<a href="/airline/${esc(airlineIataLower)}/aircraft/${esc(ac.icao_aircraft.toLowerCase())}">${nameLabel}</a>`
+          : nameLabel;
+        return `<li>${nameHtml} — ${esc(ac.n_pairs)} route pair${ac.n_pairs === 1 ? '' : 's'}</li>`;
+      }).join('');
+
+      const airlineName = esc(iata);
+      topAircraftBlock = `<section><h2>Top aircraft flown by ${airlineName}</h2><ul>${items}</ul></section>`;
+    }
+  } catch { /* non-fatal */ }
+
   const jsonLd = `<script type="application/ld+json">${JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'Airline',
@@ -595,7 +646,7 @@ async function bAirline(meta, _db) {
     iataCode: iata,
   })}</script>`;
 
-  return [heading, destBlock, jsonLd].filter(Boolean).join('\n');
+  return [heading, destBlock, topAircraftBlock, jsonLd].filter(Boolean).join('\n');
 }
 
 /**

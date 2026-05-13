@@ -22,7 +22,7 @@ jest.mock('../services/openFlightsService', () => ({
 }));
 
 const { db }                   = require('../models/db');
-const { getCombo, listValidCombinations } = require('../services/airlineAircraftService');
+const { getCombo, listValidCombinations, getTopAircraftForAirline, buildValidComboSet, _resetValidCombosCache } = require('../services/airlineAircraftService');
 const openFlightsService        = require('../services/openFlightsService');
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -58,6 +58,7 @@ function insertRow(dep, arr, aircraft, airlineIcao, seenAt = now - day) {
 beforeEach(() => {
   db.exec(`DELETE FROM observed_routes WHERE source = '${SOURCE}'`);
   jest.clearAllMocks();
+  _resetValidCombosCache();
 });
 
 afterAll(() => {
@@ -341,4 +342,117 @@ test('aircraft slug: unknown ICAO (ZZZZ) → slug is null', () => {
   expect(result).not.toBeNull();
   expect(result.aircraft.icao).toBe('ZZZZ');
   expect(result.aircraft.slug).toBeNull();
+});
+
+// ── Test 11: getTopAircraftForAirline returns top N by pair count desc ─────────
+//
+// Insert BAW with 3 aircraft types at 10, 5, 2 pairs.
+// Expects: result sorted desc, top-2 at limit 2 are the 10-pair and 5-pair types.
+test('getTopAircraftForAirline: returns top N aircraft by pair count, descending', () => {
+  // 10 distinct pairs for B77W
+  const pairs10 = [
+    ['LHR', 'JFK'], ['LHR', 'LAX'], ['LHR', 'SIN'], ['LHR', 'SYD'], ['JFK', 'LAX'],
+    ['JFK', 'SIN'], ['JFK', 'SYD'], ['LAX', 'SIN'], ['LAX', 'SYD'], ['SIN', 'SYD'],
+  ];
+  for (const [dep, arr] of pairs10) {
+    insertRow(dep, arr, 'B77W', 'BAW', now - 1 * day);
+  }
+  // 5 pairs for A388
+  const pairs5 = [['LHR', 'JFK'], ['LHR', 'LAX'], ['LHR', 'SIN'], ['LHR', 'SYD'], ['JFK', 'LAX']];
+  for (const [dep, arr] of pairs5) {
+    insertRow(dep, arr, 'A388', 'BAW', now - 1 * day);
+  }
+  // 2 pairs for B789
+  insertRow('LHR', 'JFK', 'B789', 'BAW', now - 1 * day);
+  insertRow('LHR', 'LAX', 'B789', 'BAW', now - 1 * day);
+
+  openFlightsService.getAirline.mockImplementation((iata) => (iata === 'BA' ? BA_AIRLINE : null));
+
+  const result = getTopAircraftForAirline({ iataAirline: 'BA', sinceMs: now - 90 * day, limit: 2 });
+
+  expect(result).toHaveLength(2);
+  expect(result[0].icao_aircraft).toBe('B77W');
+  expect(result[0].n_pairs).toBe(10);
+  expect(result[1].icao_aircraft).toBe('A388');
+  expect(result[1].n_pairs).toBe(5);
+  // n_pairs are in descending order
+  expect(result[0].n_pairs).toBeGreaterThan(result[1].n_pairs);
+});
+
+// ── Test 12: getTopAircraftForAirline filters out aircraft with 0 pairs ────────
+//
+// Only aircraft with at least 1 distinct pair in the window should appear.
+// Rows outside the window should not count.
+test('getTopAircraftForAirline: filters out aircraft with 0 pairs in window', () => {
+  // Insert B77W with 5 pairs inside window
+  const pairs5 = [['LHR', 'JFK'], ['LHR', 'LAX'], ['LHR', 'SIN'], ['LHR', 'SYD'], ['JFK', 'LAX']];
+  for (const [dep, arr] of pairs5) {
+    insertRow(dep, arr, 'B77W', 'BAW', now - 1 * day);
+  }
+  // Insert A388 rows but with seen_at OUTSIDE the window (200 days ago)
+  insertRow('LHR', 'JFK', 'A388', 'BAW', now - 200 * day);
+  insertRow('LHR', 'LAX', 'A388', 'BAW', now - 200 * day);
+
+  openFlightsService.getAirline.mockImplementation((iata) => (iata === 'BA' ? BA_AIRLINE : null));
+
+  const result = getTopAircraftForAirline({ iataAirline: 'BA', sinceMs: now - 90 * day, limit: 6 });
+
+  // A388 rows are outside the 90-day window and must be excluded
+  const icaos = result.map(r => r.icao_aircraft);
+  expect(icaos).toContain('B77W');
+  expect(icaos).not.toContain('A388');
+  // All returned entries must have n_pairs > 0
+  for (const r of result) {
+    expect(r.n_pairs).toBeGreaterThan(0);
+  }
+});
+
+// ── Test 13: listValidCombinations memoization — only one SQL call on 2nd invoke ─
+//
+// Spy on db.prepare so we can count how many times the GROUP-BY scan is actually
+// executed. Two successive calls with identical args must result in exactly one
+// real SQL execution (the second call is served from the in-process cache).
+test('listValidCombinations: second call with same args hits cache (single SQL execution)', () => {
+  let allCallCount = 0;
+  const originalPrepare = db.prepare.bind(db);
+
+  const prepareSpy = jest.spyOn(db, 'prepare').mockImplementation((sql) => {
+    const stmt = originalPrepare(sql);
+    if (sql.includes('HAVING n_pairs')) {
+      // Wrap .all() to count actual SQL executions on the combo scan.
+      const originalAll = stmt.all.bind(stmt);
+      stmt.all = (...args) => {
+        allCallCount++;
+        return originalAll(...args);
+      };
+    }
+    return stmt;
+  });
+
+  openFlightsService.getAirlineByIcao.mockReturnValue(null); // no results needed
+
+  // Use a fixed sinceMs (bucketed to the same minute) so both calls map to the same key.
+  const sinceMs = Math.floor(Date.now() / 60_000) * 60_000;
+
+  listValidCombinations({ sinceMs, minPairs: 5 });
+  listValidCombinations({ sinceMs, minPairs: 5 });
+
+  expect(allCallCount).toBe(1);
+
+  prepareSpy.mockRestore();
+});
+
+// ── Test 14: buildValidComboSet — key format ─────────────────────────────────
+//
+// Verifies the helper produces lowercase "iata:icao_aircraft" keys.
+test('buildValidComboSet: builds lowercase iata:icao_aircraft keys', () => {
+  const combos = [
+    { iata: 'BA', icao_aircraft: 'A388', n_pairs: 10 },
+    { iata: 'FR', icao_aircraft: 'B738', n_pairs: 7 },
+  ];
+  const set = buildValidComboSet(combos);
+  expect(set.size).toBe(2);
+  expect(set.has('ba:a388')).toBe(true);
+  expect(set.has('fr:b738')).toBe(true);
+  expect(set.has('BA:A388')).toBe(false);
 });
