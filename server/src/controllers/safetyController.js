@@ -1,6 +1,8 @@
 'use strict';
 
 const safety      = require('../models/safetyEvents');
+const sidecar     = require('../services/sidecarAccidentsClient');
+const aircraftSafetyService = require('../services/aircraftSafetyService');
 const STR         = require('../services/safety/strings');
 const openFlights = require('../services/openFlightsService');
 
@@ -52,6 +54,49 @@ function shapeEvent(row) {
   };
 }
 
+// AirCrash sidecar row → safety_events shaped response. The adapter in
+// aircraftSafetyService already lifts the raw row into the right intermediate
+// shape; this wrapper just renames/adds the API-facing camelCase fields the
+// React detail page expects.
+function shapeAircrashEvent(row) {
+  if (!row) return null;
+  const ev = aircraftSafetyService.adaptAccidentToEvent(row);
+  if (!ev) return null;
+  return {
+    id: ev.id,                          // 'ac_<int>'
+    source: ev.source,                  // 'aircrash'
+    sourceEventId: ev.source_event_id,
+    occurredAt: ev.occurred_at,
+    severity: ev.severity,
+    severityLabel: STR.severityLabel(ev.severity),
+    fatalities: ev.fatalities,
+    injuries: null,
+    hullLoss: !!ev.hull_loss,
+    cicttCategory: null,
+    cicttLabel: null,
+    phaseOfFlight: null,
+    operator: {
+      iata: null,
+      icao: null,
+      name: ev.operator_name,
+    },
+    aircraft: {
+      icaoType: null,
+      modelText: ev.aircraft_model_text, // AirCrash carries free-text only
+      registration: null,
+    },
+    route: { dep: null, arr: null },
+    location: {
+      country: null,
+      text: ev.location_text,            // free-text fallback for the UI
+      lat: row.lat ?? null,
+      lon: row.lon ?? null,
+    },
+    narrative: null,
+    reportUrl: ev.report_url,
+  };
+}
+
 // NTSB publishes US-only aviation events. For non-US operators the zero-count
 // response would mislead users into thinking "no incidents" instead of
 // "we don't track this". We surface the coverage state explicitly.
@@ -77,7 +122,13 @@ exports.listEvents = (req, res) => {
 };
 
 exports.getEvent = (req, res) => {
-  const row = safety.getById(req.validatedParams.id);
+  const { id, source } = req.validatedParams;
+  if (source === 'aircrash') {
+    const row = sidecar.getAccidentById(id);
+    if (!row) return res.status(404).json({ success: false, message: 'Event not found' });
+    return res.json({ success: true, data: shapeAircrashEvent(row) });
+  }
+  const row = safety.getById(id);
   if (!row) return res.status(404).json({ success: false, message: 'Event not found' });
   res.json({ success: true, data: shapeEvent(row) });
 };
@@ -107,7 +158,23 @@ exports.getOperator = (req, res) => {
 };
 
 exports.getEventRelated = (req, res) => {
-  const { id } = req.validatedParams;
+  const { id, source } = req.validatedParams;
+  if (source === 'aircrash') {
+    const row = sidecar.getAccidentById(id);
+    if (!row) return res.status(404).json({ success: false, message: 'Event not found' });
+    // AirCrash sidecar has byAircraft + byOperator already (used by NTSB
+    // narrative pages); reuse and shape via the AirCrash adapter so the
+    // related sidebar still renders meaningful entries.
+    const sameAircraftType = sidecar.findRelatedByAircraft(row.aircraft_model || '', row.id)
+      .map(shapeAircrashEvent).filter(Boolean);
+    const sameOperator = row.operator
+      ? sidecar.findRelatedByOperator(row.operator, row.id).map(shapeAircrashEvent).filter(Boolean)
+      : [];
+    return res.json({
+      success: true,
+      data: { sameAircraftType, sameOperator, sameAirport: [] },
+    });
+  }
   const ev = safety.getById(id);
   if (!ev) return res.status(404).json({ success: false, message: 'Event not found' });
   const { buildEventSlug } = require('../utils/eventSlug');

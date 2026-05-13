@@ -504,11 +504,21 @@ function safetyEventsQuery(req, res, next) {
   next();
 }
 
+// safety_events id is a plain integer; AirCrash accident id is prefixed
+// 'ac_' (e.g. 'ac_40765') so the React /aircraft/{slug}/safety event-list
+// links work for both data sources. Controllers dispatch on `source`.
 function safetyEventIdParam(req, res, next) {
-  const { id } = req.params;
-  if (!SAFETY_ID_RE.test(String(id))) return bad(res, 'id must be a positive integer');
-  req.validatedParams = { id: parseInt(id, 10) };
-  next();
+  const raw = String(req.params.id || '');
+  if (SAFETY_ID_RE.test(raw)) {
+    req.validatedParams = { id: parseInt(raw, 10), source: 'safety_events' };
+    return next();
+  }
+  const accMatch = /^ac_(\d{1,12})$/.exec(raw);
+  if (accMatch) {
+    req.validatedParams = { id: parseInt(accMatch[1], 10), source: 'aircrash' };
+    return next();
+  }
+  return bad(res, 'id must be a positive integer or ac_<int>');
 }
 
 function safetyOperatorParam(req, res, next) {
