@@ -13,6 +13,7 @@
 
 const { db } = require('./db');
 const { getFamilyBySlug, getFamilyList } = require('./aircraftFamilies');
+const openFlightsService = require('../services/openFlightsService');
 
 /**
  * Build a reverse map: UPPER(icao_type) → family_slug.
@@ -222,11 +223,104 @@ function topFamiliesForPair(dep, arr, sinceMs, limit = 8) {
   return result.slice(0, cap);
 }
 
+/**
+ * Aggregate observed_routes for the interactive map.
+ *
+ * Groups all rows by (dep_iata, arr_iata), collects the set of distinct
+ * airlines and aircraft types per pair, and resolves airport coordinates via
+ * openFlightsService. Pairs where either endpoint has no coordinate data are
+ * silently dropped (logged via console.info).
+ *
+ * @param {object} opts
+ * @param {string} [opts.airline]  - IATA airline code filter (case-insensitive)
+ * @param {string} [opts.aircraft] - ICAO aircraft type filter (case-insensitive)
+ * @param {number} [opts.sinceMs]  - epoch ms lower bound for seen_at (default 0)
+ * @returns {Array<{
+ *   dep_iata: string, arr_iata: string,
+ *   dep_lat: number, dep_lon: number,
+ *   arr_lat: number, arr_lon: number,
+ *   airline_count: number, aircraft_count: number,
+ *   last_seen_at: number,
+ * }>}
+ */
+function aggregateForMap({ airline, aircraft, sinceMs } = {}) {
+  const since = Number(sinceMs) || 0;
+
+  // Build dynamic WHERE clauses for optional filters
+  const conditions = ['seen_at >= ?'];
+  const params = [since];
+
+  if (airline) {
+    conditions.push('UPPER(airline_iata) = ?');
+    params.push(String(airline).toUpperCase());
+  }
+  if (aircraft) {
+    conditions.push('UPPER(aircraft_icao) = ?');
+    params.push(String(aircraft).toUpperCase());
+  }
+
+  const where = conditions.join(' AND ');
+  const sql = `
+    SELECT dep_iata, arr_iata, airline_iata, aircraft_icao, seen_at
+    FROM observed_routes
+    WHERE ${where}
+  `;
+
+  const rows = db.prepare(sql).all(...params);
+
+  // Group by (dep_iata, arr_iata) pair
+  const pairMap = new Map();
+  for (const row of rows) {
+    const key = `${row.dep_iata.toUpperCase()}|${row.arr_iata.toUpperCase()}`;
+    if (!pairMap.has(key)) {
+      pairMap.set(key, {
+        dep_iata: row.dep_iata.toUpperCase(),
+        arr_iata: row.arr_iata.toUpperCase(),
+        airlines: new Set(),
+        aircraft: new Set(),
+        last_seen_at: 0,
+      });
+    }
+    const entry = pairMap.get(key);
+    if (row.airline_iata) entry.airlines.add(row.airline_iata.toUpperCase());
+    if (row.aircraft_icao) entry.aircraft.add(row.aircraft_icao.toUpperCase());
+    if (row.seen_at > entry.last_seen_at) entry.last_seen_at = row.seen_at;
+  }
+
+  // Resolve airport coords and drop pairs with missing data
+  const result = [];
+  let dropped = 0;
+  for (const entry of pairMap.values()) {
+    const dep = openFlightsService.getAirport(entry.dep_iata);
+    const arr = openFlightsService.getAirport(entry.arr_iata);
+    if (!dep || !arr || dep.lat == null || dep.lon == null || arr.lat == null || arr.lon == null) {
+      dropped++;
+      continue;
+    }
+    result.push({
+      dep_iata: entry.dep_iata,
+      arr_iata: entry.arr_iata,
+      dep_lat: dep.lat,
+      dep_lon: dep.lon,
+      arr_lat: arr.lat,
+      arr_lon: arr.lon,
+      airline_count: entry.airlines.size,
+      aircraft_count: entry.aircraft.size,
+      last_seen_at: entry.last_seen_at,
+    });
+  }
+  if (dropped > 0) {
+    console.info(`[aggregateForMap] dropped ${dropped} pair(s) with missing airport coords`);
+  }
+  return result;
+}
+
 module.exports = {
   countComboByPairAndFamily,
   getByPairAndFamily,
   listQualifyingCombos,
   topFamiliesForPair,
+  aggregateForMap,
 
   getRowsByAircraftCodes(codes, sinceMs) {
     if (!Array.isArray(codes) || codes.length === 0) return [];
