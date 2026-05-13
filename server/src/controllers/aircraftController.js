@@ -208,7 +208,11 @@ exports.getIndexStats = (_req, res) => {
 
       const routeCount     = db.countRoutesByAircraft(codes, sinceMs90d);
       const operatorCount  = db.countOperatorsByAircraft(codes, sinceMs90d);
-      const safetyCount90d = aircraftSafetyService.countMergedForFamily({ icaoList: codes, familyName: fam.label, sinceMs: sinceMs90d });
+      // fam.name (e.g. "Airbus A321") rather than fam.label ("Airbus A321 (all
+      // variants)") — expandFamilyPatterns falls back to a LIKE on the raw
+      // string when there's no special handler, and "(all variants)" poisons
+      // the match against actual aircraft_model values.
+      const safetyCount90d = aircraftSafetyService.countMergedForFamily({ icaoList: codes, familyName: fam.name, sinceMs: sinceMs90d });
       const routes14d      = db.countRoutesByAircraft(codes, sinceMs14d);
 
       stats[fam.slug] = { routeCount, operatorCount, safetyCount90d };
