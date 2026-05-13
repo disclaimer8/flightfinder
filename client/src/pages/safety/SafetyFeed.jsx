@@ -25,24 +25,69 @@ function formatDate(ms) {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
-function dash(v) {
-  return v == null || v === '' ? '—' : v;
+// Render the Aircraft cell. NTSB rarely publishes an ICAO type code for
+// general-aviation rows but usually has a tail/registration. Avoid
+// "— N6067J" by collapsing the dash when the tail alone is meaningful.
+function AircraftCell({ aircraft }) {
+  const type = aircraft.icaoType;
+  const reg  = aircraft.registration;
+  if (!type && !reg) return <>—</>;
+  if (!type)         return <span className="safety-feed__reg">{reg}</span>;
+  if (!reg)          return <>{type}</>;
+  return <>{type}<span className="safety-feed__reg"> {reg}</span></>;
 }
+
+// Render the Route/Location cell. Most NTSB rows have no dep/arr — just a
+// country. Showing "— → USA" everywhere is noise. Render the arrow only
+// when both endpoints are present; otherwise show whatever's available.
+function RouteCell({ route, location }) {
+  const dep = route.dep || '';
+  const arr = route.arr || '';
+  const country = location.country || '';
+  if (dep && arr) {
+    return <>{dep}<span className="safety-feed__arrow"> → </span>{arr}</>;
+  }
+  if (dep)         return <>{dep}</>;
+  if (arr)         return <>{arr}</>;
+  if (country)     return <>{country}</>;
+  return <>—</>;
+}
+
+const PAGE_SIZE = 100;
 
 export default function SafetyFeed() {
   const [events, setEvents]   = useState(null);
   const [error, setError]     = useState(null);
   const [severity, setSeverity] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [exhausted, setExhausted] = useState(false);
 
   useEffect(() => {
     let active = true;
     setError(null);
     setEvents(null);
-    fetchEvents({ limit: 100, severity })
-      .then(b => { if (active) setEvents(b.data); })
+    setExhausted(false);
+    fetchEvents({ limit: PAGE_SIZE, severity })
+      .then(b => {
+        if (!active) return;
+        setEvents(b.data);
+        if (b.data.length < PAGE_SIZE) setExhausted(true);
+      })
       .catch(err => { if (active) setError(err.message); });
     return () => { active = false; };
   }, [severity]);
+
+  const loadMore = () => {
+    if (loadingMore || exhausted || !events) return;
+    setLoadingMore(true);
+    fetchEvents({ limit: PAGE_SIZE, offset: events.length, severity })
+      .then(b => {
+        setEvents(prev => [...(prev || []), ...b.data]);
+        if (b.data.length < PAGE_SIZE) setExhausted(true);
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoadingMore(false));
+  };
 
   return (
     <main className="safety-feed">
@@ -73,7 +118,7 @@ export default function SafetyFeed() {
         <EmptyState>No events match this filter.</EmptyState>
       )}
 
-      {events && events.length > 0 && (
+      {events && events.length > 0 && (<>
         <table className="safety-feed__table">
           <thead>
             <tr>
@@ -95,15 +140,10 @@ export default function SafetyFeed() {
                   <span className="safety-feed__sev-label">{e.severityLabel}</span>
                 </td>
                 <td className="sf-col-aircraft">
-                  {dash(e.aircraft.icaoType)}
-                  {e.aircraft.registration && (
-                    <span className="safety-feed__reg"> {e.aircraft.registration}</span>
-                  )}
+                  <AircraftCell aircraft={e.aircraft} />
                 </td>
                 <td className="sf-col-route">
-                  <span>{dash(e.route.dep)}</span>
-                  <span className="safety-feed__arrow"> → </span>
-                  <span>{e.route.arr || e.location.country || '—'}</span>
+                  <RouteCell route={e.route} location={e.location} />
                   <Link
                     to={`/safety/events/${e.id}`}
                     className="safety-feed__row-link"
@@ -116,7 +156,19 @@ export default function SafetyFeed() {
             ))}
           </tbody>
         </table>
-      )}
+        {!exhausted && (
+          <div className="safety-feed__more">
+            <button
+              className="safety-pill"
+              onClick={loadMore}
+              disabled={loadingMore}
+              aria-label="Load more events"
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          </div>
+        )}
+      </>)}
 
       <p className="methodology-note">
         Methodology last reviewed 2026-05-06. See <Link to="/about">/about</Link> for data sources and editorial policy.
