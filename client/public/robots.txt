@@ -8,5 +8,14 @@ Disallow: /api/
 Disallow: /src/
 Disallow: /.vite/
 
+# Tracking-only query params — Google honours these wildcard patterns for
+# parameter URLs that should not be treated as distinct pages.
+Disallow: /*?utm_*
+Disallow: /*&utm_*
+Disallow: /*?ref=*
+Disallow: /*&ref=*
+Disallow: /*?fbclid=*
+Disallow: /*?gclid=*
+
 # Sitemap location
 Sitemap: https://himaxym.com/sitemap.xml

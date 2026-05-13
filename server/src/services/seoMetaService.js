@@ -87,7 +87,10 @@ function replaceTagBody(html, openPrefix, closeTag, newBody) {
 // Default home metadata — matches client/index.html defaults. If those
 // change, keep these in sync (they're injected as overrides).
 const HOME = {
-  title: 'FlightFinder — Search Flights by Aircraft Type | Boeing, Airbus & More',
+  // 47 chars — fits mobile SERP without truncation. The "Boeing, Airbus & More"
+  // keyword stuffing that used to live here was past the truncation point on
+  // 100% of mobile devices, so it added zero CTR while penalising trust.
+  title: 'FlightFinder — Search Flights by Aircraft Type',
   description: 'Search flights worldwide filtered by aircraft type. Find routes operated by Boeing 737, Airbus A320, turboprops, wide-body jets and more. The only flight search built around the plane, not just the price.',
   canonical: `${BASE}/`,
   h1: 'Find flights by aircraft type',
@@ -398,31 +401,48 @@ function notFoundMeta() {
 
 function airportMeta(iata) {
   const upper = iata.toUpperCase();
+  // Prefer the human name from OpenFlights/OurAirports for title + H1. Falls
+  // back to the IATA-only label if the airport isn't in either dataset.
+  const ap = openFlightsService.getAirport(upper);
+  const name = ap?.name || `${upper} airport`;
   return {
-    title: `${upper} airport — direct destinations, airlines, top routes | FlightFinder`,
-    description: `${upper} airport: which cities have direct flights, which airlines operate them, and which destinations travellers favour. Sourced from Amadeus booked/traveled aggregates and open ADS-B observations.`,
+    title: `${name} (${upper}) — direct flights, airlines, top routes | FlightFinder`,
+    description: `${name} (${upper}): which cities have direct flights, which airlines operate them, and which destinations travellers favour. Sourced from Amadeus booked/traveled aggregates and open ADS-B observations.`,
     canonical: `${BASE}/airport/${iata}`,
-    h1: `${upper} airport — flights and destinations`,
-    subtitle: `Direct destinations, top airlines, and traffic patterns for ${upper}.`,
+    h1: `${name} (${upper}) — direct flights and destinations`,
+    subtitle: `Direct destinations, top airlines, and traffic patterns for ${name} (${upper}).`,
     robots: 'index, follow',
     ogType: 'website',
     kind: 'airport',
     iata: upper,
+    airportName: name,
+    airportIcao: ap?.icao || null,
+    airportCity: ap?.city || null,
+    airportCountry: ap?.country || null,
+    airportLat: Number.isFinite(ap?.lat) ? ap.lat : null,
+    airportLon: Number.isFinite(ap?.lon) ? ap.lon : null,
   };
 }
 
 function airlineMeta(iata) {
   const upper = iata.toUpperCase();
+  // Prefer the human carrier name from OpenFlights for title + H1. Falls back
+  // to the IATA-only label if the airline isn't in the OpenFlights set.
+  const al = openFlightsService.getAirline(upper);
+  const name = al?.name || `${upper} airline`;
   return {
-    title: `${upper} airline — routes, fleet, destinations | FlightFinder`,
-    description: `${upper} airline network: destinations served, observed aircraft families, and top operated routes. Cross-referenced with open ADS-B and Amadeus reference data.`,
+    title: `${name} (${upper}) — routes, fleet, destinations | FlightFinder`,
+    description: `${name} (${upper}) network: destinations served, observed aircraft families, and top operated routes. Cross-referenced with open ADS-B and Amadeus reference data.`,
     canonical: `${BASE}/airline/${iata}`,
-    h1: `${upper} — destinations and fleet`,
-    subtitle: `Routes, aircraft, and top destinations operated by ${upper}.`,
+    h1: `${name} — destinations and fleet`,
+    subtitle: `Routes, aircraft, and top destinations operated by ${name} (${upper}).`,
     robots: 'index, follow',
     ogType: 'website',
     kind: 'airline',
     iata: upper,
+    airlineName: name,
+    airlineIcao: al?.icao || null,
+    airlineCountry: al?.country || null,
   };
 }
 
@@ -596,9 +616,12 @@ function resolve(pathname) {
   if (pathname === '/safety/global' || pathname === '/safety/global/') {
     return {
       // 62 chars — fits Google mobile SERP without truncation, leads with
-      // the number-of-records signal that wins keyword matches.
-      title: 'Aviation accident database — 35,000+ records worldwide since 1962',
-      description: 'Searchable global aviation accident database: 35,000+ records since 1962 from NTSB, Aviation Safety Network, B3A, Wikidata. Interactive map and rankings by aircraft and operator.',
+      // the number-of-records signal that wins keyword matches. The count
+      // is rounded down from the live ~41K so it stays accurate as the
+      // scraper ingests new accidents day-to-day (see [[aircrash-db-upload-recipe]]).
+      // Year is 1980, NOT 1962 — earliest real row in the seed is 1980-01-01.
+      title: 'Aviation accident database — 40,000+ records worldwide since 1980',
+      description: 'Searchable global aviation accident database: 40,000+ records since 1980 from NTSB, Aviation Safety Network, B3A, Wikidata. Interactive map and rankings by aircraft and operator.',
       canonical: `${BASE}/safety/global`,
       h1: 'Global aviation safety',
       subtitle: 'Historical accidents worldwide',
@@ -695,6 +718,9 @@ function resolve(pathname) {
       name: `${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''}`,
       startDate: isoDate,
       description,
+      // Per-accident OG PNG — same URL the og:image meta uses. Required for
+      // Google rich-result eligibility on Event schema.
+      image: `${BASE}/og/accident/${accidentMatch[1]}.png`,
       location: {
         '@type': 'Place',
         name: f.location || 'Unknown',
@@ -869,7 +895,7 @@ function structuredData(meta) {
     graph.push({
       '@type': 'Dataset',
       name: 'Global aviation accident records (1980–present)',
-      description: 'Worldwide aviation accident dataset aggregated from the Aviation Safety Network, the Bureau of Aircraft Accidents Archives (B3A), and Wikidata. Approximately 5,200 records since 1980 with aircraft type, operator, location, fatalities and source URL where known. Updated weekly.',
+      description: 'Worldwide aviation accident dataset aggregated from the Aviation Safety Network, the Bureau of Aircraft Accidents Archives (B3A), and Wikidata. Over 40,000 records since 1980 with aircraft type, operator, location, fatalities and source URL where known. Updated weekly.',
       url: meta.canonical,
       keywords: [
         'aviation safety',
@@ -1115,6 +1141,55 @@ function structuredData(meta) {
         mainEntityOfPage: { '@type': 'WebPage', '@id': meta.canonical },
       });
     }
+  } else if (meta.kind === 'airline') {
+    // /airline and /airport index pages don't exist (404), so breadcrumb is
+    // Home → Entity, not Home → Airlines → Entity. Add Airline schema so
+    // Google sees this as an organisation page, not a generic web page.
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: meta.airlineName || meta.iata, item: meta.canonical },
+      ],
+    });
+    graph.push({
+      '@type': 'Airline',
+      name: meta.airlineName || meta.iata,
+      iataCode: meta.iata,
+      ...(meta.airlineIcao ? { icaoCode: meta.airlineIcao } : {}),
+      url: meta.canonical,
+      ...(meta.airlineCountry ? { areaServed: meta.airlineCountry } : {}),
+    });
+  } else if (meta.kind === 'airport') {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+        { '@type': 'ListItem', position: 2, name: meta.airportName || meta.iata, item: meta.canonical },
+      ],
+    });
+    const airportNode = {
+      '@type': 'Airport',
+      name: meta.airportName || meta.iata,
+      iataCode: meta.iata,
+      ...(meta.airportIcao ? { icaoCode: meta.airportIcao } : {}),
+      url: meta.canonical,
+    };
+    if (meta.airportCity || meta.airportCountry) {
+      airportNode.address = {
+        '@type': 'PostalAddress',
+        ...(meta.airportCity ? { addressLocality: meta.airportCity } : {}),
+        ...(meta.airportCountry ? { addressCountry: meta.airportCountry } : {}),
+      };
+    }
+    if (Number.isFinite(meta.airportLat) && Number.isFinite(meta.airportLon)) {
+      airportNode.geo = {
+        '@type': 'GeoCoordinates',
+        latitude: meta.airportLat,
+        longitude: meta.airportLon,
+      };
+    }
+    graph.push(airportNode);
   } else if (
     meta.kind === 'aircraft-airlines'
     || meta.kind === 'aircraft-routes'
@@ -1296,6 +1371,20 @@ function inject(html, meta, bodyContent = null) {
       // style tweak). Surface it operationally — a silent skip would make all
       // baked content disappear from Googlebot responses with no visible signal.
       console.warn('[seoMetaService] bodyContent supplied but subtitle anchor missing — bake section skipped');
+      // Also fan out to Sentry so the regression is visible without log-spelunking.
+      // Stable fingerprint: one ongoing regression = one Sentry issue, not one
+      // event per request.
+      try {
+        const Sentry = require('@sentry/node');
+        if (Sentry && typeof Sentry.captureMessage === 'function') {
+          Sentry.captureMessage('SEO bake anchor missing', {
+            level: 'error',
+            tags: { component: 'seo-bake', kind: meta?.kind || 'unknown' },
+            contexts: { seo: { canonical: meta?.canonical || null, kind: meta?.kind || null } },
+            fingerprint: ['seo-bake-anchor-missing'],
+          });
+        }
+      } catch { /* @sentry/node not installed in tests */ }
     }
   }
   const sd = structuredData(meta);

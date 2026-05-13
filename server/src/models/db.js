@@ -535,6 +535,15 @@ const stmts = {
     LIMIT 1
   `),
 
+  // Used by routes/seo.js to emit real per-route lastmod in the sitemap
+  // instead of the uniform "today" timestamp Google ignores. Returns one
+  // row per directional pair with the most recent observation epoch (ms).
+  routeLastSeenEpochs: db.prepare(`
+    SELECT dep_iata || '-' || arr_iata AS pair, MAX(seen_at) AS seen_at
+    FROM observed_routes
+    GROUP BY dep_iata, arr_iata
+  `),
+
   upsertFr24GfRoute: db.prepare(`
     INSERT INTO fr24_gf_route_aircraft
       (dep_iata, arr_iata, aircraft_icao, airline_icao, sample_size, first_seen_at, last_seen_at)
@@ -563,6 +572,18 @@ const upsertFr24GfRoutes = db.transaction((rows) => {
   for (const r of rows) stmts.upsertFr24GfRoute.run(r);
   return rows.length;
 });
+
+// Returns Map<"DEP-ARR", epoch_ms> with the most recent ADS-B observation per
+// directional pair. Used to emit real lastmod timestamps in the routes sitemap.
+function getRouteLastSeenMap() {
+  const out = new Map();
+  for (const row of stmts.routeLastSeenEpochs.all()) {
+    if (row && row.pair && Number.isFinite(row.seen_at)) {
+      out.set(row.pair, row.seen_at);
+    }
+  }
+  return out;
+}
 
 function writeFr24GfIngestMeta(meta) {
   const info = stmts.writeFr24GfIngestMeta.run({
@@ -946,4 +967,5 @@ module.exports = {
   fr24GfRouteFreshExists,
   upsertFr24GfRoutes,
   writeFr24GfIngestMeta,
+  getRouteLastSeenMap,
 };

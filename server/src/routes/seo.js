@@ -48,6 +48,24 @@ router.get('/sitemap.xml', async (_req, res) => {
   const aircraftDay = aircraftCatalogueLastmod();
   const today       = TODAY();
 
+  // Per-pair route lastmod from real ADS-B observation timestamps. Lets each
+  // /routes/{a}-{b} URL ship its actual last-observed date instead of every
+  // route claiming `today`, which Google treats as a low-trust signal.
+  let routeLastSeen = new Map();
+  try {
+    routeLastSeen = require('../models/db').getRouteLastSeenMap();
+  } catch (err) {
+    console.warn('[seo] routeLastSeenMap unavailable, falling back to today:', err.message);
+  }
+  function routeLastmod(p) {
+    // Path shape: /routes/AAA-BBB or /routes/AAA-BBB/{aircraft-slug}
+    const m = p.match(/^\/routes\/([a-z]{3})-([a-z]{3})(\/|$)/i);
+    if (!m) return today;
+    const pair = `${m[1].toUpperCase()}-${m[2].toUpperCase()}`;
+    const epoch = routeLastSeen.get(pair);
+    return Number.isFinite(epoch) ? new Date(epoch).toISOString().slice(0, 10) : today;
+  }
+
   // Canonical path list — single source of truth shared with seoContentCache.
   // Aircraft subpages (/aircraft/{slug}/airlines etc.) and hub-network routes
   // are included by enumerateSeoUrls so both the sitemap and future cache
@@ -71,7 +89,7 @@ router.get('/sitemap.xml', async (_req, res) => {
     // Aircraft pillar subpages (/aircraft/{slug}/{sub}).
     if (p.startsWith('/aircraft/'))
                                  return { loc, changefreq: 'monthly', priority: '0.6', lastmod: deployDay };
-    if (p.startsWith('/routes/')) return { loc, changefreq: 'weekly',  priority: '0.6', lastmod: today };
+    if (p.startsWith('/routes/')) return { loc, changefreq: 'weekly',  priority: '0.6', lastmod: routeLastmod(p) };
     if (p.startsWith('/airport/')) return { loc, changefreq: 'monthly', priority: '0.6', lastmod: today };
     if (p.startsWith('/airline/')) return { loc, changefreq: 'monthly', priority: '0.6', lastmod: today };
     return { loc, changefreq: 'weekly', priority: '0.5', lastmod: today };

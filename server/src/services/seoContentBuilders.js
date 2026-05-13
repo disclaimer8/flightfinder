@@ -403,7 +403,7 @@ function _familyCard(f, db) {
 
 function bSafetyGlobal(_meta, _db) {
   return `
-    <p>Worldwide aviation accident dataset aggregated from the Aviation Safety Network, the Bureau of Aircraft Accidents Archives (B3A), and Wikidata. Approximately 5 200 records since 1980 with aircraft type, operator, location, fatalities and source URL where known.</p>
+    <p>Worldwide aviation accident dataset aggregated from the Aviation Safety Network, the Bureau of Aircraft Accidents Archives (B3A), and Wikidata. Over 40,000 records since 1980 with aircraft type, operator, location, fatalities and source URL where known.</p>
     <p>Updated weekly. Free for non-commercial use; cite Aviation Safety Network and B3A when redistributing.</p>
   `.trim();
 }
