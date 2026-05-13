@@ -1,38 +1,24 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { AuthProvider } from '../../context/AuthContext';
-import { _resetForTests } from '../../hooks/useFilterOptions';
 import Map from '../Map';
 
-const FILTER_OPTIONS = {
-  cities: [],
-  aircraft: [],
-  aircraftTypes: [],
-  apiStatus: null,
-};
-
+// Stub fetch so fetchRoutes + fetchFilters don't throw.
 beforeEach(() => {
-  vi.clearAllMocks();
-  _resetForTests();
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: true,
-    statusText: 'OK',
-    json: () => Promise.resolve(FILTER_OPTIONS),
+    json: () => Promise.resolve({ routes: [], airlines: [], aircraft: [] }),
   }));
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  _resetForTests();
 });
 
-test('Map renders with map test-id', () => {
+test('Map renders the page heading', () => {
   render(
     <MemoryRouter>
-      <AuthProvider>
-        <Map />
-      </AuthProvider>
+      <Map />
     </MemoryRouter>
   );
-  expect(screen.getByTestId('page-map')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /flight route map/i })).toBeInTheDocument();
 });
