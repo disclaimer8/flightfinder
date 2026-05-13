@@ -391,3 +391,201 @@
 .pillar-cta:hover {
   text-decoration-color: var(--link);
 }
+
+/* ─── Variants table ───────────────────────────────────────────────────────── */
+.landing-variants {
+  margin-bottom: 40px;
+  max-width: 820px;
+}
+.landing-variants h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  color: #0f172a;
+}
+.variants-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+.variants-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.variants-table thead tr {
+  background: #f1f5f9;
+}
+.variants-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 14px;
+  white-space: nowrap;
+  border-bottom: 1px solid #e2e8f0;
+}
+.variants-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #f1f5f9;
+}
+.variants-table td {
+  padding: 10px 14px;
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+  white-space: nowrap;
+}
+.variants-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #ffffff;
+  font-weight: 600;
+  color: #0f172a;
+}
+.variants-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+.variants-table tbody tr:nth-child(even) td:first-child {
+  background: #f8fafc;
+}
+.variants-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ─── Notable incidents ────────────────────────────────────────────────────── */
+.landing-notable-incidents {
+  margin-bottom: 40px;
+  max-width: 820px;
+}
+.landing-notable-incidents h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  color: #0f172a;
+}
+.notable-incidents-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.notable-incidents-item {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #6366f1;
+  border-radius: 8px;
+}
+.notable-incidents-date {
+  color: #475569;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+}
+.notable-incidents-body {
+  display: grid;
+  gap: 6px;
+}
+.notable-incidents-meta {
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.notable-incidents-flight {
+  font-weight: 600;
+  color: #0f172a;
+  text-decoration: none;
+}
+a.notable-incidents-flight:hover { text-decoration: underline; color: #4f46e5; }
+.notable-incidents-summary {
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+}
+.notable-incidents-fatalities {
+  white-space: nowrap;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+  align-self: start;
+  margin-top: 2px;
+}
+.notable-incidents-fatalities--fatal {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 640px) {
+  .notable-incidents-item {
+    grid-template-columns: 1fr;
+  }
+  .notable-incidents-date {
+    font-size: 12px;
+  }
+  .notable-incidents-fatalities {
+    justify-self: start;
+  }
+}
+
+/* ─── Variant callout ──────────────────────────────────────────────────────── */
+.variant-callout {
+  margin-bottom: 40px;
+  max-width: 820px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  padding: 24px 28px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.07);
+}
+.variant-callout h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #3730a3;
+  margin: 0 0 14px;
+}
+.variant-callout p {
+  color: #334155;
+  font-size: 15px;
+  line-height: 1.65;
+  margin: 0 0 12px;
+}
+.variant-callout p:last-child { margin-bottom: 0; }
+
+@media (max-width: 640px) {
+  .variant-callout {
+    padding: 18px 18px;
+    border-radius: 10px;
+  }
+}
+
+/* ─── Enhanced FAQ ─────────────────────────────────────────────────────────── */
+/* Reuses .landing-faq-item styles for details/summary; .enhanced-faq just
+   provides the container matching .landing-faq. */
+.enhanced-faq {
+  margin-bottom: 48px;
+  max-width: 820px;
+}
+.enhanced-faq h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  color: #0f172a;
+}

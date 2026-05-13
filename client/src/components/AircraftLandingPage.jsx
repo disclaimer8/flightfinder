@@ -7,6 +7,10 @@ import DataCard from './DataCard';
 import EmptyState from './EmptyState';
 import Button from './Button';
 import './AircraftLandingPage.css';
+// NOTE: Mirrors server/src/content/aircraftLandingContent.json. The two
+// must stay in sync. If/when this grows beyond two slugs, refactor to a
+// build-time copy script or expose via /api/aircraft/{slug}/enrichment.
+import enrichmentData from '../data/aircraftLandingContent.json';
 
 const AircraftRouteMap = lazy(() => import('./AircraftRouteMap'));
 
@@ -80,6 +84,102 @@ function buildFallbackCopy(fam) {
     faq: null,
   };
 }
+
+// ─── Enrichment components ──────────────────────────────────────────────────
+
+function VariantsTable({ rows }) {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return (
+    <section className="landing-variants">
+      <h2>Variants and specifications</h2>
+      <div className="variants-table-scroll">
+        <table className="variants-table">
+          <thead>
+            <tr>
+              <th>Variant</th>
+              <th>First flight</th>
+              <th>Typical seats</th>
+              <th>Range (nm)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i}>
+                <td>{row.name}</td>
+                <td>{row.firstFlight}</td>
+                <td>{row.seats}</td>
+                <td>{row.range_nm != null ? row.range_nm.toLocaleString() : '—'}</td>
+                <td>{row.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function NotableIncidents({ rows }) {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return (
+    <section className="landing-notable-incidents">
+      <h2>Notable accidents and incidents</h2>
+      <ul className="notable-incidents-list">
+        {rows.map((row, i) => (
+          <li key={i} className="notable-incidents-item">
+            <span className="notable-incidents-date">{row.date}</span>
+            <div className="notable-incidents-body">
+              <div className="notable-incidents-meta">
+                {row.slug ? (
+                  <Link to={`/accidents/${row.slug}`} className="notable-incidents-flight">
+                    {row.flight}
+                  </Link>
+                ) : (
+                  <strong className="notable-incidents-flight">{row.flight}</strong>
+                )}
+                {row.operator && <span> · {row.operator}</span>}
+                {row.variant && <span> · {row.variant}</span>}
+              </div>
+              <p className="notable-incidents-summary">{row.summary}</p>
+            </div>
+            <span className={`notable-incidents-fatalities${row.fatalities > 0 ? ' notable-incidents-fatalities--fatal' : ''}`}>
+              {row.fatalities} {row.fatalities === 1 ? 'fatality' : 'fatalities'}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function VariantCallout({ block }) {
+  if (!block) return null;
+  return (
+    <section className="variant-callout">
+      <h2>{block.title}</h2>
+      {/* eslint-disable-next-line react/no-danger */}
+      <div dangerouslySetInnerHTML={{ __html: block.html }} />
+    </section>
+  );
+}
+
+function EnhancedFAQ({ rows, familyLabel }) {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return (
+    <div className="landing-faq enhanced-faq">
+      <h2>Frequently asked questions about the {familyLabel}</h2>
+      {rows.map((qa, i) => (
+        <details key={i} className="landing-faq-item" open={i === 0}>
+          <summary>{qa.q}</summary>
+          <p>{qa.a}</p>
+        </details>
+      ))}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 
 // Per-slug landing copy lives in client/public/content/landing/aircraft/<slug>.json
 // — split out of the bundle in batch 4 so the AircraftLandingPage chunk dropped
@@ -221,6 +321,9 @@ export default function AircraftLandingPage() {
     faq: null,
   };
 
+  // Enrichment data keyed by slug — null for slugs not yet enriched.
+  const enriched = enrichmentData[slug] || null;
+
   return (
     <div className="landing">
       <nav className="landing-breadcrumb" aria-label="Breadcrumb">
@@ -260,6 +363,24 @@ export default function AircraftLandingPage() {
               <Link to={`/aircraft/${slug}/specs`} className="pillar-cta">
                 View full specifications &#8594;
               </Link>
+            </section>
+          )}
+
+          {enriched && enriched.variants && (
+            <section className="landing-section">
+              <VariantsTable rows={enriched.variants} />
+            </section>
+          )}
+
+          {enriched && enriched.notableIncidents && (
+            <section className="landing-section">
+              <NotableIncidents rows={enriched.notableIncidents} />
+            </section>
+          )}
+
+          {enriched && enriched.variantCallout && (
+            <section className="landing-section">
+              <VariantCallout block={enriched.variantCallout} />
             </section>
           )}
 
@@ -393,18 +514,22 @@ export default function AircraftLandingPage() {
             </section>
           )}
 
-          {Array.isArray(resolvedCopy.faq) && resolvedCopy.faq.length > 0 && (
+          {(enriched?.faq || (Array.isArray(resolvedCopy.faq) && resolvedCopy.faq.length > 0)) && (
             <section className="landing-section">
               <SectionHeader number={resolvedCopy.overview ? '04' : '03'} label="FAQ" />
-              <div className="landing-faq">
-                <h2>Frequently asked questions about the {fam.label}</h2>
-                {resolvedCopy.faq.map((qa, i) => (
-                  <details key={i} className="landing-faq-item" open={i === 0}>
-                    <summary>{qa.q}</summary>
-                    <p>{qa.a}</p>
-                  </details>
-                ))}
-              </div>
+              {enriched?.faq ? (
+                <EnhancedFAQ rows={enriched.faq} familyLabel={fam.label} />
+              ) : (
+                <div className="landing-faq">
+                  <h2>Frequently asked questions about the {fam.label}</h2>
+                  {resolvedCopy.faq.map((qa, i) => (
+                    <details key={i} className="landing-faq-item" open={i === 0}>
+                      <summary>{qa.q}</summary>
+                      <p>{qa.a}</p>
+                    </details>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 

@@ -1,0 +1,62 @@
+{
+  "boeing-737": {
+    "variants": [
+      { "name": "737-700", "firstFlight": "1997", "seats": "126-149", "range_nm": 3010, "status": "in service" },
+      { "name": "737-800", "firstFlight": "1997", "seats": "162-189", "range_nm": 2935, "status": "in service" },
+      { "name": "737-900", "firstFlight": "2000", "seats": "177-220", "range_nm": 2950, "status": "in service" },
+      { "name": "MAX 7",   "firstFlight": "2018", "seats": "138-153", "range_nm": 3850, "status": "in service" },
+      { "name": "MAX 8",   "firstFlight": "2016", "seats": "162-178", "range_nm": 3500, "status": "in service" },
+      { "name": "MAX 9",   "firstFlight": "2017", "seats": "178-193", "range_nm": 3550, "status": "in service" },
+      { "name": "MAX 10",  "firstFlight": "2021", "seats": "188-204", "range_nm": 3300, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2018-10-29", "flight": "Lion Air 610", "operator": "Lion Air", "variant": "737 MAX 8", "fatalities": 189, "summary": "Crashed into the Java Sea after MCAS repeatedly forced the nose down following a single AOA sensor failure.", "slug": null },
+      { "date": "2010-05-22", "flight": "Air India Express 812", "operator": "Air India Express", "variant": "737-800", "fatalities": 158, "summary": "Overran runway 24 at Mangalore International Airport on landing, plunged into a gorge and caught fire; 8 survivors.", "slug": null },
+      { "date": "2019-03-10", "flight": "Ethiopian Airlines 302", "operator": "Ethiopian Airlines", "variant": "737 MAX 8", "fatalities": 157, "summary": "MCAS-related crash six minutes after takeoff from Addis Ababa, triggering the worldwide 737 MAX grounding.", "slug": null },
+      { "date": "2022-03-21", "flight": "China Eastern 5735", "operator": "China Eastern", "variant": "737-800", "fatalities": 132, "summary": "Plunged from cruise altitude into a mountainside in Guangxi; cause remains under investigation.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the 737 MAX",
+      "html": "<p>The Boeing 737 MAX entered service in 2017 as the fourth generation of the 737, with new LEAP-1B engines, redesigned winglets, and updated cockpits. Two fatal MCAS-related crashes (Lion Air 610 in October 2018 and Ethiopian 302 in March 2019) led to a worldwide grounding from March 2019 through November 2020.</p><p>Software changes to MCAS, mandatory simulator training, and FAA recertification preceded the return to service. Since 2021 the MAX has resumed normal commercial operations with carriers including Southwest, Ryanair, American Airlines, and TUI fly. A January 2024 door-plug detachment on Alaska Airlines 1282 (MAX 9) renewed scrutiny of Boeing's production quality, but did not result in a fresh grounding of the type.</p>"
+    },
+    "faq": [
+      { "q": "Is the Boeing 737 safe?", "a": "The 737 is the most-produced commercial jet in history with over 11,000 delivered. Excluding the two MCAS-related MAX 8 crashes (Lion Air 610 and Ethiopian 302), the family's hull-loss rate per departure is comparable to other narrow-bodies. The MAX has flown over 4 million flights since returning to service in 2021 without a fatal accident attributable to MCAS." },
+      { "q": "How many fatal Boeing 737 accidents have there been?", "a": "Over 200 hull losses across all 737 variants since 1968. Most occurred during the 737 Classic (-300/-400/-500) era. The most recent fatal events were China Eastern 5735 in 2022, Ethiopian 302 in 2019, and Lion Air 610 in 2018." },
+      { "q": "Which airline has the largest 737 fleet?", "a": "Southwest Airlines operates the world's largest 737 fleet — over 800 aircraft, all 737 variants. Ryanair is second with over 500." },
+      { "q": "What's the difference between the 737-800 and 737 MAX 8?", "a": "The MAX 8 has the same fuselage length as the 737-800 but uses LEAP-1B engines (≈14% more fuel-efficient), redesigned split-tip winglets, larger displays, and a slightly longer range. From the passenger seat the MAX is recognisable by the dual-cone tail cone and the split scimitar winglets." },
+      { "q": "How many seats does a Boeing 737 have?", "a": "Capacity ranges from 126 (737-700 in dual-class) to 230 (737-900 in high-density single-class). The MAX 8 typically seats 162-178 in dual-class; some low-cost carriers configure it for 189." },
+      { "q": "When was the Boeing 737 introduced?", "a": "The original 737-100 entered service with Lufthansa in February 1968. The latest variant, the MAX 10, entered service in 2024." }
+    ]
+  },
+
+  "airbus-a320-family": {
+    "variants": [
+      { "name": "A319",     "firstFlight": "1995", "seats": "124-156", "range_nm": 3700, "status": "in service" },
+      { "name": "A319neo",  "firstFlight": "2017", "seats": "120-156", "range_nm": 3750, "status": "in service" },
+      { "name": "A320",     "firstFlight": "1987", "seats": "150-180", "range_nm": 3300, "status": "in service" },
+      { "name": "A320neo",  "firstFlight": "2014", "seats": "150-194", "range_nm": 3500, "status": "in service" },
+      { "name": "A321",     "firstFlight": "1993", "seats": "185-220", "range_nm": 3200, "status": "in service" },
+      { "name": "A321neo",  "firstFlight": "2016", "seats": "180-244", "range_nm": 4000, "status": "in service" },
+      { "name": "A321LR",   "firstFlight": "2018", "seats": "180-220", "range_nm": 4000, "status": "in service" },
+      { "name": "A321XLR",  "firstFlight": "2022", "seats": "180-220", "range_nm": 4700, "status": "in service" }
+    ],
+    "notableIncidents": [
+      { "date": "2007-07-17", "flight": "TAM 3054", "operator": "TAM", "variant": "A320-233", "fatalities": 199, "summary": "Overran São Paulo–Congonhas runway 35L in heavy rain with one thrust reverser deactivated; crashed into a TAM Express building.", "slug": null },
+      { "date": "2014-12-28", "flight": "Indonesia AirAsia 8501", "operator": "Indonesia AirAsia", "variant": "A320-216", "fatalities": 162, "summary": "Crashed into the Java Sea after rudder travel limiter faults and pilot misresponse to upset; recovered from the seabed in early 2015.", "slug": null },
+      { "date": "2015-03-24", "flight": "Germanwings 9525", "operator": "Germanwings", "variant": "A320-211", "fatalities": 150, "summary": "Deliberately crashed into the French Alps by the first officer after he locked the captain out of the cockpit.", "slug": null },
+      { "date": "2009-01-15", "flight": "US Airways 1549", "operator": "US Airways", "variant": "A320-214", "fatalities": 0, "summary": "Lost thrust to both engines after a bird strike on departure from LaGuardia; ditched in the Hudson River — all 155 occupants survived.", "slug": null }
+    ],
+    "variantCallout": {
+      "title": "About the A320neo family",
+      "html": "<p>The A320neo (\"new engine option\") family launched in 2010 and entered service in 2016. It pairs the existing fuselages with either CFM LEAP-1A or Pratt & Whitney PW1100G geared turbofans, plus sharklet wingtips — together giving roughly 15-20% better fuel burn per seat than the ceo (current engine option) generation.</p><p>The A321XLR, which entered service in October 2024, extends single-aisle range to 4,700 nm by adding a permanent rear-centre fuel tank — long enough to fly New York to Rome or Tokyo to Singapore. The A321neo is now the best-selling single-aisle jet by 2024-2026 order intake, driven by long, thin-route economics that previously required wide-bodies.</p>"
+    },
+    "faq": [
+      { "q": "Is the Airbus A320 family safe?", "a": "The A320 family has logged over 230 million flights since 1988 with an industry-standard hull-loss rate per million departures. Major fatal events are clustered around three causes: pilot error / spatial disorientation (AirAsia 8501), pilot suicide (Germanwings 9525), and runway excursions (TAM 3054). No fatal accident has been attributed to a design flaw in the airframe." },
+      { "q": "How many fatal A320 family accidents have there been?", "a": "Approximately 35 hull losses with fatalities across all A319/A320/A321 variants since 1988. The deadliest were TAM 3054 (199 fatalities, 2007), AirAsia 8501 (162, 2014), and Germanwings 9525 (150, 2015)." },
+      { "q": "Which airline has the largest A320 family fleet?", "a": "American Airlines and IndiGo each operate over 300 A320-family aircraft. easyJet, Lufthansa, China Southern, and Delta also have fleets of 200+." },
+      { "q": "What's the difference between the A320 and A321?", "a": "The A321 is a stretched A320 — about 7 metres longer, carrying 30-60 more passengers depending on layout. The A321neo adds the new engine options; the A321LR and A321XLR add increasing amounts of fuel for transatlantic and ultra-long single-aisle routes." },
+      { "q": "How many seats does an A320 have?", "a": "Capacity ranges from 124 (A319 in dual-class) to 244 (A321neo in high-density). The standard A320 seats 150-180; the A321 seats 185-220 in typical layouts." },
+      { "q": "When was the A320 family introduced?", "a": "The A320 entered service with Air France in April 1988. The A321 followed in 1994, the A319 in 1996. The neo family entered service with the A320neo in 2016." }
+    ]
+  }
+}
