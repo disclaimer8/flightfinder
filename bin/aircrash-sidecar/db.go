@@ -10,6 +10,10 @@ import (
 )
 
 // Accident is a single row from the accidents table, as returned by /api/accidents.
+// All list/map/stats queries filter WHERE dup_of_id IS NULL to suppress
+// cross-source duplicates marked by migrate-dedup.py; the detail endpoint
+// (/accidents/:id) is intentionally unrestricted so loser rows are still
+// reachable by stable URL.
 type Accident struct {
 	ID            int     `json:"id"`
 	Date          string  `json:"date"`
@@ -63,11 +67,13 @@ func InitDB(filepath string) (*sql.DB, error) {
 // unknown) — and whose normalized_date echoes the original string — float
 // to position #1 in a string-DESC sort ('x' > '2' in ASCII), turning the
 // homepage feed into a wall of unparseable dates.
+//
 func GetAccidents(db *sql.DB, limit, offset int) ([]Accident, error) {
 	const query = `
 		SELECT id, date, aircraft_model, operator, fatalities, location, source_url,
 		       COALESCE(lat, 0), COALESCE(lon, 0)
 		FROM accidents
+		WHERE dup_of_id IS NULL
 		ORDER BY
 		  CASE WHEN normalized_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' THEN 0 ELSE 1 END,
 		  normalized_date DESC,
@@ -117,7 +123,7 @@ type StatResult struct {
 // name comes from aircraft_display, which stores the most-frequent original
 // spelling per canonical group so the API returns something human readable.
 func GetAircraftStats(db *sql.DB, commercialOnly bool) ([]StatResult, error) {
-	where := "a.aircraft_canonical IS NOT NULL AND a.aircraft_canonical != ''"
+	where := "a.aircraft_canonical IS NOT NULL AND a.aircraft_canonical != '' AND a.dup_of_id IS NULL"
 	if commercialOnly {
 		where += " AND a.is_commercial = 1"
 	}
@@ -137,7 +143,7 @@ func GetAircraftStats(db *sql.DB, commercialOnly bool) ([]StatResult, error) {
 // operator_canonical so e.g. "Delta Air Lines" / "DELTA AIR LINES INC" /
 // "Delta Air Lines, Inc." all collapse into a single row.
 func GetOperatorStats(db *sql.DB, commercialOnly bool) ([]StatResult, error) {
-	where := "a.operator_canonical IS NOT NULL AND a.operator_canonical != ''"
+	where := "a.operator_canonical IS NOT NULL AND a.operator_canonical != '' AND a.dup_of_id IS NULL"
 	if commercialOnly {
 		where += " AND a.is_commercial = 1"
 	}
@@ -209,7 +215,7 @@ type MapFilters struct {
 // 95% in the browser. Both columns are indexed (idx_accidents_operator,
 // idx_accidents_category) by migrate-category.py.
 func GetMapPoints(db *sql.DB, limit int, filters MapFilters) ([]MapPoint, error) {
-	where := []string{"lat IS NOT NULL", "lat != 0", "lat != 0.000001"}
+	where := []string{"lat IS NOT NULL", "lat != 0", "lat != 0.000001", "dup_of_id IS NULL"}
 	args := []interface{}{}
 	if filters.Category != "" {
 		where = append(where, "aircraft_category = ?")

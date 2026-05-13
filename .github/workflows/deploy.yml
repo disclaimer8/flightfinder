@@ -239,6 +239,13 @@ jobs:
             # upload + migrate of accidents.db on the next deploy. Live state
             # is now authoritative once seeded; the seed only matters for
             # disaster recovery (data/ wiped).
+            # Run cross-source dedup migration. Idempotent: resets dup_of_id
+            # and recomputes from scratch every deploy (<1s on ~29K rows).
+            # Runs after seeding (so LIVE always exists) and before pm2
+            # restarts the sidecar (which opens accidents.db in mode=ro,
+            # making ALTER TABLE impossible while it holds the handle).
+            python3 /root/flightfinder/bin/aircrash-sidecar/migrate-dedup.py \
+              /root/flightfinder/data/accidents.db
             cd /root/flightfinder/server
             # pngquant is needed by client/scripts/optimize-images.mjs (postbuild
             # hook). Install idempotently; apt-get is fast when already present.
