@@ -75,11 +75,11 @@ function renderVariantsTable(variants) {
   <table class="variants-table">
     <thead>
       <tr>
-        <th>Variant</th>
-        <th>First flight</th>
-        <th>Typical seats</th>
-        <th>Range (nm)</th>
-        <th>Status</th>
+        <th scope="col">Variant</th>
+        <th scope="col">First flight</th>
+        <th scope="col">Typical seats</th>
+        <th scope="col">Range (nm)</th>
+        <th scope="col">Status</th>
       </tr>
     </thead>
     <tbody>${rows}
