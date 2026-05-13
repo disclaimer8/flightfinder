@@ -11,7 +11,7 @@
 
 const { db } = require('../models/db');
 const openFlightsService = require('./openFlightsService');
-const { getFamilyByCode } = require('../models/aircraftFamilies');
+const { getFamilyByCode, slugify: slugifyAircraft } = require('../models/aircraftFamilies');
 const { haversineKm } = require('./geocodingService');
 
 const WINDOW_90D_MS = 90 * 24 * 60 * 60 * 1000;
@@ -124,9 +124,11 @@ exports.getCombo = function getCombo({ iataAirline, icaoAircraft, sinceMs } = {}
       country: airlineRecord.country || null,
     },
     aircraft: {
-      icao:     aircraftUpper,
-      name:     family?.name      || aircraftUpper,
-      category: family?.family?.type || null,
+      icao:         aircraftUpper,
+      name:         family?.name || aircraftUpper,
+      slug:         family?.name ? slugifyAircraft(family.name) : null,
+      category:     family?.family?.type || null,
+      manufacturer: family?.family?.manufacturer || null,
     },
     summary: {
       n_pairs:    routes.length,

@@ -109,6 +109,9 @@ test('valid combo: 8 rows / 5 pairs returns full data object', () => {
   expect(result.airline.iata).toBe('BA');
   expect(result.airline.icao).toBe('BAW');
   expect(result.aircraft.icao).toBe('A388');
+  // slug must be populated (A388 resolves to a known family with a display name)
+  expect(typeof result.aircraft.slug).toBe('string');
+  expect(result.aircraft.slug.length).toBeGreaterThan(0);
 });
 
 // ── Test 2: Below threshold (3 pairs only) → null ────────────────────────────
@@ -295,4 +298,47 @@ test('listValidCombinations: omitting sinceMs defaults to 90-day window (Fix 1 r
   expect(combos).toHaveLength(1);
   expect(combos[0].iata).toBe('BA');
   expect(combos[0].icao_aircraft).toBe('A388');
+});
+
+// ── Test 9: aircraft slug — known family ──────────────────────────────────────
+//
+// A388 is a known ICAO code that resolves to a family with a display name.
+// Expects: result.aircraft.slug is a non-empty kebab-case string.
+test('aircraft slug: known family (A388) → slug is populated', () => {
+  insertRow('LHR', 'JFK', 'A388', 'BAW', now - 1 * day);
+  insertRow('LHR', 'LAX', 'A388', 'BAW', now - 2 * day);
+  insertRow('LHR', 'SIN', 'A388', 'BAW', now - 3 * day);
+  insertRow('LHR', 'SYD', 'A388', 'BAW', now - 4 * day);
+  insertRow('JFK', 'LAX', 'A388', 'BAW', now - 5 * day);
+
+  openFlightsService.getAirline.mockImplementation((iata) => (iata === 'BA' ? BA_AIRLINE : null));
+  openFlightsService.getAirport.mockImplementation((iata) => AIRPORTS[iata?.toUpperCase()] || null);
+
+  const result = getCombo({ iataAirline: 'BA', icaoAircraft: 'A388', sinceMs: now - 90 * day });
+
+  expect(result).not.toBeNull();
+  expect(result.aircraft.slug).not.toBeNull();
+  expect(typeof result.aircraft.slug).toBe('string');
+  expect(result.aircraft.slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+});
+
+// ── Test 10: aircraft slug — unknown ICAO → null ──────────────────────────────
+//
+// 'ZZZZ' is an unrecognised ICAO code (no family match).
+// Expects: result.aircraft.slug is null.
+test('aircraft slug: unknown ICAO (ZZZZ) → slug is null', () => {
+  insertRow('LHR', 'JFK', 'ZZZZ', 'BAW', now - 1 * day);
+  insertRow('LHR', 'LAX', 'ZZZZ', 'BAW', now - 2 * day);
+  insertRow('LHR', 'SIN', 'ZZZZ', 'BAW', now - 3 * day);
+  insertRow('LHR', 'SYD', 'ZZZZ', 'BAW', now - 4 * day);
+  insertRow('JFK', 'LAX', 'ZZZZ', 'BAW', now - 5 * day);
+
+  openFlightsService.getAirline.mockImplementation((iata) => (iata === 'BA' ? BA_AIRLINE : null));
+  openFlightsService.getAirport.mockImplementation((iata) => AIRPORTS[iata?.toUpperCase()] || null);
+
+  const result = getCombo({ iataAirline: 'BA', icaoAircraft: 'ZZZZ', sinceMs: now - 90 * day });
+
+  expect(result).not.toBeNull();
+  expect(result.aircraft.icao).toBe('ZZZZ');
+  expect(result.aircraft.slug).toBeNull();
 });

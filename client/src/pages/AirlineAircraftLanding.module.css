@@ -1,0 +1,239 @@
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+/* Hero */
+.hero {
+  margin-bottom: 40px;
+}
+
+.h1 {
+  font: 600 36px/1.15 var(--font-display);
+  color: var(--text);
+  margin: 0 0 12px;
+}
+
+.lede {
+  font: 400 18px/1.5 var(--font-ui);
+  color: var(--text-2);
+  max-width: 56ch;
+  margin: 0;
+}
+
+/* Section */
+.section {
+  margin-bottom: 48px;
+}
+
+.h2 {
+  font: 600 22px/1.25 var(--font-display);
+  color: var(--text);
+  margin: 0 0 16px;
+}
+
+/* Routes table */
+.tableWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+}
+
+.routesTable {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 14px/1.5 var(--font-ui);
+  color: var(--text);
+}
+
+.routesTable thead {
+  background: var(--border-light, #f3f4f6);
+}
+
+.routesTable th {
+  text-align: left;
+  padding: 10px 16px;
+  font: 500 12px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.routesTable td {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-light, #f3f4f6);
+  vertical-align: middle;
+}
+
+.routesTable tbody tr:nth-child(even) {
+  background: var(--row-alt, rgba(0, 0, 0, 0.02));
+}
+
+.routesTable tbody tr:hover {
+  background: var(--row-hover, rgba(0, 0, 0, 0.04));
+}
+
+.routesTable a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.routesTable a:hover {
+  text-decoration: underline;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* Show all button */
+.showAll {
+  margin-top: 12px;
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  font: 500 14px var(--font-ui);
+  color: var(--link);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.showAll:hover {
+  border-color: var(--link);
+  background: var(--border-light, #f3f4f6);
+}
+
+/* Summary cards */
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+.card {
+  padding: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardTitle {
+  font: 500 11px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin: 0 0 4px;
+}
+
+.cardName {
+  font: 600 18px/1.25 var(--font-display);
+  color: var(--text);
+  margin: 0;
+}
+
+.cardMeta {
+  font: 400 14px var(--font-ui);
+  color: var(--text-2);
+  margin: 0;
+}
+
+.cardLink {
+  margin: 0;
+  margin-top: auto;
+  padding-top: 12px;
+  font: 500 14px var(--font-ui);
+}
+
+.cardLink a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.cardLink a:hover {
+  text-decoration: underline;
+}
+
+/* FAQ accordion */
+.details {
+  border-top: 1px solid var(--border-light, #f3f4f6);
+  padding: 12px 0;
+}
+
+.details:last-child {
+  border-bottom: 1px solid var(--border-light, #f3f4f6);
+}
+
+.details summary {
+  font: 500 15px/1.4 var(--font-ui);
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.details summary::-webkit-details-marker {
+  display: none;
+}
+
+.details summary::before {
+  content: '+';
+  font: 500 16px var(--font-mono);
+  color: var(--text-2);
+  flex-shrink: 0;
+  transition: transform 150ms ease;
+}
+
+.details[open] summary::before {
+  content: '−';
+}
+
+.details p {
+  margin: 10px 0 2px 24px;
+  font: 400 14px/1.6 var(--font-ui);
+  color: var(--text-2);
+}
+
+/* Loading */
+.loading {
+  font: 400 16px var(--font-ui);
+  color: var(--text-2);
+  padding: 32px 0;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .page {
+    padding: 24px 16px 48px;
+  }
+
+  .h1 {
+    font-size: 26px;
+  }
+
+  .lede {
+    font-size: 16px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .routesTable th,
+  .routesTable td {
+    padding: 8px 12px;
+  }
+}
