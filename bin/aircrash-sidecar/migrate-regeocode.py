@@ -28,10 +28,15 @@ import re
 import sqlite3
 import sys
 from collections import defaultdict
+from coord_rules import country_bbox_for, is_outside_bbox
 
 DB = sys.argv[1] if len(sys.argv) > 1 else "accidents.db.seed"
+# Default to a sibling airports.dat — caller passes an explicit path in prod
+# (e.g. /root/flightfinder/server/src/data/airports.dat) and on the Mini-PC
+# (~/aircrash/airports.dat). Avoid hardcoded user-specific Mac paths.
+import os.path
 AIRPORTS = sys.argv[2] if len(sys.argv) > 2 else \
-    "/Users/denyskolomiiets/FLIGHT/server/src/data/airports.dat"
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "airports.dat")
 
 # US-state-suffix → "City, State" pattern. CAROL writes this consistently.
 STATE_RE = re.compile(
@@ -167,16 +172,29 @@ def main() -> None:
 
     updates = []
     misses = 0
+    bbox_rejects = 0
     for rid, loc in rows:
         result = resolve(loc, by_city, by_country_city, iata_idx, icao_idx)
-        if result:
-            updates.append((result[0], result[1], rid))
-        else:
+        if not result:
             misses += 1
+            continue
+        # Validate the candidate against the country bbox derived from the
+        # same location text. Catches the case where airports.dat has a
+        # borderline-coast airport just outside the country (e.g. a Belgian
+        # airfield matched for a row tagged "Belgium" via a CITY_COUNTRY
+        # regex when the actual accident was in another nearby country).
+        # Without this, fix-coords on the next sync cycle would null exactly
+        # these rows again, producing a stable but wasteful oscillation.
+        bbox = country_bbox_for(loc)
+        if bbox and is_outside_bbox(result[0], result[1], bbox):
+            bbox_rejects += 1
+            continue
+        updates.append((result[0], result[1], rid))
 
     print(
         f"[regeocode] resolved {len(updates):,} rows; {misses:,} unresolved "
-        f"(too generic or unique city not in airports.dat)",
+        f"(too generic or unique city not in airports.dat); "
+        f"{bbox_rejects:,} candidates rejected as outside their country bbox",
         file=sys.stderr,
     )
 
