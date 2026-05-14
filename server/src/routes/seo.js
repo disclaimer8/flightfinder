@@ -144,6 +144,18 @@ router.get('/sitemap.xml', async (_req, res) => {
     console.warn('[seo] airline-aircraft matrix unavailable for sitemap:', err.message);
   }
 
+  // /routes/{from}-{to} pairs meeting enrichment threshold (>=3 operators OR >=2 aircraft).
+  try {
+    const { enumerateRouteMatrix } = require('../services/seoUrlEnumerator');
+    const routeEntries = enumerateRouteMatrix();
+    urls.push(...routeEntries);
+    if (process.env.NODE_ENV !== 'test' && routeEntries.length > 0) {
+      console.log(`[seo] ${routeEntries.length} enriched route pairs added to sitemap`);
+    }
+  } catch (err) {
+    console.warn('[seo] enriched route pairs unavailable for sitemap:', err.message);
+  }
+
   // Accident narrative pages — indexable=1 rows from accident_narratives.
   try {
     const enumerator = require('../services/seoUrlEnumerator');
