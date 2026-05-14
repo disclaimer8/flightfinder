@@ -131,6 +131,30 @@ function enumerateAirlineAircraftMatrix() {
   }
 }
 
+/**
+ * Returns sitemap entries for all valid route pairs meeting the threshold
+ * (≥3 distinct operators OR ≥2 distinct aircraft types over 90 days).
+ * Mirrors the pattern of enumerateAirlineAircraftMatrix.
+ *
+ * @returns {Array<{loc, priority, changefreq, lastmod}>}
+ */
+function enumerateRouteMatrix() {
+  try {
+    const routeService = require('./routeService');
+    const pairs = routeService.listValidRoutePairs({ minOperators: 3, minAircraft: 2 });
+    const today = new Date().toISOString().slice(0, 10);
+    return pairs.map(p => ({
+      loc:        `${BASE}/routes/${p.from.toLowerCase()}-${p.to.toLowerCase()}`,
+      priority:   '0.5',
+      changefreq: 'weekly',
+      lastmod:    today,
+    }));
+  } catch (err) {
+    console.warn('[seoUrlEnumerator] route-matrix unavailable:', err.message);
+    return [];
+  }
+}
+
 function enumerateAccidents() {
   const { db } = require('../models/db');
   const rows = db.prepare(`
@@ -148,4 +172,4 @@ function enumerateAccidents() {
   }));
 }
 
-module.exports = { enumerateSeoUrls, enumerateAccidents, enumerateAirlineAircraftMatrix, STATIC_PATHS };
+module.exports = { enumerateSeoUrls, enumerateAccidents, enumerateAirlineAircraftMatrix, enumerateRouteMatrix, STATIC_PATHS };

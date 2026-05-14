@@ -382,13 +382,34 @@ function routeMeta(pair) {
   const toAp     = openFlightsService.getAirport(toIata);
   const fromName = fromAp?.city || fromAp?.name || fromIata;
   const toName   = toAp?.city   || toAp?.name   || toIata;
+
+  // Try to enrich description with concrete numbers from routeService.
+  // The 5-min in-process cache means the second call (from bRoute) is free.
+  let description;
+  let robots = 'index, follow';
+  try {
+    const routeService = require('./routeService');
+    const sinceMs = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const route = routeService.getRouteData({ from: fromIata, to: toIata, sinceMs });
+    if (route) {
+      const top2Ac = route.aircraft.slice(0, 2).map(ac => ac.name).join(', ');
+      description = `Compare ${route.summary.distinct_operators} airline${route.summary.distinct_operators === 1 ? '' : 's'} flying ${fromName} (${fromIata}) to ${toName} (${toIata}). Distance: ${route.distance_km.toLocaleString()} km.${top2Ac ? ` Top aircraft: ${top2Ac}.` : ''}`;
+    } else {
+      // Thin pair — downgrade robots so Google doesn't index near-empty pages.
+      robots = 'noindex, follow';
+      description = `Compare flights from ${fromName} (${fromIata}) to ${toName} (${toIata}): which airlines operate the route, which aircraft types they fly, and the cheapest upcoming dates.`;
+    }
+  } catch {
+    description = `Compare flights from ${fromName} (${fromIata}) to ${toName} (${toIata}): which airlines operate the route, which aircraft types they fly, and the cheapest upcoming dates.`;
+  }
+
   return {
     title: `${fromName} to ${toName} flights (${fromIata} → ${toIata}) — airlines, aircraft, cheapest dates | FlightFinder`,
-    description: `Compare flights from ${fromName} (${fromIata}) to ${toName} (${toIata}): which airlines operate the route, which aircraft types they fly, and the cheapest upcoming dates.`,
+    description,
     canonical: `${BASE}/routes/${pair}`,
     h1: `${fromName} to ${toName} flights`,
     subtitle: `Direct and connecting flights from ${fromName} (${fromIata}) to ${toName} (${toIata}). Compare airlines, aircraft, and fares.`,
-    robots: 'index, follow',
+    robots,
     ogType: 'article',
     kind: 'route',
     pair,

@@ -183,27 +183,216 @@ function bByAircraft() {
   `.trim();
 }
 
-function bRoute(meta, db) {
-  const fr24Block = _renderFr24Stats(meta.fr24Stats, { context: 'route' });
+function bRoute(meta, _db) {
+  const routeService     = require('./routeService');
+  const openFlightsService = require('./openFlightsService');
 
-  // If we lack route IATA codes, fall back to FR24-only rendering (or null if neither).
-  if (!meta.fromIata || !meta.toIata) return fr24Block || null;
-  const facts = db.getRouteFacts(meta.fromIata, meta.toIata);
-  if (facts.airlineCount === 0 && facts.aircraftCount === 0) return fr24Block || null;
+  if (!meta.fromIata || !meta.toIata) return null;
 
-  const fromLabel = meta.fromName || meta.fromIata;
-  const toLabel   = meta.toName   || meta.toIata;
-  const aircraftLabel = facts.topAircraft.length
-    ? `Most common aircraft: ${facts.topAircraft.map(esc).join(', ')}.`
-    : '';
-  const airlineLabel = facts.topAirlines.length
-    ? `Top operators: ${facts.topAirlines.map(esc).join(', ')}.`
-    : '';
-  const factsBlock = `
-    <p>${esc(facts.airlineCount)} airline${facts.airlineCount === 1 ? '' : 's'} operate${facts.airlineCount === 1 ? 's' : ''} the ${esc(fromLabel)} (${esc(meta.fromIata)}) to ${esc(toLabel)} (${esc(meta.toIata)}) route across ${esc(facts.aircraftCount)} aircraft type${facts.aircraftCount === 1 ? '' : 's'} in our dataset.</p>
-    <p>${aircraftLabel} ${airlineLabel}</p>
-  `.trim();
-  return [factsBlock, fr24Block].filter(Boolean).join('\n').trim();
+  const from = meta.fromIata.toUpperCase();
+  const to   = meta.toIata.toUpperCase();
+  const sinceMs = Date.now() - 90 * 24 * 60 * 60 * 1000;
+
+  const route = routeService.getRouteData({ from, to, sinceMs });
+
+  // ── THIN PAIR: noindex, keep minimal FAQ only ────────────────────────────────
+  if (!route) {
+    const fromName = meta.fromName || from;
+    const toName   = meta.toName   || to;
+    const thinFaq = [
+      { q: `Which airlines fly from ${fromName} to ${toName}?`,
+        a: `Airline availability for ${from} to ${to} changes by season. Use our search above to see current options.` },
+      { q: `Are there direct flights from ${fromName} to ${toName}?`,
+        a: `Direct availability on ${from} to ${to} varies by date. Check our search above with flexible dates.` },
+    ];
+    const faqItems = thinFaq.map(item =>
+      `<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <h3 itemprop="name">${esc(item.q)}</h3>
+        <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+          <p itemprop="text">${esc(item.a)}</p>
+        </div>
+      </div>`
+    ).join('\n');
+    const faqLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: thinFaq.map(item => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: { '@type': 'Answer', text: item.a },
+      })),
+    }).replace(/<\/(script)/gi, '<\\/$1');
+    return [
+      '<meta name="robots" content="noindex, follow">',
+      `<section class="route-faq" itemscope itemtype="https://schema.org/FAQPage">`,
+      `  <h2>Frequently asked questions</h2>`,
+      faqItems,
+      `</section>`,
+      `<script type="application/ld+json">${faqLd}</script>`,
+    ].join('\n');
+  }
+
+  // ── RICH PAIR ────────────────────────────────────────────────────────────────
+  const { dep, arr, distance_km, estimated_time_str, operators, aircraft, summary } = route;
+  const fromName = meta.fromName || dep.city || from;
+  const toName   = meta.toName   || arr.city || to;
+  const depCity  = dep.city || from;
+  const arrCity  = arr.city || to;
+
+  // ── 1. Hero metrics row ──────────────────────────────────────────────────────
+  const distanceMiles = Math.round(distance_km * 0.621371);
+  const heroSection = `<section class="route-hero-metrics">
+  <dl>
+    <div><dt>Distance</dt><dd>${esc(distance_km.toLocaleString())} km (${esc(distanceMiles.toLocaleString())} mi)</dd></div>
+    <div><dt>Flight time</dt><dd>~${esc(estimated_time_str)}</dd></div>
+    <div><dt>Airlines</dt><dd>${esc(String(summary.distinct_operators))}</dd></div>
+    <div><dt>Aircraft types</dt><dd>${esc(String(summary.distinct_aircraft))}</dd></div>
+  </dl>
+</section>`;
+
+  // ── 2. Operators table ───────────────────────────────────────────────────────
+  const top10Operators = operators.slice(0, 10);
+  const opRows = top10Operators.map(op =>
+    `<tr><td><a href="/airline/${esc(op.iata.toLowerCase())}">${esc(op.name)}</a></td><td>${esc(String(op.aircraft_count))}</td><td>${esc(String(op.obs_count))}</td></tr>`
+  ).join('\n');
+  const operatorsSection = `<section class="route-operators">
+  <h2>Airlines flying ${esc(from)} → ${esc(to)}</h2>
+  <table>
+    <thead><tr><th scope="col">Airline</th><th scope="col">Aircraft types</th><th scope="col">Observations</th></tr></thead>
+    <tbody>
+${opRows}
+    </tbody>
+  </table>
+</section>`;
+
+  // ── 3. Aircraft on this route ────────────────────────────────────────────────
+  const top5Aircraft = aircraft.slice(0, 5);
+  const acItems = top5Aircraft.map(ac => {
+    const fam = resolveFamily(ac.name);
+    const slug = fam?.slug || slugify(ac.name);
+    // Require an alphanumeric character — pure-dash slugs would emit /aircraft/---/.
+    const isValidSlug = !!slug && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+    const nameHtml = isValidSlug
+      ? `<a href="/aircraft/${esc(slug)}">${esc(ac.name)}</a>`
+      : esc(ac.name);
+    return `<li>${nameHtml} — ${esc(String(ac.operator_count))} operator${ac.operator_count === 1 ? '' : 's'}</li>`;
+  }).join('\n');
+  const aircraftSection = `<section class="route-aircraft">
+  <h2>Aircraft on this route</h2>
+  <ul>
+${acItems}
+  </ul>
+</section>`;
+
+  // ── 4. Airport details ───────────────────────────────────────────────────────
+  function renderAirportCard(label, iata, apData) {
+    const ap = openFlightsService.getAirport(iata) || {};
+    const icao = ap.icao || null;
+    const city    = apData.city    || ap.city    || iata;
+    const country = apData.country || ap.country || null;
+    const name    = ap.name || iata;
+    const icaoRow = icao
+      ? `<div><dt>IATA / ICAO</dt><dd>${esc(iata)} / ${esc(icao)}</dd></div>`
+      : `<div><dt>IATA</dt><dd>${esc(iata)}</dd></div>`;
+    return `<div class="airport-card">
+    <h3>${esc(label)}: ${esc(name)} (${esc(iata)})</h3>
+    <dl>
+      <div><dt>City</dt><dd>${esc(city)}</dd></div>
+      ${country ? `<div><dt>Country</dt><dd>${esc(country)}</dd></div>` : ''}
+      ${icaoRow}
+    </dl>
+  </div>`;
+  }
+  const airportsSection = `<section class="route-airports">
+  <h2>Airport details</h2>
+  ${renderAirportCard('Departure', from, dep)}
+  ${renderAirportCard('Arrival', to, arr)}
+</section>`;
+
+  // ── 5. Cross-routes cluster ──────────────────────────────────────────────────
+  const fromRoutes = routeService.getTopRoutesFromCity({
+    iata: from, sinceMs, limit: 5, excludePair: `${from}-${to}`,
+  });
+  const toRoutes = routeService.getTopRoutesToCity({
+    iata: to, sinceMs, limit: 5, excludePair: `${from}-${to}`,
+  });
+  const fromItems = fromRoutes.map(r => {
+    const href = `/routes/${esc(from.toLowerCase())}-${esc(r.arr_iata.toLowerCase())}`;
+    const label = r.arr_city ? `${esc(from)} → ${esc(r.arr_iata)} (${esc(r.arr_city)})` : `${esc(from)} → ${esc(r.arr_iata)}`;
+    return `<li><a href="${href}">${label}</a></li>`;
+  }).join('\n');
+  const toItems = toRoutes.map(r => {
+    const href = `/routes/${esc(r.dep_iata.toLowerCase())}-${esc(to.toLowerCase())}`;
+    const label = r.dep_city ? `${esc(r.dep_iata)} → ${esc(to)} (${esc(r.dep_city)})` : `${esc(r.dep_iata)} → ${esc(to)}`;
+    return `<li><a href="${href}">${label}</a></li>`;
+  }).join('\n');
+  const crossSection = `<section class="route-cross">
+  <h2>Other routes from ${esc(depCity)}</h2>
+  <ul>
+${fromItems || '<li>No data available</li>'}
+  </ul>
+  <h2>Other routes to ${esc(arrCity)}</h2>
+  <ul>
+${toItems || '<li>No data available</li>'}
+  </ul>
+</section>`;
+
+  // ── 6. Programmatic FAQ ──────────────────────────────────────────────────────
+  const top3AcNames = aircraft.slice(0, 3).map(ac => ac.name).join(', ');
+  const faqItems = [
+    {
+      q: `How many airlines fly ${from} to ${to}?`,
+      a: `${summary.distinct_operators} airline${summary.distinct_operators === 1 ? '' : 's'} operate${summary.distinct_operators === 1 ? 's' : ''} the ${from} to ${to} route in our 90-day observed dataset.`,
+    },
+    {
+      q: `What aircraft fly the ${from}-${to} route?`,
+      a: top3AcNames
+        ? `The most commonly observed aircraft on ${from} to ${to} include: ${top3AcNames}.`
+        : `Multiple aircraft types have been observed on the ${from} to ${to} route.`,
+    },
+    {
+      q: `How long is the ${fromName} to ${toName} flight?`,
+      a: `The estimated flight time from ${fromName} (${from}) to ${toName} (${to}) is approximately ${estimated_time_str}, based on a cruise speed of 850 km/h.`,
+    },
+    {
+      q: `What's the distance from ${fromName} to ${toName}?`,
+      a: `The great-circle distance from ${fromName} (${from}) to ${toName} (${to}) is approximately ${distance_km.toLocaleString()} km (${distanceMiles.toLocaleString()} miles).`,
+    },
+  ];
+  const faqHtmlItems = faqItems.map(item =>
+    `<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+    <h3 itemprop="name">${esc(item.q)}</h3>
+    <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+      <p itemprop="text">${esc(item.a)}</p>
+    </div>
+  </div>`
+  ).join('\n');
+  const faqSection = `<section class="route-faq" itemscope itemtype="https://schema.org/FAQPage">
+  <h2>Frequently asked questions</h2>
+${faqHtmlItems}
+</section>`;
+
+  // ── FAQPage JSON-LD ──────────────────────────────────────────────────────────
+  const faqLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqItems.map(item => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  }).replace(/<\/(script)/gi, '<\\/$1');
+  const jsonLdBlock = `<script type="application/ld+json">${faqLd}</script>`;
+
+  return [
+    heroSection,
+    operatorsSection,
+    aircraftSection,
+    airportsSection,
+    crossSection,
+    faqSection,
+    jsonLdBlock,
+  ].join('\n');
 }
 
 function bAircraft(meta, db) {
