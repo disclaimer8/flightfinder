@@ -521,41 +521,213 @@ function bAircraftRoutes(meta, db) {
 }
 
 // /routes/:pair/:slug — narrow combo page (e.g. /routes/lhr-jfk/boeing-787).
-// Before this builder existed, build() returned null for kind 'aircraft-route'
-// → applyChrome returned null → spaFallback served the React shell with no
-// bake section. Google flagged 200+ such URLs as Soft 404. This builder
-// always returns some content (real observed data when available, an explain
-// + cross-links fallback when not), so chrome wraps every page with nav,
-// breadcrumbs, footer, and cross-refs — enough to escape Soft 404.
-function bAircraftRoute(meta, db) {
+//
+// If getVariantData() returns null (0 observations in 14-day window):
+//   - emit noindex, follow
+//   - render minimal "no recent observations" body + cross-links to parent pages
+//
+// If data exists: full landing page with 6 rich sections + JSON-LD.
+function bAircraftRoute(meta, _db) {
   if (!meta || !meta.fromIata || !meta.toIata || !meta.slug) return null;
-  const { fromIata, toIata, fromName, toName, aircraftLabel, slug } = meta;
+  const { fromIata, toIata, slug } = meta;
 
-  const { getFamilyBySlug } = require('../models/aircraftFamilies');
-  const fam = getFamilyBySlug(slug);
-  const icaoList = (fam && fam.icaoList) || [];
+  const aircraftRouteService = require('./aircraftRouteService');
+  const openFlightsService   = require('./openFlightsService');
 
-  let observed = [];
-  try { observed = db.getObservedAircraftOnRoute(fromIata, toIata, icaoList); } catch {}
+  const from = fromIata.toUpperCase();
+  const to   = toIata.toUpperCase();
+  const pair = `${from.toLowerCase()}-${to.toLowerCase()}`;
 
-  const label = aircraftLabel || slug;
-  const intro = `<p>Recent <strong>${esc(label)}</strong> activity between <strong>${esc(fromName || fromIata)}</strong> (${esc(fromIata)}) and <strong>${esc(toName || toIata)}</strong> (${esc(toIata)}), drawn from open ADS-B observations in our 14-day rolling window.</p>`;
+  const data = aircraftRouteService.getVariantData({ from, to, slug });
 
-  const routeHref = `/routes/${esc(fromIata.toLowerCase())}-${esc(toIata.toLowerCase())}`;
+  const routeHref   = `/routes/${esc(pair)}`;
   const aircraftHref = `/aircraft/${esc(slug)}`;
 
-  let detail;
-  if (observed.length > 0) {
-    const variants = observed
-      .map((o) => `${esc(o.aircraft_icao)}${o.airline_iata ? ` (operator: ${esc(o.airline_iata)})` : ''}`)
-      .join('; ');
-    detail = `<p>Observed variants on this route: ${variants}.</p>
-      <p>This page is auto-generated for every qualifying ADS-B-observed route × aircraft combination. See the parent <a href="${routeHref}">${esc(fromIata)}–${esc(toIata)} route page</a> for the full operator list, and the <a href="${aircraftHref}">${esc(label)} family page</a> for general specifications, safety record, and worldwide deployment data.</p>`;
-  } else {
-    detail = `<p>No recent observations of the ${esc(label)} on this exact route in our 14-day rolling ADS-B window. The route may be operated by other aircraft types — see the <a href="${routeHref}">${esc(fromIata)}–${esc(toIata)} route page</a> for current operators, or the <a href="${aircraftHref}">${esc(label)} family page</a> for general fleet info.</p>`;
+  // ── EMPTY PAIR: noindex + minimal cross-links ─────────────────────────────
+  if (!data) {
+    const label = meta.aircraftLabel || slug;
+    return [
+      '<meta name="robots" content="noindex, follow">',
+      `<section class="variant-route-empty">`,
+      `  <p>No recent observations of the <strong>${esc(label)}</strong> on the ${esc(from)}–${esc(to)} route in our 14-day rolling ADS-B window.</p>`,
+      `  <p>The route may be operated by other aircraft types — see the <a href="${routeHref}">${esc(from)}–${esc(to)} route page</a> for current operators, or the <a href="${aircraftHref}">${esc(label)} family page</a> for global fleet data.</p>`,
+      `  <p><a href="/aircraft/${esc(slug)}/safety">Safety record for the ${esc(label)} →</a></p>`,
+      `</section>`,
+    ].join('\n');
   }
 
-  return [intro, detail].join('\n');
+  // ── RICH PAIR ─────────────────────────────────────────────────────────────
+  const BASE_URL = 'https://himaxym.com';
+  const { dep, arr, family, distance_km, estimated_time_str, operators, other_aircraft, observed_count } = data;
+  const label    = family.label || family.name;
+  const depCity  = dep.city  || from;
+  const arrCity  = arr.city  || to;
+  const distanceMiles = Math.round(distance_km * 0.621371);
+
+  // ── 1. Hero metrics row ───────────────────────────────────────────────────
+  const heroSection = `<section class="variant-route-hero-metrics">
+  <dl>
+    <div><dt>Distance</dt><dd>${esc(distance_km.toLocaleString())} km (${esc(distanceMiles.toLocaleString())} mi)</dd></div>
+    <div><dt>Est. flight time</dt><dd>~${esc(estimated_time_str)}</dd></div>
+    <div><dt>Operators on ${esc(label)}</dt><dd>${esc(String(operators.length))}</dd></div>
+    <div><dt>Observations (14 days)</dt><dd>${esc(String(observed_count))}</dd></div>
+  </dl>
+</section>`;
+
+  // ── 2. Operators table ────────────────────────────────────────────────────
+  // Build valid-combo set for matrix page links (same pattern as bAircraftAirlines)
+  const validCombos = airlineAircraftService.listValidCombinations({ minPairs: 5 });
+  const validSet    = airlineAircraftService.buildValidComboSet(validCombos);
+
+  const opRows = operators.map((op) => {
+    // Check if we can link to matrix page /airline/{iata}/aircraft/{icao}
+    let matrixIcao = null;
+    for (const icao of family.icao_list) {
+      const key = `${op.iata.toLowerCase()}:${icao.toLowerCase()}`;
+      if (validSet.has(key)) { matrixIcao = icao; break; }
+    }
+    const nameHtml = matrixIcao
+      ? `<a href="/airline/${esc(op.iata.toLowerCase())}/aircraft/${esc(matrixIcao.toLowerCase())}">${esc(op.name)}</a>`
+      : `<a href="/airline/${esc(op.iata.toLowerCase())}">${esc(op.name)}</a>`;
+    const firstDate = op.first_seen_at ? new Date(op.first_seen_at).toISOString().slice(0, 10) : '—';
+    const lastDate  = op.last_seen_at  ? new Date(op.last_seen_at).toISOString().slice(0, 10)  : '—';
+    return `<tr><td>${nameHtml}</td><td>${esc(String(op.obs_count))}</td><td>${esc(firstDate)}</td><td>${esc(lastDate)}</td></tr>`;
+  }).join('\n');
+
+  const operatorsSection = `<section class="variant-route-operators">
+  <h2>Airlines operating the ${esc(label)} on ${esc(from)} → ${esc(to)}</h2>
+  <table>
+    <thead><tr><th scope="col">Airline</th><th scope="col">Observations</th><th scope="col">First seen</th><th scope="col">Last seen</th></tr></thead>
+    <tbody>
+${opRows}
+    </tbody>
+  </table>
+</section>`;
+
+  // ── 3. About this aircraft on this route ─────────────────────────────────
+  const aircraftCalloutSection = `<section class="variant-route-callout">
+  <h2>About the ${esc(label)} on this route</h2>
+  <p>The <a href="${aircraftHref}">${esc(label)}</a> is used by ${esc(String(operators.length))} operator${operators.length === 1 ? '' : 's'} on ${esc(depCity)} → ${esc(arrCity)}.</p>
+  <p>For specifications, safety record, and global deployment data, see the <a href="${aircraftHref}">${esc(label)} family page</a> or the <a href="/aircraft/${esc(slug)}/safety">${esc(label)} safety record</a>.</p>
+</section>`;
+
+  // ── 4. Other aircraft on this route ──────────────────────────────────────
+  let otherAircraftSection = '';
+  if (other_aircraft.length > 0) {
+    const otherCards = other_aircraft.map((ac) =>
+      `<li><a href="/routes/${esc(pair)}/${esc(ac.slug)}">${esc(ac.name)}</a> — ${esc(String(ac.obs_count))} observation${ac.obs_count === 1 ? '' : 's'}</li>`
+    ).join('\n');
+    otherAircraftSection = `<section class="variant-route-other-aircraft">
+  <h2>Other aircraft on the ${esc(from)}–${esc(to)} route</h2>
+  <ul>
+${otherCards}
+  </ul>
+</section>`;
+  }
+
+  // ── 5. Airport details ────────────────────────────────────────────────────
+  function renderAirportCard(labelStr, iata, apData) {
+    const ap = openFlightsService.getAirport(iata) || {};
+    const icao    = ap.icao    || null;
+    const city    = apData.city    || ap.city    || iata;
+    const country = apData.country || ap.country || null;
+    const name    = ap.name || iata;
+    const icaoRow = icao
+      ? `<div><dt>IATA / ICAO</dt><dd>${esc(iata)} / ${esc(icao)}</dd></div>`
+      : `<div><dt>IATA</dt><dd>${esc(iata)}</dd></div>`;
+    return `<div class="airport-card">
+    <h3>${esc(labelStr)}: ${esc(name)} (${esc(iata)})</h3>
+    <dl>
+      <div><dt>City</dt><dd>${esc(city)}</dd></div>
+      ${country ? `<div><dt>Country</dt><dd>${esc(country)}</dd></div>` : ''}
+      ${icaoRow}
+    </dl>
+  </div>`;
+  }
+  const airportsSection = `<section class="variant-route-airports">
+  <h2>Airport details</h2>
+  ${renderAirportCard('Departure', from, dep)}
+  ${renderAirportCard('Arrival', to, arr)}
+</section>`;
+
+  // ── 6. Programmatic FAQ ───────────────────────────────────────────────────
+  const top3OpNames = operators.slice(0, 3).map((op) => op.name).join(', ');
+  const top3OtherNames = other_aircraft.slice(0, 3).map((ac) => ac.name).join(', ');
+  const windowDays = 14;
+
+  const faqItems = [
+    {
+      q: `Which airlines fly the ${label} on the ${pair.toUpperCase()} route?`,
+      a: top3OpNames
+        ? `Airlines observed operating the ${label} on ${from} to ${to} include: ${top3OpNames}.`
+        : `No airlines were observed operating the ${label} on ${from}–${to} in the last ${windowDays} days.`,
+    },
+    {
+      q: `How often does the ${label} fly ${pair.toUpperCase()}?`,
+      a: `The ${label} was observed ${observed_count} time${observed_count === 1 ? '' : 's'} on the ${from}–${to} route in the last ${windowDays} days across ${operators.length} operator${operators.length === 1 ? '' : 's'}.`,
+    },
+    {
+      q: `What's the distance from ${depCity} to ${arrCity}?`,
+      a: `The great-circle distance from ${depCity} (${from}) to ${arrCity} (${to}) is approximately ${distance_km.toLocaleString()} km (${distanceMiles.toLocaleString()} miles). Estimated flight time is ~${estimated_time_str}.`,
+    },
+    {
+      q: `What other aircraft fly the ${pair.toUpperCase()} route?`,
+      a: top3OtherNames
+        ? `Other aircraft observed on ${from}–${to} include: ${top3OtherNames}.`
+        : `No other aircraft families were observed on the ${from}–${to} route in the last ${windowDays} days.`,
+    },
+  ];
+
+  const faqHtmlItems = faqItems.map((item) =>
+    `<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+    <h3 itemprop="name">${esc(item.q)}</h3>
+    <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+      <p itemprop="text">${esc(item.a)}</p>
+    </div>
+  </div>`
+  ).join('\n');
+
+  const faqSection = `<section class="variant-route-faq" itemscope itemtype="https://schema.org/FAQPage">
+  <h2>Frequently asked questions</h2>
+${faqHtmlItems}
+</section>`;
+
+  // ── FAQPage JSON-LD ───────────────────────────────────────────────────────
+  const faqLd = {
+    '@type': 'FAQPage',
+    mainEntity: faqItems.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  };
+
+  // ── BreadcrumbList JSON-LD ────────────────────────────────────────────────
+  const breadcrumbLd = {
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home',   item: `${BASE_URL}/` },
+      { '@type': 'ListItem', position: 2, name: 'Routes', item: `${BASE_URL}/routes` },
+      { '@type': 'ListItem', position: 3, name: pair.toUpperCase(), item: `${BASE_URL}/routes/${pair}` },
+      { '@type': 'ListItem', position: 4, name: label, item: `${BASE_URL}/routes/${pair}/${slug}` },
+    ],
+  };
+
+  const jsonLdRaw = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [faqLd, breadcrumbLd],
+  }).replace(/<\/(script)/gi, '<\\/$1');
+  const jsonLdBlock = `<script type="application/ld+json">${jsonLdRaw}</script>`;
+
+  return [
+    heroSection,
+    operatorsSection,
+    aircraftCalloutSection,
+    otherAircraftSection,
+    airportsSection,
+    faqSection,
+    jsonLdBlock,
+  ].filter(Boolean).join('\n');
 }
 
 function bAircraftSafety(meta, _db) {

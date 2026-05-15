@@ -149,7 +149,8 @@ async function getOrBuild(pathname) {
     /^\/accidents\/[^/]+\/?$/.test(pathname) ||
     /^\/safety\/events\/[^/]+\/?$/.test(pathname) ||
     /^\/airline\/[a-z0-9]{2,3}\/aircraft\/[a-z][a-z0-9]{2,5}\/?$/i.test(pathname) ||
-    /^\/routes\/[a-z]{3}-[a-z]{3}\/?$/i.test(pathname);
+    /^\/routes\/[a-z]{3}-[a-z]{3}\/?$/i.test(pathname) ||
+    /^\/routes\/[a-z]{3}-[a-z]{3}\/[a-z][a-z0-9-]+\/?$/i.test(pathname);
   if (!isLazyPath) return null;
 
   const now = Date.now();
@@ -161,7 +162,7 @@ async function getOrBuild(pathname) {
 
   let meta;
   try { meta = seoMeta.resolve(pathname); } catch { return null; }
-  if (!meta || (meta.kind !== 'accident' && meta.kind !== 'safety-event' && meta.kind !== 'airline-aircraft' && meta.kind !== 'route')) return null;
+  if (!meta || (meta.kind !== 'accident' && meta.kind !== 'safety-event' && meta.kind !== 'airline-aircraft' && meta.kind !== 'route' && meta.kind !== 'aircraft-route')) return null;
 
   let html;
   try { html = await builders.buildAsync(meta); } catch { return null; }

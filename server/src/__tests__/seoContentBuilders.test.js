@@ -663,7 +663,7 @@ describe('bAircraftRoute — aircraft × route combo pages', () => {
     expect(build({ kind: 'aircraft-route', slug: 'boeing-787' })).toBeNull();
   });
 
-  it('renders intro + observed variants when route has observations', () => {
+  it('renders rich landing page when route has observations', () => {
     const meta = {
       kind: 'aircraft-route',
       fromIata: 'JFK', toIata: 'LHR',
@@ -672,12 +672,13 @@ describe('bAircraftRoute — aircraft × route combo pages', () => {
       slug: 'boeing-787',
     };
     const html = build(meta);
-    expect(html).toMatch(/Recent.*Boeing 787 Dreamliner.*activity/);
-    expect(html).toMatch(/New York.*JFK/);
-    expect(html).toMatch(/London.*LHR/);
-    expect(html).toMatch(/Observed variants on this route/);
-    expect(html).toMatch(/B789/);
-    expect(html).toMatch(/B788/);
+    // Rich page must include hero section, airport section, FAQ, and JSON-LD
+    expect(html).toMatch(/variant-route-hero-metrics/);
+    expect(html).toMatch(/variant-route-airports/);
+    expect(html).toMatch(/variant-route-faq/);
+    expect(html).toMatch(/FAQPage/);
+    expect(html).toMatch(/BreadcrumbList/);
+    // Must link back to parent pair page and aircraft page
     expect(html).toMatch(/href="\/routes\/jfk-lhr"/);
     expect(html).toMatch(/href="\/aircraft\/boeing-787"/);
   });
