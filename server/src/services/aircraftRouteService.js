@@ -47,7 +47,10 @@ function _formatHours(decimalHours) {
 
 function isQualifying(fromIata, toIata, slug) {
   if (!getFamilyBySlug(slug)) return false;
-  if (isEditorialPair(fromIata, toIata)) return true;
+  // Editorial-pair short-circuit removed in F3 polish: it caused head meta
+  // to say "index, follow" while body emitted "noindex, follow" for pairs
+  // with no actual observations (e.g. LHR-SIN/boeing-747). All callers now
+  // gate on real data only — head and body emit consistent signals.
   const count = obr.countComboByPairAndFamily(
     fromIata,
     toIata,
