@@ -1169,6 +1169,10 @@ function structuredData(meta) {
       ],
       isAccessibleForFree: true,
       creator: { '@type': 'Organization', name: 'FlightFinder', url: BASE },
+      // Per-source licensing (ASN, B3A, Wikidata, NTSB) is enumerated on
+      // the attributions page. Google Search Console flagged "missing
+      // license" 2026-05-16; link is the canonical resolution.
+      license: `${BASE}/legal/attributions`,
       temporalCoverage: '1980-01-01/..',
       spatialCoverage: { '@type': 'Place', name: 'Worldwide' },
       distribution: [
@@ -1196,6 +1200,10 @@ function structuredData(meta) {
       keywords: ['NTSB', 'aviation accidents', 'aviation incidents', 'aviation safety', 'United States'],
       isAccessibleForFree: true,
       creator: { '@type': 'Organization', name: 'FlightFinder', url: BASE },
+      // NTSB CAROL data is U.S. government, public-domain; attribution
+      // and our aggregation terms live on /legal/attributions. Search
+      // Console flagged "missing license" 2026-05-16.
+      license: `${BASE}/legal/attributions`,
       // schema.org's spatialCoverage expects Place. Country *inherits* from
       // Place but Google's validator doesn't unfold the inheritance chain
       // and rejects Country as "invalid object type" — flagged in Search
