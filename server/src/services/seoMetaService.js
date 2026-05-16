@@ -970,7 +970,11 @@ function resolve(pathname, searchParams) {
       },
       about: [
         {
-          '@type': 'Vehicle',
+          // Was 'Vehicle' but Vehicle inherits from Product in schema.org,
+          // triggering Google's Product rich-result validator which demands
+          // offers/review/aggregateRating — accident pages legitimately can't
+          // satisfy. Thing keeps the entity present without the false signal.
+          '@type': 'Thing',
           name: f.aircraft_model,
           ...(f.registration ? { identifier: f.registration } : {}),
         },
@@ -1475,9 +1479,13 @@ function structuredData(meta) {
       ],
     });
     graph.push({
-      '@type': 'Vehicle',
+      // Vehicle inherits from Product → triggers Google's Product rich-result
+      // validator demanding offers/review/aggregateRating. Aircraft subpages
+      // aren't sales products; use Thing to keep the entity without the
+      // false-positive rich-result eligibility flag.
+      '@type': 'Thing',
       name: meta.aircraftLabel,
-      vehicleConfiguration: 'Commercial aircraft',
+      description: 'Commercial aircraft',
       url: meta.canonical,
     });
   } else if (meta.kind === 'home') {

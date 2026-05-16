@@ -169,7 +169,9 @@ function renderEnhancedFAQ(faq) {
 
 /**
  * Builds a JSON-LD ItemList object for the variants of an aircraft family.
- * Each item uses Product type with name, additionalType, and description.
+ * Items use Thing (not Product) — Product would trigger Google's Product
+ * rich-result validator demanding offers/review/aggregateRating which
+ * aircraft variants can't satisfy (they're not for sale on this page).
  * @param {Array} variants
  * @param {string} slug - family slug, used in description context
  * @returns {object} JSON-LD compatible object
@@ -184,7 +186,7 @@ function buildVariantsItemListLD(variants, slug) {
       '@type': 'ListItem',
       position: i + 1,
       item: {
-        '@type': 'Product',
+        '@type': 'Thing',
         name: v.name,
         additionalType: 'AircraftModel',
         description: `${v.name}: first flight ${v.firstFlight}, ${v.seats} seats, range ${v.range_nm} nm, status ${v.status}.`,

@@ -296,9 +296,11 @@ describe('aircraftLandingContent — JSON-LD schema', () => {
     expect(itemList).toBeDefined();
     expect(Array.isArray(itemList.itemListElement)).toBe(true);
     expect(itemList.itemListElement).toHaveLength(7);
-    // Each item should be a Product
+    // Each item uses Thing (was Product, but Product inherits from
+    // schema.org's commercial path → Google flagged variants ItemList in
+    // Search Console asking for offers/review/aggregateRating).
     for (const item of itemList.itemListElement) {
-      expect(item.item['@type']).toBe('Product');
+      expect(item.item['@type']).toBe('Thing');
       expect(item.item.additionalType).toBe('AircraftModel');
     }
   });
