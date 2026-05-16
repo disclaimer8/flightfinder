@@ -1196,7 +1196,15 @@ function structuredData(meta) {
       keywords: ['NTSB', 'aviation accidents', 'aviation incidents', 'aviation safety', 'United States'],
       isAccessibleForFree: true,
       creator: { '@type': 'Organization', name: 'FlightFinder', url: BASE },
-      spatialCoverage: { '@type': 'Country', name: 'United States' },
+      // schema.org's spatialCoverage expects Place. Country *inherits* from
+      // Place but Google's validator doesn't unfold the inheritance chain
+      // and rejects Country as "invalid object type" — flagged in Search
+      // Console 2026-05-16. Use Place directly with an addressCountry hint.
+      spatialCoverage: {
+        '@type': 'Place',
+        name: 'United States',
+        address: { '@type': 'PostalAddress', addressCountry: 'US' },
+      },
     });
   } else if (meta.kind === 'pricing') {
     graph.push({
