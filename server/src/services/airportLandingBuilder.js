@@ -36,7 +36,7 @@ function buildArrivals(iata) {
     routes: arrivals,
     airlines: [],
     canonical: `${SITE}/flights-to/${iata}`,
-    h1: `Flights to ${meta.city}${meta.name ? ' ' + meta.name : ''} (${iata})`,
+    h1: `Flights to ${meta.name && meta.name !== meta.city ? `${meta.city} ${meta.name}` : meta.city} (${iata})`,
     title: `Flights to ${meta.city} (${iata}) — origins, airlines, distance | FlightFinder`,
     metaDesc: `All non-stop flights arriving at ${meta.city} ${iata}. ${arrivals.length} origins. Distance, duration, carriers.`,
   });

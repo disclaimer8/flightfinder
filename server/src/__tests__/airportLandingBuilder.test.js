@@ -77,4 +77,11 @@ describe('airportLandingBuilder.buildArrivals', () => {
     const html = builder.buildArrivals('LHR');
     expect(html).toContain('<link rel="canonical" href="https://himaxym.com/flights-to/LHR">');
   });
+
+  it('does not duplicate city when name equals city (e.g., Cork)', () => {
+    const html = builder.buildArrivals('ORK');
+    // ORK fixture: city='Cork', name='Cork'
+    expect(html).toContain('<h1>Flights to Cork (ORK)');
+    expect(html).not.toContain('Cork Cork');
+  });
 });
