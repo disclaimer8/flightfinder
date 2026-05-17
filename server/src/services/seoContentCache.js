@@ -132,6 +132,32 @@ const LAZY_MAX = 5000;
 const LAZY_TTL_MS = 24 * 3600 * 1000;
 const lazyMap = new Map();
 
+/**
+ * Returns true if the pathname matches one of the SSR URL families served
+ * via lazy-bake (built on first bot hit, cached with TTL/LRU). New families
+ * MUST be added here AND in the buildAsync dispatch in seoContentBuilders.js.
+ *
+ * Memory `lazy-bake-regex-sync`: this is the recurring desync trap. Tests
+ * in seoContentCache.isLazyPath.*.test.js make the trap loud.
+ *
+ * /airline/:iata is intentionally NOT a lazy path — it's served via the
+ * pre-warmed map (per coexistence strategy for the Phase 1 jonty rewrite).
+ */
+function isLazyPath(pathname) {
+  if (!pathname) return false;
+  return (
+    /^\/accidents\/[^/]+\/?$/.test(pathname) ||
+    /^\/safety\/events\/[^/]+\/?$/.test(pathname) ||
+    /^\/airline\/[a-z0-9]{2,3}\/aircraft\/[a-z][a-z0-9]{2,5}\/?$/i.test(pathname) ||
+    /^\/routes\/[a-z]{3}-[a-z]{3}\/?$/i.test(pathname) ||
+    /^\/routes\/[a-z]{3}-[a-z]{3}\/[a-z][a-z0-9-]+\/?$/i.test(pathname) ||
+    // Phase 1 SEO families (2026-05-17):
+    /^\/flights-from\/[a-z]{3}\/?$/i.test(pathname) ||
+    /^\/flights-to\/[a-z]{3}\/?$/i.test(pathname) ||
+    /^\/airline\/[a-z0-9]{2,3}\/from\/[a-z]{3}\/?$/i.test(pathname)
+  );
+}
+
 async function getOrBuild(pathname) {
   if (!pathname) return null;
   // Fast path: the pre-warmed map covers airport / airline / aircraft / route.
@@ -145,13 +171,9 @@ async function getOrBuild(pathname) {
   //   /airline/{iata}/aircraft/{icao} — 256 matrix pages; sitemap-advertised but
   //                                     not pre-warmed; built on first bot hit and
   //                                     cached to avoid repeated SQLite lookups
-  const isLazyPath =
-    /^\/accidents\/[^/]+\/?$/.test(pathname) ||
-    /^\/safety\/events\/[^/]+\/?$/.test(pathname) ||
-    /^\/airline\/[a-z0-9]{2,3}\/aircraft\/[a-z][a-z0-9]{2,5}\/?$/i.test(pathname) ||
-    /^\/routes\/[a-z]{3}-[a-z]{3}\/?$/i.test(pathname) ||
-    /^\/routes\/[a-z]{3}-[a-z]{3}\/[a-z][a-z0-9-]+\/?$/i.test(pathname);
-  if (!isLazyPath) return null;
+  //   /flights-from/{iata}, /flights-to/{iata}, /airline/{iata}/from/{iata}
+  //                                   — Phase 1 SEO landing pages (jonty.db).
+  if (!isLazyPath(pathname)) return null;
 
   const now = Date.now();
   const cached = lazyMap.get(pathname);
@@ -162,7 +184,12 @@ async function getOrBuild(pathname) {
 
   let meta;
   try { meta = seoMeta.resolve(pathname); } catch { return null; }
-  if (!meta || (meta.kind !== 'accident' && meta.kind !== 'safety-event' && meta.kind !== 'airline-aircraft' && meta.kind !== 'route' && meta.kind !== 'aircraft-route')) return null;
+  const ALLOWED_LAZY_KINDS = [
+    'accident', 'safety-event', 'airline-aircraft', 'route', 'aircraft-route',
+    // Phase 1 SEO families:
+    'airport-departures', 'airport-arrivals', 'airline-airport',
+  ];
+  if (!meta || !ALLOWED_LAZY_KINDS.includes(meta.kind)) return null;
 
   let html;
   try { html = await builders.buildAsync(meta); } catch { return null; }
@@ -203,4 +230,4 @@ function _injectForTests(key, html) {
   map.set(key, html);
 }
 
-module.exports = { warm, refresh, get, getOrBuild, stats, _clearForTests, _injectForTests };
+module.exports = { warm, refresh, get, getOrBuild, stats, _clearForTests, _injectForTests, isLazyPath };
