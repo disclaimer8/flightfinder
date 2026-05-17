@@ -7,14 +7,16 @@
 const cache = require('../services/seoContentCache');
 
 describe('seoContentCache.isLazyPath — Phase 1 SSR families', () => {
-  // NOTE: /airline/:iata is intentionally NOT here. It's served via the
-  // pre-warmed map (not lazy path) per the coexistence strategy. Adding it
-  // to lazy would force a redundant build on every request.
+  // /airline/:iata is in lazy path because warm() enumerates airlines via
+  // FF observed_routes which stores ICAO not IATA — pre-warm caches the
+  // wrong URL family. Lazy bake on first hit handles the real IATA URLs.
   const ACCEPTED = [
     '/flights-from/ORK',
     '/flights-from/lhr/',
     '/flights-to/ORK',
     '/flights-to/lhr/',
+    '/airline/EI',
+    '/airline/ei/',
     '/airline/EI/from/ORK',
     '/airline/ei/from/ork/',
   ];

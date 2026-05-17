@@ -154,6 +154,12 @@ function isLazyPath(pathname) {
     // Phase 1 SEO families (2026-05-17):
     /^\/flights-from\/[a-z]{3}\/?$/i.test(pathname) ||
     /^\/flights-to\/[a-z]{3}\/?$/i.test(pathname) ||
+    // /airline/:iata served via lazy path (NOT pre-warm). Reason: warm()
+    // enumerates airlines via FF observed_routes which stores ICAO not IATA
+    // (memory `observed_routes-airline-column-icao`), so pre-warm caches the
+    // wrong URL family (/airline/dlh instead of /airline/lh). Lazy path
+    // matches the real IATA URLs Google + users actually request.
+    /^\/airline\/[a-z0-9]{2,3}\/?$/i.test(pathname) ||
     /^\/airline\/[a-z0-9]{2,3}\/from\/[a-z]{3}\/?$/i.test(pathname)
   );
 }
@@ -188,6 +194,10 @@ async function getOrBuild(pathname) {
     'accident', 'safety-event', 'airline-aircraft', 'route', 'aircraft-route',
     // Phase 1 SEO families:
     'airport-departures', 'airport-arrivals', 'airline-airport',
+    // 'airline' added for Phase 1 coexistence — IATA URLs miss the
+    // ICAO-warm-cache; lazy bake on first hit lets buildAsync dispatch
+    // to jonty-or-bAirline correctly. See isLazyPath regex above.
+    'airline',
   ];
   if (!meta || !ALLOWED_LAZY_KINDS.includes(meta.kind)) return null;
 
