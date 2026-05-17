@@ -17,10 +17,18 @@ CREATE TABLE route_carriers (origin_iata TEXT, dest_iata TEXT, carrier_iata TEXT
 
 let enumerator;
 beforeAll(() => {
+  // Test fixture uses ORK/LHR. Only LHR is in the top-50 hubs allowlist,
+  // so we force 'all' to exercise full-rollout behavior and keep the
+  // pre-stage assertions (length === 4, etc.) accurate.
+  process.env.FF_SEO_P1_STAGE = 'all';
   jest.resetModules();
   const db = newDb();
   jest.doMock('../models/jontyDb', () => ({ getDb: () => db, closeDb: () => db.close() }));
   enumerator = require('../services/seoUrlEnumerator');
+});
+
+afterAll(() => {
+  delete process.env.FF_SEO_P1_STAGE;
 });
 
 describe('seoUrlEnumerator P1 families', () => {

@@ -19,10 +19,17 @@ CREATE TABLE route_carriers (origin_iata TEXT, dest_iata TEXT, carrier_iata TEXT
 
 let app;
 beforeAll(() => {
+  // Fixture uses ORK/LHR — ORK isn't in the top-50 hub allowlist, so we
+  // force 'all' to keep these sitemap-inclusion assertions valid.
+  process.env.FF_SEO_P1_STAGE = 'all';
   jest.resetModules();
   const db = newJontyDb();
   jest.doMock('../models/jontyDb', () => ({ getDb: () => db, closeDb: () => db.close() }));
   app = require('../index');
+});
+
+afterAll(() => {
+  delete process.env.FF_SEO_P1_STAGE;
 });
 
 const request = require('supertest');

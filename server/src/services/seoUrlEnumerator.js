@@ -177,8 +177,10 @@ function enumerateAccidents() {
 // emit MUST resolve via seoMeta and build via seoContentBuilders.buildAsync.
 // Task 15 has a coupling cross-check test that enforces this contract.
 function enumerateAirportLandingUrls() {
+  const stage = require('./seoP1Stage');
   const db = require('../models/jontyDb').getDb();
-  const iatas = db.prepare(`SELECT iata FROM airports ORDER BY iata`).all().map(r => r.iata);
+  const allIatas = db.prepare(`SELECT iata FROM airports ORDER BY iata`).all().map(r => r.iata);
+  const iatas = stage.filterAirports(allIatas);
   const out = [];
   for (const iata of iatas) {
     out.push(`/flights-from/${iata}`);
@@ -195,9 +197,11 @@ function enumerateAirlineNetworkUrls() {
 }
 
 function enumerateAirlineAirportUrls() {
+  const stage = require('./seoP1Stage');
   const db = require('../models/jontyDb').getDb();
-  return db.prepare(`SELECT DISTINCT carrier_iata, origin_iata FROM route_carriers ORDER BY carrier_iata, origin_iata`)
-    .all()
+  const rows = db.prepare(`SELECT DISTINCT carrier_iata, origin_iata FROM route_carriers ORDER BY carrier_iata, origin_iata`).all();
+  return rows
+    .filter(r => stage.shouldEnumerate(r.origin_iata))
     .map(r => `/airline/${r.carrier_iata}/from/${r.origin_iata}`);
 }
 

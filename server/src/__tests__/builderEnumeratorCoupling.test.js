@@ -23,12 +23,20 @@ CREATE TABLE route_carriers (origin_iata TEXT, dest_iata TEXT, carrier_iata TEXT
 
 let enumerator, builders, meta;
 beforeAll(() => {
+  // Test fixture uses ORK/DUB/LHR. Only LHR is in the top-50 hubs allowlist,
+  // so force 'all' to ensure every fixture URL is enumerated and the coupling
+  // contract is fully exercised.
+  process.env.FF_SEO_P1_STAGE = 'all';
   jest.resetModules();
   const db = newDb();
   jest.doMock('../models/jontyDb', () => ({ getDb: () => db, closeDb: () => db.close() }));
   enumerator = require('../services/seoUrlEnumerator');
   builders = require('../services/seoContentBuilders');
   meta = require('../services/seoMetaService');
+});
+
+afterAll(() => {
+  delete process.env.FF_SEO_P1_STAGE;
 });
 
 describe('builder↔enumerator coupling — every enumerated URL must resolve and build', () => {
