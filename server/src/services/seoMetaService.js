@@ -695,6 +695,25 @@ function resolve(pathname, searchParams) {
     return airlineAircraftMeta(airlineAircraftMatch[1].toUpperCase(), airlineAircraftMatch[2].toUpperCase());
   }
 
+  // Phase 1 SEO landing pages: airport departures/arrivals + airline×airport.
+  // Built from jonty.db; dispatched in seoContentBuilders.
+  // IMPORTANT: place BEFORE the bare /airline/:iata match so the more
+  // specific /airline/:iata/from/:iata pattern wins.
+  const apDepMatch = /^\/flights-from\/([A-Za-z]{3})\/?$/.exec(pathname);
+  if (apDepMatch) return { kind: 'airport-departures', iata: apDepMatch[1].toUpperCase() };
+
+  const apArrMatch = /^\/flights-to\/([A-Za-z]{3})\/?$/.exec(pathname);
+  if (apArrMatch) return { kind: 'airport-arrivals', iata: apArrMatch[1].toUpperCase() };
+
+  const airlineAirportMatch = /^\/airline\/([A-Za-z0-9]{2,3})\/from\/([A-Za-z]{3})\/?$/.exec(pathname);
+  if (airlineAirportMatch) {
+    return {
+      kind: 'airline-airport',
+      airlineIata: airlineAirportMatch[1].toUpperCase(),
+      airportIata: airlineAirportMatch[2].toUpperCase(),
+    };
+  }
+
   const airlineMatch = /^\/airline\/([a-z0-9]{2,3})\/?$/i.exec(pathname);
   if (airlineMatch) return airlineMeta(airlineMatch[1].toLowerCase());
 
