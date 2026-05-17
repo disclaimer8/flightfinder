@@ -221,6 +221,7 @@ app.use('/api/map',           require('./routes/map'));
 app.use('/api/airline',       require('./routes/airlineAircraft'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/config',        require('./routes/config'));
+app.use('/api/airports',      require('./routes/airports'));
 app.use('/api/safety',        require('./routes/safety'));
 app.use('/api/accidents',     require('./routes/accidents'));
 app.use('/og',                require('./routes/ogImages'));         // /og/accident/:slug.png (dynamic) before static fallback

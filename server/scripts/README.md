@@ -14,3 +14,5 @@ Run daily on VPS:
 ETag-checked so daily cron is cheap when source hasn't refreshed (~weekly).
 
 Database schema: `airports`, `routes`, `route_carriers`, `meta`. Indexed by IATA / country_code / dest_iata.
+
+Jonty data is consumed by `/api/airports/*` endpoints — see `server/src/routes/airports.js`.
