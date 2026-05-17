@@ -172,4 +172,43 @@ function enumerateAccidents() {
   }));
 }
 
-module.exports = { enumerateSeoUrls, enumerateAccidents, enumerateAirlineAircraftMatrix, enumerateRouteMatrix, STATIC_PATHS };
+// Phase 1 SEO landing pages — jonty.db-backed enumerators.
+// Memory `lazy-bake-regex-sync` & `seo-bake-invariants`: every URL these
+// emit MUST resolve via seoMeta and build via seoContentBuilders.buildAsync.
+// Task 15 has a coupling cross-check test that enforces this contract.
+function enumerateAirportLandingUrls() {
+  const db = require('../models/jontyDb').getDb();
+  const iatas = db.prepare(`SELECT iata FROM airports ORDER BY iata`).all().map(r => r.iata);
+  const out = [];
+  for (const iata of iatas) {
+    out.push(`/flights-from/${iata}`);
+    out.push(`/flights-to/${iata}`);
+  }
+  return out;
+}
+
+function enumerateAirlineNetworkUrls() {
+  const db = require('../models/jontyDb').getDb();
+  return db.prepare(`SELECT DISTINCT carrier_iata FROM route_carriers ORDER BY carrier_iata`)
+    .all()
+    .map(r => `/airline/${r.carrier_iata}`);
+}
+
+function enumerateAirlineAirportUrls() {
+  const db = require('../models/jontyDb').getDb();
+  return db.prepare(`SELECT DISTINCT carrier_iata, origin_iata FROM route_carriers ORDER BY carrier_iata, origin_iata`)
+    .all()
+    .map(r => `/airline/${r.carrier_iata}/from/${r.origin_iata}`);
+}
+
+module.exports = {
+  enumerateSeoUrls,
+  enumerateAccidents,
+  enumerateAirlineAircraftMatrix,
+  enumerateRouteMatrix,
+  STATIC_PATHS,
+  // Phase 1:
+  enumerateAirportLandingUrls,
+  enumerateAirlineNetworkUrls,
+  enumerateAirlineAirportUrls,
+};
