@@ -3,8 +3,9 @@
 **Spec:** `docs/superpowers/specs/2026-05-17-airport-route-seo-strategy.md`
 **Plan:** `docs/superpowers/plans/2026-05-17-airport-route-seo-phase1.md`
 **Branch:** `main`
-**Implementation period:** 2026-05-17 (Tasks 7-17 in a single session via subagent-driven-development)
-**Deploy date:** _pending Task 18_
+**Implementation period:** 2026-05-17 (Tasks 1-19 in a single session via subagent-driven-development; baseline cleanup pass after Task 18 smoke)
+**Deploy date:** 2026-05-17 — first deploy `4086361` + 2 hotfix follow-ups (`80c6803` lazy-path expansion, `5dbbfc9` test alignment); baseline cleanup `cf7ddd8`
+**Final state:** Phase 1 SHIPPED, smoke verified, baseline tests clean (was 6 failing on `a0fda8b`)
 
 ---
 
@@ -54,13 +55,19 @@ The plan called out three recurring traps (FF memory). Each now has a dedicated 
 ## Test suite delta (relative to `a0fda8b` baseline)
 
 ```
-baseline    a0fda8b:  1187 passed, 6 failed, 3 skipped  (1196 total)
-Phase 1 head 1487150:  1254 passed, 6 failed, 3 skipped  (1263 total)
-                       ─────       ──
-                       +67 new      ±0 regressions
+baseline       a0fda8b:  1187 passed, 6 failed, 3 skipped  (1196 total)
+Phase 1 head   1487150:  1254 passed, 6 failed, 3 skipped  (1263 total)  +67 new, ±0 regressions
+After cleanup  cf7ddd8:  1257 passed, 0 failed, 6 skipped  (1263 total)  6 baseline fails resolved
 ```
 
-Six pre-existing failures (route FR24 wiring, FAQPage suppression, SPA fallback FR24) are unrelated to Phase 1 and predate Task 7. Verified by running baseline checkout in a temporary worktree.
+**Baseline cleanup pass** (`cf7ddd8`, branch `fix/baseline-test-failures`):
+- 3 outdated assertions corrected to match current FF behavior:
+  - `seoMetaService.variant`: boeing-787 is now enriched, head FAQPage is intentionally suppressed (enrichment path emits richer FAQPage from body builder)
+  - `seoContentBuilders` route: aircraft section now renders friendly labels ("Boeing 777") not ICAOs (after commit `29095f4` route enrichment)
+  - `seoContentBuilders` route: empty pair now returns thin-pair noindex HTML, not null
+- 3 obsolete tests skipped with documented reasoning:
+  - bRoute FR24 sample × 2 — feature removed in route enrichment refactor (observed_routes gives better per-pair data than 14d FR24 sample)
+  - SPA fallback `/routes/JFK-LHR` FR24 route-context — same feature removal
 
 ---
 
@@ -149,13 +156,27 @@ With `all`:
 
 ## Open follow-ups
 
-### Pending Task 18 (production deploy + smoke)
-1. `git push origin main` (23 commits ahead)
-2. Wait for deploy CI to complete
-3. curl smoke test 6 URLs (codes per family expected 200)
-4. View-source check — verify baked HTML, not React shell
-5. Google Rich Results Test for Airport / BreadcrumbList / FAQPage / Dataset / Person
-6. Submit sitemap to Search Console
+### Task 18 production smoke results (2026-05-17)
+
+| URL | HTTP | h1 | title | Notes |
+|---|---|---|---|---|
+| `/about/team` | 200 | ✅ | ✅ | Person schema |
+| `/methodology` | 200 | ✅ | ✅ | Dataset schema |
+| `/flights-from/ATL` | 200 | ✅ "Flights from Atlanta (ATL)" | ✅ | full meta from resolver |
+| `/flights-to/LHR` | 200 | ✅ "Flights to London Heathrow (LHR)" | ✅ | full meta from resolver |
+| `/airline/EI` | 200 | ⚠️ "destinations and fleet" (old `airlineMeta`) | ⚠️ old | body=jonty (route network, 274 routes), title/h1 from old meta — coexistence mismatch, B1 in P2 backlog |
+| `/airline/EI/from/DUB` | 200 | ✅ "Aer Lingus flights from Dublin (DUB)" | ✅ | full meta from resolver |
+
+### Issues discovered during smoke (all resolved)
+
+1. **Initial deploy didn't trigger pm2 reload** — webhook ran `git fetch + reset --hard` but pm2 workers stayed on old code in memory. Required manual `pm2 restart flightfinder` on VPS. Now tracked as B7 in P2 backlog.
+2. **`/airline/:iata` cache miss** — pre-warm cached `/airline/dlh` (ICAO) instead of `/airline/lh` (IATA) because `enumerateSeoUrls` reads from observed_routes column that stores ICAO (memory `observed_routes-airline-column-icao`). Real IATA requests missed pre-warm → React shell. Fixed by adding `/airline/:iata` to `isLazyPath` regex (`80c6803`).
+3. **Builder full-HTML vs shell mismatch** — builders initially returned full `<!doctype>` documents that got injected inside React shell's `<section>` via `seoMetaService.inject()`, causing double `<title>` + double `<h1>`. Refactored: builders return inner HTML only (`<main>...</main>`), resolvers emit full meta. Documented as new memory [[feedback_seo-builder-shell-contract]].
+
+### Still pending (manual / out-of-scope for code session)
+1. Google Rich Results Test for Airport / BreadcrumbList / FAQPage / Dataset / Person schemas — paste each URL at https://search.google.com/test/rich-results, watch for Vehicle/Country/Offer warnings (memory `seo-schema-validator-traps`).
+2. Submit sitemap to Search Console (`https://himaxym.com/sitemap.xml`) or trigger re-crawl.
+3. Monitor Search Console impressions for `/flights-from/*` over 4-8 weeks.
 
 ### Plan deferred to subsequent phases
 - Aircraft type column in P2 (needs FlightConnections crawl data)
@@ -165,10 +186,14 @@ With `all`:
 - Featured-snippet attack on PAA winners (post-launch)
 
 ### Technical debt from this Phase
-- `route_carriers(carrier_iata)` lacks index (full-scan on every `getAirlineNetwork()` call) — add `CREATE INDEX idx_route_carriers_carrier ON route_carriers(carrier_iata)` in `server/scripts/sync-jonty.js` next jonty refresh
-- `routeSlug(origin, dest)` helper deferred — currently inlined in 3+ places across Phase 1 builders
-- `enumerateAirlineAirportUrls` capped at 30K — fine with `top50`, would need re-cap or pagination at `all`
-- Old `bAirline` (Amadeus path) to retire in Phase 2 when jonty coverage is verified ≥95%
+- **B1** `/airline/:iata` title/h1 mismatch — coexistence path emits jonty body but title/h1 from old `airlineMeta()` ("destinations and fleet"). Either update `airlineMeta()` or retire `bAirline` entirely.
+- **B2** Old `bAirline` (Amadeus path) to retire in Phase 2 when jonty coverage is verified ≥95% of FF's `observed_routes` carriers.
+- **B3** `route_carriers(carrier_iata)` lacks index (full-scan on every `getAirlineNetwork()` call) — add `CREATE INDEX idx_route_carriers_carrier ON route_carriers(carrier_iata)` in `server/scripts/sync-jonty.js` next jonty refresh.
+- **B4** `routeSlug(origin, dest)` helper deferred — currently inlined in 3+ places across Phase 1 builders.
+- **B5** `enumerateAirlineAirportUrls` capped at 30K — fine with `top50`, would need re-cap or pagination at `all`.
+- **B7** Deploy webhook doesn't auto-trigger `pm2 reload` — manual `ssh himaxym 'pm2 restart flightfinder'` required after `git push origin main`. Investigate `.github/workflows/deploy.yml` or VPS webhook handler.
+
+Full backlog with reactivation prompts: `/Users/denyskolomiiets/.claude/projects/-Users-denyskolomiiets/memory/project_flightfinder-seo-phase2.md`.
 
 ---
 
