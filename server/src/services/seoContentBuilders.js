@@ -1325,9 +1325,42 @@ async function buildAsync(meta, db) {
   if (!meta || !meta.kind) return null;
   const dbInstance = db || require('../models/db');
 
+  // Phase 1 SEO landing pages (jonty.db-backed). Builders return a complete HTML
+  // document (own <head>, canonical, JSON-LD), so they bypass applyChromeAsync.
+  if (meta.kind === 'airport-departures') {
+    return require('./airportLandingBuilder').buildDepartures(meta.iata);
+  }
+  if (meta.kind === 'airport-arrivals') {
+    return require('./airportLandingBuilder').buildArrivals(meta.iata);
+  }
+  if (meta.kind === 'airline-airport') {
+    return require('./airlineAirportBuilder').build(meta.airlineIata, meta.airportIata);
+  }
   // Amadeus-backed kinds: builder returns inner HTML, applyChromeAsync wraps
   // with chrome + Amadeus-backed extras (direct dest / network dest sidebars).
   if (meta.kind === 'airport' || meta.kind === 'airline') {
+    // Phase 1 coexistence: if kind='airline' and jonty.db has data for this
+    // carrier_iata, render the new airlineNetworkBuilder (full HTML, no chrome
+    // wrap). Otherwise fall back to the existing Amadeus-backed bAirline path.
+    if (meta.kind === 'airline' && meta.iata) {
+      try {
+        const jontyDb = require('../models/jontyDb');
+        const row = jontyDb.getDb()
+          .prepare('SELECT 1 FROM route_carriers WHERE carrier_iata = ? LIMIT 1')
+          .get(meta.iata);
+        if (row) {
+          const jontyHtml = require('./airlineNetworkBuilder').build(meta.iata);
+          if (jontyHtml) return jontyHtml;
+        }
+      } catch (err) {
+        const msg = err && err.message ? err.message : String(err);
+        if (!msg.includes('jonty.db not present')) {
+          if (process.env.NODE_ENV !== 'production') throw err;
+          console.warn('[seo] airline jonty check failed for ' + meta.iata + ':', msg);
+        }
+        // jonty unavailable — fall through to bAirline
+      }
+    }
     const { applyChromeAsync } = require('./seoChrome');
     const innerHtml = meta.kind === 'airport'
       ? await bAirport(meta, dbInstance)
