@@ -172,17 +172,19 @@ describe('structuredData — FAQPage suppression for enriched slugs', () => {
     expect(faqPages(sd)).toHaveLength(0);
   });
 
-  it('boeing-787 (unenriched): structuredData still emits the head FAQPage', () => {
-    // boeing-787 has AIRCRAFT_FAQ entries but no enrichment — head FAQ must be preserved.
+  it('boeing-787: head FAQPage suppressed when enrichment exists (body builder emits richer one)', () => {
+    // boeing-787 is now enriched (aircraftLandingContent.json). The head-level
+    // FAQPage is intentionally suppressed for enriched slugs — bAircraft body
+    // builder emits a richer FAQPage from enrichment data, and two FAQPage
+    // graphs on one page can trigger Google manual actions.
     const meta = seoMeta.resolve('/aircraft/boeing-787');
     const sd = seoMeta.structuredData(meta);
-    // boeing-787 may or may not have AIRCRAFT_FAQ entries; the important thing
-    // is that the guard does NOT suppress it (no enrichment exists for this slug).
-    // If the FAQ array is present and non-empty, it should appear; if it's absent
-    // (no AIRCRAFT_FAQ entry) the count is 0 — either is fine, just not suppressed by guard.
     const { AIRCRAFT_FAQ } = require('../content/landingFaq');
+    const { getEnrichmentForSlug } = require('../services/aircraftLandingEnrichment');
     const hasFaq = Array.isArray(AIRCRAFT_FAQ['boeing-787']) && AIRCRAFT_FAQ['boeing-787'].length > 0;
-    if (hasFaq) {
+    const hasEnrichment = !!getEnrichmentForSlug('boeing-787');
+    // Suppression applies only when enrichment exists; otherwise head FAQ is preserved.
+    if (hasFaq && !hasEnrichment) {
       expect(faqPages(sd)).toHaveLength(1);
     } else {
       expect(faqPages(sd)).toHaveLength(0);

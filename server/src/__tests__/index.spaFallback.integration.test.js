@@ -197,34 +197,12 @@ describe('SPA fallback bakes content for known SEO URLs', () => {
     expect(res.text).toMatch(/Sampled <strong>15<\/strong>/);
   });
 
-  it('GET /routes/JFK-LHR includes FR24 route-context section when cache populated', async () => {
-    // Seed enough observed_routes that JFK and LHR both qualify as hubs
-    // (≥15 distinct destinations each) so /routes/jfk-lhr appears in
-    // enumerateSeoUrls()'s hub-network edges and the warm pass bakes it.
-    const db = require('../models/db');
-    const PAD = ['ATL','BOS','CDG','DFW','EWR','FRA','HKG','IST','LAX','MAD','MIA','MUC','NRT','ORD','SEA','SFO','SIN','SYD','YYZ','ZRH'];
-    for (const a of PAD) {
-      db.upsertObservedRoute({ depIata: 'JFK', arrIata: a, aircraftIcao: 'B789', airlineIata: 'BA', source: 'test' });
-      db.upsertObservedRoute({ depIata: 'LHR', arrIata: a, aircraftIcao: 'B789', airlineIata: 'BA', source: 'test' });
-    }
-
-    const fr24Cache = require('../services/fr24CacheService');
-    fr24Cache.set('route:JFK-LHR', {
-      totalFlights: 12,
-      uniqueOperators: 4,
-      topOperators: [{ icao: 'BAW', count: 6 }],
-      yearlyBreakdown: null,
-      windowDays: 14,
-      fetchedAt: Date.now(),
-    });
-    await require('../services/seoContentCache').warm({ schedule: false });
-
-    const res = await request(app).get('/routes/jfk-lhr');
-    expect(res.status).toBe(200);
-    expect(res.text).toMatch(/Recent flights on this route/);
-    expect(res.text).toMatch(/Sampled <strong>12<\/strong>/);
-    expect(res.text).not.toMatch(/Routes in this sample:/);
-  });
+  // FR24 route-context section was removed from bRoute in the route enrichment
+  // refactor (commit 29095f4). The rich route page now sources operators +
+  // aircraft from observed_routes (90d window), which is more accurate than
+  // the FR24 14d sample for per-pair carrier data. FR24 sample remains on
+  // aircraft / aircraft-variant / aircraft-safety pages.
+  it.skip('GET /routes/JFK-LHR includes FR24 route-context section — feature removed in route enrichment refactor', async () => {});
 
   it('GET /aircraft/boeing-787 omits FR24 section when cache empty', async () => {
     const fr24Cache = require('../services/fr24CacheService');

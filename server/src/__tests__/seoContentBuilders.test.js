@@ -52,17 +52,28 @@ describe('seoContentBuilders.build — route', () => {
     };
     const html = build(meta);
     expect(html).toMatch(/airline/i);
-    expect(html).toMatch(/B77W|A359|B789/);
+    // Aircraft section now resolves ICAOs to friendly family labels
+    // (commit 29095f4 route enrichment) — assert section + family token.
+    expect(html).toMatch(/<section class="route-aircraft">/);
+    expect(html).toMatch(/Boeing 777|Airbus A350|Boeing 787/);
   });
 
-  it('returns null for a route with no observed flights', () => {
+  it('returns noindex thin-pair HTML for a route with no observed flights', () => {
+    // Route enrichment (commit 29095f4) replaced null-return with a thin-pair
+    // template: minimal FAQ + noindex robots so empty pairs still render
+    // without polluting the index.
     const { build } = require('../services/seoContentBuilders');
     const meta = {
       kind: 'route',
       fromIata: 'AAA', toIata: 'BBB',
       fromName: 'X', toName: 'Y',
     };
-    expect(build(meta)).toBeNull();
+    const html = build(meta);
+    expect(html).toBeTruthy();
+    expect(html).toMatch(/<meta name="robots" content="noindex/);
+    // Thin path must NOT include rich sections (hero metrics, operators).
+    expect(html).not.toMatch(/<section class="route-hero-metrics">/);
+    expect(html).not.toMatch(/<section class="route-operators">/);
   });
 });
 
@@ -497,45 +508,14 @@ describe('seoContentBuilders — FR24 wiring in builders', () => {
     expect(html).toMatch(/Sampled <strong>15<\/strong>/);
   });
 
-  it('bRoute renders route-context FR24 sample block without routes list', () => {
-    const meta = {
-      kind: 'route',
-      pair: 'JFK-LHR',
-      from: 'JFK', to: 'LHR',
-      fr24Stats: {
-        totalFlights: 12, uniqueOperators: 4,
-        topOperators: [{ icao: 'BAW', count: 6 }],
-        yearlyBreakdown: null, windowDays: 14,
-        fetchedAt: Date.now(),
-      },
-    };
-    const html = build(meta);
-    expect(html).toMatch(/Recent flights on this route/);
-    expect(html).toMatch(/Sampled <strong>12<\/strong>/);
-    expect(html).not.toMatch(/Routes in this sample:/);
-  });
-
-  it('bRoute renders both observed facts AND FR24 sample using production field names', () => {
-    const meta = {
-      kind: 'route',
-      pair: 'JFK-LHR',
-      fromIata: 'JFK',
-      toIata: 'LHR',
-      fromName: 'New York',
-      toName: 'London',
-      fr24Stats: {
-        totalFlights: 12,
-        uniqueOperators: 4,
-        topOperators: [{ icao: 'BAW', count: 6 }],
-        yearlyBreakdown: null, windowDays: 14,
-        fetchedAt: Date.now(),
-      },
-    };
-    const html = build(meta);
-    expect(html).toMatch(/Recent flights on this route/);
-    expect(html).toMatch(/Sampled <strong>12<\/strong>/);
-    expect(html).not.toMatch(/Routes in this sample:/);
-  });
+  // bRoute FR24 sample block was removed in the route enrichment refactor
+  // (commit 29095f4) — the rich route page now has its own operators table
+  // + aircraft section sourced from observed_routes (90d window), which
+  // gives more accurate per-pair carrier data than the FR24 14d sample.
+  // FR24 sample lives in bAircraft / bAircraftVariant / bAircraftSafety
+  // where it's the canonical source for the family-level view.
+  it.skip('bRoute renders route-context FR24 sample block — feature removed in route enrichment refactor', () => {});
+  it.skip('bRoute renders both observed facts AND FR24 sample — feature removed in route enrichment refactor', () => {});
 
   it('bAircraft renders when only fr24Stats present (relaxed guard)', () => {
     const meta = {
