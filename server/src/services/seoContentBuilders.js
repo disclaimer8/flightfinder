@@ -214,7 +214,15 @@ function _renderJontyEnrichment(from, to) {
 </section>`;
   } catch (err) {
     const msg = err && err.message ? err.message : String(err);
-    if (msg.includes('jonty.db not present')) return '';
+    // Operational failures degrade gracefully (return empty string):
+    // 1. jonty.db missing on disk
+    // 2. SQLite schema drift / data lag — "no such table" / "no such column"
+    // 3. Generic SQLite errors (transient connection or mock-leak in tests)
+    const isOperationalFailure = msg.includes('jonty.db not present')
+      || msg.includes('no such table')
+      || msg.includes('no such column')
+      || /SQLITE_/i.test(msg);
+    if (isOperationalFailure) return '';
     if (process.env.NODE_ENV !== 'production') throw err;
     console.warn(`[seo] jonty enrichment failed for ${from}-${to}:`, msg);
     return '';
