@@ -30,28 +30,42 @@ describe('seoContentBuilders.buildAsync — Phase 1 dispatch', () => {
     builders = require('../services/seoContentBuilders');
   });
 
-  // P1 inner-HTML refactor: builders return only <main>...</main>; the shell
-  // + seoMetaService.inject() supply doctype/title/canonical/robots. Dispatch
-  // tests assert the H1 + main-wrapper contract.
+  // P1 inner-HTML refactor + double-h1 fix: builders return only
+  // <main>...</main> WITHOUT an <h1>. The shell + seoMetaService.inject()
+  // supply doctype/title/canonical/robots AND the <h1>. Dispatch tests
+  // assert the main-wrapper contract + builder-specific section markers
+  // (intro/sections) rather than <h1> text.
   it('airport-departures → airportLandingBuilder.buildDepartures', async () => {
     const html = await builders.buildAsync({ kind: 'airport-departures', iata: 'ORK' });
     expect(html).toBeTruthy();
     expect(html).toMatch(/^<main>/);
-    expect(html).toContain('<h1>Flights from Cork (ORK)');
+    expect(html).not.toMatch(/<h1\b/);
+    // Departures-specific markers: "Destinations" route-table heading +
+    // ORK origin in intro string.
+    expect(html).toContain('<h2>Destinations</h2>');
+    expect(html).toContain('Cork (ORK)');
   });
 
   it('airport-arrivals → airportLandingBuilder.buildArrivals', async () => {
     const html = await builders.buildAsync({ kind: 'airport-arrivals', iata: 'LHR' });
     expect(html).toBeTruthy();
     expect(html).toMatch(/^<main>/);
-    expect(html).toContain('<h1>Flights to London Heathrow (LHR)');
+    expect(html).not.toMatch(/<h1\b/);
+    // Arrivals-specific marker: "Origins" route-table heading + LHR airport.
+    expect(html).toContain('<h2>Origins</h2>');
+    expect(html).toContain('(LHR)');
   });
 
   it('airline-airport → airlineAirportBuilder.build', async () => {
     const html = await builders.buildAsync({ kind: 'airline-airport', airlineIata: 'EI', airportIata: 'ORK' });
     expect(html).toBeTruthy();
     expect(html).toMatch(/^<main>/);
-    expect(html).toContain('<h1>Aer Lingus flights from Cork (ORK)</h1>');
+    expect(html).not.toMatch(/<h1\b/);
+    // airlineAirportBuilder-specific markers: destinations section + carrier
+    // name + origin (ORK) in intro paragraph.
+    expect(html).toContain('class="destinations"');
+    expect(html).toContain('Aer Lingus');
+    expect(html).toContain('ORK');
   });
 
   it('returns null when builder produces no result (unknown IATA)', async () => {
@@ -72,10 +86,13 @@ describe('seoContentBuilders.buildAsync — /airline/:iata coexistence', () => {
   it('kind:airline + jonty has data → renders airlineNetworkBuilder output', async () => {
     const html = await buildersWithJonty.buildAsync({ kind: 'airline', iata: 'EI' }, {});
     expect(html).toBeTruthy();
-    // The new builder produces an H1 like "Aer Lingus (EI) route network".
-    // The old bAirline produces "EI — destinations and fleet" or similar.
-    // This assertion specifically pins the NEW path.
-    expect(html).toContain('route network</h1>');
+    // The new builder produces a distinctive origins section with heading
+    // "Where Aer Lingus flies from". The old bAirline produces a chrome-
+    // wrapped page from amadeus data and has no such marker. This assertion
+    // pins the NEW (jonty-backed) path; double-h1 fix removed the previous
+    // "route network</h1>" marker so we use the section heading instead.
+    expect(html).toContain('Where Aer Lingus flies from');
+    expect(html).toContain('class="origins"');
   });
 
   it('kind:airline + jonty has NO data for this carrier → falls back to bAirline', async () => {
@@ -86,9 +103,10 @@ describe('seoContentBuilders.buildAsync — /airline/:iata coexistence', () => {
     const html = await buildersNoEi.buildAsync({ kind: 'airline', iata: 'EI' }, {});
     // bAirline returns innerHtml wrapped via applyChromeAsync — may return null or a
     // chrome-wrapped page (depends on amadeus availability in test env). The contract
-    // here is: it should NOT contain the new builder's marker.
+    // here is: it should NOT contain the new airlineNetworkBuilder's marker.
     if (html !== null) {
-      expect(html).not.toContain('route network</h1>');
+      expect(html).not.toContain('Where Aer Lingus flies from');
+      expect(html).not.toContain('class="origins"');
     }
   });
 });

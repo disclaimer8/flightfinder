@@ -59,12 +59,12 @@ function build(carrierIata) {
     .join('\n');
 
   // Returns inner <main>...</main> only — doctype/<head>/<title>/canonical/
-  // robots come from the React shell + seoMetaService.inject() driven by the
-  // resolver's full meta (airlineMeta for kind:'airline' coexistence). JSON-LD
-  // <script> tags live inside <main>; Google parses JSON-LD anywhere.
+  // robots AND the <h1> come from the React shell + seoMetaService.inject()
+  // driven by the resolver's full meta (airlineMeta.h1 for kind:'airline'
+  // coexistence). JSON-LD <script> tags live inside <main>; Google parses
+  // JSON-LD anywhere. No <h1> here — would cause double-h1 in served HTML.
   return `<main>
 ${jsonLd}
-<h1>${escapeHtml(carrierName)} (${carrierIata}) route network</h1>
 <section class="intro">${introHTML}</section>
 <section class="origins">
 <h2>Where ${escapeHtml(carrierName)} flies from</h2>

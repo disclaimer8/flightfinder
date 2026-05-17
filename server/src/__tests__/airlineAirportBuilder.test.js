@@ -26,17 +26,21 @@ beforeAll(() => {
   builder = require('../services/airlineAirportBuilder');
 });
 
-// After P1 inner-HTML refactor: builder returns only <main>...</main>; shell
-// + seoMetaService.inject() (airlineAirportMeta) supply doctype/title/canonical.
+// After P1 inner-HTML refactor + double-h1 fix: builder returns only
+// <main>...</main> WITHOUT an <h1>; shell + seoMetaService.inject()
+// (airlineAirportMeta) supply doctype/title/canonical AND the <h1>.
 describe('airlineAirportBuilder.build', () => {
-  it('returns inner <main> HTML listing EI routes from ORK only', () => {
+  it('returns inner <main> HTML listing EI routes from ORK only with no <h1>', () => {
     const html = builder.build('EI', 'ORK');
     expect(html).toMatch(/^<main>/);
     expect(html).toContain('</main>');
     expect(html).not.toMatch(/<!doctype/i);
     expect(html).not.toMatch(/<\/?html\b/i);
     expect(html).not.toMatch(/<\/?head\b/i);
-    expect(html).toContain('<h1>Aer Lingus flights from Cork (ORK)</h1>');
+    expect(html).not.toMatch(/<h1\b/);
+    // Carrier name + origin city still appear in intro/destinations sections.
+    expect(html).toContain('Aer Lingus');
+    expect(html).toContain('Cork');
     expect(html).toContain('London');
     expect(html).toContain('Faro');
   });

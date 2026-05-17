@@ -46,12 +46,12 @@ function build(carrierIata, airportIata) {
   const destsHTML = rows.map(r => `<li><a href="/routes/${airportIata.toLowerCase()}-${r.dest_iata.toLowerCase()}">${escapeHtml(r.dest_city || r.dest_iata)} (${r.dest_iata})</a> — ${r.km ? r.km.toLocaleString('en-US') + ' km' : '—'}, ${r.duration_min || '—'} min</li>`).join('\n');
 
   // Returns inner <main>...</main> only — doctype/<head>/<title>/canonical/
-  // robots come from the React shell + seoMetaService.inject() driven by the
-  // resolver's full meta (airlineAirportMeta). JSON-LD <script> tags live
-  // inside <main>; Google parses JSON-LD anywhere.
+  // robots AND the <h1> come from the React shell + seoMetaService.inject()
+  // driven by the resolver's full meta (airlineAirportMeta.h1). JSON-LD
+  // <script> tags live inside <main>; Google parses JSON-LD anywhere. No
+  // <h1> here — would cause double-h1 in served HTML.
   return `<main>
 ${jsonLd}
-<h1>${escapeHtml(carrierName)} flights from ${escapeHtml(meta.city)} (${airportIata})</h1>
 <section class="intro"><p>${escapeHtml(carrierName)} operates <strong>${rows.length}</strong> non-stop route${rows.length === 1 ? '' : 's'} from ${escapeHtml(meta.city)} ${airportIata}.</p></section>
 <section class="destinations">
 <ul>${destsHTML}</ul>

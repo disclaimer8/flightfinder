@@ -18,7 +18,6 @@ function buildDepartures(iata) {
     routes: destinations,
     airlines,
     canonical: `${SITE}/flights-from/${iata}`,
-    h1: `Flights from ${meta.city} (${iata})`,
   });
 }
 
@@ -33,17 +32,17 @@ function buildArrivals(iata) {
     routes: arrivals,
     airlines: [],
     canonical: `${SITE}/flights-to/${iata}`,
-    h1: `Flights to ${meta.name && meta.name !== meta.city ? `${meta.city} ${meta.name}` : meta.city} (${iata})`,
   });
 }
 
 // Returns inner <main>...</main> HTML only. The surrounding <!doctype>/<html>/
-// <head>/<title>/<link rel=canonical>/<meta robots> are emitted by the React
-// shell + seoMetaService.inject() at request time, driven by the resolver's
-// full meta. JSON-LD <script> tags live INSIDE <main> (Google parses JSON-LD
-// anywhere in the document) so this fragment is fully self-contained for
-// crawlers when injected via spaFallback's bake section.
-function renderPage({ direction, meta, routes, airlines, canonical, h1 }) {
+// <head>/<title>/<link rel=canonical>/<meta robots> AND the <h1> are emitted
+// by the React shell + seoMetaService.inject() at request time, driven by the
+// resolver's full meta (airportMeta.h1). JSON-LD <script> tags live INSIDE
+// <main> (Google parses JSON-LD anywhere in the document) so this fragment is
+// fully self-contained for crawlers when injected via spaFallback's bake
+// section. No <h1> here — would cause double-h1 in the served HTML.
+function renderPage({ direction, meta, routes, airlines, canonical }) {
   const introHTML = direction === 'departures'
     ? intro.airport(meta, { destinations: routes, airlines })
     : intro.airport(meta, { destinations: routes, airlines: [] });
@@ -69,7 +68,6 @@ function renderPage({ direction, meta, routes, airlines, canonical, h1 }) {
 
   return `<main>
 ${jsonLd}
-<h1>${escapeHtml(h1)}</h1>
 <section class="intro">${introHTML}</section>
 <section class="routes">
 <h2>${direction === 'departures' ? 'Destinations' : 'Origins'}</h2>

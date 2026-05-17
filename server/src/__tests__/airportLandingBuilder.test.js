@@ -33,20 +33,21 @@ beforeAll(() => {
   builder = require('../services/airportLandingBuilder');
 });
 
-// After P1 inner-HTML refactor: builder returns only <main>...</main>. The
-// surrounding <!doctype>/<html>/<head>/<title>/<link rel=canonical>/<meta robots>
-// are emitted by the React shell + seoMetaService.inject() at request time.
-// Tests assert the inner-HTML contract: H1, JSON-LD inside main, intro/route
-// rows, aircraft placeholder, author link, null-on-miss.
+// After P1 inner-HTML refactor + double-h1 fix: builder returns only
+// <main>...</main> WITHOUT an <h1>. The surrounding <!doctype>/<html>/<head>/
+// <title>/<link rel=canonical>/<meta robots> AND the <h1> are emitted by the
+// React shell + seoMetaService.inject() at request time. Tests assert the
+// inner-HTML contract: NO <h1>, JSON-LD inside main, intro/route rows,
+// aircraft placeholder, author link, null-on-miss.
 describe('airportLandingBuilder.buildDepartures', () => {
-  it('returns inner <main> HTML with H1 and destination list', () => {
+  it('returns inner <main> HTML with destination list and no <h1> (shell injects it)', () => {
     const html = builder.buildDepartures('ORK');
     expect(html).toMatch(/^<main>/);
     expect(html).toContain('</main>');
     expect(html).not.toMatch(/<!doctype/i);
     expect(html).not.toMatch(/<\/?html\b/i);
     expect(html).not.toMatch(/<\/?head\b/i);
-    expect(html).toContain('<h1>Flights from Cork (ORK)');
+    expect(html).not.toMatch(/<h1\b/);
     expect(html).toMatch(/<strong>2<\/strong>\s*non-stop destinations/);
     expect(html).toContain('London');
     expect(html).toContain('Amsterdam');
@@ -82,18 +83,22 @@ describe('airportLandingBuilder.buildDepartures', () => {
 });
 
 describe('airportLandingBuilder.buildArrivals', () => {
-  it('returns inner <main> HTML with routes inbound TO the airport', () => {
+  it('returns inner <main> HTML with routes inbound TO the airport and no <h1>', () => {
     const html = builder.buildArrivals('LHR');
     expect(html).toMatch(/^<main>/);
     expect(html).not.toMatch(/<!doctype/i);
-    expect(html).toContain('<h1>Flights to London Heathrow (LHR)');
+    expect(html).not.toMatch(/<h1\b/);
+    // City/airport name still rendered via intro + routes table.
+    expect(html).toContain('London');
     expect(html).toContain('Cork');
   });
 
   it('does not duplicate city when name equals city (e.g., Cork)', () => {
     const html = builder.buildArrivals('ORK');
-    // ORK fixture: city='Cork', name='Cork'
-    expect(html).toContain('<h1>Flights to Cork (ORK)');
+    // ORK fixture: city='Cork', name='Cork' — guard against stutter in
+    // intro/routes text now that h1 lives only in the shell.
+    expect(html).not.toMatch(/<h1\b/);
+    expect(html).toContain('Cork');
     expect(html).not.toContain('Cork Cork');
   });
 });

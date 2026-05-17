@@ -26,18 +26,21 @@ beforeAll(() => {
   builder = require('../services/airlineNetworkBuilder');
 });
 
-// After P1 inner-HTML refactor: builder returns only <main>...</main>. The
-// shell + seoMetaService.inject() (airlineMeta for kind:'airline' coexistence)
-// supply doctype/title/canonical/robots.
+// After P1 inner-HTML refactor + double-h1 fix: builder returns only
+// <main>...</main> WITHOUT an <h1>. Shell + seoMetaService.inject()
+// (airlineMeta for kind:'airline' coexistence) supply doctype/title/canonical/
+// robots AND the <h1> from airlineMeta.h1.
 describe('airlineNetworkBuilder.build', () => {
-  it('returns inner <main> HTML with airline name, route count, country count', () => {
+  it('returns inner <main> HTML with airline name, route count, country count and no <h1>', () => {
     const html = builder.build('EI');
     expect(html).toMatch(/^<main>/);
     expect(html).toContain('</main>');
     expect(html).not.toMatch(/<!doctype/i);
     expect(html).not.toMatch(/<\/?html\b/i);
     expect(html).not.toMatch(/<\/?head\b/i);
-    expect(html).toContain('<h1>Aer Lingus (EI) route network</h1>');
+    expect(html).not.toMatch(/<h1\b/);
+    // Carrier name still appears in intro / FAQ / origin links.
+    expect(html).toContain('Aer Lingus');
     expect(html).toMatch(/<strong>2<\/strong>\s*non-stop route/);
     expect(html).toMatch(/<strong>2<\/strong>\s*countr/);  // matches 'countries' or 'country'
   });
