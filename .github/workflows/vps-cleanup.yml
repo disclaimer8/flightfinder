@@ -22,7 +22,7 @@ jobs:
       - name: Cleanup
         uses: appleboy/ssh-action@v1.2.5
         with:
-          host: 178.104.32.46
+          host: origin.himaxym.com
           username: root
           key: ${{ secrets.claude }}
           script: |
