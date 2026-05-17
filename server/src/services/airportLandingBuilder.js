@@ -4,8 +4,7 @@ const jonty = require('./jontyRouteService');
 const intro = require('./seoEditorialIntro');
 const schema = require('./schemaMarkup');
 const { aircraftPlaceholder } = require('./seoAircraftPlaceholder');
-
-const SITE = 'https://himaxym.com';
+const { SITE, escapeHtml } = require('./seoSharedUtil');
 
 function buildDepartures(iata) {
   const meta = jonty.getAirportMeta(iata);
@@ -129,11 +128,6 @@ function buildFAQ(direction, meta, routes, airlines) {
     });
   }
   return out;
-}
-
-function escapeHtml(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 module.exports = { buildDepartures, buildArrivals };

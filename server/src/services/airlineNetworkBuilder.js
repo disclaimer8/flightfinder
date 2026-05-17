@@ -4,8 +4,8 @@ const jonty = require('./jontyRouteService');
 const intro = require('./seoEditorialIntro');
 const schema = require('./schemaMarkup');
 const { aircraftPlaceholder } = require('./seoAircraftPlaceholder');
+const { SITE, escapeHtml } = require('./seoSharedUtil');
 
-const SITE = 'https://himaxym.com';
 const HUB_MIN_ROUTES = 10;
 
 function build(carrierIata) {
@@ -90,11 +90,6 @@ ${faq.map(f => `<details><summary>${escapeHtml(f.question)}</summary><p>${escape
 function getCarrierName(network) {
   for (const r of network) if (r.carrier_name) return r.carrier_name;
   return 'Airline';
-}
-
-function escapeHtml(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 module.exports = { build };
