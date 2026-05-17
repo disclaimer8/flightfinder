@@ -183,6 +183,41 @@ function bByAircraft() {
   `.trim();
 }
 
+// ── Jonty enrichment block for /routes/:from-:to ─────────────────────────────
+// Returns an HTML <section> with Jonty-sourced km/duration_min and operating
+// carriers, or '' if jonty.db is missing, no row matches, or any error occurs.
+// Layered on top of FF observed_routes data — degrades gracefully so an
+// unavailable jonty.db never breaks the existing thin/rich route page.
+function _renderJontyEnrichment(from, to) {
+  try {
+    const jontyDb = require('../models/jontyDb');
+    const db = jontyDb.getDb();
+    const row = db.prepare(`
+      SELECT km, duration_min
+      FROM routes
+      WHERE origin_iata = ? AND dest_iata = ?
+    `).get(from, to);
+    if (!row) return '';
+    const carriers = db.prepare(`
+      SELECT carrier_iata AS iata, carrier_name AS name
+      FROM route_carriers
+      WHERE origin_iata = ? AND dest_iata = ?
+      ORDER BY carrier_iata
+    `).all(from, to);
+    const carriersHtml = carriers.length
+      ? `<ul>${carriers.map(c => `<li>${esc(c.name)} (${esc(c.iata)})</li>`).join('')}</ul>`
+      : '<p>Carrier data unavailable.</p>';
+    return `<section class="route-jonty">
+  <h2>Operating airlines</h2>
+  ${carriersHtml}
+  <p>Distance: <strong>${esc(String(row.km))}</strong> km. Duration: <strong>${esc(String(row.duration_min))}</strong> minutes.</p>
+</section>`;
+  } catch {
+    // jonty.db unavailable, schema mismatch, or any other issue — degrade silently
+    return '';
+  }
+}
+
 function bRoute(meta, _db) {
   const routeService     = require('./routeService');
   const openFlightsService = require('./openFlightsService');
@@ -194,6 +229,7 @@ function bRoute(meta, _db) {
   const sinceMs = Date.now() - 90 * 24 * 60 * 60 * 1000;
 
   const route = routeService.getRouteData({ from, to, sinceMs });
+  const jontyBlock = _renderJontyEnrichment(from, to);
 
   // ── THIN PAIR: noindex, keep minimal FAQ only ────────────────────────────────
   if (!route) {
@@ -224,12 +260,13 @@ function bRoute(meta, _db) {
     }).replace(/<\/(script)/gi, '<\\/$1');
     return [
       '<meta name="robots" content="noindex, follow">',
+      jontyBlock,
       `<section class="route-faq" itemscope itemtype="https://schema.org/FAQPage">`,
       `  <h2>Frequently asked questions</h2>`,
       faqItems,
       `</section>`,
       `<script type="application/ld+json">${faqLd}</script>`,
-    ].join('\n');
+    ].filter(Boolean).join('\n');
   }
 
   // ── RICH PAIR ────────────────────────────────────────────────────────────────
@@ -389,10 +426,11 @@ ${faqHtmlItems}
     operatorsSection,
     aircraftSection,
     airportsSection,
+    jontyBlock,
     crossSection,
     faqSection,
     jsonLdBlock,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 function bAircraft(meta, db) {
