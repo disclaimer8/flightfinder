@@ -20,7 +20,7 @@ describe('seoEditorialIntro.airport', () => {
     const sentences = text.split(/[.!?]\s+/).filter(Boolean);
     expect(sentences.length).toBeGreaterThanOrEqual(2);
     expect(text).toContain('Cork');
-    expect(text).toContain('3 non-stop destinations');
+    expect(text).toMatch(/<strong>3<\/strong>\s*non-stop destinations/);
     expect(text).toContain('2 airlines');
   });
 
