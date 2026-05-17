@@ -1373,7 +1373,7 @@ async function buildAsync(meta, db) {
           || /SQLITE_/i.test(msg);
         if (!isOperationalFailure) {
           if (process.env.NODE_ENV !== 'production') throw err;
-          console.warn('[seo] airline jonty render failed for ' + meta.iata + ':', msg);
+          console.warn('[seo] airline jonty render failed for %s:', meta.iata, msg);
         }
         // jonty unavailable — fall through to bAirline
       }
