@@ -170,6 +170,48 @@ router.get('/sitemap.xml', async (_req, res) => {
     console.warn('[seo] enumerateAccidents unavailable for sitemap:', err.message);
   }
 
+  // Phase 1 SEO landing pages (jonty.db-backed) — /flights-from, /flights-to,
+  // /airline/:iata, /airline/:iata/from/:airport.
+  // Memory `seo-bake-invariants`: every URL here must build via buildAsync.
+  // Coupling guarded by builderEnumeratorCoupling.test.js.
+  try {
+    const p1 = require('../services/seoUrlEnumerator');
+    const lc = (u) => u.toLowerCase(); // canonical FF URLs are lowercase
+    const airportLandings = p1.enumerateAirportLandingUrls();
+    for (const u of airportLandings) {
+      urls.push({ loc: `${BASE}${lc(u)}`, changefreq: 'weekly', priority: '0.6', lastmod: today });
+    }
+    const airlineNets = p1.enumerateAirlineNetworkUrls();
+    for (const u of airlineNets) {
+      urls.push({ loc: `${BASE}${lc(u)}`, changefreq: 'weekly', priority: '0.6', lastmod: today });
+    }
+    const airlineAirports = p1.enumerateAirlineAirportUrls().slice(0, 30000);
+    for (const u of airlineAirports) {
+      urls.push({ loc: `${BASE}${lc(u)}`, changefreq: 'weekly', priority: '0.5', lastmod: today });
+    }
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[seo] P1 sitemap: +${airportLandings.length} airport-landing, +${airlineNets.length} airline-network, +${airlineAirports.length} airline-airport`);
+    }
+  } catch (err) {
+    console.warn('[seo] P1 sitemap enumerators unavailable:', err.message);
+  }
+
+  // Dedupe by lowercase loc to handle overlap between enumerateSeoUrls() top-100
+  // airlines and the new P1 enumerateAirlineNetworkUrls (both emit /airline/:iata).
+  // Keep first occurrence (sitemap order = priority hint to crawlers).
+  {
+    const seen = new Set();
+    const deduped = [];
+    for (const u of urls) {
+      const k = u.loc.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      deduped.push(u);
+    }
+    urls.length = 0;
+    urls.push(...deduped);
+  }
+
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
