@@ -90,10 +90,13 @@ describe('seoContentCache', () => {
       '/airline/ek/aircraft/b77w/',
       '/accidents/some-slug',
       '/safety/events/12345',
+      // /airline/:iata is now lazy (Phase 1 — pre-warm cached ICAO URLs
+      // instead of IATA due to observed_routes column trap, lazy bake on
+      // first IATA hit handles real Google requests).
+      '/airline/ba',
     ];
     const NON_LAZY_PATHS = [
       '/unknown/path',
-      '/airline/ba',                    // bare airline — pre-warmed, not lazy
       '/airline/toolong/aircraft/a388', // iata > 3 chars
       '/airline/ba/aircraft/toolong6',  // icao > 6 chars
     ];
