@@ -212,8 +212,11 @@ function _renderJontyEnrichment(from, to) {
   ${carriersHtml}
   <p>Distance: <strong>${esc(String(row.km))}</strong> km. Duration: <strong>${esc(String(row.duration_min))}</strong> minutes.</p>
 </section>`;
-  } catch {
-    // jonty.db unavailable, schema mismatch, or any other issue — degrade silently
+  } catch (err) {
+    const msg = err && err.message ? err.message : String(err);
+    if (msg.includes('jonty.db not present')) return '';
+    if (process.env.NODE_ENV !== 'production') throw err;
+    console.warn(`[seo] jonty enrichment failed for ${from}-${to}:`, msg);
     return '';
   }
 }

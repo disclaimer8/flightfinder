@@ -97,17 +97,20 @@ describe('routeDetailBuilder Jonty enrichment', () => {
     // ORK/ZZZ does not exist in our fixture — Jonty section is omitted, but
     // the rest of the existing thin/rich template must still render without
     // throwing.
-    let result;
-    expect(() => {
-      result = builders.buildAsync({
-        kind:     'route',
-        fromIata: 'ORK',
-        toIata:   'ZZZ',
-        fromName: 'Cork',
-        toName:   'Unknown',
-        pair:     'ork-zzz',
-      });
-    }).not.toThrow();
-    await expect(result).resolves.toBeDefined();
+    const html = await builders.buildAsync({
+      kind:     'route',
+      fromIata: 'ORK',
+      toIata:   'ZZZ',
+      fromName: 'Cork',
+      toName:   'Unknown',
+      pair:     'ork-zzz',
+    });
+    // ZZZ isn't in jonty fixture → Jonty section must NOT render
+    // The page should still render (existing thin/rich template) and not throw
+    expect(typeof html === 'string' || html === null).toBe(true);
+    if (typeof html === 'string') {
+      expect(html).not.toContain('Operating airlines');
+      expect(html).not.toContain('route-jonty');
+    }
   });
 });
