@@ -33,26 +33,41 @@ beforeAll(() => {
   builder = require('../services/airportLandingBuilder');
 });
 
+// After P1 inner-HTML refactor: builder returns only <main>...</main>. The
+// surrounding <!doctype>/<html>/<head>/<title>/<link rel=canonical>/<meta robots>
+// are emitted by the React shell + seoMetaService.inject() at request time.
+// Tests assert the inner-HTML contract: H1, JSON-LD inside main, intro/route
+// rows, aircraft placeholder, author link, null-on-miss.
 describe('airportLandingBuilder.buildDepartures', () => {
-  it('returns HTML with H1 and destination list', () => {
+  it('returns inner <main> HTML with H1 and destination list', () => {
     const html = builder.buildDepartures('ORK');
+    expect(html).toMatch(/^<main>/);
+    expect(html).toContain('</main>');
+    expect(html).not.toMatch(/<!doctype/i);
+    expect(html).not.toMatch(/<\/?html\b/i);
+    expect(html).not.toMatch(/<\/?head\b/i);
     expect(html).toContain('<h1>Flights from Cork (ORK)');
     expect(html).toMatch(/<strong>2<\/strong>\s*non-stop destinations/);
     expect(html).toContain('London');
     expect(html).toContain('Amsterdam');
   });
 
-  it('embeds Airport + BreadcrumbList + FAQPage JSON-LD', () => {
+  it('embeds Airport + BreadcrumbList + FAQPage JSON-LD inside <main>', () => {
     const html = builder.buildDepartures('ORK');
     expect(html).toMatch(/"@type":\s*"Airport"/);
     expect(html).toMatch(/"@type":\s*"BreadcrumbList"/);
     expect(html).toMatch(/"@type":\s*"FAQPage"/);
+    // JSON-LD must live INSIDE the <main> fragment (Google parses JSON-LD
+    // anywhere) — the shell's <head> has no JSON-LD slot for this kind.
+    const ld = html.match(/<script type="application\/ld\+json">/);
+    expect(ld).not.toBeNull();
+    expect(html.indexOf('<script type="application/ld+json">')).toBeGreaterThan(html.indexOf('<main>'));
   });
 
-  it('contains canonical + author link', () => {
+  it('contains author/methodology link in footer', () => {
     const html = builder.buildDepartures('ORK');
-    expect(html).toContain('<link rel="canonical" href="https://himaxym.com/flights-from/ORK">');
     expect(html).toContain('/about/team');
+    expect(html).toContain('/methodology');
   });
 
   it('renders aircraft placeholder (P1)', () => {
@@ -67,15 +82,12 @@ describe('airportLandingBuilder.buildDepartures', () => {
 });
 
 describe('airportLandingBuilder.buildArrivals', () => {
-  it('lists routes inbound TO the airport', () => {
+  it('returns inner <main> HTML with routes inbound TO the airport', () => {
     const html = builder.buildArrivals('LHR');
+    expect(html).toMatch(/^<main>/);
+    expect(html).not.toMatch(/<!doctype/i);
     expect(html).toContain('<h1>Flights to London Heathrow (LHR)');
     expect(html).toContain('Cork');
-  });
-
-  it('canonical points to /flights-to/', () => {
-    const html = builder.buildArrivals('LHR');
-    expect(html).toContain('<link rel="canonical" href="https://himaxym.com/flights-to/LHR">');
   });
 
   it('does not duplicate city when name equals city (e.g., Cork)', () => {

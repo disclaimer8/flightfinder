@@ -58,18 +58,12 @@ function build(carrierIata) {
     .map(o => `<li><a href="/airline/${carrierIata}/from/${o.iata}">${escapeHtml(o.city || o.iata)} (${o.iata}) — ${o.routes.length} routes</a></li>`)
     .join('\n');
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>${escapeHtml(carrierName)} (${carrierIata}) routes — network map | FlightFinder</title>
-<meta name="description" content="Full route network for ${carrierName} ${carrierIata}: ${network.length} routes across ${countries.size} countries.">
-<link rel="canonical" href="${SITE}/airline/${carrierIata}">
-<meta name="robots" content="index, follow">
+  // Returns inner <main>...</main> only — doctype/<head>/<title>/canonical/
+  // robots come from the React shell + seoMetaService.inject() driven by the
+  // resolver's full meta (airlineMeta for kind:'airline' coexistence). JSON-LD
+  // <script> tags live inside <main>; Google parses JSON-LD anywhere.
+  return `<main>
 ${jsonLd}
-</head>
-<body>
-<main>
 <h1>${escapeHtml(carrierName)} (${carrierIata}) route network</h1>
 <section class="intro">${introHTML}</section>
 <section class="origins">
@@ -82,9 +76,7 @@ ${aircraftPlaceholder()}
 ${faq.map(f => `<details><summary>${escapeHtml(f.question)}</summary><p>${escapeHtml(f.answer)}</p></details>`).join('\n')}
 </section>
 <footer><p>Editorial by <a href="/about/team">Denys Kolomiiets</a>. Data: <a href="/methodology">methodology</a>.</p></footer>
-</main>
-</body>
-</html>`;
+</main>`;
 }
 
 function getCarrierName(network) {

@@ -26,20 +26,29 @@ beforeAll(() => {
   builder = require('../services/airlineAirportBuilder');
 });
 
+// After P1 inner-HTML refactor: builder returns only <main>...</main>; shell
+// + seoMetaService.inject() (airlineAirportMeta) supply doctype/title/canonical.
 describe('airlineAirportBuilder.build', () => {
-  it('lists EI routes from ORK only', () => {
+  it('returns inner <main> HTML listing EI routes from ORK only', () => {
     const html = builder.build('EI', 'ORK');
+    expect(html).toMatch(/^<main>/);
+    expect(html).toContain('</main>');
+    expect(html).not.toMatch(/<!doctype/i);
+    expect(html).not.toMatch(/<\/?html\b/i);
+    expect(html).not.toMatch(/<\/?head\b/i);
     expect(html).toContain('<h1>Aer Lingus flights from Cork (ORK)</h1>');
     expect(html).toContain('London');
     expect(html).toContain('Faro');
   });
 
-  it('returns null when carrier has no routes from airport', () => {
-    expect(builder.build('FR', 'ORK')).toBeNull();
+  it('embeds BreadcrumbList + FAQPage JSON-LD inside <main>', () => {
+    const html = builder.build('EI', 'ORK');
+    expect(html).toMatch(/"@type":\s*"BreadcrumbList"/);
+    expect(html).toMatch(/"@type":\s*"FAQPage"/);
+    expect(html.indexOf('<script type="application/ld+json">')).toBeGreaterThan(html.indexOf('<main>'));
   });
 
-  it('canonical points to /airline/EI/from/ORK', () => {
-    const html = builder.build('EI', 'ORK');
-    expect(html).toContain('<link rel="canonical" href="https://himaxym.com/airline/EI/from/ORK">');
+  it('returns null when carrier has no routes from airport', () => {
+    expect(builder.build('FR', 'ORK')).toBeNull();
   });
 });

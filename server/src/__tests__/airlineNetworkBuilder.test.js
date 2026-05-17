@@ -26,9 +26,17 @@ beforeAll(() => {
   builder = require('../services/airlineNetworkBuilder');
 });
 
+// After P1 inner-HTML refactor: builder returns only <main>...</main>. The
+// shell + seoMetaService.inject() (airlineMeta for kind:'airline' coexistence)
+// supply doctype/title/canonical/robots.
 describe('airlineNetworkBuilder.build', () => {
-  it('returns HTML with airline name, route count, country count', () => {
+  it('returns inner <main> HTML with airline name, route count, country count', () => {
     const html = builder.build('EI');
+    expect(html).toMatch(/^<main>/);
+    expect(html).toContain('</main>');
+    expect(html).not.toMatch(/<!doctype/i);
+    expect(html).not.toMatch(/<\/?html\b/i);
+    expect(html).not.toMatch(/<\/?head\b/i);
     expect(html).toContain('<h1>Aer Lingus (EI) route network</h1>');
     expect(html).toMatch(/<strong>2<\/strong>\s*non-stop route/);
     expect(html).toMatch(/<strong>2<\/strong>\s*countr/);  // matches 'countries' or 'country'
@@ -40,15 +48,11 @@ describe('airlineNetworkBuilder.build', () => {
     expect(html).toContain('Dublin');
   });
 
-  it('embeds BreadcrumbList + FAQPage JSON-LD', () => {
+  it('embeds BreadcrumbList + FAQPage JSON-LD inside <main>', () => {
     const html = builder.build('EI');
     expect(html).toMatch(/"@type":\s*"BreadcrumbList"/);
     expect(html).toMatch(/"@type":\s*"FAQPage"/);
-  });
-
-  it('canonical points to /airline/EI', () => {
-    const html = builder.build('EI');
-    expect(html).toContain('<link rel="canonical" href="https://himaxym.com/airline/EI">');
+    expect(html.indexOf('<script type="application/ld+json">')).toBeGreaterThan(html.indexOf('<main>'));
   });
 
   it('returns null for airline with no routes', () => {

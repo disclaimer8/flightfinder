@@ -30,25 +30,28 @@ describe('seoContentBuilders.buildAsync — Phase 1 dispatch', () => {
     builders = require('../services/seoContentBuilders');
   });
 
+  // P1 inner-HTML refactor: builders return only <main>...</main>; the shell
+  // + seoMetaService.inject() supply doctype/title/canonical/robots. Dispatch
+  // tests assert the H1 + main-wrapper contract.
   it('airport-departures → airportLandingBuilder.buildDepartures', async () => {
     const html = await builders.buildAsync({ kind: 'airport-departures', iata: 'ORK' });
     expect(html).toBeTruthy();
+    expect(html).toMatch(/^<main>/);
     expect(html).toContain('<h1>Flights from Cork (ORK)');
-    expect(html).toContain('<link rel="canonical" href="https://himaxym.com/flights-from/ORK">');
   });
 
   it('airport-arrivals → airportLandingBuilder.buildArrivals', async () => {
     const html = await builders.buildAsync({ kind: 'airport-arrivals', iata: 'LHR' });
     expect(html).toBeTruthy();
+    expect(html).toMatch(/^<main>/);
     expect(html).toContain('<h1>Flights to London Heathrow (LHR)');
-    expect(html).toContain('<link rel="canonical" href="https://himaxym.com/flights-to/LHR">');
   });
 
   it('airline-airport → airlineAirportBuilder.build', async () => {
     const html = await builders.buildAsync({ kind: 'airline-airport', airlineIata: 'EI', airportIata: 'ORK' });
     expect(html).toBeTruthy();
+    expect(html).toMatch(/^<main>/);
     expect(html).toContain('<h1>Aer Lingus flights from Cork (ORK)</h1>');
-    expect(html).toContain('<link rel="canonical" href="https://himaxym.com/airline/EI/from/ORK">');
   });
 
   it('returns null when builder produces no result (unknown IATA)', async () => {

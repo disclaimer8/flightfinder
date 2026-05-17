@@ -19,8 +19,6 @@ function buildDepartures(iata) {
     airlines,
     canonical: `${SITE}/flights-from/${iata}`,
     h1: `Flights from ${meta.city} (${iata})`,
-    title: `Flights from ${meta.city} (${iata}) — destinations, airlines, distance | FlightFinder`,
-    metaDesc: `All non-stop flights from ${meta.city} ${iata}. ${destinations.length} destinations on ${airlines.length} airlines. Distance, duration, carriers.`,
   });
 }
 
@@ -36,12 +34,16 @@ function buildArrivals(iata) {
     airlines: [],
     canonical: `${SITE}/flights-to/${iata}`,
     h1: `Flights to ${meta.name && meta.name !== meta.city ? `${meta.city} ${meta.name}` : meta.city} (${iata})`,
-    title: `Flights to ${meta.city} (${iata}) — origins, airlines, distance | FlightFinder`,
-    metaDesc: `All non-stop flights arriving at ${meta.city} ${iata}. ${arrivals.length} origins. Distance, duration, carriers.`,
   });
 }
 
-function renderPage({ direction, meta, routes, airlines, canonical, h1, title, metaDesc }) {
+// Returns inner <main>...</main> HTML only. The surrounding <!doctype>/<html>/
+// <head>/<title>/<link rel=canonical>/<meta robots> are emitted by the React
+// shell + seoMetaService.inject() at request time, driven by the resolver's
+// full meta. JSON-LD <script> tags live INSIDE <main> (Google parses JSON-LD
+// anywhere in the document) so this fragment is fully self-contained for
+// crawlers when injected via spaFallback's bake section.
+function renderPage({ direction, meta, routes, airlines, canonical, h1 }) {
   const introHTML = direction === 'departures'
     ? intro.airport(meta, { destinations: routes, airlines })
     : intro.airport(meta, { destinations: routes, airlines: [] });
@@ -65,18 +67,8 @@ function renderPage({ direction, meta, routes, airlines, canonical, h1, title, m
     ? `<section><h2>Airlines flying from ${meta.iata}</h2><ul>${airlines.map(a => `<li><a href="/airline/${a.iata}/from/${meta.iata}">${a.name} (${a.iata}) — ${a.route_count} routes</a></li>`).join('')}</ul></section>`
     : '';
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>${escapeHtml(title)}</title>
-<meta name="description" content="${escapeHtml(metaDesc)}">
-<link rel="canonical" href="${canonical}">
-<meta name="robots" content="index, follow">
+  return `<main>
 ${jsonLd}
-</head>
-<body>
-<main>
 <h1>${escapeHtml(h1)}</h1>
 <section class="intro">${introHTML}</section>
 <section class="routes">
@@ -93,9 +85,7 @@ ${aircraftPlaceholder()}
 ${faq.map(f => `<details><summary>${escapeHtml(f.question)}</summary><p>${escapeHtml(f.answer)}</p></details>`).join('\n')}
 </section>
 <footer><p>Editorial by <a href="/about/team">Denys Kolomiiets</a>. Data: <a href="/methodology">methodology</a>.</p></footer>
-</main>
-</body>
-</html>`;
+</main>`;
 }
 
 function routeRow(direction, r) {

@@ -587,6 +587,99 @@ function airlineMeta(iata) {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Phase 1 SEO landing meta helpers — enrich with city / carrier names from
+// jonty.db where possible so the React shell's <title>/H1/canonical (set by
+// inject()) match the builder's <h1> and intro copy. Graceful on miss (jonty
+// missing on disk, schema drift, etc) — fall back to IATA-only labels.
+// ─────────────────────────────────────────────────────────────────────
+
+function _jontyAirportRow(iata, fields = 'city, name, country') {
+  try {
+    const jontyDb = require('../models/jontyDb');
+    const db = jontyDb.getDb();
+    return db.prepare(`SELECT ${fields} FROM airports WHERE iata = ?`).get(iata) || null;
+  } catch {
+    return null;
+  }
+}
+
+function _jontyCarrierName(iata) {
+  try {
+    const jontyDb = require('../models/jontyDb');
+    const db = jontyDb.getDb();
+    const row = db.prepare('SELECT carrier_name FROM route_carriers WHERE carrier_iata = ? LIMIT 1').get(iata);
+    return (row && row.carrier_name) || null;
+  } catch {
+    return null;
+  }
+}
+
+function airportDeparturesMeta(iata) {
+  const upper = iata.toUpperCase();
+  const row = _jontyAirportRow(upper, 'city, name, country');
+  const city = row?.city || null;
+  const cityOrIata = city || upper;
+  return {
+    title: `Flights from ${cityOrIata} (${upper}) — destinations, airlines, distance | FlightFinder`,
+    description: `All non-stop flights from ${cityOrIata} ${upper}: destinations, airlines, distance, duration. Backed by FlightFinder's reference dataset.`,
+    canonical: `${BASE}/flights-from/${upper}`,
+    h1: `Flights from ${cityOrIata} (${upper})`,
+    subtitle: `Non-stop destinations from ${cityOrIata} airport (${upper}).`,
+    robots: 'index, follow',
+    ogType: 'website',
+    kind: 'airport-departures',
+    iata: upper,
+  };
+}
+
+function airportArrivalsMeta(iata) {
+  const upper = iata.toUpperCase();
+  const row = _jontyAirportRow(upper, 'city, name, country');
+  const city = row?.city || null;
+  const airportName = row?.name || null;
+  const cityOrIata = city || upper;
+  // Match the builder's H1 dedupe rule: include airport name only when it
+  // differs from the city (avoid "Cork Cork (ORK)").
+  const h1Loc = airportName && airportName !== city ? `${cityOrIata} ${airportName}` : cityOrIata;
+  return {
+    title: `Flights to ${cityOrIata} (${upper}) — origins, airlines, distance | FlightFinder`,
+    description: `All non-stop flights arriving at ${cityOrIata} ${upper}: origins, airlines, distance, duration. Backed by FlightFinder's reference dataset.`,
+    canonical: `${BASE}/flights-to/${upper}`,
+    h1: `Flights to ${h1Loc} (${upper})`,
+    subtitle: `Non-stop origins arriving at ${cityOrIata} airport (${upper}).`,
+    robots: 'index, follow',
+    ogType: 'website',
+    kind: 'airport-arrivals',
+    iata: upper,
+  };
+}
+
+function airlineAirportMeta(airlineIata, airportIata) {
+  const upperAirline = airlineIata.toUpperCase();
+  const upperAirport = airportIata.toUpperCase();
+  const carrierName = _jontyCarrierName(upperAirline);
+  const row = _jontyAirportRow(upperAirport, 'city');
+  const city = row?.city || null;
+  const cityOrIata = city || upperAirport;
+  const carrierOrIata = carrierName || upperAirline;
+  return {
+    title: `${carrierOrIata} flights from ${cityOrIata} (${upperAirport}) | FlightFinder`,
+    description: `${carrierOrIata} non-stop destinations from ${cityOrIata} ${upperAirport}: routes, distance and duration.`,
+    canonical: `${BASE}/airline/${upperAirline}/from/${upperAirport}`,
+    h1: `${carrierOrIata} flights from ${cityOrIata} (${upperAirport})`,
+    subtitle: `${carrierOrIata} non-stop routes from ${cityOrIata} airport (${upperAirport}).`,
+    robots: 'index, follow',
+    ogType: 'website',
+    kind: 'airline-airport',
+    airlineIata: upperAirline,
+    airportIata: upperAirport,
+    // Legacy `iata` field — some callers (logging, telemetry) read meta.iata
+    // unconditionally; keep populated with the airline code for compatibility.
+    iata: upperAirline,
+  };
+}
+
 /**
  * Filter-aware metadata for /map?airline=XX and/or ?aircraft=ICAO.
  * Returns the static MAP object when no recognised filter params are present.
@@ -696,22 +789,21 @@ function resolve(pathname, searchParams) {
   }
 
   // Phase 1 SEO landing pages: airport departures/arrivals + airline×airport.
-  // Built from jonty.db; dispatched in seoContentBuilders.
+  // Built from jonty.db; dispatched in seoContentBuilders. Resolvers emit
+  // FULL meta (title/description/canonical/h1/robots) so seoMetaService.inject()
+  // produces a clean shell — the builder fragment supplies only the inner
+  // <main> body. See airportDeparturesMeta / airportArrivalsMeta / airlineAirportMeta.
   // IMPORTANT: place BEFORE the bare /airline/:iata match so the more
   // specific /airline/:iata/from/:iata pattern wins.
   const apDepMatch = /^\/flights-from\/([A-Za-z]{3})\/?$/.exec(pathname);
-  if (apDepMatch) return { kind: 'airport-departures', iata: apDepMatch[1].toUpperCase() };
+  if (apDepMatch) return airportDeparturesMeta(apDepMatch[1]);
 
   const apArrMatch = /^\/flights-to\/([A-Za-z]{3})\/?$/.exec(pathname);
-  if (apArrMatch) return { kind: 'airport-arrivals', iata: apArrMatch[1].toUpperCase() };
+  if (apArrMatch) return airportArrivalsMeta(apArrMatch[1]);
 
   const airlineAirportMatch = /^\/airline\/([A-Za-z0-9]{2,3})\/from\/([A-Za-z]{3})\/?$/.exec(pathname);
   if (airlineAirportMatch) {
-    return {
-      kind: 'airline-airport',
-      airlineIata: airlineAirportMatch[1].toUpperCase(),
-      airportIata: airlineAirportMatch[2].toUpperCase(),
-    };
+    return airlineAirportMeta(airlineAirportMatch[1], airlineAirportMatch[2]);
   }
 
   const airlineMatch = /^\/airline\/([a-z0-9]{2,3})\/?$/i.exec(pathname);

@@ -45,18 +45,12 @@ function build(carrierIata, airportIata) {
 
   const destsHTML = rows.map(r => `<li><a href="/routes/${airportIata.toLowerCase()}-${r.dest_iata.toLowerCase()}">${escapeHtml(r.dest_city || r.dest_iata)} (${r.dest_iata})</a> — ${r.km ? r.km.toLocaleString('en-US') + ' km' : '—'}, ${r.duration_min || '—'} min</li>`).join('\n');
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>${escapeHtml(carrierName)} flights from ${escapeHtml(meta.city)} (${airportIata}) | FlightFinder</title>
-<meta name="description" content="${escapeHtml(carrierName)} non-stop destinations from ${escapeHtml(meta.city)} ${airportIata}: ${rows.length} routes, distance and duration.">
-<link rel="canonical" href="${SITE}/airline/${carrierIata}/from/${airportIata}">
-<meta name="robots" content="index, follow">
+  // Returns inner <main>...</main> only — doctype/<head>/<title>/canonical/
+  // robots come from the React shell + seoMetaService.inject() driven by the
+  // resolver's full meta (airlineAirportMeta). JSON-LD <script> tags live
+  // inside <main>; Google parses JSON-LD anywhere.
+  return `<main>
 ${jsonLd}
-</head>
-<body>
-<main>
 <h1>${escapeHtml(carrierName)} flights from ${escapeHtml(meta.city)} (${airportIata})</h1>
 <section class="intro"><p>${escapeHtml(carrierName)} operates <strong>${rows.length}</strong> non-stop route${rows.length === 1 ? '' : 's'} from ${escapeHtml(meta.city)} ${airportIata}.</p></section>
 <section class="destinations">
@@ -67,9 +61,7 @@ ${aircraftPlaceholder()}
 ${faq.map(f => `<details><summary>${escapeHtml(f.question)}</summary><p>${escapeHtml(f.answer)}</p></details>`).join('\n')}
 </section>
 <footer><p>Editorial by <a href="/about/team">Denys Kolomiiets</a>. Data: <a href="/methodology">methodology</a>.</p></footer>
-</main>
-</body>
-</html>`;
+</main>`;
 }
 
 module.exports = { build };

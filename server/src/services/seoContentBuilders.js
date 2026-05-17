@@ -1333,8 +1333,12 @@ async function buildAsync(meta, db) {
   if (!meta || !meta.kind) return null;
   const dbInstance = db || require('../models/db');
 
-  // Phase 1 SEO landing pages (jonty.db-backed). Builders return a complete HTML
-  // document (own <head>, canonical, JSON-LD), so they bypass applyChromeAsync.
+  // Phase 1 SEO landing pages (jonty.db-backed). Builders return INNER HTML
+  // (<main>...</main> only) with JSON-LD inline. The React shell + spaFallback's
+  // seoMetaService.inject() supply <!doctype>, <html>, <head>, <title>,
+  // <link rel=canonical>, <meta robots> from the resolver's full meta — these
+  // builders therefore bypass applyChromeAsync but DO rely on inject() being
+  // called downstream to produce a valid document.
   if (meta.kind === 'airport-departures') {
     return require('./airportLandingBuilder').buildDepartures(meta.iata);
   }
@@ -1348,8 +1352,9 @@ async function buildAsync(meta, db) {
   // with chrome + Amadeus-backed extras (direct dest / network dest sidebars).
   if (meta.kind === 'airport' || meta.kind === 'airline') {
     // Phase 1 coexistence: if kind='airline' and jonty.db has data for this
-    // carrier_iata, render the new airlineNetworkBuilder (full HTML, no chrome
-    // wrap). Otherwise fall back to the existing Amadeus-backed bAirline path.
+    // carrier_iata, render the new airlineNetworkBuilder (inner <main> HTML,
+    // no chrome wrap — inject() owns the shell). Otherwise fall back to the
+    // existing Amadeus-backed bAirline path which uses applyChromeAsync.
     if (meta.kind === 'airline' && meta.iata) {
       // Phase 1 coexistence: airlineNetworkBuilder.build() returns null when jonty
       // has no rows for this carrier — relying on that means one query, not two.
