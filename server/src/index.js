@@ -234,6 +234,7 @@ if (process.env.TRIPS_ENABLED !== '0') {
   app.use('/api/push',        require('./routes/push'));
 }
 app.use('/',                  require('./routes/seo'));            // /sitemap.xml
+app.use('/',                  require('./routes/entity'));         // /about/team (E-E-A-T author page)
 
 // ─────────────────────────────────────────
 //  Health check
