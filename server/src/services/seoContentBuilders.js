@@ -1350,7 +1350,15 @@ async function buildAsync(meta, db) {
         if (jontyHtml) return jontyHtml;
       } catch (err) {
         const msg = err && err.message ? err.message : String(err);
-        if (!msg.includes('jonty.db not present')) {
+        // Operational failures that should silently fall back to bAirline:
+        // 1. jonty.db missing on disk (deploy lag / first boot)
+        // 2. SQLite schema drift (data lag) — "no such table" / "no such column"
+        // 3. Generic SQLite errors from a momentarily-bad connection
+        const isOperationalFailure = msg.includes('jonty.db not present')
+          || msg.includes('no such table')
+          || msg.includes('no such column')
+          || /SQLITE_/i.test(msg);
+        if (!isOperationalFailure) {
           if (process.env.NODE_ENV !== 'production') throw err;
           console.warn('[seo] airline jonty render failed for ' + meta.iata + ':', msg);
         }
