@@ -6,12 +6,14 @@ const schema = require('./schemaMarkup');
 const { aircraftPlaceholder } = require('./seoAircraftPlaceholder');
 
 const SITE = 'https://himaxym.com';
+const HUB_MIN_ROUTES = 10;
 
 function build(carrierIata) {
   const network = jonty.getAirlineNetwork(carrierIata);
   if (!network || network.length === 0) return null;
 
-  const carrierName = network[0].carrier_name || carrierIata;
+  const carrierName = getCarrierName(network);
+
   // Aggregate stats
   const countries = new Set();
   const origins = new Map();
@@ -23,26 +25,26 @@ function build(carrierIata) {
     }
     origins.get(r.origin_iata).routes.push(r);
   }
-  // Hub = origin with ≥10 routes
-  const hubCount = Array.from(origins.values()).filter(o => o.routes.length >= 10).length;
+  // Hub = origin with ≥HUB_MIN_ROUTES routes
+  const hubCount = Array.from(origins.values()).filter(o => o.routes.length >= HUB_MIN_ROUTES).length;
 
   const stats = { totalRoutes: network.length, totalCountries: countries.size, hubCount };
-  const introHTML = intro.airline({ iata: carrierIata, name: getCarrierName(network) }, stats);
+  const introHTML = intro.airline({ iata: carrierIata, name: carrierName }, stats);
 
   const breadcrumbItems = [
     { name: 'Home', url: SITE + '/' },
     { name: 'Airlines', url: SITE + '/' },
-    { name: `${getCarrierName(network)} (${carrierIata})`, url: `${SITE}/airline/${carrierIata}` },
+    { name: `${carrierName} (${carrierIata})`, url: `${SITE}/airline/${carrierIata}` },
   ];
 
   const faq = [
     {
-      question: `How many routes does ${getCarrierName(network)} operate?`,
-      answer: `${getCarrierName(network)} operates ${network.length} non-stop routes.`,
+      question: `How many routes does ${carrierName} operate?`,
+      answer: `${carrierName} operates ${network.length} non-stop routes.`,
     },
     {
-      question: `Which countries does ${getCarrierName(network)} fly to?`,
-      answer: `${getCarrierName(network)} serves ${countries.size} countries.`,
+      question: `Which countries does ${carrierName} fly to?`,
+      answer: `${carrierName} serves ${countries.size} countries.`,
     },
   ];
 
@@ -56,24 +58,22 @@ function build(carrierIata) {
     .map(o => `<li><a href="/airline/${carrierIata}/from/${o.iata}">${escapeHtml(o.city || o.iata)} (${o.iata}) — ${o.routes.length} routes</a></li>`)
     .join('\n');
 
-  const carrierName2 = getCarrierName(network);
-
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>${escapeHtml(carrierName2)} (${carrierIata}) routes — network map | FlightFinder</title>
-<meta name="description" content="Full route network for ${carrierName2} ${carrierIata}: ${network.length} routes across ${countries.size} countries.">
+<title>${escapeHtml(carrierName)} (${carrierIata}) routes — network map | FlightFinder</title>
+<meta name="description" content="Full route network for ${carrierName} ${carrierIata}: ${network.length} routes across ${countries.size} countries.">
 <link rel="canonical" href="${SITE}/airline/${carrierIata}">
 <meta name="robots" content="index, follow">
 ${jsonLd}
 </head>
 <body>
 <main>
-<h1>${escapeHtml(carrierName2)} (${carrierIata}) route network</h1>
+<h1>${escapeHtml(carrierName)} (${carrierIata}) route network</h1>
 <section class="intro">${introHTML}</section>
 <section class="origins">
-<h2>Where ${escapeHtml(carrierName2)} flies from</h2>
+<h2>Where ${escapeHtml(carrierName)} flies from</h2>
 <ul>${originsHTML}</ul>
 </section>
 ${aircraftPlaceholder()}

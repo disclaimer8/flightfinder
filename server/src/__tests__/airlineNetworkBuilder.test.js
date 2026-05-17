@@ -30,7 +30,8 @@ describe('airlineNetworkBuilder.build', () => {
   it('returns HTML with airline name, route count, country count', () => {
     const html = builder.build('EI');
     expect(html).toContain('<h1>Aer Lingus (EI) route network</h1>');
-    expect(html).toMatch(/<strong>2<\/strong>/);
+    expect(html).toMatch(/<strong>2<\/strong>\s*non-stop route/);
+    expect(html).toMatch(/<strong>2<\/strong>\s*countr/);  // matches 'countries' or 'country'
   });
 
   it('lists origin airports with route counts', () => {
