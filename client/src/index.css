@@ -65,10 +65,12 @@
   --amber-bg:   #fffbeb;
   --amber-border: #fde68a;
 
-  /* Type system */
-  --font-display: 'Newsreader', Charter, Georgia, serif;
-  --font-ui:      'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono:    'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Type system. `* Variable` suffix is fontsource's convention for the
+     variable-weight font-family — must match @font-face declarations from
+     @fontsource-variable/* packages imported at the top of this file. */
+  --font-display: 'Newsreader Variable', Charter, Georgia, serif;
+  --font-ui:      'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:    'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Indigo split: --primary stays for CTAs / active states; --link for text links */
   --link: #4f46e5;
