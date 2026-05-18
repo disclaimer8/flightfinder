@@ -70,7 +70,24 @@ async function submitUrls(urls, key, opts = {}) {
   return { status: res.status, body: text };
 }
 
-module.exports = { buildUrlSet, filterIndexable, classifyResponse, submitUrls };
+const SEO_PATH_PATTERNS = [
+  /^server\/src\/services\/seo/i,
+  /^server\/src\/services\/.*Builder\.js$/i,
+  /^server\/src\/services\/jonty/i,
+  /^server\/src\/services\/openFlightsService/i,
+  /^server\/src\/services\/allianceBuilder\.js$/i,
+  /^server\/src\/services\/countryBuilder\.js$/i,
+  /^server\/src\/routes\/seo\.js$/i,
+  /^server\/src\/data\//i,
+  /^server\/scripts\/sync-jonty\.js$/i,
+];
+
+function shouldSubmitOnDeploy(changedPaths) {
+  if (!Array.isArray(changedPaths) || changedPaths.length === 0) return false;
+  return changedPaths.some((p) => SEO_PATH_PATTERNS.some((rx) => rx.test(p)));
+}
+
+module.exports = { buildUrlSet, filterIndexable, classifyResponse, submitUrls, shouldSubmitOnDeploy };
 
 if (require.main === module) {
   console.error('submit-indexnow: script-mode not yet implemented');
