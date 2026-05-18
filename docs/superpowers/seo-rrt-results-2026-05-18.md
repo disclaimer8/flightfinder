@@ -406,3 +406,38 @@ Full crontab on hetzner after addition (4 entries, no clobber of prior 3):
 - After two deploys (T1-T6 push + forced T7 push): flightfinder workers **pm_id=57, 58** (uptime 2m, PIDs 120608/120620)
 - ID jump 53→57 confirms two pm2 restarts triggered by the two deploys; B7 auto-restart hook still intact
 
+
+## IndexNow follow-up fixes (code review)
+
+Pushed commit: `38b2c25`
+
+### 10K cap batching (Fix 1)
+- Before: `urls.slice(0, CAP)` — 17K tail URLs never submitted
+- After: serial batches of 10K each, all URLs reach IndexNow
+- Post-deploy smoke output:
+  ```
+  [2026-05-18T20:09:44.131Z] [indexnow] mode=full total=27781 batches=3
+  [indexnow] batch 1/3 count=10000 status=200 ok ok=true
+  [indexnow] batch 2/3 count=10000 status=200 ok ok=true
+  [indexnow] batch 3/3 count=7781 status=200 ok ok=true
+  ```
+
+### 403 race classification (Fix 2)
+- 403 SiteVerificationNotCompleted now `recoverable=true exit=0 label='verification-pending'`
+- 401 unchanged (`unrecoverable exit=1`)
+- Test split: 26 → 27 in classifyResponse describe
+
+### Safety events enumerator (Fix 3)
+- New `enumerateSafetyEvents()` in `seoUrlEnumerator.js`
+- Used by submit-indexnow's supplemental loop
+- Sitemap route untouched (still has inline version with per-event lastmod)
+- ~500 safety event URL paths now in IndexNow submission set
+- Total went 27778 → 27781 (most safety event slugs deduplicated against existing /accidents/{slug} via lowercased seen-set in buildUrlSet; the +3 are the ones that survived dedup)
+
+### pm2 IDs after deploy
+- Before: 59, 60
+- After: 61, 62 (+2 confirms auto-restart fired)
+
+### Suite delta
+- Before: 1315 passing
+- After: 1316 passing (test split adds 1)
