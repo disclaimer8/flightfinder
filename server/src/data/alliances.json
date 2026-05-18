@@ -1,0 +1,23 @@
+{
+  "star-alliance": {
+    "name": "Star Alliance",
+    "founded": 1997,
+    "members": ["LH","UA","AC","SQ","NH","TG","TK","BR","OZ","SK","LX","OS","SN","LO","TP","ET","EW","CA","ZH","SA","CM","MS","AV","JP"],
+    "hubs": ["FRA","MUC","ORD","EWR","YYZ","SIN","NRT","BKK","IST"],
+    "lastVerified": "2026-05-18"
+  },
+  "oneworld": {
+    "name": "Oneworld",
+    "founded": 1999,
+    "members": ["AA","BA","CX","QF","JL","IB","AY","QR","RJ","UL","S7","MH","AT","AS","FJ"],
+    "hubs": ["LHR","DFW","HKG","SYD","HND","MAD","HEL","DOH"],
+    "lastVerified": "2026-05-18"
+  },
+  "skyteam": {
+    "name": "SkyTeam",
+    "founded": 2000,
+    "members": ["DL","AF","KL","KE","KQ","SU","ZM","UX","RO","SV","CI","CZ","MU","VN","VS","ME","GA","AR","AM","AZ"],
+    "hubs": ["ATL","CDG","AMS","ICN","SVO","TPE","HAN"],
+    "lastVerified": "2026-05-18"
+  }
+}
