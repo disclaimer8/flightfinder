@@ -113,3 +113,35 @@ Smoke (Googlebot UA, https://himaxym.com):
 **Note on QK double-h1:** /airline/QK has a stale second body-level `<h1>QK — destinations and fleet</h1>` from the bAirline fallback path — a pre-existing rendering issue (IATA-only h1 inside bAirline's innerHtml), independent of Path B. SSR `<h1>` (the one Google sees first) is correct. Tracked separately if it bites.
 
 **Tests:** 1259 passing, 0 failing, 6 skipped (Phase 1 baseline was 1257; +2 from Path B tests).
+
+## Wave 2 Path B follow-up (code review fixes)
+
+Pushed commit: 8718854
+
+- I1 (error handling): jonty try/catch now allowlists operational failures (jonty.db missing, schema drift, SQLITE_*), rethrows real bugs in non-prod, warns in prod. Mirrors sibling pattern at `seoContentBuilders.js:1364-1379`.
+- I2 (query weight): new `getCarrierMeta()` helper uses `WHERE carrier_iata = ? GROUP BY carrier_name ORDER BY routeCount DESC LIMIT 1` instead of the full 4-table JOIN in `getAirlineNetwork()`. Leverages composite index `idx_route_carriers_carrier(carrier_iata, origin_iata)` from B3 — cuts cold-cache cost dramatically on large carriers (~2700 rows for AA → single aggregate row).
+- I3 (test rigor): fixture seeded with `British Airways Plc` and `Deutsche Lufthansa AG` (intentionally different from OpenFlights' `British Airways` / `Lufthansa`) + route-count assertion `route network \(1 routes\)` + 3rd LH test. 1260 tests passing.
+- P1 (bAirline h1): IATA-only fallback fixed — `<h1>${esc(meta.airlineName || iata)} — destinations and fleet</h1>`. Verified live below.
+
+### Re-smoke /airline/QK after P1
+
+```
+$ curl -sA 'Googlebot' "https://himaxym.com/airline/QK" | grep -oE '<h1>[^<]+</h1>'
+<h1>Air Canada Jazz — destinations and fleet</h1>
+```
+
+Single h1 with carrier name (was `<h1>QK — destinations and fleet</h1>` before). The shell+body h1s now agree, so the previous double-h1 mismatch noted in the Phase 1 smoke is resolved.
+
+### Re-smoke /airline/BA (jonty path) confirms I2 didn't regress
+
+```
+$ curl -sA 'Googlebot' "https://himaxym.com/airline/BA" | grep -oE '<title>[^<]+</title>'
+<title>British Airways (BA) — route network (545 routes) | FlightFinder</title>
+```
+
+545 routes — same as before I2 (full network length and dominant carrier_name). New `getCarrierMeta()` returns identical name+count vs the old JOIN+for-loop.
+
+### pm2 IDs after push (auto-restart)
+
+- Before: 29, 30 (stopping)
+- After: 31, 32 (online, uptime ~5s when checked)
