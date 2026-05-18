@@ -567,10 +567,41 @@ function airlineAircraftMeta(iata, icao) {
 
 function airlineMeta(iata) {
   const upper = iata.toUpperCase();
-  // Prefer the human carrier name from OpenFlights for title + H1. Falls back
-  // to the IATA-only label if the airline isn't in the OpenFlights set.
+  // Path B: detect jonty hit; emit jonty-aware h1/title when present. Fall
+  // back to OpenFlights name otherwise — bAirline path stays for content
+  // (Phase 2 spec, B2 coverage at 84.7%).
+  let jontyName = null;
+  let routeCount = 0;
+  try {
+    const jonty = require('./jontyRouteService');
+    const network = jonty.getAirlineNetwork(upper);
+    if (network && network.length > 0) {
+      routeCount = network.length;
+      for (const r of network) { if (r.carrier_name) { jontyName = r.carrier_name; break; } }
+    }
+  } catch { /* jonty unavailable — fall back */ }
+
   const al = openFlightsService.getAirline(upper);
-  const name = al?.name || `${upper} airline`;
+  const fallbackName = al?.name || `${upper} airline`;
+  const name = jontyName || fallbackName;
+
+  if (jontyName) {
+    return {
+      title: `${name} (${upper}) — route network (${routeCount} routes) | FlightFinder`,
+      description: `Explore ${name}'s ${routeCount} non-stop routes. Updated weekly from open scheduling data.`,
+      canonical: `${BASE}/airline/${upper}`,
+      h1: `${name} route network`,
+      subtitle: `${routeCount} non-stop routes operated by ${name} (${upper}).`,
+      robots: 'index, follow',
+      ogType: 'website',
+      kind: 'airline',
+      iata: upper,
+      airlineName: name,
+      airlineIcao: al?.icao || null,
+      airlineCountry: al?.country || null,
+    };
+  }
+
   return {
     title: `${name} (${upper}) — routes, fleet, destinations | FlightFinder`,
     description: `${name} (${upper}) network: destinations served, observed aircraft families, and top operated routes. Cross-referenced with open ADS-B and Amadeus reference data.`,
