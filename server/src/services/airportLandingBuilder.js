@@ -4,7 +4,7 @@ const jonty = require('./jontyRouteService');
 const intro = require('./seoEditorialIntro');
 const schema = require('./schemaMarkup');
 const { aircraftPlaceholder } = require('./seoAircraftPlaceholder');
-const { SITE, escapeHtml } = require('./seoSharedUtil');
+const { SITE, escapeHtml, routeSlug } = require('./seoSharedUtil');
 
 function buildDepartures(iata) {
   const meta = jonty.getAirportMeta(iata);
@@ -90,7 +90,10 @@ function routeRow(direction, r) {
   const otherIata = direction === 'departures' ? r.dest_iata : r.origin_iata;
   const otherCity = direction === 'departures' ? (r.dest_city || r.dest_iata) : (r.origin_city || r.origin_iata);
   const carriers = (r.carriers || []).map(c => c.name).join(', ');
-  return `<tr><td><a href="/routes/${direction === 'departures' ? `${(r.origin_iata||'').toLowerCase()}-${otherIata.toLowerCase()}` : `${otherIata.toLowerCase()}-${(r.dest_iata||'').toLowerCase()}`}">${escapeHtml(otherCity)} (${otherIata})</a></td><td>${r.km ? `${r.km.toLocaleString('en-US')} km` : '—'}</td><td>${r.duration_min ? `${r.duration_min} min` : '—'}</td><td>${escapeHtml(carriers)}</td></tr>`;
+  const slug = direction === 'departures'
+    ? routeSlug(r.origin_iata || '', otherIata)
+    : routeSlug(otherIata, r.dest_iata || '');
+  return `<tr><td><a href="/routes/${slug}">${escapeHtml(otherCity)} (${otherIata})</a></td><td>${r.km ? `${r.km.toLocaleString('en-US')} km` : '—'}</td><td>${r.duration_min ? `${r.duration_min} min` : '—'}</td><td>${escapeHtml(carriers)}</td></tr>`;
 }
 
 function buildFAQ(direction, meta, routes, airlines) {

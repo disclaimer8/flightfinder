@@ -4,15 +4,10 @@ const jonty = require('./jontyRouteService');
 const openFlights = require('./openFlightsService');
 const schema = require('./schemaMarkup');
 const alliances = require('../data/alliances.json');
-const { SITE, escapeHtml } = require('./seoSharedUtil');
+const { SITE, escapeHtml, routeLabel } = require('./seoSharedUtil');
 
 function getAlliance(slug) {
   return alliances[slug] || null;
-}
-
-// Pluralize "route(s)" so we never render "1 routes".
-function routeLabel(n) {
-  return `${n} ${n === 1 ? 'route' : 'routes'}`;
 }
 
 function build(slug) {

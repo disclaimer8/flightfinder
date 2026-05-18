@@ -4,7 +4,7 @@ const jonty = require('./jontyRouteService');
 const jontyDb = require('../models/jontyDb');
 const schema = require('./schemaMarkup');
 const { aircraftPlaceholder } = require('./seoAircraftPlaceholder');
-const { SITE, escapeHtml } = require('./seoSharedUtil');
+const { SITE, escapeHtml, routeSlug } = require('./seoSharedUtil');
 
 function build(carrierIata, airportIata) {
   const meta = jonty.getAirportMeta(airportIata);
@@ -43,7 +43,7 @@ function build(carrierIata, airportIata) {
     schema.faqPage(faq)
   );
 
-  const destsHTML = rows.map(r => `<li><a href="/routes/${airportIata.toLowerCase()}-${r.dest_iata.toLowerCase()}">${escapeHtml(r.dest_city || r.dest_iata)} (${r.dest_iata})</a> — ${r.km ? r.km.toLocaleString('en-US') + ' km' : '—'}, ${r.duration_min || '—'} min</li>`).join('\n');
+  const destsHTML = rows.map(r => `<li><a href="/routes/${routeSlug(airportIata, r.dest_iata)}">${escapeHtml(r.dest_city || r.dest_iata)} (${r.dest_iata})</a> — ${r.km ? r.km.toLocaleString('en-US') + ' km' : '—'}, ${r.duration_min || '—'} min</li>`).join('\n');
 
   // Returns inner <main>...</main> only — doctype/<head>/<title>/canonical/
   // robots AND the <h1> come from the React shell + seoMetaService.inject()

@@ -2,11 +2,7 @@
 
 const jonty = require('./jontyRouteService');
 const schema = require('./schemaMarkup');
-const { SITE, escapeHtml } = require('./seoSharedUtil');
-
-// Singular/plural grammar — never render "1 routes" / "1 airports".
-function routeLabel(n) { return `${n} ${n === 1 ? 'route' : 'routes'}`; }
-function airportLabel(n) { return `${n} ${n === 1 ? 'airport' : 'airports'}`; }
+const { SITE, escapeHtml, routeLabel, airportLabel, routeSlug } = require('./seoSharedUtil');
 
 function build(cc, countryName) {
   const stats = jonty.getCountryStats(cc);
@@ -52,7 +48,7 @@ function build(cc, countryName) {
     .join('\n');
 
   const routesHTML = stats.popularRoutes
-    .map(r => `<li><a href="/routes/${r.origin.toLowerCase()}-${r.dest.toLowerCase()}">${r.origin} → ${r.dest} (${r.carrierCount} ${r.carrierCount === 1 ? 'carrier' : 'carriers'})</a></li>`)
+    .map(r => `<li><a href="/routes/${routeSlug(r.origin, r.dest)}">${r.origin} → ${r.dest} (${r.carrierCount} ${r.carrierCount === 1 ? 'carrier' : 'carriers'})</a></li>`)
     .join('\n');
 
   return `<main>
