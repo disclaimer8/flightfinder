@@ -19,7 +19,11 @@ CREATE TABLE routes (origin_iata TEXT, dest_iata TEXT, km INTEGER, duration_min 
 CREATE TABLE route_carriers (origin_iata TEXT, dest_iata TEXT, carrier_iata TEXT, carrier_name TEXT, PRIMARY KEY (origin_iata, dest_iata, carrier_iata));
 `);
   db.prepare(`INSERT INTO routes VALUES (?,?,?,?)`).run('LHR', 'JFK', 5541, 460);
-  db.prepare(`INSERT INTO route_carriers VALUES (?,?,?,?)`).run('LHR', 'JFK', 'BA', 'British Airways');
+  // Seed jonty fixture with carrier names that DIFFER from OpenFlights —
+  // exact-match assertions on these names prove the jonty branch ran
+  // (OpenFlights returns "British Airways" / "Lufthansa", not these).
+  db.prepare(`INSERT INTO route_carriers VALUES (?,?,?,?)`).run('LHR', 'JFK', 'BA', 'British Airways Plc');
+  db.prepare(`INSERT INTO route_carriers VALUES (?,?,?,?)`).run('FRA', 'JFK', 'LH', 'Deutsche Lufthansa AG');
   jest.doMock('../models/jontyDb', () => ({ getDb: () => db, closeDb: () => db.close() }));
   meta = require('../services/seoMetaService');
 });
@@ -27,7 +31,16 @@ CREATE TABLE route_carriers (origin_iata TEXT, dest_iata TEXT, carrier_iata TEXT
 describe('airlineMeta — Path B jonty-aware title (when jonty has data)', () => {
   test('uses jonty carrier_name + "route network" when jonty hit', () => {
     const m = meta.resolve('/airline/BA');
-    expect(m.h1).toMatch(/British Airways/);
+    expect(m.airlineName).toBe('British Airways Plc');  // jonty fixture name, NOT OpenFlights default
+    expect(m.h1).toMatch(/British Airways Plc/);
+    expect(m.h1).toMatch(/route network/i);
+    expect(m.title).toMatch(/route network \(1 routes\)/);  // route-count proves jonty branch
+  });
+
+  test('uses jonty carrier_name for second carrier (Lufthansa)', () => {
+    const m = meta.resolve('/airline/LH');
+    expect(m.airlineName).toBe('Deutsche Lufthansa AG');
+    expect(m.h1).toMatch(/Deutsche Lufthansa AG/);
     expect(m.h1).toMatch(/route network/i);
   });
 

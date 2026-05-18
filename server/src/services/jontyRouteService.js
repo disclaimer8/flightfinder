@@ -59,6 +59,25 @@ function getAirlineNetwork(carrierIata) {
   `).all(carrierIata);
 }
 
+// Lightweight name+count query for airlineMeta (Path B I2 follow-up).
+// Returns { carrier_name, routeCount } for the dominant name of the carrier,
+// or null if jonty has no rows for it. Uses leftmost prefix of the composite
+// index idx_route_carriers_carrier(carrier_iata, origin_iata) — nearly free
+// vs the full 4-table JOIN in getAirlineNetwork().
+function getCarrierMeta(carrierIata) {
+  const db = jontyDb.getDb();
+  return db.prepare(`
+    SELECT carrier_name, COUNT(*) AS routeCount
+    FROM route_carriers
+    WHERE carrier_iata = ?
+      AND carrier_name IS NOT NULL
+      AND carrier_name != ''
+    GROUP BY carrier_name
+    ORDER BY routeCount DESC
+    LIMIT 1
+  `).get(carrierIata) || null;
+}
+
 function getAirlinesFromAirport(iata) {
   const db = jontyDb.getDb();
   return db.prepare(`
@@ -101,6 +120,7 @@ module.exports = {
   getDeparturesFromAirport,
   getArrivalsToAirport,
   getAirlineNetwork,
+  getCarrierMeta,
   getAirlinesFromAirport,
   listAirportsByCountry,
 };

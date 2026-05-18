@@ -1011,7 +1011,7 @@ async function bAirline(meta, _db) {
 
   const destinations = await amadeus.getAirlineRoutes(iata).catch(() => null);
 
-  const heading = `<h1>${esc(iata)} — destinations and fleet</h1>`;
+  const heading = `<h1>${esc(meta.airlineName || iata)} — destinations and fleet</h1>`;
 
   let destBlock = '';
   if (destinations && destinations.length > 0) {

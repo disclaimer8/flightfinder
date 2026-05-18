@@ -574,12 +574,26 @@ function airlineMeta(iata) {
   let routeCount = 0;
   try {
     const jonty = require('./jontyRouteService');
-    const network = jonty.getAirlineNetwork(upper);
-    if (network && network.length > 0) {
-      routeCount = network.length;
-      for (const r of network) { if (r.carrier_name) { jontyName = r.carrier_name; break; } }
+    const carrierMeta = jonty.getCarrierMeta(upper);
+    if (carrierMeta && carrierMeta.carrier_name) {
+      jontyName = carrierMeta.carrier_name;
+      routeCount = carrierMeta.routeCount;
     }
-  } catch { /* jonty unavailable — fall back */ }
+  } catch (err) {
+    const msg = err && err.message ? err.message : String(err);
+    // Operational failures that should silently fall back to OpenFlights name:
+    // 1. jonty.db missing on disk (deploy lag / first boot)
+    // 2. SQLite schema drift — "no such table" / "no such column"
+    // 3. Generic SQLite errors from momentarily-bad connection
+    const isOperationalFailure = msg.includes('jonty.db not present')
+      || msg.includes('no such table')
+      || msg.includes('no such column')
+      || /SQLITE_/i.test(msg);
+    if (!isOperationalFailure) {
+      if (process.env.NODE_ENV !== 'production') throw err;
+      console.warn('[seo] airlineMeta jonty lookup failed for %s:', upper, msg);
+    }
+  }
 
   const al = openFlightsService.getAirline(upper);
   const fallbackName = al?.name || `${upper} airline`;
