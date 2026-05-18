@@ -743,11 +743,37 @@ function allianceMeta(slug) {
 }
 
 // /country/:cc — ISO 3166-1 alpha-2. Country name via Intl.DisplayNames
-// (built-in to Node, no extra dependency). Caller (builder) is responsible
-// for returning null when the jonty.db has no airports for this country —
-// resolver only validates the URL shape.
+// (built-in to Node, no extra dependency). Gates on jonty-airport presence
+// so unbacked ISO codes (e.g. AQ Antarctica, reserved XA-XZ, ZZ-sentinel)
+// return null at the resolver level instead of leaking "Flights from Unknown
+// Region" titles into the SSR shell (Intl.DisplayNames('en').of('ZZ') returns
+// "Unknown Region", NOT the original code).
 function countryMeta(cc) {
   const upper = String(cc).toUpperCase();
+
+  // Lightweight existence check (single LIMIT 1 query, <0.5ms via
+  // idx_airports_country). Cheaper than getCountryStats's 4 queries since
+  // we only need a yes/no gate here.
+  try {
+    const jontyDb = require('../models/jontyDb');
+    const db = jontyDb.getDb();
+    const row = db.prepare(`SELECT 1 FROM airports WHERE country_code = ? LIMIT 1`).get(upper);
+    if (!row) return null;
+  } catch (err) {
+    // Operational failure: jonty unavailable → fall through to a permissive
+    // meta so the page doesn't 404 during sync windows. countryBuilder will
+    // still return null inside buildAsync and the cache will treat as 404.
+    const msg = err && err.message ? err.message : String(err);
+    const isOperationalFailure = msg.includes('jonty.db not present')
+      || msg.includes('no such table')
+      || msg.includes('no such column')
+      || /SQLITE_/i.test(msg);
+    if (!isOperationalFailure) {
+      if (process.env.NODE_ENV !== 'production') throw err;
+      console.warn('[seo] countryMeta jonty check failed for %s:', upper, msg);
+    }
+  }
+
   let name;
   try { name = new Intl.DisplayNames('en', { type: 'region' }).of(upper) || upper; }
   catch { name = upper; }
@@ -902,7 +928,11 @@ function resolve(pathname, searchParams) {
   // ISO codes vs 2-3-letter IATA codes — both match, but the country path is
   // more specific).
   const countryMatch = /^\/country\/([a-z]{2})\/?$/i.exec(pathname);
-  if (countryMatch) return countryMeta(countryMatch[1]);
+  if (countryMatch) {
+    const result = countryMeta(countryMatch[1]);
+    if (result) return result;
+    // Unbacked code falls through to not-found
+  }
 
   const airlineMatch = /^\/airline\/([a-z0-9]{2,3})\/?$/i.exec(pathname);
   if (airlineMatch) return airlineMeta(airlineMatch[1].toLowerCase());

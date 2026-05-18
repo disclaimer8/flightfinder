@@ -12,6 +12,9 @@ CREATE TABLE route_carriers (origin_iata TEXT, dest_iata TEXT, carrier_iata TEXT
   db.prepare(`INSERT INTO airports VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run('LAX', 'KLAX', 'LAX', 'Los Angeles', 'USA', 'US', 'NA', 33.94, -118.41, 38, 'America/Los_Angeles', 'Los Angeles (LAX)');
   db.prepare(`INSERT INTO route_carriers VALUES (?,?,?,?)`).run('JFK', 'LAX', 'AA', 'American');
   db.prepare(`INSERT INTO route_carriers VALUES (?,?,?,?)`).run('JFK', 'LAX', 'DL', 'Delta');
+  // Reverse route so LAX also appears in topAirports (otherwise only origin
+  // airports show up); needed by M5 test that asserts city-name fallback on LAX.
+  db.prepare(`INSERT INTO route_carriers VALUES (?,?,?,?)`).run('LAX', 'JFK', 'AA', 'American');
   return db;
 }
 
@@ -34,12 +37,16 @@ describe('country — /country/:cc', () => {
     expect(m.h1).toMatch(/United States/);
   });
 
-  test('builder produces inner <main> HTML with top airports list', async () => {
+  test('builder produces inner <main> HTML with top airports list (city names)', async () => {
     const m = meta.resolve('/country/US');
     const html = await builders.buildAsync(m, {});
     expect(html).toMatch(/<main>/);
     expect(html).not.toMatch(/<title>/); // shell contract
-    expect(html).toMatch(/JFK|LAX/);
+    // Verify the builder uses city || iata fallback — city should win
+    expect(html).toMatch(/New York/);
+    expect(html).toMatch(/Los Angeles/);
+    expect(html).toMatch(/JFK/); // IATA still appears in parens
+    expect(html).toMatch(/LAX/);
   });
 
   test('schema includes Place + BreadcrumbList + FAQPage (NOT Country type)', async () => {
@@ -51,14 +58,14 @@ describe('country — /country/:cc', () => {
     expect(html).toMatch(/"@type"\s*:\s*"FAQPage"/);
   });
 
-  test('builder returns null for country with no airports', async () => {
-    const m = meta.resolve('/country/ZZ');
-    if (m && m.kind === 'country') {
-      const html = await builders.buildAsync(m, {});
-      expect(html).toBeNull();
-    } else {
-      expect(m === null || m.kind === 'not-found').toBe(true);
-    }
+  test('resolver returns null/not-found for country with no airports', () => {
+    // Spam-prevention: codes without jonty airports must not produce
+    // resolver-level meta that could leak into shell SSR.
+    const m1 = meta.resolve('/country/ZZ');
+    expect(m1 === null || m1.kind === 'not-found').toBe(true);
+
+    const m2 = meta.resolve('/country/AQ'); // valid ISO, but no airports in fixture
+    expect(m2 === null || m2.kind === 'not-found').toBe(true);
   });
 
   test('isLazyPath matches /country/:cc', () => {
