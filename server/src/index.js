@@ -233,6 +233,19 @@ if (process.env.TRIPS_ENABLED !== '0') {
   app.use('/api/trips',       require('./routes/trips'));
   app.use('/api/push',        require('./routes/push'));
 }
+// IndexNow ownership verification. Key sourced from /etc/flightfinder/indexnow.key
+// at pm2 start via ecosystem.config.js → process.env.INDEXNOW_KEY. The .txt file
+// at /${KEY}.txt is what api.indexnow.org/indexnow's POST keyLocation parameter
+// points to — Bing fetches and verifies it returns the same key string.
+// Single specific route (no wildcard) so it doesn't compete with legitimate routes.
+const indexNowKey = process.env.INDEXNOW_KEY;
+if (indexNowKey && /^[a-f0-9]{16,128}$/i.test(indexNowKey)) {
+  app.get(`/${indexNowKey}.txt`, (_req, res) => {
+    res.type('text/plain').send(indexNowKey);
+  });
+} else if (process.env.NODE_ENV !== 'test') {
+  console.warn('[seo] INDEXNOW_KEY missing or malformed — IndexNow validation route not registered');
+}
 app.use('/',                  require('./routes/seo'));            // /sitemap.xml
 app.use('/',                  require('./routes/entity'));         // /about/team (E-E-A-T author page)
 
