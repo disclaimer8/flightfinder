@@ -18,7 +18,20 @@ function buildUrlSet(paths) {
   return out;
 }
 
-module.exports = { buildUrlSet };
+function filterIndexable(paths) {
+  let seoMeta;
+  try { seoMeta = require('../src/services/seoMetaService'); }
+  catch { return paths; }
+  return paths.filter((p) => {
+    let meta;
+    try { meta = seoMeta.resolve(p); } catch { return true; }
+    if (!meta) return true;
+    if (typeof meta.robots === 'string' && /noindex/i.test(meta.robots)) return false;
+    return true;
+  });
+}
+
+module.exports = { buildUrlSet, filterIndexable };
 
 if (require.main === module) {
   console.error('submit-indexnow: script-mode not yet implemented');
