@@ -89,7 +89,106 @@ function shouldSubmitOnDeploy(changedPaths) {
 
 module.exports = { buildUrlSet, filterIndexable, classifyResponse, submitUrls, shouldSubmitOnDeploy };
 
+async function main(argv = process.argv.slice(2)) {
+  const mode = (argv.find((a) => a.startsWith('--mode='))?.split('=')[1]) || 'dry-run';
+
+  const key = process.env.INDEXNOW_KEY;
+  if (!key) {
+    console.error('[indexnow] INDEXNOW_KEY env not set; exit 1');
+    return 1;
+  }
+  if (!/^[a-f0-9]{16,128}$/i.test(key)) {
+    console.error('[indexnow] INDEXNOW_KEY malformed (must be 16-128 hex chars); exit 1');
+    return 1;
+  }
+
+  if (mode === 'deploy') {
+    let changedPaths = [];
+    try {
+      const { execSync } = require('child_process');
+      const out = execSync('git diff --name-only HEAD~1 HEAD', { encoding: 'utf8' });
+      changedPaths = out.split('\n').filter(Boolean);
+    } catch (err) {
+      console.warn('[indexnow] git diff failed; proceeding with submission:', err.message);
+    }
+    if (changedPaths.length && !shouldSubmitOnDeploy(changedPaths)) {
+      console.log(`[indexnow] mode=deploy skip — no SEO-affecting files in HEAD~1..HEAD (${changedPaths.length} files changed)`);
+      return 0;
+    }
+  }
+
+  let paths;
+  try {
+    const enumerator = require('../src/services/seoUrlEnumerator');
+    paths = enumerator.enumerateSeoUrls();
+  } catch (err) {
+    console.error('[indexnow] enumerator failed:', err.message);
+    return 1;
+  }
+
+  try {
+    const e = require('../src/services/seoUrlEnumerator');
+    if (typeof e.enumerateAccidents === 'function') {
+      paths.push(...e.enumerateAccidents().map(x => typeof x === 'string' ? x : x.loc?.replace('https://himaxym.com','')).filter(Boolean));
+    }
+    if (typeof e.enumerateAirlineAircraftMatrix === 'function') {
+      paths.push(...e.enumerateAirlineAircraftMatrix().map(x => typeof x === 'string' ? x : x.loc?.replace('https://himaxym.com','')).filter(Boolean));
+    }
+    if (typeof e.enumerateRouteMatrix === 'function') {
+      paths.push(...e.enumerateRouteMatrix().map(x => typeof x === 'string' ? x : x.loc?.replace('https://himaxym.com','')).filter(Boolean));
+    }
+    if (typeof e.enumerateAirportLandingUrls === 'function') paths.push(...e.enumerateAirportLandingUrls());
+    if (typeof e.enumerateAirlineNetworkUrls === 'function') paths.push(...e.enumerateAirlineNetworkUrls());
+    if (typeof e.enumerateAirlineAirportUrls === 'function') paths.push(...e.enumerateAirlineAirportUrls());
+    if (typeof e.enumerateAllianceUrls === 'function') paths.push(...e.enumerateAllianceUrls());
+    if (typeof e.enumerateCountryUrls === 'function') paths.push(...e.enumerateCountryUrls());
+  } catch (err) {
+    console.warn('[indexnow] supplemental enumerators failed (continuing):', err.message);
+  }
+
+  const filtered = filterIndexable(paths);
+  const urls = buildUrlSet(filtered);
+
+  if (urls.length === 0) {
+    console.error('[indexnow] no URLs to submit; exit 1');
+    return 1;
+  }
+
+  if (mode === 'dry-run') {
+    console.log(`[indexnow] mode=dry-run count=${urls.length}`);
+    console.log('[indexnow] first 20:');
+    urls.slice(0, 20).forEach((u) => console.log(`  ${u}`));
+    return 0;
+  }
+
+  const CAP = 10000;
+  const submitSet = urls.length > CAP ? urls.slice(0, CAP) : urls;
+  if (urls.length > CAP) {
+    console.warn(`[indexnow] count ${urls.length} exceeds ${CAP} cap; truncating to first ${CAP}. Next cron picks up rest.`);
+  }
+
+  let result;
+  try {
+    result = await submitUrls(submitSet, key);
+  } catch (err) {
+    console.error('[indexnow] submit threw:', err.message);
+    return 0;
+  }
+  const cls = classifyResponse(result.status);
+  const ts = new Date().toISOString();
+  console.log(`[${ts}] [indexnow] mode=${mode} count=${submitSet.length} status=${result.status} ${cls.label} ok=${cls.ok}`);
+  if (!cls.ok) {
+    const snippet = (result.body || '').slice(0, 500);
+    console.log(`[indexnow] response body (first 500 chars): ${snippet}`);
+  }
+  return cls.exitCode;
+}
+
+module.exports.main = main;
+
 if (require.main === module) {
-  console.error('submit-indexnow: script-mode not yet implemented');
-  process.exit(1);
+  main().then((code) => process.exit(code)).catch((err) => {
+    console.error('[indexnow] uncaught:', err);
+    process.exit(1);
+  });
 }
