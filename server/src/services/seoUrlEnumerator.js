@@ -205,6 +205,11 @@ function enumerateAirlineAirportUrls() {
     .map(r => `/airline/${r.carrier_iata}/from/${r.origin_iata}`);
 }
 
+function enumerateAllianceUrls() {
+  const alliances = require('../data/alliances.json');
+  return Object.keys(alliances).map(slug => `/alliance/${slug}`);
+}
+
 module.exports = {
   enumerateSeoUrls,
   enumerateAccidents,
@@ -215,4 +220,6 @@ module.exports = {
   enumerateAirportLandingUrls,
   enumerateAirlineNetworkUrls,
   enumerateAirlineAirportUrls,
+  // Phase 2 Wave 3a:
+  enumerateAllianceUrls,
 };

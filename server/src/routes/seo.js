@@ -189,8 +189,12 @@ router.get('/sitemap.xml', async (_req, res) => {
     for (const u of airlineAirports) {
       urls.push({ loc: `${BASE}${lc(u)}`, changefreq: 'weekly', priority: '0.5', lastmod: today });
     }
+    const alliances = p1.enumerateAllianceUrls();
+    for (const u of alliances) {
+      urls.push({ loc: `${BASE}${lc(u)}`, changefreq: 'weekly', priority: '0.5', lastmod: today });
+    }
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`[seo] P1 sitemap: +${airportLandings.length} airport-landing, +${airlineNets.length} airline-network, +${airlineAirports.length} airline-airport`);
+      console.log(`[seo] P1 sitemap: +${airportLandings.length} airport-landing, +${airlineNets.length} airline-network, +${airlineAirports.length} airline-airport, +${alliances.length} alliance`);
     }
   } catch (err) {
     console.warn('[seo] P1 sitemap enumerators unavailable:', err.message);
