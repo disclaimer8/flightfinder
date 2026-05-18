@@ -2,22 +2,25 @@
   "star-alliance": {
     "name": "Star Alliance",
     "founded": 1997,
-    "members": ["LH","UA","AC","SQ","NH","TG","TK","BR","OZ","SK","LX","OS","SN","LO","TP","ET","EW","CA","ZH","SA","CM","MS","AV","JP"],
+    "members": ["LH","UA","AC","SQ","NH","TG","TK","BR","OZ","LX","OS","SN","LO","TP","ET","CA","ZH","SA","CM","MS","AV","NZ","AI","OU","A3","AZ"],
     "hubs": ["FRA","MUC","ORD","EWR","YYZ","SIN","NRT","BKK","IST"],
-    "lastVerified": "2026-05-18"
+    "lastVerified": "2026-05-18",
+    "source": "https://en.wikipedia.org/wiki/Star_Alliance (verified 2026-05-18; official site staralliance.com returned 403)"
   },
   "oneworld": {
     "name": "Oneworld",
     "founded": 1999,
-    "members": ["AA","BA","CX","QF","JL","IB","AY","QR","RJ","UL","S7","MH","AT","AS","FJ"],
+    "members": ["AA","BA","CX","QF","JL","IB","AY","QR","RJ","UL","MH","AT","AS","FJ","WY","HA"],
     "hubs": ["LHR","DFW","HKG","SYD","HND","MAD","HEL","DOH"],
-    "lastVerified": "2026-05-18"
+    "lastVerified": "2026-05-18",
+    "source": "https://www.oneworld.com/member-airlines + https://en.wikipedia.org/wiki/Oneworld (verified 2026-05-18)"
   },
   "skyteam": {
     "name": "SkyTeam",
     "founded": 2000,
-    "members": ["DL","AF","KL","KE","KQ","SU","ZM","UX","RO","SV","CI","CZ","MU","VN","VS","ME","GA","AR","AM","AZ"],
-    "hubs": ["ATL","CDG","AMS","ICN","SVO","TPE","HAN"],
-    "lastVerified": "2026-05-18"
+    "members": ["DL","AF","KL","KE","KQ","UX","RO","SV","CI","MU","VN","VS","ME","GA","AR","AM","MF","SK"],
+    "hubs": ["ATL","CDG","AMS","ICN","TPE","HAN"],
+    "lastVerified": "2026-05-18",
+    "source": "https://en.wikipedia.org/wiki/SkyTeam (verified 2026-05-18; official site skyteam.com returned 403)"
   }
 }

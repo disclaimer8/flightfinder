@@ -191,7 +191,7 @@ router.get('/sitemap.xml', async (_req, res) => {
     }
     const alliances = p1.enumerateAllianceUrls();
     for (const u of alliances) {
-      urls.push({ loc: `${BASE}${lc(u)}`, changefreq: 'weekly', priority: '0.5', lastmod: today });
+      urls.push({ loc: `${BASE}${lc(u)}`, changefreq: 'weekly', priority: '0.6', lastmod: today });
     }
     if (process.env.NODE_ENV !== 'test') {
       console.log(`[seo] P1 sitemap: +${airportLandings.length} airport-landing, +${airlineNets.length} airline-network, +${airlineAirports.length} airline-airport, +${alliances.length} alliance`);

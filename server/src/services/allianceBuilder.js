@@ -1,6 +1,7 @@
 'use strict';
 
 const jonty = require('./jontyRouteService');
+const openFlights = require('./openFlightsService');
 const schema = require('./schemaMarkup');
 const alliances = require('../data/alliances.json');
 const { SITE, escapeHtml } = require('./seoSharedUtil');
@@ -9,25 +10,53 @@ function getAlliance(slug) {
   return alliances[slug] || null;
 }
 
+// Pluralize "route(s)" so we never render "1 routes".
+function routeLabel(n) {
+  return `${n} ${n === 1 ? 'route' : 'routes'}`;
+}
+
 function build(slug) {
   const alliance = getAlliance(slug);
   if (!alliance) return null;
 
-  let totalRoutes = 0;
   const destSet = new Set();
+  // Deduplicate routes across alliance members: codeshare routes appear once
+  // per operating carrier in route_carriers, so summing per-carrier counts
+  // would multi-count them. routePairSet keeps unique (origin,dest) pairs.
+  const routePairSet = new Set();
   const memberRows = [];
+
   for (const memberIata of alliance.members) {
-    let network = [];
-    try { network = jonty.getAirlineNetwork(memberIata) || []; } catch { network = []; }
-    totalRoutes += network.length;
-    for (const r of network) {
-      if (r.dest_iata) destSet.add(r.dest_iata);
+    // Lightweight queries (Wave 3a I1 fix) — avoid the heavy 4-table JOIN in
+    // getAirlineNetwork(). Both prepared statements hit the composite index
+    // idx_route_carriers_carrier(carrier_iata, origin_iata) from Wave 2 B3.
+    let meta = null;
+    let destinations = [];
+    try { meta = jonty.getCarrierMeta(memberIata) || null; } catch { meta = null; }
+    if (meta) {
+      try { destinations = jonty.getCarrierDestinations(memberIata) || []; } catch { destinations = []; }
     }
-    let carrierName = null;
-    for (const r of network) { if (r.carrier_name) { carrierName = r.carrier_name; break; } }
-    memberRows.push({ iata: memberIata, name: carrierName || memberIata, routeCount: network.length });
+
+    for (const d of destinations) {
+      if (d.dest_iata) destSet.add(d.dest_iata);
+      if (d.origin_iata && d.dest_iata) routePairSet.add(`${d.origin_iata}-${d.dest_iata}`);
+    }
+
+    // Name resolution (Wave 3a I2 fix): jonty.carrier_name first, then
+    // OpenFlights airline name, then bare IATA as last resort.
+    let carrierName = meta?.carrier_name || null;
+    if (!carrierName) {
+      try { carrierName = openFlights.getAirline(memberIata)?.name || null; } catch { /* ignore */ }
+    }
+    memberRows.push({
+      iata: memberIata,
+      name: carrierName || memberIata,
+      routeCount: meta?.routeCount || 0,
+    });
   }
   memberRows.sort((a, b) => b.routeCount - a.routeCount);
+
+  const uniqueRoutePairs = routePairSet.size;
 
   const breadcrumbItems = [
     { name: 'Home', url: SITE + '/' },
@@ -41,7 +70,7 @@ function build(slug) {
     { question: `When was ${alliance.name} founded?`,
       answer: `${alliance.name} was founded in ${alliance.founded}.` },
     { question: `How many destinations does ${alliance.name} cover?`,
-      answer: `Across member carriers, ${alliance.name} reaches approximately ${destSet.size} destinations with ${totalRoutes} non-stop routes.` },
+      answer: `Across member carriers, ${alliance.name} reaches approximately ${destSet.size} destinations with ${uniqueRoutePairs} unique non-stop routes.` },
   ];
 
   const orgLd = {
@@ -59,7 +88,7 @@ function build(slug) {
   );
 
   const membersHTML = memberRows
-    .map(m => `<li><a href="/airline/${m.iata}">${escapeHtml(m.name)} (${m.iata}) — ${m.routeCount} routes</a></li>`)
+    .map(m => `<li><a href="/airline/${m.iata}">${escapeHtml(m.name)} (${m.iata}) — ${routeLabel(m.routeCount)}</a></li>`)
     .join('\n');
 
   const hubsHTML = alliance.hubs
@@ -69,7 +98,7 @@ function build(slug) {
   return `<main>
 ${jsonLd}
 <section class="intro">
-<p>${escapeHtml(alliance.name)} is a global airline alliance founded in ${alliance.founded}, with ${alliance.members.length} member airlines operating approximately ${totalRoutes} non-stop routes across ${destSet.size} destinations.</p>
+<p>${escapeHtml(alliance.name)} is a global airline alliance founded in ${alliance.founded}, with ${alliance.members.length} member airlines operating approximately ${uniqueRoutePairs} unique non-stop routes across ${destSet.size} destinations.</p>
 </section>
 <section class="hubs">
 <h2>Major hubs</h2>

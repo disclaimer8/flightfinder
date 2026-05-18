@@ -78,6 +78,19 @@ function getCarrierMeta(carrierIata) {
   `).get(carrierIata) || null;
 }
 
+// Lightweight destinations-only query for alliance bake (Wave 3a C2/I1 fix).
+// Returns distinct (origin_iata, dest_iata) pairs for the carrier. Uses the
+// composite index idx_route_carriers_carrier(carrier_iata, origin_iata) from
+// B3 — far cheaper than the 4-table JOIN in getAirlineNetwork().
+function getCarrierDestinations(carrierIata) {
+  const db = jontyDb.getDb();
+  return db.prepare(`
+    SELECT DISTINCT origin_iata, dest_iata
+    FROM route_carriers
+    WHERE carrier_iata = ?
+  `).all(carrierIata);
+}
+
 function getAirlinesFromAirport(iata) {
   const db = jontyDb.getDb();
   return db.prepare(`
@@ -121,6 +134,7 @@ module.exports = {
   getArrivalsToAirport,
   getAirlineNetwork,
   getCarrierMeta,
+  getCarrierDestinations,
   getAirlinesFromAirport,
   listAirportsByCountry,
 };
