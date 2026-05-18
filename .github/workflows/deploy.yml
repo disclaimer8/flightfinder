@@ -319,7 +319,7 @@ jobs:
             cd /root/flightfinder
             # First-deploy guard: if a manually-started flightfinder process exists with
             # a different cwd than ecosystem.config.js declares, PM2 reload won't absorb
-            # it cleanly — drop it so startOrReload can claim the name. This is a one-time
+            # it cleanly — drop it so startOrRestart can claim the name. This is a one-time
             # cost on first deploy; subsequent deploys see PM2's recorded ecosystem state.
             pm2 describe flightfinder >/dev/null 2>&1 && \
               ! pm2 describe flightfinder | grep -q "ecosystem.config.js" && \
