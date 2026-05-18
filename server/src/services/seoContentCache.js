@@ -160,7 +160,8 @@ function isLazyPath(pathname) {
     // wrong URL family (/airline/dlh instead of /airline/lh). Lazy path
     // matches the real IATA URLs Google + users actually request.
     /^\/airline\/[a-z0-9]{2,3}\/?$/i.test(pathname) ||
-    /^\/airline\/[a-z0-9]{2,3}\/from\/[a-z]{3}\/?$/i.test(pathname)
+    /^\/airline\/[a-z0-9]{2,3}\/from\/[a-z]{3}\/?$/i.test(pathname) ||
+    /^\/alliance\/[a-z][a-z0-9-]+\/?$/i.test(pathname)
   );
 }
 
@@ -198,6 +199,7 @@ async function getOrBuild(pathname) {
     // ICAO-warm-cache; lazy bake on first hit lets buildAsync dispatch
     // to jonty-or-bAirline correctly. See isLazyPath regex above.
     'airline',
+    'alliance',
   ];
   if (!meta || !ALLOWED_LAZY_KINDS.includes(meta.kind)) return null;
 

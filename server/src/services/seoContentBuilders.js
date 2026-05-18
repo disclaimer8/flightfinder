@@ -1348,6 +1348,9 @@ async function buildAsync(meta, db) {
   if (meta.kind === 'airline-airport') {
     return require('./airlineAirportBuilder').build(meta.airlineIata, meta.airportIata);
   }
+  if (meta.kind === 'alliance') {
+    return require('./allianceBuilder').build(meta.slug);
+  }
   // Amadeus-backed kinds: builder returns inner HTML, applyChromeAsync wraps
   // with chrome + Amadeus-backed extras (direct dest / network dest sidebars).
   if (meta.kind === 'airport' || meta.kind === 'airline') {

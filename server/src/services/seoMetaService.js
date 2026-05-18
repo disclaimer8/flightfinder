@@ -725,6 +725,23 @@ function airlineAirportMeta(airlineIata, airportIata) {
   };
 }
 
+function allianceMeta(slug) {
+  const alliances = require('../data/alliances.json');
+  const a = alliances[slug];
+  if (!a) return null;
+  return {
+    title: `${a.name} — ${a.members.length} member airlines | FlightFinder`,
+    description: `${a.name} alliance founded ${a.founded}: ${a.members.length} member airlines, hubs across ${a.hubs.length} cities. Combined non-stop network.`,
+    canonical: `${BASE}/alliance/${slug}`,
+    h1: `${a.name} — airline alliance`,
+    subtitle: `${a.members.length} member airlines, founded ${a.founded}.`,
+    robots: 'index, follow',
+    ogType: 'website',
+    kind: 'alliance',
+    slug,
+  };
+}
+
 /**
  * Filter-aware metadata for /map?airline=XX and/or ?aircraft=ICAO.
  * Returns the static MAP object when no recognised filter params are present.
@@ -849,6 +866,13 @@ function resolve(pathname, searchParams) {
   const airlineAirportMatch = /^\/airline\/([A-Za-z0-9]{2,3})\/from\/([A-Za-z]{3})\/?$/.exec(pathname);
   if (airlineAirportMatch) {
     return airlineAirportMeta(airlineAirportMatch[1], airlineAirportMatch[2]);
+  }
+
+  const allianceMatch = /^\/alliance\/([a-z][a-z0-9-]+)\/?$/i.exec(pathname);
+  if (allianceMatch) {
+    const result = allianceMeta(allianceMatch[1].toLowerCase());
+    if (result) return result;
+    // unknown slug falls through to not-found
   }
 
   const airlineMatch = /^\/airline\/([a-z0-9]{2,3})\/?$/i.exec(pathname);
