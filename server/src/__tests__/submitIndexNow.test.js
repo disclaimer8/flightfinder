@@ -33,3 +33,34 @@ describe('submit-indexnow URL set builder', () => {
     expect(script.buildUrlSet([])).toEqual([]);
   });
 });
+
+describe('submit-indexnow indexable filter', () => {
+  let script, resolveMock;
+  beforeEach(() => {
+    jest.resetModules();
+    resolveMock = jest.fn();
+    jest.doMock('../services/seoMetaService', () => ({ resolve: resolveMock }));
+    script = require('../../scripts/submit-indexnow');
+  });
+
+  test('filterIndexable excludes paths where resolver returns noindex', () => {
+    resolveMock.mockImplementation((p) => {
+      if (p === '/private') return { robots: 'noindex, follow' };
+      return { robots: 'index, follow' };
+    });
+    const result = script.filterIndexable(['/public', '/private', '/also-public']);
+    expect(result).toEqual(['/public', '/also-public']);
+  });
+
+  test('filterIndexable keeps paths where resolver returns null (unknown)', () => {
+    resolveMock.mockReturnValue(null);
+    const result = script.filterIndexable(['/unknown']);
+    expect(result).toEqual(['/unknown']);
+  });
+
+  test('filterIndexable handles resolver throwing', () => {
+    resolveMock.mockImplementation(() => { throw new Error('jonty.db not present'); });
+    const result = script.filterIndexable(['/some-path']);
+    expect(result).toEqual(['/some-path']);
+  });
+});
