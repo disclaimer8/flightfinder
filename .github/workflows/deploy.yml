@@ -348,3 +348,13 @@ jobs:
             pm2 save
             # nginx reload last — only flip routes after both apps are healthy
             nginx -t && systemctl reload nginx
+            # IndexNow submission (Phase 2 — non-blocking, exit 0 on most failures).
+            # Skips if /etc/flightfinder/indexnow.key absent (e.g. pre-provisioning
+            # state). `|| echo` catches misconfig exits so the workflow doesn't fail.
+            if [ -f /etc/flightfinder/indexnow.key ]; then
+              export INDEXNOW_KEY=$(cat /etc/flightfinder/indexnow.key)
+              cd /root/flightfinder
+              node server/scripts/submit-indexnow.js --mode=deploy || echo "[deploy] indexnow exit non-zero (ignored)"
+            else
+              echo "[deploy] /etc/flightfinder/indexnow.key not present — skipping IndexNow submission"
+            fi
