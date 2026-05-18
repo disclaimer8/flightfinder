@@ -172,6 +172,17 @@ function enumerateAccidents() {
   }));
 }
 
+function enumerateSafetyEvents() {
+  try {
+    const safetyModel = require('../models/safetyEvents');
+    const { buildEventSlug } = require('../utils/eventSlug');
+    const indexable = safetyModel.listIndexable({ limit: 500 });
+    return indexable.map((ev) => `/safety/events/${buildEventSlug(ev)}`);
+  } catch {
+    return [];
+  }
+}
+
 // Phase 1 SEO landing pages — jonty.db-backed enumerators.
 // Memory `lazy-bake-regex-sync` & `seo-bake-invariants`: every URL these
 // emit MUST resolve via seoMeta and build via seoContentBuilders.buildAsync.
@@ -222,6 +233,7 @@ function enumerateCountryUrls() {
 module.exports = {
   enumerateSeoUrls,
   enumerateAccidents,
+  enumerateSafetyEvents,
   enumerateAirlineAircraftMatrix,
   enumerateRouteMatrix,
   STATIC_PATHS,

@@ -82,9 +82,12 @@ describe('submit-indexnow classifyResponse', () => {
   test('429 (rate limit) → recoverable exit=0', () => {
     expect(script.classifyResponse(429).exitCode).toBe(0);
   });
-  test('401/403 (auth) → unrecoverable exit=1', () => {
+  test('401 (auth) → unrecoverable exit=1', () => {
     expect(script.classifyResponse(401).exitCode).toBe(1);
-    expect(script.classifyResponse(403).exitCode).toBe(1);
+  });
+  test('403 (verification race) → recoverable exit=0', () => {
+    const c = script.classifyResponse(403);
+    expect(c).toEqual({ ok: false, recoverable: true, exitCode: 0, label: 'verification-pending' });
   });
   test('400 → unrecoverable exit=1', () => {
     expect(script.classifyResponse(400).exitCode).toBe(1);

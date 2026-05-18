@@ -35,6 +35,12 @@ function classifyResponse(status) {
   if (status === 200 || status === 202) {
     return { ok: true, recoverable: true, exitCode: 0, label: 'ok' };
   }
+  if (status === 403) {
+    // SiteVerificationNotCompleted — transient race on first POST before
+    // Bing has fetched /${KEY}.txt. Self-resolves within minutes; next
+    // cron retries and succeeds. Treat as recoverable to avoid noise.
+    return { ok: false, recoverable: true, exitCode: 0, label: 'verification-pending' };
+  }
   if (status === 422) {
     return { ok: false, recoverable: true, exitCode: 0, label: 'duplicate' };
   }
@@ -142,6 +148,7 @@ async function main(argv = process.argv.slice(2)) {
     if (typeof e.enumerateAirlineAirportUrls === 'function') paths.push(...e.enumerateAirlineAirportUrls());
     if (typeof e.enumerateAllianceUrls === 'function') paths.push(...e.enumerateAllianceUrls());
     if (typeof e.enumerateCountryUrls === 'function') paths.push(...e.enumerateCountryUrls());
+    if (typeof e.enumerateSafetyEvents === 'function') paths.push(...e.enumerateSafetyEvents());
   } catch (err) {
     console.warn('[indexnow] supplemental enumerators failed (continuing):', err.message);
   }
@@ -161,27 +168,37 @@ async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  const CAP = 10000;
-  const submitSet = urls.length > CAP ? urls.slice(0, CAP) : urls;
-  if (urls.length > CAP) {
-    console.warn(`[indexnow] count ${urls.length} exceeds ${CAP} cap; truncating to first ${CAP}. Next cron picks up rest.`);
+  const BATCH_SIZE = 10000;
+  const batches = [];
+  for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+    batches.push(urls.slice(i, i + BATCH_SIZE));
   }
 
-  let result;
-  try {
-    result = await submitUrls(submitSet, key);
-  } catch (err) {
-    console.error('[indexnow] submit threw:', err.message);
-    return 0;
-  }
-  const cls = classifyResponse(result.status);
+  let worstExitCode = 0;
   const ts = new Date().toISOString();
-  console.log(`[${ts}] [indexnow] mode=${mode} count=${submitSet.length} status=${result.status} ${cls.label} ok=${cls.ok}`);
-  if (!cls.ok) {
-    const snippet = (result.body || '').slice(0, 500);
-    console.log(`[indexnow] response body (first 500 chars): ${snippet}`);
+  console.log(`[${ts}] [indexnow] mode=${mode} total=${urls.length} batches=${batches.length}`);
+
+  for (let b = 0; b < batches.length; b++) {
+    const batch = batches[b];
+    let result;
+    try {
+      result = await submitUrls(batch, key);
+    } catch (err) {
+      console.error(`[indexnow] batch ${b + 1}/${batches.length} threw: ${err.message}`);
+      continue; // network error on one batch — try the next
+    }
+    const cls = classifyResponse(result.status);
+    console.log(`[indexnow] batch ${b + 1}/${batches.length} count=${batch.length} status=${result.status} ${cls.label} ok=${cls.ok}`);
+    if (!cls.ok) {
+      const snippet = (result.body || '').slice(0, 500);
+      console.log(`[indexnow] batch ${b + 1} response body (first 500 chars): ${snippet}`);
+    }
+    // Worst exit code wins (so misconfig in any batch surfaces; recoverable
+    // failures are dominated by any success)
+    if (cls.exitCode > worstExitCode) worstExitCode = cls.exitCode;
   }
-  return cls.exitCode;
+
+  return worstExitCode;
 }
 
 module.exports.main = main;
