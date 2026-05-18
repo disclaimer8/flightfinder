@@ -317,3 +317,30 @@ Post-fix prod:
 ### pm2 IDs after deploy
 - Before: 45, 46
 - After: 47, 48 (online, uptime ~8s when smoked)
+
+## Wave 3c — routeSlug + label helpers extraction (B4 + M1)
+
+Pushed commit: `aa3b3bf`
+
+### Helpers consolidated in seoSharedUtil.js
+- `routeSlug(origin, dest)` — was inlined as `${x.toLowerCase()}-${y.toLowerCase()}` in 5 sites
+- `routeLabel(n)` — was inlined in `allianceBuilder.js` + `countryBuilder.js`
+- `airportLabel(n)` — was inlined in `countryBuilder.js`
+
+### Builders refactored
+- `allianceBuilder.js`: removed inline routeLabel; imports from seoSharedUtil
+- `countryBuilder.js`: removed inline routeLabel + airportLabel; uses routeSlug for popularRoutes section
+- `airportLandingBuilder.js`, `airlineAirportBuilder.js`, `airlineNetworkBuilder.js`: route slug construction replaced with routeSlug() where applicable
+
+### Tests
+- 9 new tests in `seoSharedUtil.test.js` (3 per helper: case handling for routeSlug, singular/plural for routeLabel/airportLabel)
+- Full suite: 1275 → **1284 passing, 0 failing, 6 skipped**
+- No regressions in dependent builder test suites
+
+### Production smoke (post-deploy, B7 auto-restart confirmed)
+- `/alliance/star-alliance`: member links render `/airline/UA`, `/airline/CA`, `/airline/AC` ✓
+- `/country/US`: popular route links render `/routes/hnl-lax`, `/routes/las-lax`, `/routes/lax-hnl` (lowercase routeSlug working) ✓
+- `/airline/BA`: airline-airport links render `/airline/BA/from/LHR`, `/airline/BA/from/LGW`, `/airline/BA/from/LCY` ✓
+
+### pm2 IDs after deploy
+- Workers 51, 52 online, uptime 3m, PIDs 116489/116501 (auto-restart from refactor push confirmed)
