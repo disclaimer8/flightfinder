@@ -140,3 +140,37 @@ describe('submit-indexnow submitUrls', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('submit-indexnow shouldSubmitOnDeploy', () => {
+  const script = require('../../scripts/submit-indexnow');
+
+  test('returns true when SEO service file changed', () => {
+    const changed = ['server/src/services/seoMetaService.js', 'README.md'];
+    expect(script.shouldSubmitOnDeploy(changed)).toBe(true);
+  });
+
+  test('returns true when sync-jonty.js changed', () => {
+    expect(script.shouldSubmitOnDeploy(['server/scripts/sync-jonty.js'])).toBe(true);
+  });
+
+  test('returns true when alliances.json changed', () => {
+    expect(script.shouldSubmitOnDeploy(['server/src/data/alliances.json'])).toBe(true);
+  });
+
+  test('returns true when seo route changed', () => {
+    expect(script.shouldSubmitOnDeploy(['server/src/routes/seo.js'])).toBe(true);
+  });
+
+  test('returns false when only docs changed', () => {
+    const changed = ['README.md', 'docs/superpowers/specs/foo.md'];
+    expect(script.shouldSubmitOnDeploy(changed)).toBe(false);
+  });
+
+  test('returns false on empty diff', () => {
+    expect(script.shouldSubmitOnDeploy([])).toBe(false);
+  });
+
+  test('returns true for any *Builder.js file in services', () => {
+    expect(script.shouldSubmitOnDeploy(['server/src/services/countryBuilder.js'])).toBe(true);
+  });
+});
