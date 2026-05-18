@@ -45,6 +45,7 @@ describe('builder↔enumerator coupling — every enumerated URL must resolve an
     ['airline networks', () => enumerator.enumerateAirlineNetworkUrls()],
     ['airline×airport', () => enumerator.enumerateAirlineAirportUrls()],
     ['alliances',       () => enumerator.enumerateAllianceUrls()],
+    ['countries',       () => enumerator.enumerateCountryUrls()],
   ])('%s', async (_label, getUrls) => {
     const urls = getUrls();
     expect(urls.length).toBeGreaterThan(0);

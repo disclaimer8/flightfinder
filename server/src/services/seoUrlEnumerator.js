@@ -210,6 +210,15 @@ function enumerateAllianceUrls() {
   return Object.keys(alliances).map(slug => `/alliance/${slug}`);
 }
 
+// Wave 3b: one URL per distinct ISO 3166-1 alpha-2 country_code in jonty.
+// Hits idx_airports_country (sync-jonty.js SCHEMA) for cheap DISTINCT.
+function enumerateCountryUrls() {
+  const db = require('../models/jontyDb').getDb();
+  return db.prepare(`SELECT DISTINCT country_code FROM airports WHERE country_code IS NOT NULL ORDER BY country_code`)
+    .all()
+    .map(r => `/country/${r.country_code}`);
+}
+
 module.exports = {
   enumerateSeoUrls,
   enumerateAccidents,
@@ -222,4 +231,6 @@ module.exports = {
   enumerateAirlineAirportUrls,
   // Phase 2 Wave 3a:
   enumerateAllianceUrls,
+  // Phase 2 Wave 3b:
+  enumerateCountryUrls,
 };
