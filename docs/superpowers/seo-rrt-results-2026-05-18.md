@@ -281,3 +281,39 @@ Sitemap emits lowercase `/country/<cc>` (via `lc(u)` matching alliance pattern).
 ### pm2 IDs after deploy
 - Before: 41, 42
 - After: 43, 44 (online, uptime ~55s when smoked)
+
+## Wave 3b follow-up — soft-404 fix (I1) + test strengthening (M5)
+
+Pushed commit: 16cb1b5
+
+### I1 fix
+- countryMeta now gates on a lightweight `SELECT 1 FROM airports WHERE country_code = ? LIMIT 1` query (cheaper than full getCountryStats; <0.5ms via idx_airports_country) and returns null for unbacked ISO codes
+- resolver country branch updated to fall through to not-found when meta returns null
+- Operational jonty failures (jonty.db missing / no such table / SQLITE_*) allowlisted to fall through permissively so sync windows don't 404 the page
+
+Pre-fix prod (captured before push):
+- `/country/ZZ`: HTTP 200, `<title>Flights from Unknown Region — airports, airlines, popular routes | FlightFinder</title>`
+- `/country/AQ`: HTTP 200, `<title>Flights from Antarctica — airports, airlines, popular routes | FlightFinder</title>`
+- `/country/US`: HTTP 200, `<title>Flights from United States — ...</title>` (sanity)
+
+Post-fix prod:
+- `/country/ZZ`: HTTP 404, fallback default title
+- `/country/AQ`: HTTP 404, fallback default title
+- `/country/XA`: HTTP 404
+- `/country/XX`: HTTP 404
+- `/country/US`: HTTP 200, `<title>Flights from United States — ...</title>` (no regression)
+- `/country/DE`: HTTP 200, `<title>Flights from Germany — ...</title>`
+- `/country/JP`: HTTP 200, `<title>Flights from Japan — ...</title>`
+
+### Test strengthening (M5)
+- `seoBuilders.country.test.js` test "builder produces inner <main> HTML with top airports list (city names)" now asserts both `/New York/` and `/Los Angeles/` (city-name fallback path) plus the IATA codes — was masked by loose `/JFK|LAX/` regex that accidentally matched IATA codes appearing in parens
+- Fixture adds `LAX→JFK` route so LAX surfaces in topAirports (only origin airports show up in the list)
+- Test 4 renamed "resolver returns null/not-found for country with no airports" now asserts resolver-level null for both ZZ + AQ (was builder-level only)
+
+### Test counts
+- Country suite: 5/5 PASS (2 strengthened)
+- Full suite: 1275 passed, 0 failed, 6 skipped (no count change vs Wave 3b baseline)
+
+### pm2 IDs after deploy
+- Before: 45, 46
+- After: 47, 48 (online, uptime ~8s when smoked)
