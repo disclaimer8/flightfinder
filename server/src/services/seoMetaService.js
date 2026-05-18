@@ -742,6 +742,29 @@ function allianceMeta(slug) {
   };
 }
 
+// /country/:cc — ISO 3166-1 alpha-2. Country name via Intl.DisplayNames
+// (built-in to Node, no extra dependency). Caller (builder) is responsible
+// for returning null when the jonty.db has no airports for this country —
+// resolver only validates the URL shape.
+function countryMeta(cc) {
+  const upper = String(cc).toUpperCase();
+  let name;
+  try { name = new Intl.DisplayNames('en', { type: 'region' }).of(upper) || upper; }
+  catch { name = upper; }
+  return {
+    title: `Flights from ${name} — airports, airlines, popular routes | FlightFinder`,
+    description: `Aviation overview for ${name}: top airports by route count, airlines operating, and popular non-stop routes. Updated weekly.`,
+    canonical: `${BASE}/country/${upper}`,
+    h1: `${name} — aviation overview`,
+    subtitle: `Airports, airlines, and popular routes for ${name} (${upper}).`,
+    robots: 'index, follow',
+    ogType: 'website',
+    kind: 'country',
+    cc: upper,
+    countryName: name,
+  };
+}
+
 /**
  * Filter-aware metadata for /map?airline=XX and/or ?aircraft=ICAO.
  * Returns the static MAP object when no recognised filter params are present.
@@ -874,6 +897,12 @@ function resolve(pathname, searchParams) {
     if (result) return result;
     // unknown slug falls through to not-found
   }
+
+  // /country/:cc — must precede the bare /airline/:iata catch-all (2-letter
+  // ISO codes vs 2-3-letter IATA codes — both match, but the country path is
+  // more specific).
+  const countryMatch = /^\/country\/([a-z]{2})\/?$/i.exec(pathname);
+  if (countryMatch) return countryMeta(countryMatch[1]);
 
   const airlineMatch = /^\/airline\/([a-z0-9]{2,3})\/?$/i.exec(pathname);
   if (airlineMatch) return airlineMeta(airlineMatch[1].toLowerCase());

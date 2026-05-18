@@ -1351,6 +1351,9 @@ async function buildAsync(meta, db) {
   if (meta.kind === 'alliance') {
     return require('./allianceBuilder').build(meta.slug);
   }
+  if (meta.kind === 'country') {
+    return require('./countryBuilder').build(meta.cc, meta.countryName);
+  }
   // Amadeus-backed kinds: builder returns inner HTML, applyChromeAsync wraps
   // with chrome + Amadeus-backed extras (direct dest / network dest sidebars).
   if (meta.kind === 'airport' || meta.kind === 'airline') {

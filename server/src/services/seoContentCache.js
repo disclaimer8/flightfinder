@@ -161,7 +161,8 @@ function isLazyPath(pathname) {
     // matches the real IATA URLs Google + users actually request.
     /^\/airline\/[a-z0-9]{2,3}\/?$/i.test(pathname) ||
     /^\/airline\/[a-z0-9]{2,3}\/from\/[a-z]{3}\/?$/i.test(pathname) ||
-    /^\/alliance\/[a-z][a-z0-9-]+\/?$/i.test(pathname)
+    /^\/alliance\/[a-z][a-z0-9-]+\/?$/i.test(pathname) ||
+    /^\/country\/[a-z]{2}\/?$/i.test(pathname)
   );
 }
 
@@ -200,6 +201,7 @@ async function getOrBuild(pathname) {
     // to jonty-or-bAirline correctly. See isLazyPath regex above.
     'airline',
     'alliance',
+    'country',
   ];
   if (!meta || !ALLOWED_LAZY_KINDS.includes(meta.kind)) return null;
 
