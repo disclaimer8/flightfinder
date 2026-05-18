@@ -129,10 +129,15 @@ describe('bAccident', () => {
 });
 
 // ---------------------------------------------------------------------------
-// seoMeta JSON-LD — @graph with NewsArticle + Event + BreadcrumbList
+// seoMeta JSON-LD — @graph with NewsArticle + BreadcrumbList
+// Event was removed 2026-05-18 — Search Console flagged 119 pages with missing
+// required Event fields (endDate, performer, organizer, offers, eventStatus,
+// location.address). Aircraft accidents aren't Events in schema.org sense
+// (those are concerts/conferences). NewsArticle carries the date + location +
+// entity info via datePublished, contentLocation, about[].
 // ---------------------------------------------------------------------------
 describe('seoMeta for /accidents/:slug', () => {
-  it('emits canonical + @graph JSON-LD with NewsArticle, Event, BreadcrumbList', () => {
+  it('emits canonical + @graph JSON-LD with NewsArticle, BreadcrumbList', () => {
     seed({ slug: 'test' });
     const meta = seoMeta.resolve('/accidents/test');
     expect(meta.canonical).toBe('https://himaxym.com/accidents/test');
@@ -140,12 +145,12 @@ describe('seoMeta for /accidents/:slug', () => {
     // Top-level must be @graph now.
     expect(ld['@graph']).toBeDefined();
     expect(Array.isArray(ld['@graph'])).toBe(true);
-    expect(ld['@graph']).toHaveLength(3);
+    expect(ld['@graph']).toHaveLength(2);
 
     const types = ld['@graph'].map(n => n['@type']);
     expect(types).toContain('NewsArticle');
-    expect(types).toContain('Event');
     expect(types).toContain('BreadcrumbList');
+    expect(types).not.toContain('Event');
   });
 
   it('NewsArticle.headline matches the H1 string', () => {
@@ -182,23 +187,23 @@ describe('seoMeta for /accidents/:slug', () => {
     expect(crumbs.itemListElement[3].item).toBeUndefined();
   });
 
-  it('Event node preserves startDate and geo coordinates', () => {
+  it('NewsArticle.contentLocation preserves accident geo coordinates', () => {
     seed({ slug: 'test' });
     const meta = seoMeta.resolve('/accidents/test');
     const ld = JSON.parse(meta.jsonLd);
-    const event = ld['@graph'].find(n => n['@type'] === 'Event');
-    expect(event.startDate).toBeTruthy();
-    expect(event.location.geo.latitude).toBe(44.97);
+    const article = ld['@graph'].find(n => n['@type'] === 'NewsArticle');
+    expect(article.contentLocation['@type']).toBe('Place');
+    expect(article.contentLocation.geo.latitude).toBe(44.97);
   });
 
-  it('inject() includes JSON-LD script tag containing both Event and NewsArticle', () => {
+  it('inject() includes JSON-LD script tag with NewsArticle + BreadcrumbList (no Event)', () => {
     seed({ slug: 'test' });
     const meta = seoMeta.resolve('/accidents/test');
     const template = '<html><head><title>T</title></head><body></body></html>';
     const injected = seoMeta.inject(template, meta);
     expect(injected).toMatch(/<script type="application\/ld\+json">/);
-    expect(injected).toMatch(/"@type":"Event"/);
     expect(injected).toMatch(/"@type":"NewsArticle"/);
     expect(injected).toMatch(/"@type":"BreadcrumbList"/);
+    expect(injected).not.toMatch(/"@type":"Event"/);
   });
 });

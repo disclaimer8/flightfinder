@@ -1165,15 +1165,18 @@ function resolve(pathname, searchParams) {
       return (lastSpace > 120 ? cut.slice(0, lastSpace) : cut) + '…';
     })();
 
-    // Schema.org Event.startDate requires ISO 8601. Sidecar's `normalized_date`
-    // is already YYYY-MM-DD when parseable; falls back to f.date if not.
-    const isoDate = (f.normalized_date && /^\d{4}-\d{2}-\d{2}$/.test(f.normalized_date))
-      ? f.normalized_date
-      : f.date;
-
     const slug = accidentMatch[1];
     const canonical = `${BASE}/accidents/${slug}`;
+    const eventName = `${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''}`;
 
+    // NewsArticle is the correct schema type for accident reports. We previously
+    // also emitted an Event node but Search Console flagged 119 pages with
+    // missing required Event fields (endDate, performer, organizer, offers,
+    // eventStatus, location.address). These are for concerts/conferences — not
+    // applicable to aviation accidents. Same class of trap as the Vehicle→Thing
+    // fix on the about[] entries below. Memory: seo-schema-validator-traps.
+    // Spatial + entity info is preserved on NewsArticle via contentLocation +
+    // about[].
     const newsArticle = {
       '@type': 'NewsArticle',
       headline: title,
@@ -1190,17 +1193,7 @@ function resolve(pathname, searchParams) {
       articleBody: String(data.narrative_text || '').slice(0, 5000),
       mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
       articleSection: 'Aviation Safety',
-    };
-
-    const event = {
-      '@type': 'Event',
-      name: `${f.date}: ${f.aircraft_model}${f.operator ? ' — ' + f.operator : ''}`,
-      startDate: isoDate,
-      description,
-      // Per-accident OG PNG — same URL the og:image meta uses. Required for
-      // Google rich-result eligibility on Event schema.
-      image: `${BASE}/og/accident/${slug}.png`,
-      location: {
+      contentLocation: {
         '@type': 'Place',
         name: f.location || 'Unknown',
         geo: f.lat && f.lon
@@ -1209,18 +1202,12 @@ function resolve(pathname, searchParams) {
       },
       about: [
         {
-          // Was 'Vehicle' but Vehicle inherits from Product in schema.org,
-          // triggering Google's Product rich-result validator which demands
-          // offers/review/aggregateRating — accident pages legitimately can't
-          // satisfy. Thing keeps the entity present without the false signal.
           '@type': 'Thing',
           name: f.aircraft_model,
           ...(f.registration ? { identifier: f.registration } : {}),
         },
         f.operator ? { '@type': 'Organization', name: f.operator } : null,
       ].filter(Boolean),
-      isAccessibleForFree: true,
-      publisher: { '@type': 'Organization', name: 'FlightFinder' },
     };
 
     const breadcrumb = {
@@ -1229,13 +1216,13 @@ function resolve(pathname, searchParams) {
         { '@type': 'ListItem', position: 1, name: 'Home', item: BASE },
         { '@type': 'ListItem', position: 2, name: 'Aviation safety', item: `${BASE}/safety/global` },
         { '@type': 'ListItem', position: 3, name: 'Accidents', item: `${BASE}/accidents` },
-        { '@type': 'ListItem', position: 4, name: event.name.slice(0, 100) },
+        { '@type': 'ListItem', position: 4, name: eventName.slice(0, 100) },
       ],
     };
 
     const jsonLd = JSON.stringify({
       '@context': 'https://schema.org',
-      '@graph': [newsArticle, event, breadcrumb],
+      '@graph': [newsArticle, breadcrumb],
     }).replace(/</g, '\\u003c');
 
     return {
