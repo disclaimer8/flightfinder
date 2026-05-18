@@ -111,6 +111,67 @@ function listAirportsByCountry(countryCode) {
   `).all(countryCode);
 }
 
+// Aggregate stats for /country/:cc landing page (Wave 3b).
+// Returns null when the country has no airports in jonty. All queries hit
+// idx_airports_country (sync-jonty.js SCHEMA) and the composite
+// idx_route_carriers_carrier(carrier_iata, origin_iata) from Wave 2 B3 for
+// cheap per-country aggregation.
+function getCountryStats(countryCode) {
+  if (!countryCode) return null;
+  const cc = String(countryCode).toUpperCase();
+  const db = jontyDb.getDb();
+
+  const airportCountRow = db.prepare(
+    `SELECT COUNT(*) AS c FROM airports WHERE country_code = ?`
+  ).get(cc);
+  if (!airportCountRow || airportCountRow.c === 0) return null;
+
+  const routeCountRow = db.prepare(`
+    SELECT COUNT(*) AS c FROM route_carriers rc
+    JOIN airports a ON a.iata = rc.origin_iata
+    WHERE a.country_code = ?
+  `).get(cc);
+
+  const topAirports = db.prepare(`
+    SELECT rc.origin_iata AS iata, a.name AS name, a.city AS city, COUNT(*) AS routeCount
+    FROM route_carriers rc
+    JOIN airports a ON a.iata = rc.origin_iata
+    WHERE a.country_code = ?
+    GROUP BY rc.origin_iata
+    ORDER BY routeCount DESC, rc.origin_iata
+    LIMIT 10
+  `).all(cc);
+
+  const topAirlines = db.prepare(`
+    SELECT rc.carrier_iata AS iata, rc.carrier_name AS name, COUNT(*) AS routeCount
+    FROM route_carriers rc
+    JOIN airports a ON a.iata = rc.origin_iata
+    WHERE a.country_code = ?
+    GROUP BY rc.carrier_iata
+    ORDER BY routeCount DESC, rc.carrier_iata
+    LIMIT 10
+  `).all(cc);
+
+  const popularRoutes = db.prepare(`
+    SELECT rc.origin_iata AS origin, rc.dest_iata AS dest, COUNT(DISTINCT rc.carrier_iata) AS carrierCount
+    FROM route_carriers rc
+    JOIN airports a ON a.iata = rc.origin_iata
+    WHERE a.country_code = ?
+    GROUP BY rc.origin_iata, rc.dest_iata
+    ORDER BY carrierCount DESC, rc.origin_iata, rc.dest_iata
+    LIMIT 10
+  `).all(cc);
+
+  return {
+    code: cc,
+    airportCount: airportCountRow.c,
+    routeCount: routeCountRow ? routeCountRow.c : 0,
+    topAirports,
+    topAirlines,
+    popularRoutes,
+  };
+}
+
 // Helper — group flat JOIN rows into {route, carriers[]}
 function groupRoutes(flatRows, keyField) {
   const map = new Map();
@@ -137,4 +198,5 @@ module.exports = {
   getCarrierDestinations,
   getAirlinesFromAirport,
   listAirportsByCountry,
+  getCountryStats,
 };
