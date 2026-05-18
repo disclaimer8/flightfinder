@@ -344,3 +344,23 @@ Pushed commit: `aa3b3bf`
 
 ### pm2 IDs after deploy
 - Workers 51, 52 online, uptime 3m, PIDs 116489/116501 (auto-restart from refactor push confirmed)
+
+## IndexNow cron provisioned
+
+Cron line at 03:15 UTC daily added to root crontab on hetzner:
+```
+15 3 * * * export INDEXNOW_KEY=$(cat /etc/flightfinder/indexnow.key) && cd /root/flightfinder && /root/.nvm/versions/node/v24.14.0/bin/node server/scripts/submit-indexnow.js --mode=full >> /var/log/flightfinder/indexnow.log 2>&1
+```
+
+Slot chosen: 03:15 UTC sits between the 03:00 app.db backup and the 04:30 fr24 GF ingest; free, runs after sqlite .backup completes and well before downstream ingest/sync jobs.
+
+Dry-run smoke: **deferred to T7 post-deploy** — `server/scripts/submit-indexnow.js` does not yet exist on Hetzner (T1-T5 produced local commits not yet pushed/deployed). Cron will no-op (MODULE_NOT_FOUND) until the deploy lands; once deployed, smoke will be re-run as part of T7 and counts/sample URLs documented here.
+
+Full crontab on hetzner after addition (4 entries, no clobber of prior 3):
+```
+0 3 * * * sqlite3 /root/flightfinder/server/data/app.db ".backup /var/lib/flightfinder/backups/app-$(date +\%F).db" && find /var/lib/flightfinder/backups -name 'app-*.db' -mtime +14 -delete
+30 4 * * * cd /root/flightfinder && /root/.nvm/versions/node/v24.14.0/bin/node server/scripts/fr24GfIngest.js >> /var/log/fr24-gf-ingest.log 2>&1
+0 6 * * * cd /root/flightfinder && /root/.nvm/versions/node/v24.14.0/bin/node server/scripts/sync-jonty.js >> /root/flightfinder/logs/sync-jonty.log 2>&1
+15 3 * * * export INDEXNOW_KEY=$(cat /etc/flightfinder/indexnow.key) && cd /root/flightfinder && /root/.nvm/versions/node/v24.14.0/bin/node server/scripts/submit-indexnow.js --mode=full >> /var/log/flightfinder/indexnow.log 2>&1
+```
+
