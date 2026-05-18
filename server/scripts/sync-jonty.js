@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS route_carriers (
   carrier_name  TEXT,
   PRIMARY KEY (origin_iata, dest_iata, carrier_iata)
 );
+-- Composite (carrier_iata, origin_iata): serves both /airline/:iata
+-- (leftmost-prefix) and /airline/:iata/from/:airport (full match).
+-- Name kept singular to preserve grep continuity across docs/memory.
 CREATE INDEX IF NOT EXISTS idx_route_carriers_carrier ON route_carriers(carrier_iata, origin_iata);
 
 CREATE TABLE IF NOT EXISTS meta (

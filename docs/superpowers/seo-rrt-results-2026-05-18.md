@@ -30,10 +30,12 @@
 
 ## B3 — route_carriers(carrier_iata, origin_iata) composite index
 
-- sync-jonty.js updated: yes (line 53)
-- Production: dropped + recreated as composite (strict superset of single-column form)
-- Choice rationale: composite serves both `WHERE carrier_iata = ?` (via leftmost-prefix) AND `WHERE carrier_iata = ? AND origin_iata = ?` (full match). The latter pattern dominates lazy bakes for /airline/:iata/from/:airport (more URLs than /airline/:iata alone).
+- sync-jonty.js updated: yes (line 53) — inline in `SCHEMA` template literal, matching style of sibling `idx_airports_country` (line 35) and `idx_routes_dest` (line 44).
+- Production rollout: `DROP INDEX idx_route_carriers_carrier; CREATE INDEX idx_route_carriers_carrier ON route_carriers(carrier_iata, origin_iata);` on `/var/lib/flightfinder/data/jonty.db`. Total time **87ms** (atomic for traffic purposes).
+- Index name preserved (`idx_route_carriers_carrier`) — column list changed only. Name is intentionally not renamed despite being technically misleading (now composite, name implies single-col); rename would break grep continuity across docs/memory + require coordinated rebuild.
+- Choice rationale: composite serves both `WHERE carrier_iata = ?` (via leftmost-prefix) AND `WHERE carrier_iata = ? AND origin_iata = ?` (full match). The latter pattern dominates lazy bakes for /airline/:iata/from/:airport (more URLs than /airline/:iata alone — predicate in `airlineAirportBuilder.js:20`).
 - Write cost during sync: accepted — bulk insert inside single transaction; index update cost is low-seconds on ~50K-100K rows; deferred-index pattern rejected (adds failure modes for marginal savings).
+- Auto-restart witness for composite-upgrade push (commit `0fd191d`): pm2 worker ids `19, 20` → `21, 22`, uptime ~2m post-deploy, restart counter `0` (correct full-respawn signature). Confirms B7 fix is still functioning under feature pushes.
 
 ### EXPLAIN QUERY PLAN — `WHERE carrier_iata = ?`
 ```
