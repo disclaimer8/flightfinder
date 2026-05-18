@@ -56,7 +56,8 @@
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
     <link rel="preconnect" href="https://www.google-analytics.com" crossorigin />
     <link rel="preconnect" href="https://region1.google-analytics.com" crossorigin />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- fonts.gstatic.com preconnect removed 2026-05-18 — fonts now self-hosted
+         via @fontsource-variable/* npm packages bundled by Vite. -->
     <link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com" />
     <link rel="dns-prefetch" href="https://b.basemaps.cartocdn.com" />
     <link rel="dns-prefetch" href="https://c.basemaps.cartocdn.com" />
@@ -132,15 +133,11 @@
     }
     </script>
 
-    <!-- Google Fonts: Geist (UI), Geist Mono (code), Newsreader (editorial display).
-         Cyrillic-friendly stack — all three families ship Cyrillic + Latin Extended.
-         Newsreader is opt-in via .display-serif (About lead, hero quotes); headings
-         default to Geist (sans). -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap"
-    />
+    <!-- Fonts: Geist (UI), Geist Mono (code), Newsreader (editorial display)
+         are now self-hosted via @fontsource-variable/* npm packages, imported
+         in client/src/index.css. No render-blocking external request; woff2
+         files served from /self with hashed cache-busting. Cyrillic + Latin +
+         Latin-Ext subsets ship; browsers fetch only matching unicode-range. -->
     <style>section[data-seo-bake="true"]{display:none}</style>
   </head>
   <body>

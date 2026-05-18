@@ -1,3 +1,12 @@
+/* Self-hosted variable fonts. Replaces previous Google Fonts <link> in
+   index.html which was render-blocking (~750ms LCP penalty per Lighthouse).
+   Vite bundles each woff2; browsers fetch only subsets (cyrillic/latin/etc)
+   matching rendered text via unicode-range. Only variable-weight axis
+   loaded — opsz/italic not used in app. */
+@import '@fontsource-variable/geist/wght.css';
+@import '@fontsource-variable/geist-mono/wght.css';
+@import '@fontsource-variable/newsreader/wght.css';
+
 @import './styles/breakpoints.css';
 @import './styles/typography.css';
 

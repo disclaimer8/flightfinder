@@ -59,7 +59,7 @@ app.use(helmet({
     directives: {
       defaultSrc:     ["'self'"],
       scriptSrc:      ["'self'", 'https://www.googletagmanager.com'], // gtag only; Travelpayouts Drive widgets removed in subscription pivot
-      styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], // Leaflet inline style= + TP Drive Google Fonts
+      styleSrc:       ["'self'", "'unsafe-inline'"], // Leaflet inline style=. Google Fonts removed 2026-05-18 (self-hosted via @fontsource).
       imgSrc:         ["'self'", 'data:', 'https:'], // CartoDB map tiles (loaded as <img> by Leaflet)
       connectSrc:     [
         "'self'",
@@ -67,7 +67,7 @@ app.use(helmet({
         // No external Sentry endpoint — client errors POST to our own
         // /api/client-error which forwards to @sentry/node out-of-band.
       ],
-      fontSrc:        ["'self'", 'data:', 'https://fonts.gstatic.com'], // TP Drive Google Fonts
+      fontSrc:        ["'self'", 'data:'], // self-hosted @fontsource woff2 served from /self; data: for inline. Google Fonts removed 2026-05-18.
       objectSrc:      ["'none'"],
       baseUri:        ["'self'"],
       formAction:     ["'self'"],
