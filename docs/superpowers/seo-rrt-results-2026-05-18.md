@@ -227,3 +227,57 @@ Sitemap re-verified: all three `/alliance/*` entries now `<priority>0.6</priorit
 ### pm2 IDs after deploy
 - Before: 37, 38
 - After: 39, 40 (online, uptime ~5s when smoked)
+
+## Wave 3b — Country pages smoke
+
+Pushed commits ending at 30b9caf.
+
+Sitemap country URL count: 236 (expected 200-250 per jonty.airports DISTINCT country_code)
+
+| URL | HTTP | <title> | <h1> |
+|---|---|---|---|
+| /country/US | 200 | Flights from United States — airports, airlines, popular routes \| FlightFinder | United States — aviation overview |
+| /country/DE | 200 | Flights from Germany — airports, airlines, popular routes \| FlightFinder | Germany — aviation overview |
+| /country/JP | 200 | Flights from Japan — airports, airlines, popular routes \| FlightFinder | Japan — aviation overview |
+| /country/FR | 200 | Flights from France — airports, airlines, popular routes \| FlightFinder | France — aviation overview |
+| /country/GB | 200 | Flights from United Kingdom — airports, airlines, popular routes \| FlightFinder | United Kingdom — aviation overview |
+| /country/CN | 200 | Flights from China — airports, airlines, popular routes \| FlightFinder | China — aviation overview |
+| /country/IN | 200 | Flights from India — airports, airlines, popular routes \| FlightFinder | India — aviation overview |
+| /country/BR | 200 | Flights from Brazil — airports, airlines, popular routes \| FlightFinder | Brazil — aviation overview |
+| /country/CA | 200 | Flights from Canada — airports, airlines, popular routes \| FlightFinder | Canada — aviation overview |
+| /country/AU | 200 | Flights from Australia — airports, airlines, popular routes \| FlightFinder | Australia — aviation overview |
+
+### Schema verification (curl /country/US)
+- Place schema (NOT Country): confirmed — `"@type":"Place"` present, `"@type":"Country"` count = 0
+- No Vehicle/Product warnings (no such types emitted by builder)
+- BreadcrumbList + ListItem (×3) present
+- FAQPage + Question/Answer (×3) present
+
+Verbatim `@type` order in /country/US response:
+```
+"@type": "WebSite"
+"@type": "Organization"
+"@type": "SearchAction"
+"@type": "EntryPoint"
+"@type": "SoftwareApplication"
+"@type": "Offer"
+"@type":"Place"
+"@type":"BreadcrumbList"
+"@type":"ListItem"
+"@type":"ListItem"
+"@type":"ListItem"
+"@type":"FAQPage"
+"@type":"Question"
+"@type":"Answer"
+"@type":"Question"
+```
+
+### Canonical-URL note
+Sitemap emits lowercase `/country/<cc>` (via `lc(u)` matching alliance pattern). The resolver regex `/i` is case-insensitive; lowercase requests return 200 with `<link rel="canonical" href="https://himaxym.com/country/US">` pointing to the uppercase canonical form. Google consolidates via canonical, so this is acceptable.
+
+### Index applied on prod
+`idx_airports_country` already in SCHEMA (sync-jonty.js:35). Re-applied IF NOT EXISTS on prod jonty.db (real path `/var/lib/flightfinder/data/jonty.db`) — EXPLAIN QUERY PLAN confirms `SEARCH airports USING INDEX idx_airports_country (country_code=?)`. No file change for Commit 1 (no-op).
+
+### pm2 IDs after deploy
+- Before: 41, 42
+- After: 43, 44 (online, uptime ~55s when smoked)
