@@ -145,3 +145,25 @@ $ curl -sA 'Googlebot' "https://himaxym.com/airline/BA" | grep -oE '<title>[^<]+
 
 - Before: 29, 30 (stopping)
 - After: 31, 32 (online, uptime ~5s when checked)
+
+## Wave 3a — Alliance smoke
+
+Pushed commits ending at `19c875f`. Sitemap shows 3 /alliance/* URLs (expected 3).
+
+| URL | HTTP | <title> | <h1> | Schemas |
+|---|---|---|---|---|
+| /alliance/star-alliance | 200 | `Star Alliance — 24 member airlines | FlightFinder` | `Star Alliance — airline alliance` | Organization, BreadcrumbList, FAQPage |
+| /alliance/oneworld | 200 | `Oneworld — 15 member airlines | FlightFinder` | `Oneworld — airline alliance` | Organization, BreadcrumbList, FAQPage |
+| /alliance/skyteam | 200 | `SkyTeam — 20 member airlines | FlightFinder` | `SkyTeam — airline alliance` | Organization, BreadcrumbList, FAQPage |
+
+Sitemap entries:
+
+```
+https://himaxym.com/alliance/star-alliance
+https://himaxym.com/alliance/oneworld
+https://himaxym.com/alliance/skyteam
+```
+
+### pm2 IDs after deploy
+- Before: 33, 34 (stopping)
+- After: 35, 36 (online, uptime ~5s when checked)
