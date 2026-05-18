@@ -167,3 +167,63 @@ https://himaxym.com/alliance/skyteam
 ### pm2 IDs after deploy
 - Before: 33, 34 (stopping)
 - After: 35, 36 (online, uptime ~5s when checked)
+
+## Wave 3a follow-up — data corrections + correctness + performance
+
+Pushed commit: `021b2b5`
+
+### Membership corrections (C1)
+Verified each list against Wikipedia (official alliance sites
+staralliance.com and skyteam.com returned 403 to WebFetch). Every IATA
+cross-checked against `server/src/data/airlines.dat`.
+
+- **Star Alliance** (24 → 26)
+  - Removed: `EW` (Connecting Partner, not full member), `JP` (Adria Airways, defunct 2019)
+  - Added: `NZ` Air New Zealand, `AI` Air India, `OU` Croatia, `A3` Aegean, `AZ` ITA Airways (transitioned from SkyTeam)
+  - Hubs: removed SVO (Aeroflot's hub, irrelevant)
+- **Oneworld** (15 → 16)
+  - Removed: `S7` (suspended April 2022 post-Ukraine invasion)
+  - Added: `WY` Oman Air (joined 30 Jun 2025), `HA` Hawaiian Airlines (joined 23 Apr 2026)
+- **SkyTeam** (20 → 18)
+  - Removed: `SU` Aeroflot (suspended April 2022), `ZM` (was "Apache Air" — typo, no SkyTeam member with code ZM), `CZ` (China Southern left Dec 2018), `AZ` (Alitalia ceased; ITA transitioned to Star)
+  - Added: `SK` SAS (joined Sep 2024), `SV` Saudia, `MF` XiamenAir
+- Every alliance has a new `source` field with the verification URL and date.
+
+### Route dedup (C2)
+- Star Alliance — Before (sum of per-carrier rows): **10711** non-stop routes. After (unique origin/dest pairs): **9702** unique non-stop routes. Diff = 1009 codeshare routes that were previously double-counted.
+- Oneworld — After: **6581** unique non-stop routes across 925 destinations
+- SkyTeam — After: **7463** unique non-stop routes across 964 destinations
+- FAQ + intro copy now reads "unique non-stop routes" (not "non-stop routes") to avoid flight-count ambiguity.
+
+### Performance (I1)
+- Old: 24× `getAirlineNetwork` per cold bake — each a 4-table JOIN returning every (origin, dest, carrier, route, airport_o, airport_d) row.
+- New: 24× `getCarrierMeta` (LIMIT 1, indexed) + 24× `getCarrierDestinations` (DISTINCT origin/dest only).
+- Both queries use the `idx_route_carriers_carrier(carrier_iata, origin_iata)` composite index from B3.
+
+### Name fallback (I2)
+- `allianceBuilder.js` now requires `openFlightsService` and falls back to `openFlights.getAirline(iata).name` when jonty has no rows for a member. Bare IATA is the last resort.
+
+### Grammar (I3)
+- `routeLabel(n)` helper renders `1 route` vs `N routes`. Applied to member `<li>` and FAQ destinations answer.
+
+### Sitemap priority (I4)
+- `/alliance/*` priority bumped `0.5 → 0.6` to match Phase 1 jonty pillars (`/airline/:iata`, `/flights-from/:iata`).
+
+### Tests
+- Full suite: **1266 passing, 0 failing, 6 skipped** (unchanged from baseline).
+- Targeted: `seoBuilders.alliance` 5/5 PASS, `builderEnumeratorCoupling` 4/4 PASS.
+
+### Production smoke (Googlebot UA)
+```
+/alliance/star-alliance → <title>Star Alliance — 26 member airlines | FlightFinder</title>
+                         approximately 9702 unique non-stop routes across 1205 destinations.
+/alliance/oneworld     → <title>Oneworld — 16 member airlines | FlightFinder</title>
+                         approximately 6581 unique non-stop routes across 925 destinations.
+/alliance/skyteam      → <title>SkyTeam — 18 member airlines | FlightFinder</title>
+                         approximately 7463 unique non-stop routes across 964 destinations.
+```
+Sitemap re-verified: all three `/alliance/*` entries now `<priority>0.6</priority>`.
+
+### pm2 IDs after deploy
+- Before: 37, 38
+- After: 39, 40 (online, uptime ~5s when smoked)
