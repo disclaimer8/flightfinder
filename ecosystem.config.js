@@ -23,6 +23,13 @@ module.exports = {
       max_memory_restart: '500M',
       env: {
         NODE_ENV: 'production',
+        INDEXNOW_KEY: (() => {
+          try {
+            return require('fs').readFileSync('/etc/flightfinder/indexnow.key', 'utf8').trim();
+          } catch {
+            return undefined;
+          }
+        })(),
       },
     },
     {
