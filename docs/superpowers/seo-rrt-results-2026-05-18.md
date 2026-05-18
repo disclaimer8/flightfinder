@@ -28,14 +28,22 @@
   - `curl https://himaxym.com/sitemap.xml` returns valid XML after both deploys (no 502).
 - GitHub Actions deploy run times: 25s and 24s for the two pushes (down from previous ~70s, npm cache warm).
 
-## B3 — route_carriers(carrier_iata) index
+## B3 — route_carriers(carrier_iata, origin_iata) composite index
 
-- sync-jonty.js updated: yes (line 53 — `CREATE INDEX IF NOT EXISTS idx_route_carriers_carrier ON route_carriers(carrier_iata);` added inline in `SCHEMA` block immediately after the `CREATE TABLE route_carriers` statement, matching the existing pattern used for `idx_airports_country` (line 35) and `idx_routes_dest` (line 44)).
-- Production immediately applied: yes — `sqlite3 /var/lib/flightfinder/data/jonty.db "CREATE INDEX IF NOT EXISTS idx_route_carriers_carrier ON route_carriers(carrier_iata);"` returned in <1s.
-- EXPLAIN QUERY PLAN output:
+- sync-jonty.js updated: yes (line 53)
+- Production: dropped + recreated as composite (strict superset of single-column form)
+- Choice rationale: composite serves both `WHERE carrier_iata = ?` (via leftmost-prefix) AND `WHERE carrier_iata = ? AND origin_iata = ?` (full match). The latter pattern dominates lazy bakes for /airline/:iata/from/:airport (more URLs than /airline/:iata alone).
+- Write cost during sync: accepted — bulk insert inside single transaction; index update cost is low-seconds on ~50K-100K rows; deferred-index pattern rejected (adds failure modes for marginal savings).
 
+### EXPLAIN QUERY PLAN — `WHERE carrier_iata = ?`
 ```
 QUERY PLAN
 `--SEARCH route_carriers USING INDEX idx_route_carriers_carrier (carrier_iata=?)
+```
+
+### EXPLAIN QUERY PLAN — `WHERE carrier_iata = ? AND origin_iata = ?`
+```
+QUERY PLAN
+`--SEARCH route_carriers USING INDEX idx_route_carriers_carrier (carrier_iata=? AND origin_iata=?)
 ```
 

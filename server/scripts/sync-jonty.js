@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS route_carriers (
   carrier_name  TEXT,
   PRIMARY KEY (origin_iata, dest_iata, carrier_iata)
 );
-CREATE INDEX IF NOT EXISTS idx_route_carriers_carrier ON route_carriers(carrier_iata);
+CREATE INDEX IF NOT EXISTS idx_route_carriers_carrier ON route_carriers(carrier_iata, origin_iata);
 
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
