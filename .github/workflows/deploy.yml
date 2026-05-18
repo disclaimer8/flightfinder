@@ -324,7 +324,13 @@ jobs:
             pm2 describe flightfinder >/dev/null 2>&1 && \
               ! pm2 describe flightfinder | grep -q "ecosystem.config.js" && \
               pm2 delete flightfinder || true
-            pm2 startOrReload ecosystem.config.js --update-env
+            # Use startOrRestart (not startOrReload). Phase 1 SEO ship revealed
+            # that `pm2 reload` keeps the Node module cache, so updated modules
+            # (e.g. server/src/services/seoContentBuilders.js) ship stale until
+            # a manual `pm2 restart`. startOrRestart does a full process respawn
+            # and invalidates the require() cache. See memory:
+            # feedback_deploy-uses-fetch-reset-hard + project_flightfinder-seo-phase1.
+            pm2 startOrRestart ecosystem.config.js --update-env
             # Wait for all three apps to come up
             for i in 1 2 3 4 5 6 7 8 9 10; do
               curl -fsS http://127.0.0.1:5001/api/health >/dev/null 2>&1 && \
