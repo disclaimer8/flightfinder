@@ -89,3 +89,27 @@ QUERY PLAN
 `--SEARCH route_carriers USING INDEX idx_route_carriers_carrier (carrier_iata=? AND origin_iata=?)
 ```
 
+
+## Wave 2 Path B — airlineMeta jonty-aware smoke
+
+Pushed commit: 75f54f2 (`feat(seo): Path B — airlineMeta is jonty-aware when data exists`)
+
+pm2 workers before push: PIDs 76363, 76375 (worker IDs 25, 26)
+pm2 workers after push:  PIDs 78642, 78662 (worker IDs 27, 28) — auto-restart confirmed.
+
+Smoke (Googlebot UA, https://himaxym.com):
+
+| URL | `<title>` | `<h1>` (first/SSR) | jonty hit? | Match body? |
+|---|---|---|---|---|
+| /airline/LH | `Lufthansa (LH) — route network (620 routes) \| FlightFinder` | `Lufthansa route network` | YES | YES |
+| /airline/BA | `British Airways (BA) — route network (545 routes) \| FlightFinder` | `British Airways route network` | YES | YES |
+| /airline/AA | `American Airlines (AA) — route network (2725 routes) \| FlightFinder` | `American Airlines route network` | YES | YES |
+| /airline/DL | `Delta Air Lines (DL) — route network (2101 routes) \| FlightFinder` | `Delta Air Lines route network` | YES | YES |
+| /airline/EK | `Emirates (EK) — route network (288 routes) \| FlightFinder` | `Emirates route network` | YES | YES |
+| /airline/QK | `Air Canada Jazz (QK) — routes, fleet, destinations \| FlightFinder` | `Air Canada Jazz — destinations and fleet` | NO (fallback) | YES (SSR h1); see note |
+
+**Result:** Phase 1 mismatch resolved — for jonty-covered carriers, title and h1 now both say "X route network" (matching the body's route table). Carriers absent from jonty (like QK) keep the OpenFlights name + bAirline content path with the old "routes, fleet, destinations" copy.
+
+**Note on QK double-h1:** /airline/QK has a stale second body-level `<h1>QK — destinations and fleet</h1>` from the bAirline fallback path — a pre-existing rendering issue (IATA-only h1 inside bAirline's innerHtml), independent of Path B. SSR `<h1>` (the one Google sees first) is correct. Tracked separately if it bites.
+
+**Tests:** 1259 passing, 0 failing, 6 skipped (Phase 1 baseline was 1257; +2 from Path B tests).
