@@ -14,7 +14,47 @@
 
 ## B2 coverage SQL result
 
-(Pending — Task 1.3)
+- Total distinct FF carriers (ICAO from observed_routes): 399
+- After ICAO→IATA mapping: 215
+- Unmapped (no openflights ICAO match): 187
+- Jonty-covered (subset of mapped): 182
+- **Coverage pct: 84.7%**
+- Decision: **Path B (patch airlineMeta only)** — coverage clearly below 93% threshold; no gray-zone confirmation needed.
+
+### Schema note (deviation from spec)
+
+The spec assumed `app.db` contained an openflights `airlines` table with `icao`/`iata` columns. It does not — app.db has no `airlines` table at all (only `airline_amenities` and `airline_liveries`). The openflights master data lives in a flat file at `server/src/data/airlines.dat`, loaded into in-memory Maps by `openFlightsService.js` (`airlinesIcaoMap` for ICAO→IATA reverse lookup; filter rules: `iata.length >= 2 AND active === 'Y'`).
+
+To run the SQL coverage query, I built a temp SQLite table on prod (`/tmp/airlines_mapping.db`) from `airlines.dat`, applying the same filter (1014 active airlines, 987 with non-empty ICAO). All four coverage/diagnostic queries then ran against this temp DB with `app.db` and `jonty.db` attached. This faithfully reproduces the in-app `getAirlineByIcao` mapping.
+
+### Sample of mapped-but-not-in-jonty carriers
+
+| ICAO | IATA | Name |
+| --- | --- | --- |
+| SLI | 5D | Aerolitoral |
+| ABQ | ED | Airblue |
+| ARE | 4C | Aires |
+| SDM | FV | Rossiya-Russian Airlines |
+| GAP | 2P | Air Philippines |
+| GTI | 5Y | Atlas Air |
+| JZA | QK | Air Canada Jazz |
+| LNE | XL | Aerolane |
+| GLG | 2K | Aerolineas Galapagos (Aerogal) |
+| BMA | BD | bmi |
+
+Sample is plausible — real airline names with recognisable codes. Notable: several are defunct or renamed (bmi merged into BA 2012; Aires merged into Avianca; Aerogal rebranded to Avianca Ecuador; Atlas Air is a cargo operator, jonty appears to be passenger-only). So the 33-carrier gap (215 mapped − 182 covered) is dominated by cargo + defunct/merged + small regional carriers. This is consistent with jonty being a passenger-scheduling dataset.
+
+### Why mapping loss is the dominant factor
+
+Of 399 distinct FF carriers in `observed_routes`, **187 (47%) failed ICAO→IATA mapping** in the first place — i.e. their ICAO code isn't in OpenFlights' active-airlines list. These are likely military, charter, ADS-B-spoofed, or defunct operators with stale ICAO codes still in our 30-day rolling window. They never had a chance to land in jonty.
+
+The 84.7% figure is therefore the coverage of the *mappable* subset; the union-coverage of ALL FF carriers against jonty would be far lower (~46%). Either way, **Path B is unambiguous**: we can't retire bAirline because too many real ADS-B-observed carriers wouldn't have a jonty fallback.
+
+### SQL run timestamp
+
+2026-05-18T16:41:06Z
+
+
 
 ## B7 — Deploy webhook fix
 
