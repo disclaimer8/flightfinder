@@ -31,7 +31,46 @@ function filterIndexable(paths) {
   });
 }
 
-module.exports = { buildUrlSet, filterIndexable };
+function classifyResponse(status) {
+  if (status === 200 || status === 202) {
+    return { ok: true, recoverable: true, exitCode: 0, label: 'ok' };
+  }
+  if (status === 422) {
+    return { ok: false, recoverable: true, exitCode: 0, label: 'duplicate' };
+  }
+  if (status === 429) {
+    return { ok: false, recoverable: true, exitCode: 0, label: 'rate-limited' };
+  }
+  if (status >= 500 && status < 600) {
+    return { ok: false, recoverable: true, exitCode: 0, label: 'server-error' };
+  }
+  return { ok: false, recoverable: false, exitCode: 1, label: 'client-error' };
+}
+
+async function submitUrls(urls, key, opts = {}) {
+  if (!Array.isArray(urls) || urls.length === 0) {
+    throw new Error('submitUrls: empty urlList');
+  }
+  if (!key || typeof key !== 'string') {
+    throw new Error('submitUrls: missing key');
+  }
+  const fetchFn = opts.fetch || globalThis.fetch;
+  const body = {
+    host: HOST,
+    key,
+    keyLocation: `${BASE}/${key}.txt`,
+    urlList: urls,
+  };
+  const res = await fetchFn('https://api.indexnow.org/indexnow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  return { status: res.status, body: text };
+}
+
+module.exports = { buildUrlSet, filterIndexable, classifyResponse, submitUrls };
 
 if (require.main === module) {
   console.error('submit-indexnow: script-mode not yet implemented');
