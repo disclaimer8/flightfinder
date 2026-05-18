@@ -364,3 +364,45 @@ Full crontab on hetzner after addition (4 entries, no clobber of prior 3):
 15 3 * * * export INDEXNOW_KEY=$(cat /etc/flightfinder/indexnow.key) && cd /root/flightfinder && /root/.nvm/versions/node/v24.14.0/bin/node server/scripts/submit-indexnow.js --mode=full >> /var/log/flightfinder/indexnow.log 2>&1
 ```
 
+## IndexNow live submission verified (T7)
+
+### Deploy step result
+- Pushed 15 commits to origin/main: T1 docs (70e0a3a), T2 (6b088c8 test + 9c89de6 impl), T3 (fbb726d), T4 (8a610fb/81cdab8/9025f7c/d4de84a/e0a241d/07416b5/200aca8/c39ea0a/32a79fb), T5 (71f433b), T6 docs (468452e)
+- First deploy (commit 468452e, run #26056602503): SUCCESS, skipped IndexNow correctly — `[indexnow] mode=deploy skip — no SEO-affecting files in HEAD~1..HEAD (1 files changed)` (T6 was docs-only)
+- Forced submission deploy (commit a001c05 — whitespace edit to `server/src/services/seoSharedUtil.js`, run #26056677818): SUCCESS, ran submission
+- Log line from forced deploy:
+  ```
+  [indexnow] count 27778 exceeds 10000 cap; truncating to first 10000. Next cron picks up rest.
+  [2026-05-18T19:51:51.876Z] [indexnow] mode=deploy count=10000 status=403 client-error ok=false
+  [indexnow] response body (first 500 chars): {"errorCode":"SiteVerificationNotCompleted","message":"Site Verification is not completed. Please wait for some time for the verification to complete and try again.","details":null}
+  [deploy] indexnow exit non-zero (ignored)
+  ```
+- 403 on first submission is **expected**: IndexNow had not yet fetched `/${KEY}.txt` for verification at the moment the submit fired. Confirmed by the immediately-following manual full-mode succeeding with status=200 once IndexNow had cached the key. The `|| echo ... (ignored)` guard in `deploy.yml` correctly absorbed the non-zero exit so the deploy step itself remained successful.
+
+### Key validation route
+- `KEY=3ed87f0e66d2a3b50fcd704360cf7482`
+- `curl -A 'BingBot' https://himaxym.com/${KEY}.txt` → `HTTP/2 200`, `content-type: text/plain; charset=utf-8`, `content-length: 32`
+- Body returns key verbatim: `3ed87f0e66d2a3b50fcd704360cf7482`
+- `curl -I https://himaxym.com/some-other-file.txt` → `HTTP/2 404` (no false-positive on the route)
+
+### Manual full-mode submission
+- Dry-run count: **27,778** URLs
+- Full submission (the deferred T6 smoke, now run for real):
+  ```
+  [openflights] Loaded 6072 airports, 993 airlines
+  [indexnow] count 27778 exceeds 10000 cap; truncating to first 10000. Next cron picks up rest.
+  [2026-05-18T19:56:05.608Z] [indexnow] mode=full count=10000 status=200 ok ok=true
+  ```
+- **status=200, count=10000, ok=true** — IndexNow accepted the batch. Verification cleared between the deploy submission and the manual retry (~5 min later) because the verifier had fetched `/${KEY}.txt` in the interim.
+- Sitemap URL count: **27,918** — dry-run (27,778) is 140 lower, consistent with `filterIndexable()` dropping noindex paths the sitemap also excludes. Sanity confirmed.
+
+### Cron + schedule
+- **Daily:** 03:15 UTC via root crontab on Hetzner (see cron section above; full-mode, 10K cap → ~3 days to cover the 27.8K URL set, then loops)
+- **Deploy-time:** after every push to main that touches SEO files (per `SEO_PATH_PATTERNS` regex set in `server/scripts/submit-indexnow.js`)
+- **Skip guard:** non-SEO commits (docs/infra/test-only/etc.) skip IndexNow submission — verified on commit 468452e (T6 docs)
+
+### pm2 IDs after T7 deploy (auto-restart still works)
+- Before push: flightfinder workers **pm_id=53, 54** (uptime 59m, PIDs 117556/117568)
+- After two deploys (T1-T6 push + forced T7 push): flightfinder workers **pm_id=57, 58** (uptime 2m, PIDs 120608/120620)
+- ID jump 53→57 confirms two pm2 restarts triggered by the two deploys; B7 auto-restart hook still intact
+
