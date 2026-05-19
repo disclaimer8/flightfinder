@@ -143,4 +143,35 @@ describe('bRoute SSR — prices block', () => {
     expect(html.length).toBeGreaterThan(0);
     expect(html).not.toContain('data-widget="route-aircraft-prices"');
   });
+
+  it('thin path adds pricesBlock + drops noindex when prices exist', () => {
+    const routeService = require('../services/routeService');
+    routeService.getRouteData.mockReturnValueOnce(null); // thin
+    rpSvc.getPricesForRoute.mockReturnValue([
+      { aircraft_icao: 'B789', aircraft_name: 'Boeing 787-9', aircraft_slug: 'boeing-787-9',
+        median_eur: 500, min_eur: 400, max_eur: 600, n_quotes: 8,
+        airlines: ['BAW'], airlines_display: 'British Airways',
+        safety: { accident_count_5y: 0, level: 'green' }, snapshot_at: 1 },
+    ]);
+    const html = build({
+      kind: 'route', fromIata: 'LHR', toIata: 'JFK',
+      fromName: 'London Heathrow', toName: 'New York JFK',
+      pair: 'lhr-jfk',
+    });
+    expect(html).toContain('data-widget="route-aircraft-prices"');
+    expect(html).not.toMatch(/noindex/i);
+  });
+
+  it('thin path keeps noindex when no prices exist', () => {
+    const routeService = require('../services/routeService');
+    routeService.getRouteData.mockReturnValueOnce(null);
+    rpSvc.getPricesForRoute.mockReturnValue([]);
+    const html = build({
+      kind: 'route', fromIata: 'XXX', toIata: 'YYY',
+      fromName: 'Nowhere', toName: 'Elsewhere',
+      pair: 'xxx-yyy',
+    });
+    expect(html).not.toContain('data-widget="route-aircraft-prices"');
+    expect(html).toMatch(/noindex/i);
+  });
 });

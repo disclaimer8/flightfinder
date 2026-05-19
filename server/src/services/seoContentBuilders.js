@@ -240,10 +240,44 @@ function bRoute(meta, _db) {
   const to   = meta.toIata.toUpperCase();
   const sinceMs = Date.now() - 90 * 24 * 60 * 60 * 1000;
 
+  // ── Hoisted: typical fares by aircraft (T6) ─────────────────────────────────
+  // Computed BEFORE the thin/rich branch so price-only pages (GF prices but no
+  // observed_routes data) can still emit the widget and stay indexable.
+  // Spec B — emit price block HTML so Googlebot indexes it. Defensive: never
+  // break SSR if the price service errors or the table is missing.
+  let pricesBlock = '';
+  try {
+    const prices = routePricingService.getPricesForRoute(from, to);
+    if (prices && prices.length > 0) {
+      const rows = prices.map(p => `
+      <tr>
+        <td><a href="/aircraft/${esc(p.aircraft_slug)}">${esc(p.aircraft_name)}</a></td>
+        <td>€${Math.round(p.median_eur)}</td>
+        <td>€${Math.round(p.min_eur)}–${Math.round(p.max_eur)}</td>
+        <td>${esc(p.airlines_display || '')}</td>
+      </tr>`).join('');
+      const totalQuotes = prices.reduce((s, p) => s + (p.n_quotes || 0), 0);
+      pricesBlock = `
+<section class="route-aircraft-prices" data-widget="route-aircraft-prices">
+  <h2>Typical fares by aircraft on this route</h2>
+  <table>
+    <thead><tr><th>Aircraft</th><th>Median</th><th>Range</th><th>Operators</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <p>Based on ${totalQuotes} recent fare observations.</p>
+</section>`.trim();
+    }
+  } catch (err) {
+    console.warn('[bRoute] pricesBlock build failed for %s-%s: %s', from, to, err && err.message);
+  }
+
   const route = routeService.getRouteData({ from, to, sinceMs });
   const jontyBlock = _renderJontyEnrichment(from, to);
 
-  // ── THIN PAIR: noindex, keep minimal FAQ only ────────────────────────────────
+  // ── THIN PAIR ────────────────────────────────────────────────────────────────
+  // If prices exist, drop noindex and include the price widget — still less rich
+  // than a full route page, but offers concrete value (prices + FAQ).
+  // If no prices either, fall back to current noindex-thin behaviour.
   if (!route) {
     const fromName = meta.fromName || from;
     const toName   = meta.toName   || to;
@@ -270,9 +304,11 @@ function bRoute(meta, _db) {
         acceptedAnswer: { '@type': 'Answer', text: item.a },
       })),
     }).replace(/<\/(script)/gi, '<\\/$1');
+    const hasPrices = pricesBlock.length > 0;
     return [
-      '<meta name="robots" content="noindex, follow">',
+      hasPrices ? null : '<meta name="robots" content="noindex, follow">',
       jontyBlock,
+      pricesBlock,
       `<section class="route-faq" itemscope itemtype="https://schema.org/FAQPage">`,
       `  <h2>Frequently asked questions</h2>`,
       faqItems,
@@ -433,35 +469,7 @@ ${faqHtmlItems}
   }).replace(/<\/(script)/gi, '<\\/$1');
   const jsonLdBlock = `<script type="application/ld+json">${faqLd}</script>`;
 
-  // ── 7. Typical fares by aircraft (T6) ───────────────────────────────────────
-  // Spec B — emit price block HTML so Googlebot indexes it. Defensive: never
-  // break SSR if the price service errors or the table is missing.
-  let pricesBlock = '';
-  try {
-    const prices = routePricingService.getPricesForRoute(from, to);
-    if (prices && prices.length > 0) {
-      const rows = prices.map(p => `
-      <tr>
-        <td><a href="/aircraft/${esc(p.aircraft_slug)}">${esc(p.aircraft_name)}</a></td>
-        <td>€${Math.round(p.median_eur)}</td>
-        <td>€${Math.round(p.min_eur)}–${Math.round(p.max_eur)}</td>
-        <td>${esc(p.airlines_display || '')}</td>
-      </tr>`).join('');
-      const totalQuotes = prices.reduce((s, p) => s + (p.n_quotes || 0), 0);
-      pricesBlock = `
-<section class="route-aircraft-prices" data-widget="route-aircraft-prices">
-  <h2>Typical fares by aircraft on this route</h2>
-  <table>
-    <thead><tr><th>Aircraft</th><th>Median</th><th>Range</th><th>Operators</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <p>Based on ${totalQuotes} recent fare observations.</p>
-</section>`.trim();
-    }
-  } catch (err) {
-    console.warn('[bRoute] pricesBlock build failed for %s-%s: %s', from, to, err && err.message);
-  }
-
+  // pricesBlock already computed at the top of bRoute (hoisted for thin-path use).
   return [
     heroSection,
     operatorsSection,
