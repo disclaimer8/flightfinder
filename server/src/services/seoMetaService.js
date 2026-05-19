@@ -395,8 +395,18 @@ function routeMeta(pair) {
       const top2Ac = route.aircraft.slice(0, 2).map(ac => ac.name).join(', ');
       description = `Compare ${route.summary.distinct_operators} airline${route.summary.distinct_operators === 1 ? '' : 's'} flying ${fromName} (${fromIata}) to ${toName} (${toIata}). Distance: ${route.distance_km.toLocaleString()} km.${top2Ac ? ` Top aircraft: ${top2Ac}.` : ''}`;
     } else {
-      // Thin pair — downgrade robots so Google doesn't index near-empty pages.
-      robots = 'noindex, follow';
+      // Thin observed_routes — but Spec B's price widget may still give the
+      // page real content (≥1 priced aircraft). If so, keep indexable; otherwise
+      // noindex so Google doesn't index near-empty pages.
+      try {
+        const rps = require('./routePricingService');
+        const prices = rps.getPricesForRoute(fromIata, toIata);
+        if (!prices || prices.length === 0) {
+          robots = 'noindex, follow';
+        }
+      } catch {
+        robots = 'noindex, follow';
+      }
       description = `Compare flights from ${fromName} (${fromIata}) to ${toName} (${toIata}): which airlines operate the route, which aircraft types they fly, and the cheapest upcoming dates.`;
     }
   } catch {
