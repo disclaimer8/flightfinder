@@ -232,6 +232,7 @@ function _renderJontyEnrichment(from, to) {
 function bRoute(meta, _db) {
   const routeService     = require('./routeService');
   const openFlightsService = require('./openFlightsService');
+  const routePricingService = require('./routePricingService');
 
   if (!meta.fromIata || !meta.toIata) return null;
 
@@ -432,6 +433,35 @@ ${faqHtmlItems}
   }).replace(/<\/(script)/gi, '<\\/$1');
   const jsonLdBlock = `<script type="application/ld+json">${faqLd}</script>`;
 
+  // ── 7. Typical fares by aircraft (T6) ───────────────────────────────────────
+  // Spec B — emit price block HTML so Googlebot indexes it. Defensive: never
+  // break SSR if the price service errors or the table is missing.
+  let pricesBlock = '';
+  try {
+    const prices = routePricingService.getPricesForRoute(from, to);
+    if (prices && prices.length > 0) {
+      const rows = prices.map(p => `
+      <tr>
+        <td><a href="/aircraft/${esc(p.aircraft_slug)}">${esc(p.aircraft_name)}</a></td>
+        <td>€${Math.round(p.median_eur)}</td>
+        <td>€${Math.round(p.min_eur)}–${Math.round(p.max_eur)}</td>
+        <td>${esc(p.airlines_display || '')}</td>
+      </tr>`).join('');
+      const totalQuotes = prices.reduce((s, p) => s + (p.n_quotes || 0), 0);
+      pricesBlock = `
+<section class="route-aircraft-prices" data-widget="route-aircraft-prices">
+  <h2>Typical fares by aircraft on this route</h2>
+  <table>
+    <thead><tr><th>Aircraft</th><th>Median</th><th>Range</th><th>Operators</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <p>Based on ${totalQuotes} recent fare observations.</p>
+</section>`.trim();
+    }
+  } catch (err) {
+    console.warn('[bRoute] pricesBlock build failed for %s-%s: %s', from, to, err && err.message);
+  }
+
   return [
     heroSection,
     operatorsSection,
@@ -439,6 +469,7 @@ ${faqHtmlItems}
     airportsSection,
     jontyBlock,
     crossSection,
+    pricesBlock,
     faqSection,
     jsonLdBlock,
   ].filter(Boolean).join('\n');
