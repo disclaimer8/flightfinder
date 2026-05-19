@@ -17,24 +17,33 @@ function getAirlineLanding(iata) {
   const airlineRecord = openFlightsService.getAirline(upper);
   if (!airlineRecord) return null;
 
-  const jonty    = buildJontySection(upper);
+  const jontyRaw = buildJontySection(upper);
   const observed = buildObservedSection(upper);
 
   const observedEmpty = observed.topAircraft.length === 0
                      && observed.hubs.length === 0
                      && observed.topDests.length === 0;
-  if (jonty === null && observedEmpty) return null;
+  if (jontyRaw === null && observedEmpty) return null;
+
+  // Prefer jonty's carrier_name when available — matches SSR (seoMetaService
+  // uses getCarrierMeta for the same reason). openFlights returns first IATA
+  // match, which for codes like "LH" is the cargo subsidiary (Lufthansa Cargo)
+  // rather than the mainline carrier users expect.
+  const name = (jontyRaw && jontyRaw._carrierName) || airlineRecord.name || upper;
+  const jonty = jontyRaw ? stripCarrierName(jontyRaw) : null;
 
   return {
     airline: {
       iata: airlineRecord.iata || upper,
       icao: airlineRecord.icao || null,
-      name: airlineRecord.name || upper,
+      name,
     },
     jonty,
     observed,
   };
 }
+
+function stripCarrierName({ _carrierName, ...rest }) { return rest; }
 
 function buildJontySection(iata) {
   let rows;
@@ -69,11 +78,21 @@ function buildJontySection(iata) {
   const hubCount = Array.from(originsMap.values())
     .filter(o => o.routeCount >= HUB_MIN_ROUTES).length;
 
+  // Pick most common carrier_name from rows (handles mixed-name carrier_iata).
+  const nameCounts = new Map();
+  for (const r of rows) {
+    if (r.carrier_name) nameCounts.set(r.carrier_name, (nameCounts.get(r.carrier_name) || 0) + 1);
+  }
+  const carrierName = nameCounts.size === 0
+    ? null
+    : Array.from(nameCounts.entries()).sort((a, b) => b[1] - a[1])[0][0];
+
   return {
     totalRoutes: rows.length,
     totalCountries: countries.size,
     hubCount,
     origins,
+    _carrierName: carrierName,
   };
 }
 

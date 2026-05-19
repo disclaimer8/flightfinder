@@ -29,11 +29,11 @@ describe('airlineLandingService.getAirlineLanding', () => {
     of.getAirline.mockReturnValue({ iata: 'LH', icao: 'DLH', name: 'Lufthansa' });
     jonty.getAirlineNetwork.mockReturnValue([
       { origin_iata: 'FRA', origin_city: 'Frankfurt', origin_country: 'Germany',
-        dest_iata: 'JFK', dest_country: 'USA' },
+        dest_iata: 'JFK', dest_country: 'USA', carrier_name: 'Lufthansa' },
       { origin_iata: 'FRA', origin_city: 'Frankfurt', origin_country: 'Germany',
-        dest_iata: 'LHR', dest_country: 'UK' },
+        dest_iata: 'LHR', dest_country: 'UK', carrier_name: 'Lufthansa' },
       { origin_iata: 'MUC', origin_city: 'Munich', origin_country: 'Germany',
-        dest_iata: 'JFK', dest_country: 'USA' },
+        dest_iata: 'JFK', dest_country: 'USA', carrier_name: 'Lufthansa' },
     ]);
     aa.getTopAircraftForAirline.mockReturnValue([
       { icao_aircraft: 'A320', name: 'Airbus A320', n_pairs: 87 },
@@ -129,6 +129,42 @@ describe('airlineLandingService.getAirlineLanding', () => {
     aa.buildValidComboSet.mockReturnValue(new Set());
 
     expect(airlineLandingService.getAirlineLanding('XX')).toBeNull();
+  });
+
+  it('prefers jonty carrier_name over openFlights name when jonty has data', () => {
+    // Real-world case: IATA "LH" → openFlights returns "Lufthansa Cargo" (first
+    // match), but jonty's carrier_name is the mainline "Lufthansa". Prefer jonty
+    // to match SSR.
+    of.getAirline.mockReturnValue({ iata: 'LH', icao: 'GEC', name: 'Lufthansa Cargo' });
+    jonty.getAirlineNetwork.mockReturnValue([
+      { origin_iata: 'FRA', origin_city: 'Frankfurt', origin_country: 'Germany',
+        dest_iata: 'JFK', dest_country: 'USA', carrier_name: 'Lufthansa' },
+    ]);
+    aa.getTopAircraftForAirline.mockReturnValue([]);
+    aa.getTopHubsForAirline.mockReturnValue([]);
+    aa.getTopDestinationsForAirline.mockReturnValue([]);
+    aa.listValidCombinations.mockReturnValue([]);
+    aa.buildValidComboSet.mockReturnValue(new Set());
+
+    const out = airlineLandingService.getAirlineLanding('LH');
+    expect(out.airline.name).toBe('Lufthansa');
+    // jonty section returned to caller does not leak the internal _carrierName
+    expect(out.jonty).not.toHaveProperty('_carrierName');
+  });
+
+  it('falls back to openFlights name when jonty has no rows', () => {
+    of.getAirline.mockReturnValue({ iata: 'BA', icao: 'BAW', name: 'British Airways' });
+    jonty.getAirlineNetwork.mockReturnValue([]);
+    aa.getTopAircraftForAirline.mockReturnValue([
+      { icao_aircraft: 'A388', name: 'Airbus A380', n_pairs: 6 },
+    ]);
+    aa.getTopHubsForAirline.mockReturnValue([]);
+    aa.getTopDestinationsForAirline.mockReturnValue([]);
+    aa.listValidCombinations.mockReturnValue([]);
+    aa.buildValidComboSet.mockReturnValue(new Set());
+
+    const out = airlineLandingService.getAirlineLanding('BA');
+    expect(out.airline.name).toBe('British Airways');
   });
 
   it('survives jonty.db throwing — falls back to jonty=null', () => {
