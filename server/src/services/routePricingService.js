@@ -89,3 +89,38 @@ exports.getPricesForRoute = function getPricesForRoute(dep, arr) {
   cacheService.set(key, enriched, CACHE_TTL_S);
   return enriched;
 };
+
+exports.getRoutesForAircraft = function getRoutesForAircraft(icao, limit = 10) {
+  const icaoU = String(icao || '').toUpperCase();
+  if (!icaoU) return [];
+
+  const key = `rap:aircraft:${icaoU}:${limit}`;
+  const cached = cacheService.get(key);
+  if (cached !== undefined) return cached;
+
+  const rows = db.prepare(`
+    SELECT dep_iata, arr_iata, median_eur, min_eur, max_eur, n_quotes
+    FROM route_aircraft_prices
+    WHERE aircraft_icao = ?
+    ORDER BY n_quotes DESC
+    LIMIT ?
+  `).all(icaoU, limit);
+
+  const enriched = rows.map((r) => {
+    const dep = openFlights.getAirport(r.dep_iata);
+    const arr = openFlights.getAirport(r.arr_iata);
+    return {
+      dep_iata: r.dep_iata,
+      arr_iata: r.arr_iata,
+      dep_city: (dep && dep.city) || r.dep_iata,
+      arr_city: (arr && arr.city) || r.arr_iata,
+      median_eur: r.median_eur,
+      min_eur: r.min_eur,
+      max_eur: r.max_eur,
+      n_quotes: r.n_quotes,
+    };
+  });
+
+  cacheService.set(key, enriched, CACHE_TTL_S);
+  return enriched;
+};

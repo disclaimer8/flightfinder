@@ -62,3 +62,37 @@ describe('getPricesForRoute', () => {
     expect(b).toBe(a);
   });
 });
+
+describe('getRoutesForAircraft', () => {
+  it('returns empty array when no data', () => {
+    expect(svc.getRoutesForAircraft('B789')).toEqual([]);
+  });
+
+  it('returns top-N routes for an aircraft sorted by n_quotes DESC', () => {
+    db.prepare(`INSERT INTO route_aircraft_prices VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run('LHR', 'JFK', 'B789', 500, 400, 600, 12, 'BAW', Date.now());
+    db.prepare(`INSERT INTO route_aircraft_prices VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run('LAX', 'LHR', 'B789', 620, 500, 800, 5, 'BAW', Date.now());
+    db.prepare(`INSERT INTO route_aircraft_prices VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run('SFO', 'LHR', 'B789', 700, 600, 900, 3, 'BAW', Date.now());
+    db.prepare(`INSERT INTO route_aircraft_prices VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run('LHR', 'JFK', 'A388', 800, 700, 900, 4, 'BAW', Date.now()); // different aircraft
+
+    const out = svc.getRoutesForAircraft('b789');
+    expect(out).toHaveLength(3);
+    expect(out[0]).toMatchObject({ dep_iata: 'LHR', arr_iata: 'JFK', n_quotes: 12 });
+    expect(out[1]).toMatchObject({ dep_iata: 'LAX', arr_iata: 'LHR', n_quotes: 5 });
+    expect(out[2]).toMatchObject({ dep_iata: 'SFO', arr_iata: 'LHR', n_quotes: 3 });
+  });
+
+  it('respects limit', () => {
+    for (let i = 0; i < 15; i++) {
+      db.prepare(`INSERT INTO route_aircraft_prices VALUES (?,?,?,?,?,?,?,?,?)`)
+        .run(`A${String(i).padStart(2,'0')}`, 'JFK', 'B789', 500, 400, 600, 15 - i, 'BAW', Date.now());
+    }
+    const out = svc.getRoutesForAircraft('B789', 5);
+    expect(out).toHaveLength(5);
+    expect(out[0].n_quotes).toBe(15);
+    expect(out[4].n_quotes).toBe(11);
+  });
+});
