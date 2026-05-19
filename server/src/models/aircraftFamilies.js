@@ -319,10 +319,17 @@ for (const name of familyNames) {
 // Pre-compute aircraft-code → family name lookup. The `codes` Set on each
 // family contains both ICAO (B789, A320) and IATA-ish (789, 32N) designators;
 // this index covers both so callers can pass whichever they have.
+//
+// First-write-wins: specific families (e.g. "Airbus A319", "Airbus A320") are
+// declared BEFORE umbrella entries (e.g. "Airbus A320 family"), so the more
+// specific mapping is preserved. Without this, A319/A320 would resolve to the
+// generic umbrella, mislabelling map titles ("Airbus A320 routes" for /map?aircraft=A319).
 const codeToName = {};
 for (const name of familyNames) {
   for (const code of families[name].codes) {
-    codeToName[String(code).toUpperCase()] = name;
+    const key = String(code).toUpperCase();
+    if (codeToName[key]) continue; // preserve earlier (more specific) mapping
+    codeToName[key] = name;
   }
 }
 
