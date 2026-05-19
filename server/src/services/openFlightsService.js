@@ -46,6 +46,14 @@ parseCSV(path.join(__dirname, '../data/airports.dat')).forEach(f => {
 // 0:id 1:name 2:alias 3:iata 4:icao 5:callsign 6:country 7:active
 const airlinesMap = new Map();
 const airlinesIcaoMap = new Map(); // ICAO → airline record (for reverse lookup when only ICAO provided)
+const airlinesNameMap = new Map(); // normalized-name → airline record
+
+function _normalizeAirlineName(s) {
+  return String(s || '').toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 parseCSV(path.join(__dirname, '../data/airlines.dat')).forEach(f => {
   const iata = f[3];
   if (iata && iata.length >= 2 && f[7] === 'Y') {
@@ -59,6 +67,10 @@ parseCSV(path.join(__dirname, '../data/airlines.dat')).forEach(f => {
     // Also index by ICAO for reverse lookup
     if (f[4]) {
       airlinesIcaoMap.set(f[4].toUpperCase(), record);
+    }
+    // Also index by normalized name for name-based lookup (e.g. Google Flights scrape)
+    if (f[1]) {
+      airlinesNameMap.set(_normalizeAirlineName(f[1]), record);
     }
   }
 });
@@ -94,6 +106,12 @@ exports.getAirline = (iata) => airlinesMap.get(iata?.toUpperCase()) || null;
 
 /** Look up an airline by ICAO code */
 exports.getAirlineByIcao = (icao) => airlinesIcaoMap.get(icao?.toUpperCase()) || null;
+
+/** Look up an airline by name (case-insensitive, punctuation-tolerant) */
+exports.getAirlineByName = (name) => {
+  if (!name) return null;
+  return airlinesNameMap.get(_normalizeAirlineName(name)) || null;
+};
 
 /** Validate that an IATA airport code exists */
 exports.isValidAirport = (iata) => airportsMap.has(iata?.toUpperCase());
