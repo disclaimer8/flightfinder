@@ -20,7 +20,13 @@ module.exports = {
       listen_timeout: 15000,
       kill_timeout: 10000,
       autorestart: true,
-      max_memory_restart: '500M',
+      // 2 GB ceiling on dedicated Hetzner (64 GiB RAM) — was 500 MB on the
+      // old VPS. Prevents needless restarts when SQLite mmap window (2 GB)
+      // or large aggregate query buffers push RSS past the old cap.
+      max_memory_restart: '2G',
+      // Heap headroom for large in-memory operations (route_aircraft_prices
+      // builds, FR24 light-row aggregations, seoContentCache warmup).
+      node_args: '--max-old-space-size=4096',
       env: {
         NODE_ENV: 'production',
         INDEXNOW_KEY: (() => {

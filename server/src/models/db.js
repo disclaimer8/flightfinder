@@ -28,6 +28,27 @@ if (process.env.NODE_ENV !== 'test') {
   // first time we apply it on an existing populated DB, it's a no-op until
   // a full VACUUM rewrites the file. The maintenance worker handles that.
   try { db.pragma('auto_vacuum = INCREMENTAL'); } catch { /* may fail on already-populated DB; harmless */ }
+
+  // Performance pragmas — tuned 2026-05-19 for dedicated server (64 GiB RAM,
+  // 12 cores). Defaults are conservative for low-end hosts; we have headroom.
+  //
+  // cache_size = -262144 → 256 MB page cache per connection. With WAL we read
+  // mostly from the OS page cache anyway, but this keeps hot pages in-process
+  // and avoids sqlite re-decoding b-tree pages on every query.
+  //
+  // mmap_size = 2 GB → memory-map the entire app.db (currently ~200 MB) plus
+  // headroom for growth. SQLite reads from mmap'd pages directly, bypassing
+  // pread() for cached pages. Big read-heavy win, costs only address space.
+  //
+  // temp_store = MEMORY → keep transient query temp tables in RAM not /tmp.
+  // Aggregations + intermediate JOIN results stay fast.
+  //
+  // synchronous = NORMAL is safe under WAL (per SQLite docs) and faster
+  // than FULL. Worst case on crash: lose last commit, never corruption.
+  try { db.pragma('cache_size = -262144'); } catch { /* harmless */ }
+  try { db.pragma('mmap_size = 2147483648'); } catch { /* harmless */ }
+  try { db.pragma('temp_store = MEMORY'); } catch { /* harmless */ }
+  try { db.pragma('synchronous = NORMAL'); } catch { /* harmless */ }
 }
 
 // Schema
