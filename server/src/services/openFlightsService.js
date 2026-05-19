@@ -49,7 +49,10 @@ const airlinesIcaoMap = new Map(); // ICAO → airline record (for reverse looku
 const airlinesNameMap = new Map(); // normalized-name → airline record
 
 function _normalizeAirlineName(s) {
-  return String(s || '').toLowerCase().trim()
+  return String(s || '')
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 }
