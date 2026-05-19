@@ -349,8 +349,11 @@ export default function AircraftLandingPage() {
         <h1 className="landing-h1">{fam.label} flights and routes</h1>
         <p className="landing-sub">{resolvedCopy.hint}</p>
         <div className="landing-cta-row">
-          <Button to={`/?mode=by-aircraft&family=${slug}`} variant="primary">
-            Search flights on the {fam.label}
+          <Button
+            to={canonicalIcao ? `/map?aircraft=${canonicalIcao}` : '/map'}
+            variant="primary"
+          >
+            See {fam.label} routes on the map
           </Button>
         </div>
       </header>
