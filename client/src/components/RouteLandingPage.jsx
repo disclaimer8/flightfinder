@@ -5,6 +5,7 @@ import SkeletonResults from './SkeletonResults';
 import RouteOperators from './RouteOperators';
 import SectionHeader from './SectionHeader';
 import AircraftMix from './AircraftMix';
+import RouteAircraftPrices from './RouteAircraftPrices';
 import Button from './Button';
 import './AircraftLandingPage.css';
 
@@ -203,6 +204,8 @@ export default function RouteLandingPage() {
           </ul>
         </section>
       )}
+
+      {pair && <RouteAircraftPrices pair={pair} />}
 
       <section className="landing-section">
         <SectionHeader number="05" label="EXPLORE MORE" />
