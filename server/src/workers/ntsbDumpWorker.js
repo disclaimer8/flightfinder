@@ -229,7 +229,7 @@ function start() {
   // with a proper heap cap on the pm2 process.
   if (process.env.NTSB_DUMP_AUTOSTART !== '1') {
     console.log('[ntsbDumpWorker] in-process autostart disabled (set NTSB_DUMP_AUTOSTART=1 to enable). Use `gh workflow run backfill-ntsb.yml` for refresh.');
-    return;
+    return false;
   }
   const intervalMs = 24 * 3600 * 1000;
   const run = async () => {
@@ -242,6 +242,7 @@ function start() {
   };
   setTimeout(run, 60_000);
   setInterval(run, intervalMs);
+  return true;
 }
 
 module.exports = { start, runIngest };

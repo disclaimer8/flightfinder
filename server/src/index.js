@@ -484,8 +484,9 @@ if (require.main === module) {
     stopAircrashSidecarHealth = startAircrashSidecarHealthWorker();
     if (process.env.NODE_ENV !== 'test') {
       try {
-        require('./workers/ntsbDumpWorker').start();
-        console.log('[index] ntsbDumpWorker started (leader)');
+        if (require('./workers/ntsbDumpWorker').start()) {
+          console.log('[index] ntsbDumpWorker started (leader)');
+        }
       } catch (e) {
         console.error('[index] ntsbDumpWorker boot failed:', e.message);
       }
