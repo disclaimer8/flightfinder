@@ -392,6 +392,43 @@ db.exec(`
   );
 `);
 
+// route_aircraft_prices: result of aggregate-gf-prices.js joining gf.flights
+// (price/airline) with fr24_gf_route_aircraft (aircraft buckets) — daily snapshot.
+// PK on (dep, arr, aircraft) — see docs/superpowers/specs/2026-05-19-route-aircraft-prices-data-design.md
+// for blur-expansion semantics (price stats apply per-pair, repeated per aircraft).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS route_aircraft_prices (
+    dep_iata      TEXT NOT NULL,
+    arr_iata      TEXT NOT NULL,
+    aircraft_icao TEXT NOT NULL,
+    median_eur    REAL NOT NULL,
+    min_eur       REAL NOT NULL,
+    max_eur       REAL NOT NULL,
+    n_quotes      INTEGER NOT NULL,
+    airlines_csv  TEXT NOT NULL,
+    snapshot_at   INTEGER NOT NULL,
+    PRIMARY KEY (dep_iata, arr_iata, aircraft_icao)
+  );
+  CREATE INDEX IF NOT EXISTS idx_rap_pair     ON route_aircraft_prices(dep_iata, arr_iata);
+  CREATE INDEX IF NOT EXISTS idx_rap_aircraft ON route_aircraft_prices(aircraft_icao);
+`);
+
+// route_aircraft_prices_meta: one row per aggregate-gf-prices run for observability.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS route_aircraft_prices_meta (
+    run_id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at       INTEGER NOT NULL,
+    ended_at         INTEGER,
+    pairs_processed  INTEGER,
+    buckets_in       INTEGER,
+    buckets_out      INTEGER,
+    quotes_total     INTEGER,
+    skipped_thin     INTEGER,
+    skipped_no_match INTEGER,
+    status           TEXT
+  );
+`);
+
 // Prepared statements
 const stmts = {
   getUserByEmail:    db.prepare('SELECT * FROM users WHERE email = ?'),
