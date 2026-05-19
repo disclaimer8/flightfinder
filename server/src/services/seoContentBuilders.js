@@ -498,12 +498,54 @@ function bAircraft(meta, db) {
   const variantsBlock = _renderVariantsList(meta.variants);
   const fr24Block = _renderFr24Stats(meta.fr24Stats, { context: 'aircraft' });
 
+  // Spec B — top routes & prices per aircraft. Defensive: never break SSR.
+  // Loops meta.icaoList because aircraft families can have multiple ICAO variants
+  // (e.g. B789/B788/B78X for the 787). Merges results keeping the row with the
+  // highest n_quotes per (dep_iata, arr_iata) pair.
+  let topRoutesBlock = '';
+  try {
+    const routePricingService = require('./routePricingService');
+    const merged = new Map(); // "dep-arr" → row with highest n_quotes
+    for (const icao of (meta.icaoList || [])) {
+      const routes = routePricingService.getRoutesForAircraft(icao, 10) || [];
+      for (const r of routes) {
+        const key = `${r.dep_iata}-${r.arr_iata}`;
+        const existing = merged.get(key);
+        if (!existing || (r.n_quotes || 0) > (existing.n_quotes || 0)) {
+          merged.set(key, r);
+        }
+      }
+    }
+    const top = Array.from(merged.values())
+      .sort((a, b) => (b.n_quotes || 0) - (a.n_quotes || 0))
+      .slice(0, 10);
+    if (top.length >= 3) {
+      const rows = top.map(r => `
+      <tr>
+        <td><a href="/routes/${esc(r.dep_iata.toLowerCase())}-${esc(r.arr_iata.toLowerCase())}">${esc(r.dep_city || r.dep_iata)} → ${esc(r.arr_city || r.arr_iata)}</a></td>
+        <td>€${Math.round(r.median_eur)}</td>
+        <td>${r.n_quotes} quotes</td>
+      </tr>`).join('');
+      topRoutesBlock = `
+<section class="aircraft-top-routes-prices" data-widget="aircraft-top-routes-prices">
+  <h2>Where the ${esc(meta.aircraftLabel || meta.icaoList[0])} flies — and what it costs</h2>
+  <table>
+    <thead><tr><th>Route</th><th>Median fare</th><th>Sample size</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <p>Top routes by sample size from the last ~30 days.</p>
+</section>`.trim();
+    }
+  } catch (err) {
+    console.warn('[bAircraft] topRoutesBlock build failed for %s: %s', meta.icaoList?.[0], err && err.message);
+  }
+
   // Enrichment path — only populated for slugs present in aircraftLandingContent.json
   const enriched = getEnrichmentForSlug(meta.slug);
 
   if (!enriched) {
     // No enrichment: return existing template output unchanged.
-    return [factsBlock, safetyBlock, variantsBlock, fr24Block].filter(Boolean).join('\n').trim();
+    return [factsBlock, safetyBlock, variantsBlock, fr24Block, topRoutesBlock].filter(Boolean).join('\n').trim();
   }
 
   // 2. NEW: Variants table
@@ -542,6 +584,7 @@ function bAircraft(meta, db) {
     variantsBlock,
     fr24Block,
     faqBlock,
+    topRoutesBlock,
     jsonLdBlock,
   ].filter(Boolean).join('\n').trim();
 }
