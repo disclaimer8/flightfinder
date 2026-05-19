@@ -162,21 +162,31 @@ function main() {
   acquireLockOrExit(lockPath);
 
   let runId = null;
-  const startedAt = Date.now();
-  const appDb = new Database(DEFAULT_APP_DB);
-  appDb.exec(`ATTACH DATABASE '${DEFAULT_ACCIDENTS_DB}' AS accidents`);
-  const accDb = {
-    prepare: (sql) => appDb.prepare(sql.replace('FROM flights', 'FROM accidents.flights')),
-  };
-
-  if (!dryRun) {
-    const meta = appDb.prepare(`
-      INSERT INTO route_aircraft_prices_meta (started_at, status) VALUES (?, 'running')
-    `).run(startedAt);
-    runId = meta.lastInsertRowid;
-  }
+  let appDb = null;
 
   try {
+    const startedAt = Date.now();
+    appDb = new Database(DEFAULT_APP_DB);
+    appDb.exec(`ATTACH DATABASE '${DEFAULT_ACCIDENTS_DB}' AS accidents`);
+    // accDb seam: in production both databases share a single connection via
+    // ATTACH, and `aggregate()` issues SQL like `FROM flights` against accDb.
+    // We wrap appDb in a thin shim that rewrites that token to
+    // `FROM accidents.flights` so the same query string works for tests
+    // (where accDb is a separate handle) and prod (single handle, attached).
+    // This SQL-rewrite is fragile — it is purely a testing seam. Any new
+    // query against accDb must use the bare `FROM flights` form, and any
+    // new table on accidents.db must be added to the rewrite list below.
+    const accDb = {
+      prepare: (sql) => appDb.prepare(sql.replace('FROM flights', 'FROM accidents.flights')),
+    };
+
+    if (!dryRun) {
+      const meta = appDb.prepare(`
+        INSERT INTO route_aircraft_prices_meta (started_at, status) VALUES (?, 'running')
+      `).run(startedAt);
+      runId = meta.lastInsertRowid;
+    }
+
     const counters = aggregate({ appDb, accDb, dryRun, now: startedAt });
     const endedAt = Date.now();
     console.log(`[aggregate-gf-prices] ${dryRun ? 'DRY' : 'OK'} ` +
@@ -196,12 +206,18 @@ function main() {
   } catch (err) {
     console.error('[aggregate-gf-prices] FATAL:', err.message);
     if (runId !== null) {
-      appDb.prepare(`UPDATE route_aircraft_prices_meta SET ended_at=?, status='error' WHERE run_id=?`)
-           .run(Date.now(), runId);
+      try {
+        appDb.prepare(`UPDATE route_aircraft_prices_meta SET ended_at=?, status='error' WHERE run_id=?`)
+             .run(Date.now(), runId);
+      } catch (metaErr) {
+        console.error('[aggregate-gf-prices] meta-update failed:', metaErr.message);
+      }
     }
     process.exitCode = 1;
   } finally {
-    appDb.close();
+    if (appDb) {
+      try { appDb.close(); } catch { /* ignore */ }
+    }
     releaseLock(lockPath);
   }
 }
