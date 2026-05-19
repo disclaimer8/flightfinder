@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const aircraftController = require('../controllers/aircraftController');
 const acSearchController = require('../controllers/aircraftSearchController');
+const routePricingController = require('../controllers/routePricingController');
 const validate = require('../middleware/validate');
 
 // GET /api/aircraft
@@ -24,6 +25,9 @@ router.get('/routes', validate.aircraftRoutesQuery, aircraftController.getAircra
 
 // GET /api/aircraft/type/:type (must come before /:iataCode)
 router.get('/type/:type', aircraftController.getAircraftByType);
+
+// GET /api/aircraft/:icao/prices (must come before /:iataCode)
+router.get('/:icao/prices', routePricingController.getAircraftPrices);
 
 // GET /api/aircraft/:iataCode
 router.get('/:iataCode', aircraftController.getAircraftByCode);

@@ -15,6 +15,7 @@ const express = require('express');
 const router = express.Router();
 const aircraftRouteSvc = require('../services/aircraftRouteService');
 const aircraftPillarService = require('../services/aircraftPillarService');
+const routePricingController = require('../controllers/routePricingController');
 
 // Aircraft × Route programmatic landing — main detail
 router.get('/routes/:pair/aircraft/:slug', (req, res) => {
@@ -49,6 +50,9 @@ router.get('/routes/:pair/aircraft-list', (req, res) => {
   const list = aircraftRouteSvc.getTopFamiliesForPair(fromIata, toIata, { limit: 8 });
   res.json({ success: true, data: list });
 });
+
+// Route × aircraft pricing (median EUR per aircraft for a city pair)
+router.get('/routes/:pair/prices', routePricingController.getRoutePrices);
 
 // Aircraft pillar sub-page endpoints
 router.get('/aircraft/:slug/airlines', (req, res) => {
