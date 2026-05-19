@@ -75,4 +75,75 @@ describe('airlineLandingService.getAirlineLanding', () => {
       },
     });
   });
+
+  it('returns shape with jonty=null when only observed_routes has data', () => {
+    of.getAirline.mockReturnValue({ iata: 'BA', icao: 'BAW', name: 'British Airways' });
+    jonty.getAirlineNetwork.mockReturnValue([]);
+    aa.getTopAircraftForAirline.mockReturnValue([
+      { icao_aircraft: 'A388', name: 'Airbus A380', n_pairs: 6 },
+    ]);
+    aa.getTopHubsForAirline.mockReturnValue([]);
+    aa.getTopDestinationsForAirline.mockReturnValue([]);
+    aa.listValidCombinations.mockReturnValue([]);
+    aa.buildValidComboSet.mockReturnValue(new Set());
+
+    const out = airlineLandingService.getAirlineLanding('BA');
+
+    expect(out).not.toBeNull();
+    expect(out.jonty).toBeNull();
+    expect(out.observed.topAircraft).toHaveLength(1);
+    expect(out.observed.topAircraft[0].hasMatrix).toBe(false);
+  });
+
+  it('returns shape with empty observed lists when only jonty has data', () => {
+    of.getAirline.mockReturnValue({ iata: 'UIA', icao: 'AUI', name: 'Ukraine International' });
+    jonty.getAirlineNetwork.mockReturnValue([
+      { origin_iata: 'KBP', origin_city: 'Kyiv', origin_country: 'Ukraine',
+        dest_iata: 'VIE', dest_country: 'Austria' },
+    ]);
+    aa.getTopAircraftForAirline.mockReturnValue([]);
+    aa.getTopHubsForAirline.mockReturnValue([]);
+    aa.getTopDestinationsForAirline.mockReturnValue([]);
+    aa.listValidCombinations.mockReturnValue([]);
+    aa.buildValidComboSet.mockReturnValue(new Set());
+
+    const out = airlineLandingService.getAirlineLanding('UIA');
+
+    expect(out).not.toBeNull();
+    expect(out.jonty.totalRoutes).toBe(1);
+    expect(out.observed).toEqual({ topAircraft: [], hubs: [], topDests: [] });
+  });
+
+  it('returns null when airline unknown', () => {
+    of.getAirline.mockReturnValue(null);
+    expect(airlineLandingService.getAirlineLanding('ZZZ')).toBeNull();
+  });
+
+  it('returns null when known airline but both sources empty', () => {
+    of.getAirline.mockReturnValue({ iata: 'XX', icao: 'XXX', name: 'Empty Air' });
+    jonty.getAirlineNetwork.mockReturnValue([]);
+    aa.getTopAircraftForAirline.mockReturnValue([]);
+    aa.getTopHubsForAirline.mockReturnValue([]);
+    aa.getTopDestinationsForAirline.mockReturnValue([]);
+    aa.listValidCombinations.mockReturnValue([]);
+    aa.buildValidComboSet.mockReturnValue(new Set());
+
+    expect(airlineLandingService.getAirlineLanding('XX')).toBeNull();
+  });
+
+  it('survives jonty.db throwing — falls back to jonty=null', () => {
+    of.getAirline.mockReturnValue({ iata: 'BA', icao: 'BAW', name: 'British Airways' });
+    jonty.getAirlineNetwork.mockImplementation(() => { throw new Error('jonty.db not present'); });
+    aa.getTopAircraftForAirline.mockReturnValue([
+      { icao_aircraft: 'A388', name: 'Airbus A380', n_pairs: 6 },
+    ]);
+    aa.getTopHubsForAirline.mockReturnValue([]);
+    aa.getTopDestinationsForAirline.mockReturnValue([]);
+    aa.listValidCombinations.mockReturnValue([]);
+    aa.buildValidComboSet.mockReturnValue(new Set());
+
+    const out = airlineLandingService.getAirlineLanding('BA');
+    expect(out).not.toBeNull();
+    expect(out.jonty).toBeNull();
+  });
 });
