@@ -13,6 +13,7 @@ const AircraftSpecs        = lazy(() => import('./components/AircraftSpecs'));
 const RouteLandingPage     = lazy(() => import('./components/RouteLandingPage'));
 const AircraftRouteLanding    = lazy(() => import('./components/AircraftRouteLanding'));
 const AirlineAircraftLanding  = lazy(() => import('./pages/AirlineAircraftLanding'));
+const AirlineLanding          = lazy(() => import('./pages/AirlineLanding'));
 const AircraftIndex       = lazy(() => import('./pages/AircraftIndex'));
 const MyTrips = lazy(() => import('./pages/MyTrips'));
 const Pricing = lazy(() => import('./pages/Pricing'));
@@ -38,6 +39,7 @@ export default function AppRoutes() {
         <Route path="/routes/:pair"            element={<Suspense fallback={null}><RouteLandingPage /></Suspense>} />
         <Route path="/routes/:pair/:aircraftSlug" element={<Suspense fallback={null}><AircraftRouteLanding /></Suspense>} />
         <Route path="/airline/:iata/aircraft/:icao" element={<Suspense fallback={null}><AirlineAircraftLanding /></Suspense>} />
+        <Route path="/airline/:iata"                element={<Suspense fallback={null}><AirlineLanding /></Suspense>} />
         <Route path="/by-aircraft"        element={<Suspense fallback={null}><AircraftIndex /></Suspense>} />
         <Route path="/trips"              element={<Suspense fallback={null}><MyTrips /></Suspense>} />
         <Route path="/pricing"            element={<Suspense fallback={null}><Pricing /></Suspense>} />

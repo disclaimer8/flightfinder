@@ -68,4 +68,9 @@ describe('AppRoutes', () => {
     // SiteLayout wraps it; AircraftIndex is lazy. Just assert no crash and that we're not at home.
     expect(screen.queryByTestId('page-home')).not.toBeInTheDocument();
   });
+
+  test('mounts AirlineLanding at /airline/:iata (not Home)', () => {
+    renderAt('/airline/lh');
+    expect(screen.queryByTestId('page-home')).not.toBeInTheDocument();
+  });
 });
