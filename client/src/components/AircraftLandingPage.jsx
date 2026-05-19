@@ -72,32 +72,9 @@ function firstUrl(raw) {
 }
 
 // Slug → canonical ICAO type designator for the AircraftTopRoutesPrices widget.
-// Families have many ICAO/IATA codes (server/src/models/aircraftFamilies.js); the
-// route_aircraft_prices table keys on a single 4-char ICAO, so we pick the
-// most-common variant per family (e.g. B789 over B788/B78X for the 787). Slugs
-// without a mapping skip the widget (component already null-guards on icao).
-const SLUG_TO_CANONICAL_ICAO = {
-  'boeing-737':            'B738',
-  'boeing-757':            'B752',
-  'boeing-767':            'B763',
-  'boeing-777':            'B77W',
-  'boeing-787':            'B789',
-  'boeing-747':            'B744',
-  'airbus-a319':           'A319',
-  'airbus-a320':           'A320',
-  'airbus-a320-family':    'A320',
-  'airbus-a321':           'A321',
-  'airbus-a220':           'BCS3',
-  'airbus-a330':           'A333',
-  'airbus-a340':           'A343',
-  'airbus-a350':           'A359',
-  'airbus-a380':           'A388',
-  'embraer-e170-e175':     'E170',
-  'embraer-e190-e195':     'E190',
-  'bombardier-crj':        'CRJ9',
-  'bombardier-dash-8':     'DH8',
-  'atr-42-72':             'AT76',
-};
+// Canonical ICAO per family now comes from the server (aircraftFamilies model
+// exposes it via /api/aircraft/families as `canonicalIcao`). The component
+// reads `fam.canonicalIcao` directly — no local map.
 
 // Builds a minimal copy object for aircraft slugs that have no bespoke JSON.
 // Field names match the resolvedCopy shape consumed by the JSX below
@@ -353,9 +330,9 @@ export default function AircraftLandingPage() {
   // Enrichment data keyed by slug — null for slugs not yet enriched.
   const enriched = enrichmentData[slug] || null;
 
-  // Canonical ICAO designator for the prices widget (e.g. boeing-787 → B789).
-  // Unmapped slugs return undefined and skip the widget.
-  const canonicalIcao = SLUG_TO_CANONICAL_ICAO[slug];
+  // Canonical ICAO designator for the prices widget (e.g. boeing-787 → B789),
+  // resolved server-side and shipped on the family record.
+  const canonicalIcao = fam.canonicalIcao;
 
   return (
     <div className="landing">

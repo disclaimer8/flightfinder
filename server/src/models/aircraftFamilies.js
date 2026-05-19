@@ -362,6 +362,45 @@ function getFamilyRange(familyName) {
   return families[familyName]?.maxRange || 20000;
 }
 
+// Canonical ICAO per family — the most-common-in-service variant. Used by the
+// UI (e.g. AircraftLandingPage) when it needs a single ICAO to query per-family
+// services like routePricingService.getRoutesForAircraft. Falls back to the
+// first entry of family.codes if not listed here.
+const canonicalIcaoByName = {
+  'Boeing 737':         'B738',
+  'Boeing 757':         'B752',
+  'Boeing 767':         'B763',
+  'Boeing 777':         'B77W',
+  'Boeing 787':         'B789',
+  'Boeing 747':         'B744',
+  'Airbus A319':        'A319',
+  'Airbus A320':        'A320',
+  'Airbus A320 family': 'A320',
+  'Airbus A321':        'A321',
+  'Airbus A220':        'BCS3',
+  'Airbus A330':        'A333',
+  'Airbus A340':        'A343',
+  'Airbus A350':        'A359',
+  'Airbus A380':        'A388',
+  'Embraer E170/E175':  'E170',
+  'Embraer E190/E195':  'E190',
+  'Bombardier CRJ':     'CRJ9',
+  'Bombardier Dash 8':  'DH8D',
+  'ATR 42/72':          'AT76',
+};
+
+function _canonicalIcaoFor(name) {
+  if (canonicalIcaoByName[name]) return canonicalIcaoByName[name];
+  // Fallback: first ICAO-looking code in the family's set (4-char alphanumeric
+  // starting with a letter is the standard ICAO type designator shape).
+  const codes = families[name]?.codes;
+  if (!codes) return null;
+  for (const c of codes) {
+    if (/^[A-Z][A-Z0-9]{2,4}$/.test(c)) return c;
+  }
+  return Array.from(codes)[0] || null;
+}
+
 /**
  * Return a flat list of families suitable for the UI.
  */
@@ -377,6 +416,7 @@ function getFamilyList() {
     capacity: families[name].capacity,
     firstFlight: families[name].firstFlight,
     status: families[name].status,
+    canonicalIcao: _canonicalIcaoFor(name),
   }));
 }
 
