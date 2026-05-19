@@ -79,3 +79,119 @@ it('aggregates a single pair with one aircraft and three quotes', () => {
     n_quotes: 3, airlines_csv: 'BAW',
   });
 });
+
+it('skips thin pairs (n_quotes < 3)', () => {
+  const appDb = newAppDb();
+  const accDb = newAccidentsDb();
+  appDb.prepare(`INSERT INTO fr24_gf_route_aircraft VALUES (?,?,?,?,?,?,?)`)
+    .run('LHR', 'JFK', 'B789', 'BAW', 10, Date.now(), Date.now());
+  accDb.prepare(`INSERT INTO flights(origin,destination,price,airline,stops) VALUES (?,?,?,?,?)`)
+    .run('LHR', 'JFK', '€500', 'British Airways', 'Nonstop');
+  accDb.prepare(`INSERT INTO flights(origin,destination,price,airline,stops) VALUES (?,?,?,?,?)`)
+    .run('LHR', 'JFK', '€550', 'British Airways', 'Nonstop');
+
+  const result = aggregate({ appDb, accDb });
+  expect(result.bucketsOut).toBe(0);
+  expect(result.skippedThin).toBe(1);
+  expect(appDb.prepare('SELECT COUNT(*) c FROM route_aircraft_prices').get().c).toBe(0);
+});
+
+it('blur-expands across multiple aircraft on same pair', () => {
+  const appDb = newAppDb();
+  const accDb = newAccidentsDb();
+  appDb.prepare(`INSERT INTO fr24_gf_route_aircraft VALUES (?,?,?,?,?,?,?)`)
+    .run('LHR', 'JFK', 'B789', 'BAW', 10, Date.now(), Date.now());
+  appDb.prepare(`INSERT INTO fr24_gf_route_aircraft VALUES (?,?,?,?,?,?,?)`)
+    .run('LHR', 'JFK', 'A388', 'BAW', 5, Date.now(), Date.now());
+  for (const p of ['€500', '€550', '€600']) {
+    accDb.prepare(`INSERT INTO flights(origin,destination,price,airline,stops) VALUES (?,?,?,?,?)`)
+      .run('LHR', 'JFK', p, 'British Airways', 'Nonstop');
+  }
+  aggregate({ appDb, accDb });
+  const rows = appDb.prepare('SELECT * FROM route_aircraft_prices ORDER BY aircraft_icao').all();
+  expect(rows).toHaveLength(2);
+  expect(rows[0].aircraft_icao).toBe('A388');
+  expect(rows[1].aircraft_icao).toBe('B789');
+  expect(rows[0].median_eur).toBe(550);
+  expect(rows[1].median_eur).toBe(550);
+  expect(rows[0].n_quotes).toBe(3);
+  expect(rows[1].n_quotes).toBe(3);
+});
+
+it('skips quotes with unparseable price', () => {
+  const appDb = newAppDb();
+  const accDb = newAccidentsDb();
+  appDb.prepare(`INSERT INTO fr24_gf_route_aircraft VALUES (?,?,?,?,?,?,?)`)
+    .run('LHR', 'JFK', 'B789', 'BAW', 10, Date.now(), Date.now());
+  for (const p of ['$500', '€abc', '£600', '€500', '€550', '€600']) {
+    accDb.prepare(`INSERT INTO flights(origin,destination,price,airline,stops) VALUES (?,?,?,?,?)`)
+      .run('LHR', 'JFK', p, 'British Airways', 'Nonstop');
+  }
+  const result = aggregate({ appDb, accDb });
+  expect(result.quotesTotal).toBe(3);
+  const row = appDb.prepare('SELECT * FROM route_aircraft_prices').get();
+  expect(row.n_quotes).toBe(3);
+});
+
+it('skips quotes with unknown airline name', () => {
+  const appDb = newAppDb();
+  const accDb = newAccidentsDb();
+  appDb.prepare(`INSERT INTO fr24_gf_route_aircraft VALUES (?,?,?,?,?,?,?)`)
+    .run('LHR', 'JFK', 'B789', 'BAW', 10, Date.now(), Date.now());
+  for (const p of ['€500', '€550', '€600']) {
+    accDb.prepare(`INSERT INTO flights(origin,destination,price,airline,stops) VALUES (?,?,?,?,?)`)
+      .run('LHR', 'JFK', p, 'NonexistentAir', 'Nonstop');
+  }
+  for (const p of ['€700', '€800', '€900']) {
+    accDb.prepare(`INSERT INTO flights(origin,destination,price,airline,stops) VALUES (?,?,?,?,?)`)
+      .run('LHR', 'JFK', p, 'British Airways', 'Nonstop');
+  }
+  const result = aggregate({ appDb, accDb });
+  expect(result.skippedNoMatch).toBe(3);
+  const row = appDb.prepare('SELECT * FROM route_aircraft_prices').get();
+  expect(row.n_quotes).toBe(3);
+  expect(row.median_eur).toBe(800);
+});
+
+it('skips connecting flights (stops != Nonstop)', () => {
+  const appDb = newAppDb();
+  const accDb = newAccidentsDb();
+  appDb.prepare(`INSERT INTO fr24_gf_route_aircraft VALUES (?,?,?,?,?,?,?)`)
+    .run('LHR', 'JFK', 'B789', 'BAW', 10, Date.now(), Date.now());
+  for (const p of ['€500', '€550', '€600']) {
+    accDb.prepare(`INSERT INTO flights(origin,destination,price,airline,stops) VALUES (?,?,?,?,?)`)
+      .run('LHR', 'JFK', p, 'British Airways', '1 stop');
+  }
+  const result = aggregate({ appDb, accDb });
+  expect(result.bucketsOut).toBe(0);
+  expect(appDb.prepare('SELECT COUNT(*) c FROM route_aircraft_prices').get().c).toBe(0);
+});
+
+it('ignores buckets older than STALE_BUCKET_MS', () => {
+  const appDb = newAppDb();
+  const accDb = newAccidentsDb();
+  const stale = Date.now() - 31 * 24 * 3600 * 1000;
+  appDb.prepare(`INSERT INTO fr24_gf_route_aircraft VALUES (?,?,?,?,?,?,?)`)
+    .run('LHR', 'JFK', 'B789', 'BAW', 10, stale, stale);
+  for (const p of ['€500', '€550', '€600']) {
+    accDb.prepare(`INSERT INTO flights(origin,destination,price,airline,stops) VALUES (?,?,?,?,?)`)
+      .run('LHR', 'JFK', p, 'British Airways', 'Nonstop');
+  }
+  const result = aggregate({ appDb, accDb });
+  expect(result.pairsProcessed).toBe(0);
+  expect(appDb.prepare('SELECT COUNT(*) c FROM route_aircraft_prices').get().c).toBe(0);
+});
+
+it('--dry-run mode does not write to route_aircraft_prices', () => {
+  const appDb = newAppDb();
+  const accDb = newAccidentsDb();
+  appDb.prepare(`INSERT INTO fr24_gf_route_aircraft VALUES (?,?,?,?,?,?,?)`)
+    .run('LHR', 'JFK', 'B789', 'BAW', 10, Date.now(), Date.now());
+  for (const p of ['€500', '€550', '€600']) {
+    accDb.prepare(`INSERT INTO flights(origin,destination,price,airline,stops) VALUES (?,?,?,?,?)`)
+      .run('LHR', 'JFK', p, 'British Airways', 'Nonstop');
+  }
+  const result = aggregate({ appDb, accDb, dryRun: true });
+  expect(result.bucketsOut).toBe(1);
+  expect(appDb.prepare('SELECT COUNT(*) c FROM route_aircraft_prices').get().c).toBe(0);
+});
