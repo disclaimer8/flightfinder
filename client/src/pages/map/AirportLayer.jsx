@@ -7,13 +7,16 @@ const DEFAULT_COLOR  = '#60a5fa';
 
 /**
  * Scale: degree → marker radius in pixels.
- * Range ~[6, 18] so small dots are still finger-targetable (Leaflet's
- * circleMarker hit-area equals its visual radius). Below ~5px users miss
- * dots when clicking. Top end clamped to avoid runaway blobs.
+ * Range ~[5, 11]. Trade-off:
+ *   - 18px hubs at z=2 sat on top of nearby airports (MAD-LIS ~16px apart
+ *     horizontally; bigger hub radius makes the neighbor unclickable).
+ *   - 5px minimum is the smallest comfortable hit target without zooming.
+ * Users zoom in for fine-grained cluster picking; this scale keeps dense
+ * regions (Iberia, Northeast US, SE Asia) navigable at world view.
  */
 function radiusForDegree(d) {
   const clamped = Math.max(1, Math.min(500, d || 1));
-  return Math.round(6 + Math.sqrt(clamped) * 0.9);
+  return Math.round(5 + Math.sqrt(clamped) * 0.45);
 }
 
 /**
