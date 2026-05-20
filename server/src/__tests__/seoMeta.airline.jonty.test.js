@@ -34,7 +34,7 @@ describe('airlineMeta — Path B jonty-aware title (when jonty has data)', () =>
     expect(m.airlineName).toBe('British Airways Plc');  // jonty fixture name, NOT OpenFlights default
     expect(m.h1).toMatch(/British Airways Plc/);
     expect(m.h1).toMatch(/route network/i);
-    expect(m.title).toMatch(/route network \(1 routes\)/);  // route-count proves jonty branch
+    expect(m.title).toMatch(/British Airways Plc.*routes & destinations/);  // jonty carrier name + new template proves jonty branch
   });
 
   test('uses jonty carrier_name for second carrier (Lufthansa)', () => {

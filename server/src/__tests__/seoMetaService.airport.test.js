@@ -12,7 +12,6 @@ describe('seoMetaService new resolvers (Phase 1)', () => {
     // the home page's title (which would dedupe the page in Search Console).
     expect(typeof r.title).toBe('string');
     expect(r.title).toMatch(/Flights from .*ORK/);
-    expect(r.title).toMatch(/FlightFinder/);
     expect(typeof r.description).toBe('string');
     expect(r.description.length).toBeGreaterThan(0);
     expect(r.canonical).toBe('https://himaxym.com/flights-from/ork');

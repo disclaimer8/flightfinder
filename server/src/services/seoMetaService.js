@@ -165,7 +165,7 @@ function aircraftMeta(slug) {
   } catch { /* degrade to no badge */ }
   const variants = getVariantsByFamilySlug(slug);
   return {
-    title: `${label} flights, routes and safety record | FlightFinder`,
+    title: `${label} routes & safety record`,
     description: `Every route operated by the ${label}: airlines, city pairs, and recent safety events for the ${manufacturer} ${fam?.name || ''} fleet. Live schedule data.`,
     canonical: `${BASE}/aircraft/${slug}`,
     h1: `${label} — flights, routes and airlines`,
@@ -198,7 +198,7 @@ function aircraftAirlinesMeta(slug) {
   const icaoList = fam.icaoList;
   const family   = _bakeFamilyFields(fam);
   return {
-    title: `Airlines that operate the ${label} | FlightFinder`,
+    title: `${label} airlines & operators`,
     description: `Airlines worldwide operating the ${label}: route count per carrier, model variants flown, last observed dates. Sourced from open ADS-B data, refreshed nightly.`,
     canonical: `${BASE}/aircraft/${slug}/airlines`,
     h1: `Airlines that operate the ${label}`,
@@ -281,7 +281,7 @@ function aircraftSafetyMeta(slug) {
   }
   const variants = getVariantsByFamilySlug(slug);
   return {
-    title: `${label} safety record — accidents and incidents | FlightFinder`,
+    title: `${label} safety record`,
     description: `Aviation safety events involving the ${label}: hull losses, fatal accidents, and serious incidents from NTSB CAROL, Aviation Safety Network, B3A, and Wikidata.`,
     canonical: `${BASE}/aircraft/${slug}/safety`,
     h1: `${label} safety record`,
@@ -310,7 +310,7 @@ function aircraftSpecsMeta(slug) {
   const icaoList = fam.icaoList;
   const family   = _bakeFamilyFields(fam);
   return {
-    title: `${label} specifications — range, capacity, engines | FlightFinder`,
+    title: `${label} specs — range, capacity, engines`,
     description: `${label} technical specifications: range, passenger capacity, maximum takeoff weight, wingspan, length, height, max speed, ceiling, engine options, variants.`,
     canonical: `${BASE}/aircraft/${slug}/specs`,
     h1: `${label} specifications`,
@@ -353,7 +353,7 @@ function aircraftVariantMeta(familySlug, variantSlug) {
   } catch { /* degrade silently */ }
 
   return {
-    title: `${v.fullName} — flights, routes and safety record | FlightFinder`,
+    title: `${v.fullName} routes & safety record`,
     description: `${v.shortName} (${v.icao}) operators, top routes, full specifications, and complete safety record from public datasets. Part of the ${fam.family.label} family.`,
     canonical: `${BASE}/aircraft/${familySlug}/variants/${variantSlug}`,
     h1: `${v.shortName} — flights, routes and operators`,
@@ -414,7 +414,7 @@ function routeMeta(pair) {
   }
 
   return {
-    title: `${fromName} to ${toName} flights (${fromIata} → ${toIata}) — airlines, aircraft, cheapest dates | FlightFinder`,
+    title: `${fromIata} → ${toIata}: ${fromName} to ${toName} flights`,
     description,
     canonical: `${BASE}/routes/${pair}`,
     h1: `${fromName} to ${toName} flights`,
@@ -451,7 +451,7 @@ function aircraftRouteMeta(pair, slug) {
   const canonical = `${BASE}/routes/${pair}/${slug}`;
 
   return {
-    title: `${fromName} to ${toName} on the ${aircraftLabel} (${fromIata} → ${toIata}) — flights and operators | FlightFinder`,
+    title: `${fromIata} → ${toIata} on the ${aircraftLabel}`,
     description: `Flights from ${fromName} (${fromIata}) to ${toName} (${toIata}) operated by the ${aircraftLabel}: which airlines, model variants observed, and recent observations from open ADS-B data.`,
     canonical,
     h1: `${fromName} to ${toName} on the ${aircraftLabel}`,
@@ -484,7 +484,7 @@ function airportMeta(iata) {
   const ap = openFlightsService.getAirport(upper);
   const name = ap?.name || `${upper} airport`;
   return {
-    title: `${name} (${upper}) — direct flights, airlines, top routes | FlightFinder`,
+    title: `${name} (${upper}) flights & airlines`,
     description: `${name} (${upper}): which cities have direct flights, which airlines operate them, and which destinations travellers favour. Sourced from Amadeus booked/traveled aggregates and open ADS-B observations.`,
     canonical: `${BASE}/airport/${iata}`,
     h1: `${name} (${upper}) — direct flights and destinations`,
@@ -611,7 +611,7 @@ function airlineMeta(iata) {
 
   if (jontyName) {
     return {
-      title: `${name} (${upper}) — route network (${routeCount} routes) | FlightFinder`,
+      title: `${name} (${upper}) routes & destinations`,
       description: `Explore ${name}'s ${routeCount} non-stop routes. Updated weekly from open scheduling data.`,
       canonical: `${BASE}/airline/${upper.toLowerCase()}`,
       h1: `${name} route network`,
@@ -627,7 +627,7 @@ function airlineMeta(iata) {
   }
 
   return {
-    title: `${name} (${upper}) — routes, fleet, destinations | FlightFinder`,
+    title: `${name} (${upper}) routes & destinations`,
     description: `${name} (${upper}) network: destinations served, observed aircraft families, and top operated routes. Cross-referenced with open ADS-B and Amadeus reference data.`,
     canonical: `${BASE}/airline/${iata}`,
     h1: `${name} — destinations and fleet`,
@@ -676,7 +676,7 @@ function airportDeparturesMeta(iata) {
   const city = row?.city || null;
   const cityOrIata = city || upper;
   return {
-    title: `Flights from ${cityOrIata} (${upper}) — destinations, airlines, distance | FlightFinder`,
+    title: `Flights from ${cityOrIata} (${upper})`,
     description: `All non-stop flights from ${cityOrIata} ${upper}: destinations, airlines, distance, duration. Backed by FlightFinder's reference dataset.`,
     canonical: `${BASE}/flights-from/${upper.toLowerCase()}`,
     h1: `Flights from ${cityOrIata} (${upper})`,
@@ -698,7 +698,7 @@ function airportArrivalsMeta(iata) {
   // differs from the city (avoid "Cork Cork (ORK)").
   const h1Loc = airportName && airportName !== city ? `${cityOrIata} ${airportName}` : cityOrIata;
   return {
-    title: `Flights to ${cityOrIata} (${upper}) — origins, airlines, distance | FlightFinder`,
+    title: `Flights to ${cityOrIata} (${upper})`,
     description: `All non-stop flights arriving at ${cityOrIata} ${upper}: origins, airlines, distance, duration. Backed by FlightFinder's reference dataset.`,
     canonical: `${BASE}/flights-to/${upper.toLowerCase()}`,
     h1: `Flights to ${h1Loc} (${upper})`,
@@ -788,7 +788,7 @@ function countryMeta(cc) {
   try { name = new Intl.DisplayNames('en', { type: 'region' }).of(upper) || upper; }
   catch { name = upper; }
   return {
-    title: `Flights from ${name} — airports, airlines, popular routes | FlightFinder`,
+    title: `${name} — flights & airports`,
     description: `Aviation overview for ${name}: top airports by route count, airlines operating, and popular non-stop routes. Updated weekly.`,
     canonical: `${BASE}/country/${upper.toLowerCase()}`,
     h1: `${name} — aviation overview`,
