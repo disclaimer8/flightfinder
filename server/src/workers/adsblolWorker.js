@@ -37,12 +37,19 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-// Module-level singleton — read by /api/admin/ingest-status.
-let lastCycle = {
+const INITIAL_LAST_CYCLE = Object.freeze({
   ran_at: null, duration_ms: 0, types: 0, fetched: 0, resolved: 0, persisted: 0,
-};
+});
 
-exports.getLastCycle = () => ({ ...lastCycle });
+exports.getLastCycle = () => {
+  try {
+    const { getWorkerState } = require('../models/db');
+    const v = getWorkerState('adsblol.lastCycle');
+    return v || { ...INITIAL_LAST_CYCLE };
+  } catch {
+    return { ...INITIAL_LAST_CYCLE };
+  }
+};
 exports.AIRCRAFT_TYPES = AIRCRAFT_TYPES;
 exports.INITIAL_DELAY_MS = INITIAL_DELAY_MS;
 exports.CYCLE_INTERVAL_MS = CYCLE_INTERVAL_MS;
@@ -61,12 +68,18 @@ async function runCycle(types = AIRCRAFT_TYPES) {
     }
     await sleep(PER_TYPE_DELAY_MS);
   }
-  lastCycle = {
+  const metrics = {
     ran_at: Date.now(),
     duration_ms: Date.now() - t0,
     types: types.length,
     fetched, resolved, persisted,
   };
+  try {
+    const { setWorkerState } = require('../models/db');
+    setWorkerState('adsblol.lastCycle', metrics);
+  } catch (e) {
+    console.warn('[adsblol] failed to persist lastCycle:', e.message);
+  }
   console.log(`[adsblol] cycle done types=${types.length} fetched=${fetched} resolved=${resolved} persisted=${persisted}`);
 }
 

@@ -48,4 +48,9 @@ describe('ingestion schema migrations', () => {
     const idx = db.prepare("PRAGMA index_list('adsbdb_callsign_cache')").all().map(r => r.name);
     expect(idx).toContain('idx_adsbdb_callsign_expires');
   });
+
+  test('worker_state table exists with expected columns', () => {
+    const cols = db.prepare("PRAGMA table_info(worker_state)").all().map(r => r.name);
+    expect(cols.sort()).toEqual(['key', 'updated_at', 'value']);
+  });
 });

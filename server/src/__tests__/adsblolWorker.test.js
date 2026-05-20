@@ -48,3 +48,18 @@ describe('adsblolWorker.runCycleForTest', () => {
     expect(c.duration_ms).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('adsblolWorker.getLastCycle cross-worker visibility', () => {
+  it('reads lastCycle from shared SQLite worker_state', async () => {
+    // Simulate a different worker writing first
+    const { setWorkerState } = require('../models/db');
+    setWorkerState('adsblol.lastCycle', {
+      ran_at: 1779000000000, duration_ms: 100, types: 48,
+      fetched: 1000, resolved: 200, persisted: 180,
+    });
+    expect(adsblolWorker.getLastCycle()).toEqual({
+      ran_at: 1779000000000, duration_ms: 100, types: 48,
+      fetched: 1000, resolved: 200, persisted: 180,
+    });
+  });
+});

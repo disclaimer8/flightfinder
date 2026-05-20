@@ -146,6 +146,17 @@ db.exec(`
 // Migration: source column on observed_routes for existing DBs (plan 7e) — 'live' | 'historical'
 try { db.exec("ALTER TABLE observed_routes ADD COLUMN source TEXT"); } catch {}
 
+// worker_state: small key-value store for cluster-shared worker observability.
+// Used by adsblolWorker to publish lastCycle counters so /api/admin/ingest-status
+// returns the same view from any cluster worker. Values are JSON strings.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS worker_state (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  INTEGER NOT NULL
+  );
+`);
+
 // adsbdb_callsign_cache: persistent cache for adsb.lol→adsbdb callsign→route
 // resolution. Survives pm2 reloads so we don't hammer adsbdb after every deploy.
 // dep_iata=NULL on a row = negative cache (callsign has no resolvable route).
@@ -1044,4 +1055,17 @@ module.exports = {
   upsertFr24GfRoutes,
   writeFr24GfIngestMeta,
   getRouteLastSeenMap,
+
+  setWorkerState: (key, valueObj) => {
+    const now = Date.now();
+    db.prepare(`
+      INSERT INTO worker_state (key, value, updated_at) VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at
+    `).run(String(key), JSON.stringify(valueObj), now);
+  },
+  getWorkerState: (key) => {
+    const row = db.prepare('SELECT value FROM worker_state WHERE key = ?').get(String(key));
+    if (!row) return null;
+    try { return JSON.parse(row.value); } catch { return null; }
+  },
 };
