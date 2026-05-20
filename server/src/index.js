@@ -58,12 +58,17 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:     ["'self'"],
-      scriptSrc:      ["'self'", 'https://www.googletagmanager.com'], // gtag only; Travelpayouts Drive widgets removed in subscription pivot
+      scriptSrc:      [
+        "'self'",
+        'https://www.googletagmanager.com', // gtag
+        'https://static.cloudflareinsights.com', // CF Web Analytics beacon, auto-injected when CF proxy is on
+      ],
       styleSrc:       ["'self'", "'unsafe-inline'"], // Leaflet inline style=. Google Fonts removed 2026-05-18 (self-hosted via @fontsource).
       imgSrc:         ["'self'", 'data:', 'https:'], // CartoDB map tiles (loaded as <img> by Leaflet)
       connectSrc:     [
         "'self'",
         'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://analytics.google.com', // GA beacons
+        'https://cloudflareinsights.com', // CF Web Analytics RUM POSTs (/cdn-cgi/rum)
         // No external Sentry endpoint — client errors POST to our own
         // /api/client-error which forwards to @sentry/node out-of-band.
       ],
