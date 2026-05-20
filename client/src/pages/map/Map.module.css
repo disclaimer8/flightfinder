@@ -209,7 +209,11 @@
   flex-direction: column;
   padding: 20px;
   backdrop-filter: blur(8px);
-  color: var(--text, #e2e8f0);
+  /* Override site-wide light-mode text vars; this panel sits on dark background. */
+  --text:   #e2e8f0;
+  --text-2: #94a3b8;
+  --text-3: #64748b;
+  color: var(--text);
   box-sizing: border-box;
   overflow-y: auto;
 }
@@ -283,7 +287,11 @@
   z-index: 550;
   box-shadow: 0 8px 32px rgba(0,0,0,0.4);
   backdrop-filter: blur(8px);
-  color: var(--text, #e2e8f0);
+  /* Same dark-bg override as AirportPanel */
+  --text:   #e2e8f0;
+  --text-2: #94a3b8;
+  --text-3: #64748b;
+  color: var(--text);
   min-width: 240px;
   max-width: 320px;
 }
