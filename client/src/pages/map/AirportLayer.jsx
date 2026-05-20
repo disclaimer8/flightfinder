@@ -62,20 +62,35 @@ export default function AirportLayer({ mapRef, airports, onSelect, onHover, sele
     const group = L.layerGroup();
     for (const a of visible) {
       const isSel = selectedIata && a.iata === selectedIata;
-      const marker = L.circleMarker([a.lat, a.lon], {
-        radius: radiusForDegree(a.degree) * (isSel ? 1.3 : 1),
+      const baseRadius = radiusForDegree(a.degree);
+      const restStyle = {
+        radius: baseRadius * (isSel ? 1.3 : 1),
         color: isSel ? SELECTED_COLOR : DEFAULT_COLOR,
         fillColor: isSel ? SELECTED_COLOR : DEFAULT_COLOR,
         fillOpacity: 0.7,
         weight: isSel ? 2 : 1,
+      };
+      const marker = L.circleMarker([a.lat, a.lon], {
+        ...restStyle,
         _iata: a.iata, // test seam
       });
       marker.bindTooltip(`${a.iata}${a.name ? ' — ' + a.name : ''}`, { direction: 'top' });
       marker.on('click', () => onSelect(a.iata));
-      if (onHover) {
-        marker.on('mouseover', () => onHover(a.iata));
-        marker.on('mouseout',  () => onHover(null));
-      }
+      // Visual hover feedback: dot grows + turns amber, so users get an
+      // obvious affordance that the marker is clickable.
+      marker.on('mouseover', () => {
+        marker.setStyle({
+          radius: baseRadius * 1.4,
+          color: SELECTED_COLOR,
+          fillColor: SELECTED_COLOR,
+          weight: 2,
+        });
+        if (onHover) onHover(a.iata);
+      });
+      marker.on('mouseout',  () => {
+        marker.setStyle(restStyle);
+        if (onHover) onHover(null);
+      });
       marker.addTo(group);
     }
     group.addTo(map);
