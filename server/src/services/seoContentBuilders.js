@@ -1102,8 +1102,6 @@ async function bAirline(meta, _db) {
       `<a href="/airport/${esc(String(d).toLowerCase())}">${esc(d)}</a>`
     ).join(', ');
     destBlock = `<section><h2>Destinations served (${esc(top.length)})</h2><p>${links}</p></section>`;
-  } else {
-    destBlock = `<p>Network data is being collected.</p>`;
   }
 
   // Top aircraft section: query observed_routes for this airline's fleet,
