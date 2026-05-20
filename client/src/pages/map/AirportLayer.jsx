@@ -7,12 +7,13 @@ const DEFAULT_COLOR  = '#60a5fa';
 
 /**
  * Scale: degree → marker radius in pixels.
- * Clamp to [3, 14] so a runaway degree value doesn't produce a 50px blob.
+ * Range ~[6, 18] so small dots are still finger-targetable (Leaflet's
+ * circleMarker hit-area equals its visual radius). Below ~5px users miss
+ * dots when clicking. Top end clamped to avoid runaway blobs.
  */
 function radiusForDegree(d) {
   const clamped = Math.max(1, Math.min(500, d || 1));
-  // Square-root scale so degree=200 (top hub) is ~14, degree=1 is ~3.
-  return Math.round(3 + Math.sqrt(clamped) * 0.78);
+  return Math.round(6 + Math.sqrt(clamped) * 0.9);
 }
 
 /**
