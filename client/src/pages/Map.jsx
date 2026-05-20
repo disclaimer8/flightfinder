@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import 'leaflet/dist/leaflet.css';
 import SiteLayout from '../components/SiteLayout';
 import { fetchRoutes, fetchFilters } from './map/mapApi';
 import { enrichAirportsWithDegree, filterByZoom, filterRoutes } from './map/computeMapData';
