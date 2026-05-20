@@ -89,6 +89,15 @@ export default function RouteMapLayer({ mapRef, routes, filters, loading, select
 
       group.addTo(map);
       layerRef.current = group;
+
+      // When polylines are decorative (hover-preview, not clickable), drop
+      // pointer-events on the underlying canvas so mouseover/click pass through
+      // to the airport-marker layer below. Leaflet's per-path `interactive:false`
+      // only skips hit-testing — the canvas DOM still captures the events without
+      // this CSS override, causing the airport marker's hover state to break.
+      if (renderer._container) {
+        renderer._container.style.pointerEvents = interactive ? '' : 'none';
+      }
     }
 
     render();
