@@ -240,6 +240,7 @@ export default function Map() {
               filters={{ airline, aircraft }}
               loading={loading}
               selectedIata={effectiveIata}
+              interactive={!!selectedIata && !hoveredIata}
               onRouteClick={selectRoute}
             />
           </>

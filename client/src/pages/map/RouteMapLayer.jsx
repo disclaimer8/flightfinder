@@ -13,9 +13,12 @@ import { useNavigate } from 'react-router-dom';
  *   filters      {airline: string|null, aircraft: string|null}
  *   loading      boolean (unused now — loading overlay is owned by Map.jsx)
  *   selectedIata string|null — when set, routes touching this iata highlight amber
+ *   interactive  boolean (default true) — false makes polylines pass-through for
+ *                pointer events, so hover-preview spokes don't steal the marker's
+ *                hover state. Only true when the user has pinned a selection.
  *   onRouteClick (dep: string, arr: string) => void  — optional; falls back to navigate
  */
-export default function RouteMapLayer({ mapRef, routes, filters, loading, selectedIata, onRouteClick }) {
+export default function RouteMapLayer({ mapRef, routes, filters, loading, selectedIata, interactive = true, onRouteClick }) {
   const layerRef = useRef(null);
   const LRef     = useRef(null);
   const navigate = useNavigate();
@@ -63,22 +66,23 @@ export default function RouteMapLayer({ mapRef, routes, filters, loading, select
 
         const line = L.polyline(
           [[dep.lat, dep.lon], [arr.lat, arr.lon]],
-          { color, weight, opacity, renderer, interactive: true },
+          { color, weight, opacity, renderer, interactive },
         );
 
-        line.bindTooltip(formatTooltip(r, filters), { sticky: true });
-
-        line.on('mouseover', () => line.setStyle({ weight: 4, opacity: Math.max(opacity, 0.9) }));
-        line.on('mouseout',  () => line.setStyle({ weight, opacity }));
-        line.on('click', () => {
-          if (onRouteClickRef.current) {
-            onRouteClickRef.current(r.dep.iata, r.arr.iata);
-          } else {
-            navigateRef.current(
-              `/search?from=${encodeURIComponent(r.dep.iata)}&to=${encodeURIComponent(r.arr.iata)}`,
-            );
-          }
-        });
+        if (interactive) {
+          line.bindTooltip(formatTooltip(r, filters), { sticky: true });
+          line.on('mouseover', () => line.setStyle({ weight: 4, opacity: Math.max(opacity, 0.9) }));
+          line.on('mouseout',  () => line.setStyle({ weight, opacity }));
+          line.on('click', () => {
+            if (onRouteClickRef.current) {
+              onRouteClickRef.current(r.dep.iata, r.arr.iata);
+            } else {
+              navigateRef.current(
+                `/search?from=${encodeURIComponent(r.dep.iata)}&to=${encodeURIComponent(r.arr.iata)}`,
+              );
+            }
+          });
+        }
 
         line.addTo(group);
       }
@@ -93,7 +97,7 @@ export default function RouteMapLayer({ mapRef, routes, filters, loading, select
       cancelled = true;
       if (layerRef.current) { layerRef.current.remove(); layerRef.current = null; }
     };
-  }, [mapRef, routes, filters, selectedIata]);
+  }, [mapRef, routes, filters, selectedIata, interactive]);
 
   return null;
 }
