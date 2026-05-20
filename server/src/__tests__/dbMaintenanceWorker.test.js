@@ -47,3 +47,32 @@ describe('dbMaintenanceWorker.runCycle', () => {
     expect(failureWarns).toEqual([]);
   });
 });
+
+describe('dbMaintenanceWorker — adsbdb cache GC', () => {
+  it('deletes adsbdb_callsign_cache rows expired more than 30 days ago', () => {
+    process.env.NODE_ENV = 'test';
+    jest.resetModules();
+    const { db } = require('../models/db');
+    const dbMaintenanceWorker = require('../workers/dbMaintenanceWorker');
+
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    db.prepare(
+      `INSERT INTO adsbdb_callsign_cache (callsign, dep_iata, arr_iata, dep_icao, arr_icao, airline_iata, airline_icao, resolved_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run('OLD1', 'LHR', 'JFK', null, null, null, null, now - 60 * dayMs, now - 31 * dayMs);
+    db.prepare(
+      `INSERT INTO adsbdb_callsign_cache (callsign, dep_iata, arr_iata, dep_icao, arr_icao, airline_iata, airline_icao, resolved_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run('FRESH1', 'CDG', 'NRT', null, null, null, null, now, now + 7 * dayMs);
+    db.prepare(
+      `INSERT INTO adsbdb_callsign_cache (callsign, dep_iata, arr_iata, dep_icao, arr_icao, airline_iata, airline_icao, resolved_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run('RECENT_EXPIRED', 'MAD', 'BCN', null, null, null, null, now - 10 * dayMs, now - 5 * dayMs);
+
+    dbMaintenanceWorker._runCycleForTest();
+
+    const remaining = db.prepare('SELECT callsign FROM adsbdb_callsign_cache ORDER BY callsign').all().map(r => r.callsign);
+    expect(remaining).toEqual(['FRESH1', 'RECENT_EXPIRED']);
+  });
+});

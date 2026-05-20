@@ -2,29 +2,8 @@
 
 const adsblolService = require('../services/adsblolService');
 
-// ICAO types polled every cycle. adsb.lol /v2/type returns ALL live aircraft
-// of each type worldwide — one call per type, globally distributed routes resolved.
-//
-// The list MUST cover the families our /api/aircraft/routes endpoint exposes,
-// or those families will show zero coverage no matter how many planes are in
-// the sky. The original short list was all wide-bodies, which is why Boeing 737
-// (the most-produced airliner worldwide) and A320 narrow-bodies were absent.
-//
-// Coverage map (family → polled ICAO types):
-//   Boeing 737          → B737, B738, B739, B38M, B39M
-//   Boeing 747          → B748
-//   Boeing 757          → B752, B753
-//   Boeing 767          → B763, B764
-//   Boeing 777          → B772, B77W, B773, B778, B779
-//   Boeing 787          → B788, B789, B78X
-//   Airbus A220         → BCS1, BCS3
-//   Airbus A319/A320/A321 (ceo+neo) → A319, A320, A321, A19N, A20N, A21N
-//   Airbus A330         → A332, A333, A338, A339
-//   Airbus A340         → A342, A343, A345, A346
-//   Airbus A350         → A359, A35K
-//   Airbus A380         → A388
-//   Embraer E-Jets      → E170, E75L, E190, E195, E290, E295
-//   CRJ / Dash 8 / ATR  → CRJ7, CRJ9, DH8D, AT72, AT76
+// ICAO types polled every cycle. See the long-form comment at the bottom of
+// this file for which family each code covers.
 const AIRCRAFT_TYPES = [
   // Boeing narrow-body
   'B737', 'B738', 'B739', 'B38M', 'B39M',
@@ -48,35 +27,52 @@ const AIRCRAFT_TYPES = [
   'AT72', 'AT76',
 ];
 
-const INITIAL_DELAY_MS = 2 * 60 * 1000;  // 2 min after boot — keep startup clean
-const CYCLE_INTERVAL_MS = 20 * 60 * 1000; // every 20 min
-const PER_TYPE_DELAY_MS = 3 * 1000;       // polite 3s spacing between types
+// Boot-trigger seed (5s) instead of the old 120s — gets the map populated
+// promptly after pm2 reloads. Lower bound is "just past app.listen() bind".
+const INITIAL_DELAY_MS  = 5 * 1000;
+const CYCLE_INTERVAL_MS = 20 * 60 * 1000;
+const PER_TYPE_DELAY_MS = 3 * 1000;
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(r => setTimeout(r, ms));
 }
 
-async function runCycle() {
-  let resolvedTotal = 0;
-  let persistedTotal = 0;
-  for (const type of AIRCRAFT_TYPES) {
+// Module-level singleton — read by /api/admin/ingest-status.
+let lastCycle = {
+  ran_at: null, duration_ms: 0, types: 0, fetched: 0, resolved: 0, persisted: 0,
+};
+
+exports.getLastCycle = () => ({ ...lastCycle });
+exports.AIRCRAFT_TYPES = AIRCRAFT_TYPES;
+exports.INITIAL_DELAY_MS = INITIAL_DELAY_MS;
+exports.CYCLE_INTERVAL_MS = CYCLE_INTERVAL_MS;
+
+async function runCycle(types = AIRCRAFT_TYPES) {
+  const t0 = Date.now();
+  let fetched = 0, resolved = 0, persisted = 0;
+  for (const type of types) {
     try {
       const r = await adsblolService.pullAndPersistType(type);
-      resolvedTotal += r.resolved;
-      persistedTotal += r.persisted;
+      fetched   += r.fetched   || 0;
+      resolved  += r.resolved  || 0;
+      persisted += r.persisted || 0;
     } catch (err) {
-      // One type failing must never halt the whole cycle.
       console.warn(`[adsblol] pullAndPersistType(${type}) threw: ${err.message}`);
     }
     await sleep(PER_TYPE_DELAY_MS);
   }
-  console.log(`[adsblol] cycle done types=${AIRCRAFT_TYPES.length} resolved=${resolvedTotal} persisted=${persistedTotal}`);
+  lastCycle = {
+    ran_at: Date.now(),
+    duration_ms: Date.now() - t0,
+    types: types.length,
+    fetched, resolved, persisted,
+  };
+  console.log(`[adsblol] cycle done types=${types.length} fetched=${fetched} resolved=${resolved} persisted=${persisted}`);
 }
 
-/**
- * Start the background poller. Returns a stop() function that clears pending timers.
- * When adsb.lol is disabled via env, returns a silent-safe no-op stop fn.
- */
+// Test seam — call with a short types list to keep unit tests fast.
+exports._runCycleForTest = (types) => runCycle(types);
+
 exports.startAdsbLolWorker = () => {
   if (!adsblolService.isEnabled()) {
     console.log('[adsblol] disabled');

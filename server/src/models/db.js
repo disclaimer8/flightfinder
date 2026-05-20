@@ -146,6 +146,24 @@ db.exec(`
 // Migration: source column on observed_routes for existing DBs (plan 7e) — 'live' | 'historical'
 try { db.exec("ALTER TABLE observed_routes ADD COLUMN source TEXT"); } catch {}
 
+// adsbdb_callsign_cache: persistent cache for adsb.lol→adsbdb callsign→route
+// resolution. Survives pm2 reloads so we don't hammer adsbdb after every deploy.
+// dep_iata=NULL on a row = negative cache (callsign has no resolvable route).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS adsbdb_callsign_cache (
+    callsign      TEXT PRIMARY KEY,
+    dep_iata      TEXT,
+    arr_iata      TEXT,
+    dep_icao      TEXT,
+    arr_icao      TEXT,
+    airline_iata  TEXT,
+    airline_icao  TEXT,
+    resolved_at   INTEGER NOT NULL,
+    expires_at    INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_adsbdb_callsign_expires ON adsbdb_callsign_cache(expires_at);
+`);
+
 // aircraft_db: static hex (ICAO24) -> aircraft metadata map, bootstrapped from an
 // upstream public dataset (Mictronics readsb aircrafts.json, ~500k rows). Used to
 // resolve AeroDataBox `modeS` fields into ICAO type codes (B77W, A320, etc.) since

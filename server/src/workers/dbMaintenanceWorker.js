@@ -33,8 +33,16 @@ function runCycle() {
     const checkpointRows = db.pragma('wal_checkpoint(TRUNCATE)') || [];
     const wal = checkpointRows[0] || {};
     const freed = db.pragma('incremental_vacuum');
+
+    // Sweep adsbdb_callsign_cache rows whose expires_at is more than 30 days
+    // in the past. We keep recently-expired rows for the grace window so a
+    // restart doesn't refetch callsigns we already know are unresolvable.
+    const dayMs = 24 * 60 * 60 * 1000;
+    const cutoff = Date.now() - 30 * dayMs;
+    const gc = db.prepare('DELETE FROM adsbdb_callsign_cache WHERE expires_at < ?').run(cutoff);
+
     console.log(
-      `[db-maintenance] checkpoint busy=${wal.busy ?? '?'} log=${wal.log ?? '?'} checkpointed=${wal.checkpointed ?? '?'} | incremental_vacuum freed=${JSON.stringify(freed)}`
+      `[db-maintenance] checkpoint busy=${wal.busy ?? '?'} log=${wal.log ?? '?'} checkpointed=${wal.checkpointed ?? '?'} | incremental_vacuum freed=${JSON.stringify(freed)} | adsbdb_gc deleted=${gc.changes}`
     );
   } catch (err) {
     console.warn('[db-maintenance] cycle failed:', err.message);

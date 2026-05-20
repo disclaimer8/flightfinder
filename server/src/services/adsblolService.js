@@ -4,13 +4,14 @@ const axios = require('axios');
 const https = require('https');
 const cacheService = require('./cacheService');
 const db = require('../models/db');
+const adsbdbService = require('./adsbdbService');
 
 // adsb.lol — free, global ADS-B feed. Commercial use OK under ODbL (attribution required).
-// Two endpoints we use:
+// One endpoint we still use:
 //   GET  /v2/type/{icao_type}            -> live aircraft of that type worldwide
-//   POST /api/0/routeset                 -> resolve callsigns -> (dep, arr) IATA pairs
+// Callsign → (dep, arr) resolution moved to adsbdbService (2026-05-19) after
+// adsb.lol's POST /api/0/routeset began returning HTTP 201 with empty bodies.
 const ADSBLOL_V2_URL  = 'https://api.adsb.lol/v2';
-const ADSBLOL_API_URL = 'https://api.adsb.lol';
 
 // Single keep-alive agent with a bounded pool. Without this, each axios call
 // spawned a fresh TLS socket whose 'error'/'close' listeners stacked up on the
@@ -29,7 +30,12 @@ const adsblolClient = axios.create({
   httpsAgent: adsblolAgent,
 });
 
-const ROUTESET_BATCH_SIZE = 100;
+const ADSBDB_CONCURRENCY = 4;
+const ADSBDB_PER_REQUEST_DELAY_MS = 250;
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
 /** Feature flag — service is opt-in via env. */
 exports.isEnabled = () => process.env.ADSBLOL_ENABLED === '1';
@@ -78,9 +84,9 @@ exports.getAircraftByType = async (icaoType) => {
 };
 
 /**
- * POST /api/0/routeset — resolve a batch of callsigns into (dep, arr) IATA pairs.
- * Splits input into batches of 100 and aggregates results.
- * Skips entries whose _airport_codes_iata contains "unknown" (unresolved).
+ * Resolve a batch of planes (with callsigns) into (dep, arr) IATA pairs
+ * by calling adsbdbService.resolveCallsign once per plane, with a small
+ * worker pool to stay polite to upstream.
  *
  * @param {Array<{callsign:string, lat:number, lng:number}>} planes
  * @returns {Promise<Array<{callsign:string, depIata:string, arrIata:string, depIcao:string|null, arrIcao:string|null, airlineCode:string|null}>>}
@@ -89,43 +95,44 @@ exports.resolveRoutes = async (planes) => {
   if (!exports.isEnabled()) return [];
   if (!Array.isArray(planes) || planes.length === 0) return [];
 
+  const seen = new Set();
+  const queue = [];
+  for (const p of planes) {
+    if (!p || !p.callsign) continue;
+    if (seen.has(p.callsign)) continue;
+    seen.add(p.callsign);
+    queue.push(p);
+  }
   const out = [];
-  for (let i = 0; i < planes.length; i += ROUTESET_BATCH_SIZE) {
-    const batch = planes.slice(i, i + ROUTESET_BATCH_SIZE).map(p => ({
-      callsign: p.callsign,
-      lat: p.lat,
-      lng: p.lng,
-    }));
 
-    let rows;
-    try {
-      const res = await adsblolClient.post(`${ADSBLOL_API_URL}/api/0/routeset`, { planes: batch });
-      rows = Array.isArray(res.data) ? res.data : [];
-    } catch (err) {
-      console.warn(`[adsblol] resolveRoutes batch failed: ${err?.response?.status ?? err.message}`);
-      continue; // move on to next batch
-    }
-
-    for (const r of rows) {
-      const codes = typeof r._airport_codes_iata === 'string' ? r._airport_codes_iata : '';
-      if (!codes || codes.toLowerCase().includes('unknown')) continue;
-      const parts = codes.split('-');
-      if (parts.length !== 2) continue;
-      const depIata = parts[0].toUpperCase();
-      const arrIata = parts[1].toUpperCase();
-      if (depIata.length !== 3 || arrIata.length !== 3) continue;
-
-      const airports = Array.isArray(r._airports) ? r._airports : [];
-      out.push({
-        callsign: typeof r.callsign === 'string' ? r.callsign.trim() : '',
-        depIata,
-        arrIata,
-        depIcao: airports[0]?.icao || null,
-        arrIcao: airports[1]?.icao || null,
-        airlineCode: r.airline_code || null,
-      });
+  async function worker() {
+    let first = true;
+    while (queue.length) {
+      if (!first) await sleep(ADSBDB_PER_REQUEST_DELAY_MS);
+      first = false;
+      const p = queue.shift();
+      if (!p || !p.callsign) continue;
+      let r = null;
+      try {
+        r = await adsbdbService.resolveCallsign(p.callsign);
+      } catch (err) {
+        console.warn(`[adsblol] resolveCallsign(${p.callsign}) threw: ${err?.response?.status ?? err.message}`);
+      }
+      if (r) {
+        out.push({
+          callsign:    p.callsign,
+          depIata:     r.depIata,
+          arrIata:     r.arrIata,
+          depIcao:     r.depIcao,
+          arrIcao:     r.arrIcao,
+          airlineCode: r.airlineIcao || r.airlineIata || null,
+        });
+      }
     }
   }
+
+  const workers = Array.from({ length: ADSBDB_CONCURRENCY }, worker);
+  await Promise.all(workers);
   return out;
 };
 
@@ -159,6 +166,10 @@ exports.pullAndPersistType = async (icaoType) => {
       // Never throw out of the worker loop — observation writes are best-effort.
       console.warn('[adsblol] observed_routes upsert failed:', e.message);
     }
+  }
+
+  if (planes.length > 0 && persisted === 0) {
+    console.warn(`[adsblol] silent-fail tripwire: type=${type} fetched=${planes.length} resolved=${routes.length} persisted=0 — adsbdb may be down or returning only negatives`);
   }
 
   return { fetched: planes.length, resolved: routes.length, persisted };

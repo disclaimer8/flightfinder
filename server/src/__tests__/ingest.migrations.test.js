@@ -35,4 +35,17 @@ describe('ingestion schema migrations', () => {
       'airline_iata','icao_type_hint','wifi','power','entertainment','meal','updated_at',
     ]));
   });
+
+  test('adsbdb_callsign_cache table exists with expected columns', () => {
+    const cols = db.prepare("PRAGMA table_info(adsbdb_callsign_cache)").all().map(r => r.name);
+    expect(cols.sort()).toEqual([
+      'airline_iata', 'airline_icao',
+      'arr_iata', 'arr_icao',
+      'callsign',
+      'dep_iata', 'dep_icao',
+      'expires_at', 'resolved_at',
+    ].sort());
+    const idx = db.prepare("PRAGMA index_list('adsbdb_callsign_cache')").all().map(r => r.name);
+    expect(idx).toContain('idx_adsbdb_callsign_expires');
+  });
 });

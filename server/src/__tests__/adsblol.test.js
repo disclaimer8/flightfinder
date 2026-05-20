@@ -12,6 +12,12 @@ jest.mock('../models/db', () => ({
 }));
 const db = require('../models/db');
 
+jest.mock('../services/adsbdbService', () => ({
+  isEnabled: () => true,
+  resolveCallsign: jest.fn(),
+}));
+const adsbdbService = require('../services/adsbdbService');
+
 // Also flush cache between tests so repeated getAircraftByType calls actually hit axios
 const cacheService = require('../services/cacheService');
 
@@ -69,101 +75,76 @@ describe('adsblolService.getAircraftByType', () => {
   });
 });
 
-describe('adsblolService.resolveRoutes', () => {
-  it('skips "unknown" airport codes and parses valid IATA pairs', async () => {
-    axios.post.mockResolvedValueOnce({
-      data: [
-        {
-          callsign: 'BAW178',
-          _airport_codes_iata: 'LHR-JFK',
-          _airports: [
-            { iata: 'LHR', icao: 'EGLL' },
-            { iata: 'JFK', icao: 'KJFK' },
-          ],
-          airline_code: 'BAW',
-          plausible: true,
-        },
-        {
-          callsign: 'NKS1',
-          _airport_codes_iata: 'unknown-unknown',
-          _airports: [],
-          plausible: false,
-        },
-        {
-          callsign: 'AFR006',
-          _airport_codes_iata: 'JFK-CDG',
-          _airports: [
-            { iata: 'JFK', icao: 'KJFK' },
-            { iata: 'CDG', icao: 'LFPG' },
-          ],
-          airline_code: 'AFR',
-          plausible: false,
-        },
-      ],
-    });
-
-    const input = [
-      { callsign: 'BAW178', lat: 51, lng: 0 },
-      { callsign: 'NKS1',   lat: 40, lng: -74 },
-      { callsign: 'AFR006', lat: 40, lng: -74 },
-    ];
-    const routes = await adsblolService.resolveRoutes(input);
-
-    expect(routes).toHaveLength(2);
-    expect(routes[0]).toMatchObject({
-      callsign: 'BAW178',
-      depIata: 'LHR',
-      arrIata: 'JFK',
-      depIcao: 'EGLL',
-      arrIcao: 'KJFK',
-      airlineCode: 'BAW',
-    });
-    expect(routes[1]).toMatchObject({
-      callsign: 'AFR006',
-      depIata: 'JFK',
-      arrIata: 'CDG',
-      airlineCode: 'AFR',
-    });
+describe('adsblolService.resolveRoutes (via adsbdbService)', () => {
+  beforeEach(() => {
+    adsbdbService.resolveCallsign.mockReset();
   });
 
-  it('batches at 100 planes per POST', async () => {
-    // 250 planes -> 3 batches (100, 100, 50)
-    const planes = Array.from({ length: 250 }, (_, i) => ({
-      callsign: `CS${i}`, lat: 1 + i * 0.001, lng: 2 + i * 0.001,
-    }));
+  it('returns [] when disabled', async () => {
+    process.env.ADSBLOL_ENABLED = '0';
+    try {
+      const r = await adsblolService.resolveRoutes([{ callsign: 'BAW213', lat: 0, lng: 0 }]);
+      expect(r).toEqual([]);
+      expect(adsbdbService.resolveCallsign).not.toHaveBeenCalled();
+    } finally {
+      process.env.ADSBLOL_ENABLED = '1';
+    }
+  });
 
-    // Each batch response: 1 valid row + 1 unknown
-    axios.post.mockResolvedValue({
-      data: [
-        {
-          callsign: 'X',
-          _airport_codes_iata: 'LAX-ICN',
-          _airports: [{ iata: 'LAX', icao: 'KLAX' }, { iata: 'ICN', icao: 'RKSI' }],
-          airline_code: 'KAL',
-        },
-        { callsign: 'Y', _airport_codes_iata: 'unknown-unknown', _airports: [] },
-      ],
-    });
+  it('calls adsbdbService.resolveCallsign once per plane and maps shape', async () => {
+    adsbdbService.resolveCallsign
+      .mockResolvedValueOnce({ depIata: 'LHR', arrIata: 'JFK', depIcao: 'EGLL', arrIcao: 'KJFK', airlineIata: 'BA', airlineIcao: 'BAW' })
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ depIata: 'CDG', arrIata: 'NRT', depIcao: 'LFPG', arrIcao: 'RJAA', airlineIata: 'AF', airlineIcao: 'AFR' });
 
-    const routes = await adsblolService.resolveRoutes(planes);
+    const planes = [
+      { callsign: 'BAW213', lat: 51.4, lng: -0.4 },
+      { callsign: 'UNKWN1', lat: 0, lng: 0 },
+      { callsign: 'AFR006', lat: 49.0, lng: 2.5 },
+    ];
+    const r = await adsblolService.resolveRoutes(planes);
 
-    expect(axios.post).toHaveBeenCalledTimes(3);
-    // verify batch sizes on the posted payload
-    const sizes = axios.post.mock.calls.map(c => c[1].planes.length);
-    expect(sizes).toEqual([100, 100, 50]);
-    // 1 valid per batch = 3 total
-    expect(routes).toHaveLength(3);
-    expect(routes.every(r => r.depIata === 'LAX' && r.arrIata === 'ICN')).toBe(true);
+    expect(adsbdbService.resolveCallsign).toHaveBeenCalledTimes(3);
+    expect(r).toHaveLength(2);
+    expect(r.find(x => x.callsign === 'BAW213')).toMatchObject({ depIata: 'LHR', arrIata: 'JFK', airlineCode: 'BAW' });
+    expect(r.find(x => x.callsign === 'AFR006')).toMatchObject({ depIata: 'CDG', arrIata: 'NRT', airlineCode: 'AFR' });
+  });
+
+  it('skips planes where adsbdb returns null', async () => {
+    adsbdbService.resolveCallsign.mockResolvedValue(null);
+    const r = await adsblolService.resolveRoutes([
+      { callsign: 'X', lat: 0, lng: 0 },
+      { callsign: 'Y', lat: 0, lng: 0 },
+    ]);
+    expect(r).toEqual([]);
   });
 
   it('returns [] for empty input', async () => {
-    const routes = await adsblolService.resolveRoutes([]);
-    expect(routes).toEqual([]);
-    expect(axios.post).not.toHaveBeenCalled();
+    const r = await adsblolService.resolveRoutes([]);
+    expect(r).toEqual([]);
+    expect(adsbdbService.resolveCallsign).not.toHaveBeenCalled();
+  });
+
+  it('dedupes duplicate callsigns before calling adsbdbService', async () => {
+    adsbdbService.resolveCallsign.mockResolvedValue({
+      depIata: 'LHR', arrIata: 'JFK', depIcao: null, arrIcao: null, airlineIata: null, airlineIcao: 'BAW',
+    });
+    const planes = [
+      { callsign: 'BAW213', lat: 0, lng: 0 },
+      { callsign: 'BAW213', lat: 1, lng: 1 },  // duplicate callsign, different position
+      { callsign: 'BAW213', lat: 2, lng: 2 },  // another duplicate
+    ];
+    const r = await adsblolService.resolveRoutes(planes);
+    expect(adsbdbService.resolveCallsign).toHaveBeenCalledTimes(1);
+    expect(r).toHaveLength(1);
   });
 });
 
 describe('adsblolService.pullAndPersistType', () => {
+  beforeEach(() => {
+    adsbdbService.resolveCallsign.mockReset();
+  });
+
   it('upserts one observed_route per resolved route with queried aircraft type', async () => {
     axios.get.mockResolvedValueOnce({
       data: {
@@ -174,13 +155,12 @@ describe('adsblolService.pullAndPersistType', () => {
         ],
       },
     });
-    axios.post.mockResolvedValueOnce({
-      data: [
-        { callsign: 'BAW178', _airport_codes_iata: 'LHR-JFK', _airports: [{iata:'LHR',icao:'EGLL'},{iata:'JFK',icao:'KJFK'}], airline_code: 'BAW' },
-        { callsign: 'AFR006', _airport_codes_iata: 'JFK-CDG', _airports: [{iata:'JFK',icao:'KJFK'},{iata:'CDG',icao:'LFPG'}], airline_code: 'AFR' },
-        { callsign: 'QFA11',  _airport_codes_iata: 'unknown-unknown', _airports: [] },
-      ],
-    });
+    adsbdbService.resolveCallsign
+      .mockImplementation(async (callsign) => {
+        if (callsign === 'BAW178') return { depIata: 'LHR', arrIata: 'JFK', depIcao: 'EGLL', arrIcao: 'KJFK', airlineIata: null, airlineIcao: 'BAW' };
+        if (callsign === 'AFR006') return { depIata: 'JFK', arrIata: 'CDG', depIcao: 'KJFK', arrIcao: 'LFPG', airlineIata: null, airlineIcao: 'AFR' };
+        return null; // QFA11
+      });
 
     const result = await adsblolService.pullAndPersistType('A359');
 
@@ -200,7 +180,7 @@ describe('adsblolService.pullAndPersistType', () => {
       const result = await adsblolService.pullAndPersistType('A359');
       expect(result).toEqual({ fetched: 0, resolved: 0, persisted: 0 });
       expect(axios.get).not.toHaveBeenCalled();
-      expect(axios.post).not.toHaveBeenCalled();
+      expect(adsbdbService.resolveCallsign).not.toHaveBeenCalled();
       expect(db.upsertObservedRoute).not.toHaveBeenCalled();
     } finally {
       process.env.ADSBLOL_ENABLED = '1';
@@ -211,7 +191,55 @@ describe('adsblolService.pullAndPersistType', () => {
     axios.get.mockResolvedValueOnce({ data: { ac: [] } });
     const result = await adsblolService.pullAndPersistType('A388');
     expect(result).toEqual({ fetched: 0, resolved: 0, persisted: 0 });
-    expect(axios.post).not.toHaveBeenCalled();
+    expect(adsbdbService.resolveCallsign).not.toHaveBeenCalled();
     expect(db.upsertObservedRoute).not.toHaveBeenCalled();
+  });
+});
+
+describe('adsblolService.pullAndPersistType (silent-fail tripwire)', () => {
+  let warnSpy;
+  let getAircraftByTypeSpy;
+  let resolveRoutesSpy;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    getAircraftByTypeSpy = jest.spyOn(adsblolService, 'getAircraftByType');
+    resolveRoutesSpy     = jest.spyOn(adsblolService, 'resolveRoutes');
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    getAircraftByTypeSpy.mockRestore();
+    resolveRoutesSpy.mockRestore();
+  });
+
+  it('warns "silent-fail tripwire" when fetched>0 but persisted=0', async () => {
+    getAircraftByTypeSpy.mockResolvedValueOnce([
+      { callsign: 'X', lat: 0, lng: 0, type: 'B738' },
+      { callsign: 'Y', lat: 0, lng: 0, type: 'B738' },
+    ]);
+    resolveRoutesSpy.mockResolvedValueOnce([]);  // 0 resolved
+    await adsblolService.pullAndPersistType('B738');
+    const tripwireCalls = warnSpy.mock.calls.filter(c => String(c[0]).includes('silent-fail tripwire'));
+    expect(tripwireCalls.length).toBe(1);
+    expect(tripwireCalls[0][0]).toMatch(/fetched=2/);
+    expect(tripwireCalls[0][0]).toMatch(/persisted=0/);
+  });
+
+  it('does NOT warn when fetched=0', async () => {
+    getAircraftByTypeSpy.mockResolvedValueOnce([]);
+    await adsblolService.pullAndPersistType('B738');
+    const tripwireCalls = warnSpy.mock.calls.filter(c => String(c[0]).includes('silent-fail tripwire'));
+    expect(tripwireCalls.length).toBe(0);
+  });
+
+  it('does NOT warn when fetched>0 and persisted>0', async () => {
+    getAircraftByTypeSpy.mockResolvedValueOnce([{ callsign: 'X', lat: 0, lng: 0, type: 'B738' }]);
+    resolveRoutesSpy.mockResolvedValueOnce([{
+      callsign: 'X', depIata: 'LHR', arrIata: 'JFK', depIcao: null, arrIcao: null, airlineCode: 'BAW',
+    }]);
+    await adsblolService.pullAndPersistType('B738');
+    const tripwireCalls = warnSpy.mock.calls.filter(c => String(c[0]).includes('silent-fail tripwire'));
+    expect(tripwireCalls.length).toBe(0);
   });
 });
