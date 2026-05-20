@@ -45,3 +45,13 @@ export function fetchFilters() {
 export function _clearFiltersCache() {
   _filtersPromise = null;
 }
+
+/**
+ * GET /api/map/route-brief?from=&to= → { blockTimeMinutes, airlines, aircraft, fare }
+ */
+export async function fetchRouteBrief({ from, to }) {
+  const params = new URLSearchParams({ dep: from, arr: to });
+  const res = await fetch(`${API_BASE}/api/map/route-brief?${params}`);
+  if (!res.ok) throw new Error(`route-brief ${res.status}`);
+  return res.json();
+}

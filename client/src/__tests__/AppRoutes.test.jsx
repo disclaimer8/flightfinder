@@ -58,11 +58,15 @@ describe('AppRoutes', () => {
     expect(screen.getByTestId('page-search')).toBeInTheDocument();
   });
 
-  test('mounts Map at /map wrapped in SiteLayout (header + footer present)', () => {
+  test('mounts Map at /map with layout chrome (header, footer, filter bar)', async () => {
     renderAt('/map');
     expect(screen.getByTestId('page-map')).toBeInTheDocument();
     expect(screen.getByTestId('site-header')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument(); // <footer>
+    // New: floating filter bar must be present
+    expect(screen.getByRole('toolbar', { name: /map filters/i })).toBeInTheDocument();
+    // New: view toggle present
+    expect(screen.getByRole('group', { name: /map view mode/i })).toBeInTheDocument();
   });
 
   test('preserves /by-aircraft route', () => {

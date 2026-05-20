@@ -65,7 +65,13 @@ import RouteMapLayer from '../RouteMapLayer';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function renderLayer(props = {}) {
-  const defaults = { routes: [], filters: { airline: null, aircraft: null }, loading: false };
+  const defaults = {
+    mapRef: { current: mockMap },
+    routes: [],
+    filters: { airline: null, aircraft: null },
+    loading: false,
+    selectedIata: null,
+  };
   return render(<RouteMapLayer {...defaults} {...props} />);
 }
 
@@ -122,8 +128,8 @@ describe('RouteMapLayer', () => {
     ]);
   });
 
-  // 4. Click handler navigates to /search?from=LHR&to=JFK ────────────────────
-  it('polyline click navigates to /search?from=LHR&to=JFK', async () => {
+  // 4a. Click handler navigates to /search when no onRouteClick prop ──────────
+  it('polyline click navigates to /search?from=LHR&to=JFK when no onRouteClick', async () => {
     renderLayer({ routes: [ROUTE_LHR_JFK] });
 
     await vi.waitFor(() => {
@@ -136,6 +142,22 @@ describe('RouteMapLayer', () => {
     polylineInstance._handlers['click']();
 
     expect(navigateMock).toHaveBeenCalledWith('/search?from=LHR&to=JFK');
+  });
+
+  // 4b. Click handler calls onRouteClick when provided ─────────────────────
+  it('polyline click calls onRouteClick(dep, arr) when provided', async () => {
+    const onRouteClick = vi.fn();
+    renderLayer({ routes: [ROUTE_LHR_JFK], onRouteClick });
+
+    await vi.waitFor(() => {
+      expect(mockPolyline).toHaveBeenCalledTimes(1);
+    });
+
+    const polylineInstance = mockPolyline.mock.results[0].value;
+    polylineInstance._handlers['click']();
+
+    expect(onRouteClick).toHaveBeenCalledWith('LHR', 'JFK');
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   // 5. Antimeridian path: SFO → HND shifts arr.lon by -360 ──────────────────
@@ -151,5 +173,42 @@ describe('RouteMapLayer', () => {
     expect(coords[0]).toEqual([37.6, -122.4]);
     expect(coords[1][0]).toBeCloseTo(35.5, 5);
     expect(coords[1][1]).toBeCloseTo(-220.2, 5);
+  });
+});
+
+describe('RouteMapLayer — selectedAirport highlight', () => {
+  it('highlights routes touching the selectedIata in amber, others dimmed', async () => {
+    mockPolyline.mockClear();
+    const ROUTES = [
+      { dep: { iata: 'LHR', lat: 51.4, lon: -0.4 }, arr: { iata: 'JFK', lat: 40.6, lon: -73.7 }, airline_count: 1, aircraft_count: 1 },
+      { dep: { iata: 'CDG', lat: 49.0, lon: 2.5  }, arr: { iata: 'NRT', lat: 35.7, lon: 140.4 }, airline_count: 1, aircraft_count: 1 },
+    ];
+
+    renderLayer({ routes: ROUTES, selectedIata: 'LHR' });
+
+    await vi.waitFor(() => {
+      expect(mockPolyline).toHaveBeenCalledTimes(2);
+    });
+
+    // Inspect style options passed at creation
+    const lhrCall = mockPolyline.mock.calls.find(c => c[0][0][0] === 51.4);
+    const cdgCall = mockPolyline.mock.calls.find(c => c[0][0][0] === 49.0);
+    expect(lhrCall[1].color).toBe('#f59e0b');     // amber for selected spoke
+    expect(lhrCall[1].opacity).toBeGreaterThan(0.5);
+    expect(cdgCall[1].color).toBe('#3b82f6');     // blue for non-spoke
+    expect(cdgCall[1].opacity).toBeLessThan(0.1); // dimmed
+  });
+
+  it('uses default styling when selectedIata is null', async () => {
+    mockPolyline.mockClear();
+    const ROUTES = [
+      { dep: { iata: 'LHR', lat: 51.4, lon: -0.4 }, arr: { iata: 'JFK', lat: 40.6, lon: -73.7 }, airline_count: 1, aircraft_count: 1 },
+    ];
+    renderLayer({ routes: ROUTES, selectedIata: null });
+    await vi.waitFor(() => {
+      expect(mockPolyline).toHaveBeenCalledTimes(1);
+    });
+    expect(mockPolyline.mock.calls[0][1].color).toBe('#3b82f6');
+    expect(mockPolyline.mock.calls[0][1].opacity).toBe(0.15);
   });
 });

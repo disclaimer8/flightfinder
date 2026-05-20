@@ -1,116 +1,23 @@
-/* ── Map page layout ──────────────────────────────────────────────── */
+/* ── Full-bleed map page ───────────────────────────────────────────────── */
 
 .page {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 32px 24px 64px;
-}
-
-/* ── Filter row ───────────────────────────────────────────────────── */
-
-.filterRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
   position: relative;
-  width: 280px;
-}
-
-.field label {
-  font: 500 11px var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-3);
-}
-
-.field input[type="search"] {
   width: 100%;
-  padding: 7px 32px 7px 10px;
-  font: 400 14px var(--font-ui);
-  color: var(--text);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color 120ms ease;
+  height: calc(100vh - var(--site-header-height, 64px));
+  overflow: hidden;
+  background: #0a1929;
 }
-
-.field input[type="search"]:focus {
-  border-color: var(--link);
-}
-
-/* ── Clear button ─────────────────────────────────────────────────── */
-
-.clear {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 50%;
-  font-size: 14px;
-  line-height: 1;
-  color: var(--text-3);
-  cursor: pointer;
-  transition: color 120ms ease, background 120ms ease;
-}
-
-.clear:hover {
-  color: var(--text);
-  background: var(--border-light);
-}
-
-/* ── Skeleton / empty state placeholders (used by Task 4 map layer) ── */
-
-.skel {
-  background: var(--border-light);
-  border-radius: var(--r);
-  animation: skel-pulse 1.4s ease-in-out infinite;
-}
-
-.empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 400 15px var(--font-ui);
-  color: var(--text-3);
-  padding: 48px 24px;
-  text-align: center;
-}
-
-@keyframes skel-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.45; }
-}
-
-/* ── Map container ────────────────────────────────────────────────── */
 
 .mapWrap {
-  position: relative;
+  position: absolute;
+  inset: 0;
 }
 
 .mapContainer {
   width: 100%;
-  height: 60vh;
-  min-height: 400px;
+  height: 100%;
 }
 
-/* Skeleton overlay that sits on top of the map canvas while loading */
 .mapOverlay {
   position: absolute;
   inset: 0;
@@ -119,28 +26,293 @@
   justify-content: center;
   font: 400 15px var(--font-ui);
   color: var(--text-3);
-  background: rgba(0, 0, 0, 0.45);
-  border-radius: var(--r);
+  background: rgba(10, 25, 41, 0.85);
+  pointer-events: none;
+  z-index: 400;
+}
+
+.skel {
+  background: rgba(59, 130, 246, 0.08);
+  animation: skel-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes skel-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+.empty {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 400 13px var(--font-ui);
+  color: var(--text-2);
+  background: rgba(30, 41, 59, 0.92);
+  border: 1px solid var(--border, #334155);
+  border-radius: 6px;
+  padding: 8px 14px;
+  z-index: 450;
+}
+
+/* ── Floating filter bar ───────────────────────────────────────────────── */
+
+.filterBar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  z-index: 500;
   pointer-events: none;
 }
+.filterBar > * { pointer-events: auto; }
 
-/* ── Responsive ───────────────────────────────────────────────────── */
-
-@media (max-width: 640px) {
-  .filterRow {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .field {
-    width: 100%;
-  }
-
-  /* Taller map on mobile — there's only one viewport-meaningful element
-   * on the page (the map), so it deserves more height than the 60vh
-   * desktop default. Min-height keeps it usable in landscape too. */
-  .mapContainer {
-    height: 70vh;
-    min-height: 360px;
-  }
+.filterAddBtn {
+  background: rgba(30, 41, 59, 0.92);
+  border: 1px solid var(--border, #334155);
+  color: var(--text, #e2e8f0);
+  font: 500 13px var(--font-ui);
+  padding: 6px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
 }
+.filterAddBtn:hover { background: rgba(51, 65, 85, 0.95); }
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid #3b82f6;
+  border-radius: 16px;
+  padding: 4px 4px 4px 10px;
+  font: 500 13px var(--font-ui);
+  color: #93c5fd;
+  backdrop-filter: blur(6px);
+}
+.filterChipLabel { line-height: 1; }
+.filterChipClose {
+  background: transparent;
+  border: none;
+  color: inherit;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.filterChipClose:hover { background: rgba(255,255,255,0.15); }
+
+.filterPopover {
+  position: absolute;
+  top: 42px;
+  left: 0;
+  width: 320px;
+  background: rgba(15, 23, 42, 0.97);
+  border: 1px solid var(--border, #334155);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  z-index: 600;
+  backdrop-filter: blur(8px);
+}
+.filterTabs { display: flex; border-bottom: 1px solid var(--border, #334155); }
+.filterTab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-2, #94a3b8);
+  font: 500 13px var(--font-ui);
+  padding: 10px;
+  cursor: pointer;
+}
+.filterTabActive { color: var(--text, #e2e8f0); border-bottom: 2px solid #3b82f6; }
+.filterSearch {
+  width: calc(100% - 24px);
+  margin: 10px 12px;
+  padding: 6px 8px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--border, #334155);
+  border-radius: 4px;
+  color: var(--text, #e2e8f0);
+  font: 400 13px var(--font-ui);
+  box-sizing: border-box;
+}
+.filterList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.filterOption {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text, #e2e8f0);
+  font: 400 13px var(--font-ui);
+  padding: 8px 14px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.filterOption:hover { background: rgba(59, 130, 246, 0.18); }
+.filterOptionMeta { color: var(--text-3, #64748b); font-size: 11px; }
+
+/* ── View toggle (bottom-right) ────────────────────────────────────────── */
+
+.viewToggle {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: inline-flex;
+  background: rgba(30, 41, 59, 0.92);
+  border: 1px solid var(--border, #334155);
+  border-radius: 16px;
+  padding: 2px;
+  z-index: 500;
+  backdrop-filter: blur(6px);
+}
+.viewToggleBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-2, #94a3b8);
+  font: 500 13px var(--font-ui);
+  padding: 6px 14px;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.viewToggleBtnActive { background: #3b82f6; color: white; }
+
+/* ── Airport detail panel (right slide-in) ─────────────────────────────── */
+
+.airportPanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 360px;
+  background: rgba(15, 23, 42, 0.97);
+  border-left: 1px solid var(--border, #334155);
+  z-index: 600;
+  transform: translateX(100%);
+  transition: transform 200ms ease;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  backdrop-filter: blur(8px);
+  color: var(--text, #e2e8f0);
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+.airportPanelOpen { transform: translateX(0); }
+
+.airportPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.airportPanelTitle { margin: 0; font: 600 18px var(--font-ui); }
+.airportPanelSubtitle { margin: 4px 0 0; font: 400 13px var(--font-ui); color: var(--text-2, #94a3b8); }
+.airportPanelClose {
+  background: transparent; border: none; color: var(--text-2); font-size: 20px;
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+}
+.airportPanelClose:hover { background: rgba(255,255,255,0.08); }
+
+.airportPanelStats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px;
+}
+.statTile {
+  display: flex; flex-direction: column; align-items: center;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 6px; padding: 12px 8px;
+}
+.statValue { font: 700 22px var(--font-ui); color: #60a5fa; }
+.statLabel { font: 400 11px var(--font-ui); color: var(--text-2); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.airportPanelSection { margin-bottom: 16px; }
+.airportPanelSectionTitle { font: 600 12px var(--font-ui); color: var(--text-2); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 8px; }
+.airportPanelDestList { list-style: none; padding: 0; margin: 0; }
+.airportPanelDestList li {
+  display: flex; justify-content: space-between; padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font: 400 13px var(--font-ui);
+}
+.destIata { font: 500 13px var(--font-mono); color: var(--text); }
+.destCount { color: var(--text-3); font-size: 12px; }
+.destEmpty { color: var(--text-3); font-style: italic; padding: 6px 0; }
+
+.airportPanelCta {
+  display: block;
+  text-align: center;
+  background: #3b82f6;
+  color: white;
+  font: 600 14px var(--font-ui);
+  padding: 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  margin-top: auto;
+}
+.airportPanelCta:hover { background: #2563eb; }
+
+@media (max-width: 768px) {
+  .airportPanel { width: 100%; }
+}
+
+/* ── Route popup (anchored) ────────────────────────────────────────────── */
+
+.routePopup {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.97);
+  border: 1px solid var(--border, #334155);
+  border-radius: 8px;
+  padding: 14px 18px;
+  z-index: 550;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+  color: var(--text, #e2e8f0);
+  min-width: 240px;
+  max-width: 320px;
+}
+.routePopupClose {
+  position: absolute; top: 6px; right: 6px;
+  background: transparent; border: none; color: var(--text-2); font-size: 18px;
+  width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+}
+.routePopupClose:hover { background: rgba(255,255,255,0.08); }
+.routePopupTitle {
+  display: flex; align-items: center; gap: 8px;
+  font: 600 18px var(--font-mono);
+  margin-bottom: 8px;
+}
+.routePopupIata { color: var(--text); }
+.routePopupArrow { color: var(--text-3); }
+.routePopupMeta {
+  margin: 4px 0;
+  font: 400 13px var(--font-ui);
+  color: var(--text-2);
+}
+.routePopupCta {
+  display: inline-block;
+  background: #3b82f6;
+  color: white;
+  font: 600 13px var(--font-ui);
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  margin-top: 8px;
+}
+.routePopupCta:hover { background: #2563eb; }

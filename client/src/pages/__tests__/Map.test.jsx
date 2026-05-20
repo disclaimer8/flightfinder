@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { AuthProvider } from '../../context/AuthContext';
 import Map from '../Map';
 
-// Stub fetch so fetchRoutes + fetchFilters don't throw.
+// Stub fetch so fetchRoutes + fetchFilters + fetchAirports don't throw.
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: true,
@@ -16,9 +17,12 @@ afterEach(() => {
 
 test('Map renders the page heading', () => {
   render(
-    <MemoryRouter>
-      <Map />
-    </MemoryRouter>
+    <AuthProvider>
+      <MemoryRouter>
+        <Map />
+      </MemoryRouter>
+    </AuthProvider>
   );
+  // Heading is visually hidden (position: absolute; left: -9999px) but still accessible.
   expect(screen.getByRole('heading', { name: /flight route map/i })).toBeInTheDocument();
 });
