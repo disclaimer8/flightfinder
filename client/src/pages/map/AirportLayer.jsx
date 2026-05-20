@@ -50,7 +50,12 @@ export default function AirportLayer({ mapRef, airports, onSelect, onHover, sele
       groupRef.current = null;
     }
 
-    const visible = filterByZoom(airports, zoom);
+    // filterByZoom returns top-K sorted by degree DESC. We iterate in REVERSE
+    // (smallest first → drawn first → biggest last) so big hub dots end up
+    // ON TOP for both visual layering and Leaflet's canvas hit-test. Without
+    // this reversal, small airports drawn after big ones cover them and the
+    // hit-test returns the small neighbor even when the user clicks the big hub.
+    const visible = filterByZoom(airports, zoom).slice().reverse();
     const group = L.layerGroup();
     for (const a of visible) {
       const isSel = selectedIata && a.iata === selectedIata;
