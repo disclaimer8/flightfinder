@@ -76,11 +76,20 @@ export default function Map() {
       const L = Lmod.default;
       if (cancelled || !containerRef.current || mapRef.current) return;
 
-      // Wait one animation frame so the container has its final dimensions
-      // before Leaflet measures it. Without this Leaflet sometimes snapshots
-      // a 0×0 (or stale) container size and pane transforms never recover —
-      // tiles render at origin instead of being positioned by the projection.
-      await new Promise(r => requestAnimationFrame(r));
+      // Wait until the container has non-zero dimensions. CSS custom props +
+      // flex layout + dynamic-imported Leaflet bundle together create a window
+      // where useEffect fires while the container is still 0×0. Leaflet then
+      // measures wrong and never recomputes pane sizes even after invalidateSize.
+      const waitForLayout = () => new Promise(r => {
+        const check = () => {
+          if (!containerRef.current) return r();
+          const { clientWidth: w, clientHeight: h } = containerRef.current;
+          if (w > 0 && h > 0) return r();
+          requestAnimationFrame(check);
+        };
+        check();
+      });
+      await waitForLayout();
       if (cancelled || !containerRef.current || mapRef.current) return;
 
       const map = L.map(containerRef.current, {
@@ -97,8 +106,19 @@ export default function Map() {
         maxZoom: 10,
       }).addTo(map);
 
+      // Belt-and-suspenders: forcibly reset size+view on next two frames. The
+      // first call covers Leaflet's own initial _onResize timing; the second
+      // covers cases where the container grew via late CSS application.
+      requestAnimationFrame(() => {
+        map.invalidateSize({ animate: false });
+        requestAnimationFrame(() => {
+          map.invalidateSize({ animate: false });
+          map.setView(map.getCenter(), map.getZoom(), { animate: false });
+        });
+      });
+
       // Re-measure on container resize (sidebar open/close, viewport resize).
-      const ro = new ResizeObserver(() => map.invalidateSize());
+      const ro = new ResizeObserver(() => map.invalidateSize({ animate: false }));
       ro.observe(containerRef.current);
 
       mapRef.current = map;
