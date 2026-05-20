@@ -75,6 +75,14 @@ export default function Map() {
       const Lmod = await import('leaflet');
       const L = Lmod.default;
       if (cancelled || !containerRef.current || mapRef.current) return;
+
+      // Wait one animation frame so the container has its final dimensions
+      // before Leaflet measures it. Without this Leaflet sometimes snapshots
+      // a 0×0 (or stale) container size and pane transforms never recover —
+      // tiles render at origin instead of being positioned by the projection.
+      await new Promise(r => requestAnimationFrame(r));
+      if (cancelled || !containerRef.current || mapRef.current) return;
+
       const map = L.map(containerRef.current, {
         center: [20, 0],
         zoom: 2,
@@ -88,13 +96,11 @@ export default function Map() {
         subdomains: 'abcd',
         maxZoom: 10,
       }).addTo(map);
-      // Defer invalidateSize past initial paint so Leaflet measures the container
-      // AFTER browser layout settles. Without this Leaflet snapshots a stale (often
-      // smaller) container size and tiles render in a tiny region of the page.
-      requestAnimationFrame(() => map.invalidateSize());
-      // Also re-measure on container resize (sidebar open/close, window resize, etc).
+
+      // Re-measure on container resize (sidebar open/close, viewport resize).
       const ro = new ResizeObserver(() => map.invalidateSize());
       ro.observe(containerRef.current);
+
       mapRef.current = map;
       mapRef._resizeObserver = ro;
       map.on('zoomend', () => setZoom(map.getZoom()));
