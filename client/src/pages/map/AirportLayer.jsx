@@ -23,9 +23,10 @@ function radiusForDegree(d) {
  *   mapRef       {current: L.Map | null}
  *   airports     Array<{iata,name,city,country,lat,lon,degree}>
  *   onSelect     (iata: string) => void
- *   selectedIata string | null   — visually highlighted dot
+ *   onHover      (iata: string | null) => void  — optional; emits on mouseover/mouseout
+ *   selectedIata string | null   — visually highlighted dot (pinned via URL)
  */
-export default function AirportLayer({ mapRef, airports, onSelect, selectedIata }) {
+export default function AirportLayer({ mapRef, airports, onSelect, onHover, selectedIata }) {
   const groupRef = useRef(null);
   const [zoom, setZoom] = useState(() => mapRef.current?.getZoom?.() ?? 2);
 
@@ -62,6 +63,10 @@ export default function AirportLayer({ mapRef, airports, onSelect, selectedIata 
       });
       marker.bindTooltip(`${a.iata}${a.name ? ' — ' + a.name : ''}`, { direction: 'top' });
       marker.on('click', () => onSelect(a.iata));
+      if (onHover) {
+        marker.on('mouseover', () => onHover(a.iata));
+        marker.on('mouseout',  () => onHover(null));
+      }
       marker.addTo(group);
     }
     group.addTo(map);
@@ -73,7 +78,7 @@ export default function AirportLayer({ mapRef, airports, onSelect, selectedIata 
         groupRef.current = null;
       }
     };
-  }, [mapRef, airports, zoom, selectedIata, onSelect]);
+  }, [mapRef, airports, zoom, selectedIata, onSelect, onHover]);
 
   return null;
 }

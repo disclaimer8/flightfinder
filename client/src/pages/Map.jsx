@@ -53,6 +53,10 @@ export default function Map() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
   const [zoom, setZoom] = useState(2);
+  // Transient hover state — drives route preview without opening AirportPanel.
+  const [hoveredIata, setHoveredIata] = useState(null);
+  // Combined: hover wins; falls back to pinned. RouteMapLayer renders this airport's spokes only.
+  const effectiveIata = hoveredIata || selectedIata;
 
   useEffect(() => {
     fetchFilters().then(setFilterOpts).catch(() => {});
@@ -223,6 +227,7 @@ export default function Map() {
                 mapRef={mapRef}
                 airports={visibleAirports}
                 onSelect={selectAirport}
+                onHover={setHoveredIata}
                 selectedIata={selectedIata}
               />
             )}
@@ -234,7 +239,7 @@ export default function Map() {
               routes={visibleRoutes}
               filters={{ airline, aircraft }}
               loading={loading}
-              selectedIata={selectedIata}
+              selectedIata={effectiveIata}
               onRouteClick={selectRoute}
             />
           </>

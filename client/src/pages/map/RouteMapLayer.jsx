@@ -41,6 +41,9 @@ export default function RouteMapLayer({ mapRef, routes, filters, loading, select
       }
 
       if (!Array.isArray(routes) || routes.length === 0) return;
+      // Click-to-reveal model: only render routes when an airport is hovered
+      // or pinned (selectedIata). Default state shows airport dots only.
+      if (!selectedIata) return;
 
       const renderer = L.canvas({ padding: 0.5 });
       const group = L.layerGroup();
@@ -48,17 +51,15 @@ export default function RouteMapLayer({ mapRef, routes, filters, loading, select
       for (const r of routes) {
         if (!r.dep || !r.arr) continue;
 
+        // Skip non-spokes entirely — no faint background lines.
+        const isSpoke = r.dep?.iata === selectedIata || r.arr?.iata === selectedIata;
+        if (!isSpoke) continue;
+
         const [dep, arr] = adjustForAntimeridian(r.dep, r.arr);
 
-        const isSpoke = selectedIata
-          ? (r.dep?.iata === selectedIata || r.arr?.iata === selectedIata)
-          : null;
-
-        const color   = isSpoke === true ? '#f59e0b' : '#3b82f6';
-        const opacity = selectedIata
-          ? (isSpoke ? 0.85 : 0.04)
-          : 0.15;
-        const weight  = isSpoke === true ? 2.5 : 1.5;
+        const color   = '#f59e0b';
+        const opacity = 0.85;
+        const weight  = 2.5;
 
         const line = L.polyline(
           [[dep.lat, dep.lon], [arr.lat, arr.lon]],
