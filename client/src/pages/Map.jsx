@@ -267,6 +267,8 @@ export default function Map() {
           <AirportPanel
             airport={selectedAirport}
             routes={routes}
+            airline={airline}
+            aircraft={aircraft}
             onClose={closeAirport}
           />
         )}

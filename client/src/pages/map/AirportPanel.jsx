@@ -6,11 +6,13 @@ import styles from './Map.module.css';
  * Slide-in right-side panel showing detail for a selected airport.
  *
  * Props:
- *   airport  {iata, name, city, country} | null   (null = panel closed)
- *   routes   Array<route>                          (filtered by current filters)
- *   onClose  () => void
+ *   airport   {iata, name, city, country} | null   (null = panel closed)
+ *   routes    Array<route>                          (filtered by current filters)
+ *   airline   string | null                         (active /map airline filter, IATA)
+ *   aircraft  string | null                         (active /map aircraft filter, ICAO)
+ *   onClose   () => void
  */
-export default function AirportPanel({ airport, routes, onClose }) {
+export default function AirportPanel({ airport, routes, airline, aircraft, onClose }) {
   // Esc to close
   useEffect(() => {
     if (!airport) return;
@@ -87,8 +89,14 @@ export default function AirportPanel({ airport, routes, onClose }) {
         </ul>
       </div>
 
-      <a className={styles.airportPanelCta} href={`/search?from=${encodeURIComponent(airport.iata)}`}>
-        Search flights from {airport.iata} →
+      <a className={styles.airportPanelCta} href={(() => {
+        const params = new URLSearchParams({ from: airport.iata });
+        if (aircraft) params.set('aircraft', aircraft);
+        if (airline)  params.set('airlines', airline.toUpperCase());
+        return `/search?${params.toString()}`;
+      })()}>
+        Search {aircraft ? `${aircraft} ` : ''}flights from {airport.iata}
+        {airline ? ` on ${airline.toUpperCase()}` : ''} →
       </a>
     </aside>
   );
