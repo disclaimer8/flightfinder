@@ -57,6 +57,14 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c])
 );
 
+const TITLE_MAX = 65;
+function clampTitle(t) {
+  if (!t) return t;
+  if (t.length <= TITLE_MAX) return t;
+  console.warn(`[seo] title clamped from ${t.length} to ${TITLE_MAX}: ${t.slice(0, 80)}`);
+  return t.slice(0, TITLE_MAX - 1).trimEnd() + '…';
+}
+
 // Normalise aircraftFamilies.js per-family record for SEO bake builders.
 // Builders read range_km/capacity/engines/mtow_kg; the source uses different
 // field names (maxRange, etc.) and not all fields are populated for every
@@ -1798,7 +1806,8 @@ function structuredData(meta) {
  */
 function inject(html, meta, bodyContent = null) {
   let out = html;
-  out = out.replace(/<title>[^<]*<\/title>/i, `<title>${esc(meta.title)}</title>`);
+  const safeTitle = clampTitle(meta.title);
+  out = out.replace(/<title>[^<]*<\/title>/i, `<title>${esc(safeTitle)}</title>`);
   out = out.replace(
     /<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i,
     `<meta name="description" content="${esc(meta.description)}" />`
@@ -1813,7 +1822,7 @@ function inject(html, meta, bodyContent = null) {
   );
   out = out.replace(
     /<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i,
-    `<meta property="og:title" content="${esc(meta.title)}" />`
+    `<meta property="og:title" content="${esc(safeTitle)}" />`
   );
   out = out.replace(
     /<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i,
@@ -1850,7 +1859,7 @@ function inject(html, meta, bodyContent = null) {
   }
   out = out.replace(
     /<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i,
-    `<meta name="twitter:title" content="${esc(meta.title)}" />`
+    `<meta name="twitter:title" content="${esc(safeTitle)}" />`
   );
   out = out.replace(
     /<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i,
