@@ -58,9 +58,11 @@ describe('AppRoutes', () => {
     expect(screen.getByTestId('page-search')).toBeInTheDocument();
   });
 
-  test('mounts Map at /map', () => {
+  test('mounts Map at /map wrapped in SiteLayout (header + footer present)', () => {
     renderAt('/map');
     expect(screen.getByTestId('page-map')).toBeInTheDocument();
+    expect(screen.getByTestId('site-header')).toBeInTheDocument();
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument(); // <footer>
   });
 
   test('preserves /by-aircraft route', () => {

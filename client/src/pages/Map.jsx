@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import SiteLayout from '../components/SiteLayout';
 import RouteMapFilters from './map/RouteMapFilters';
 import { fetchRoutes, fetchFilters } from './map/mapApi';
 import styles from './map/Map.module.css';
@@ -67,32 +68,34 @@ export default function Map() {
   const isEmpty = !loading && !error && routes.length === 0;
 
   return (
-    <main className={styles.page} data-testid="page-map">
-      <h1>Flight route map</h1>
+    <SiteLayout>
+      <div className={styles.page} data-testid="page-map">
+        <h1>Flight route map</h1>
 
-      <RouteMapFilters
-        airline={airline}
-        aircraft={aircraft}
-        airlines={filterOpts.airlines}
-        aircraftList={filterOpts.aircraft}
-        onChange={handleFilterChange}
-      />
+        <RouteMapFilters
+          airline={airline}
+          aircraft={aircraft}
+          airlines={filterOpts.airlines}
+          aircraftList={filterOpts.aircraft}
+          onChange={handleFilterChange}
+        />
 
-      {error && (
-        <p className={styles.empty} role="alert">
-          Failed to load routes: {error}
-        </p>
-      )}
+        {error && (
+          <p className={styles.empty} role="alert">
+            Failed to load routes: {error}
+          </p>
+        )}
 
-      <Suspense fallback={<div className={`${styles.skel} ${styles.mapContainer}`} />}>
-        <RouteMapLayer routes={routes} filters={filters} loading={loading} />
-      </Suspense>
+        <Suspense fallback={<div className={`${styles.skel} ${styles.mapContainer}`} />}>
+          <RouteMapLayer routes={routes} filters={filters} loading={loading} />
+        </Suspense>
 
-      {isEmpty && (
-        <p className={styles.empty}>
-          No routes found for the current filter selection.
-        </p>
-      )}
-    </main>
+        {isEmpty && (
+          <p className={styles.empty}>
+            No routes found for the current filter selection.
+          </p>
+        )}
+      </div>
+    </SiteLayout>
   );
 }
