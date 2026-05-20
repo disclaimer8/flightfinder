@@ -1,6 +1,6 @@
-// Force the jonty path in airlineMeta so the L616 canonical bug is exercised.
-// Without this mock, jonty.db is absent in Jest and the fallback path (L632)
-// runs instead — masking the uppercase-canonical bug in production.
+// Force the jonty path in airlineMeta so the canonical bug in the jonty branch
+// is exercised. Without this mock, jonty.db is absent in Jest and the fallback
+// path runs instead — masking the uppercase-canonical bug in production.
 jest.mock('../services/jontyRouteService', () => ({
   getCarrierMeta: jest.fn((iata) =>
     iata === 'LH' ? { carrier_name: 'Lufthansa', routeCount: 200 } : null
@@ -12,6 +12,7 @@ const seoMetaService = require('../services/seoMetaService');
 describe('seoMetaService canonical URLs are lowercase', () => {
   const cases = [
     { url: '/airline/lh',                 kind: 'airline' },
+    { url: '/airline/zz',                 kind: 'airline-fallback' },
     { url: '/flights-from/lhr',           kind: 'airport-departures' },
     { url: '/flights-to/jfk',             kind: 'airport-arrivals' },
     { url: '/airline/dlh/from/fra',       kind: 'airline-airport' },

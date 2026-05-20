@@ -494,7 +494,7 @@ function airportMeta(iata) {
   return {
     title: `${name} (${upper}) flights & airlines`,
     description: `${name} (${upper}): which cities have direct flights, which airlines operate them, and which destinations travellers favour. Sourced from Amadeus booked/traveled aggregates and open ADS-B observations.`,
-    canonical: `${BASE}/airport/${iata}`,
+    canonical: `${BASE}/airport/${iata.toLowerCase()}`,
     h1: `${name} (${upper}) — direct flights and destinations`,
     subtitle: `Direct destinations, top airlines, and traffic patterns for ${name} (${upper}).`,
     robots: 'index, follow',
@@ -637,7 +637,7 @@ function airlineMeta(iata) {
   return {
     title: `${name} (${upper}) routes & destinations`,
     description: `${name} (${upper}) network: destinations served, observed aircraft families, and top operated routes. Cross-referenced with open ADS-B and Amadeus reference data.`,
-    canonical: `${BASE}/airline/${iata}`,
+    canonical: `${BASE}/airline/${iata.toLowerCase()}`,
     h1: `${name} — destinations and fleet`,
     subtitle: `Routes, aircraft, and top destinations operated by ${name} (${upper}).`,
     robots: 'index, follow',
