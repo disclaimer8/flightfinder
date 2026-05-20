@@ -348,6 +348,18 @@ jobs:
             pm2 save
             # nginx reload last — only flip routes after both apps are healthy
             nginx -t && systemctl reload nginx
+            # Purge nginx SSR proxy cache after pm2 has fresh code running.
+            # /var/cache/nginx/ssr (proxy_cache_valid 200 1h, ~2 GB typical)
+            # otherwise serves pre-deploy HTML for up to 60 minutes after
+            # pm2 reload, hiding title/canonical/meta changes from public
+            # traffic — including from Bing's bingbot, so the IndexNow
+            # submission below would point Bing at cached stale content.
+            # Discovered 2026-05-20 during canonical+title fix smoke testing
+            # (see memory feedback_nginx-ssr-cache-purge-on-deploy).
+            if [ -d /var/cache/nginx/ssr ]; then
+              du -sh /var/cache/nginx/ssr 2>/dev/null | awk '{print "[deploy] purging nginx ssr_cache: " $1}'
+              rm -rf /var/cache/nginx/ssr/* 2>/dev/null || true
+            fi
             # IndexNow submission (Phase 2 — non-blocking, exit 0 on most failures).
             # Skips if /etc/flightfinder/indexnow.key absent (e.g. pre-provisioning
             # state). `|| echo` catches misconfig exits so the workflow doesn't fail.
