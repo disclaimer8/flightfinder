@@ -15,7 +15,7 @@ describe('seoMetaService new resolvers (Phase 1)', () => {
     expect(r.title).toMatch(/FlightFinder/);
     expect(typeof r.description).toBe('string');
     expect(r.description.length).toBeGreaterThan(0);
-    expect(r.canonical).toBe('https://himaxym.com/flights-from/ORK');
+    expect(r.canonical).toBe('https://himaxym.com/flights-from/ork');
     expect(r.h1).toMatch(/Flights from .*\(ORK\)/);
     expect(r.robots).toBe('index, follow');
   });
@@ -28,7 +28,7 @@ describe('seoMetaService new resolvers (Phase 1)', () => {
     expect(typeof r.title).toBe('string');
     expect(r.title).toMatch(/Flights to .*LHR/);
     expect(typeof r.description).toBe('string');
-    expect(r.canonical).toBe('https://himaxym.com/flights-to/LHR');
+    expect(r.canonical).toBe('https://himaxym.com/flights-to/lhr');
     expect(r.h1).toMatch(/Flights to .*\(LHR\)/);
     expect(r.robots).toBe('index, follow');
   });
@@ -42,7 +42,7 @@ describe('seoMetaService new resolvers (Phase 1)', () => {
     expect(typeof r.title).toBe('string');
     expect(r.title).toMatch(/flights from .*ORK/);
     expect(typeof r.description).toBe('string');
-    expect(r.canonical).toBe('https://himaxym.com/airline/EI/from/ORK');
+    expect(r.canonical).toBe('https://himaxym.com/airline/ei/from/ork');
     expect(r.h1).toMatch(/flights from .*\(ORK\)/);
     expect(r.robots).toBe('index, follow');
   });

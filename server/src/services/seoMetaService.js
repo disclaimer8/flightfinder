@@ -613,7 +613,7 @@ function airlineMeta(iata) {
     return {
       title: `${name} (${upper}) — route network (${routeCount} routes) | FlightFinder`,
       description: `Explore ${name}'s ${routeCount} non-stop routes. Updated weekly from open scheduling data.`,
-      canonical: `${BASE}/airline/${upper}`,
+      canonical: `${BASE}/airline/${upper.toLowerCase()}`,
       h1: `${name} route network`,
       subtitle: `${routeCount} non-stop routes operated by ${name} (${upper}).`,
       robots: 'index, follow',
@@ -678,7 +678,7 @@ function airportDeparturesMeta(iata) {
   return {
     title: `Flights from ${cityOrIata} (${upper}) — destinations, airlines, distance | FlightFinder`,
     description: `All non-stop flights from ${cityOrIata} ${upper}: destinations, airlines, distance, duration. Backed by FlightFinder's reference dataset.`,
-    canonical: `${BASE}/flights-from/${upper}`,
+    canonical: `${BASE}/flights-from/${upper.toLowerCase()}`,
     h1: `Flights from ${cityOrIata} (${upper})`,
     subtitle: `Non-stop destinations from ${cityOrIata} airport (${upper}).`,
     robots: 'index, follow',
@@ -700,7 +700,7 @@ function airportArrivalsMeta(iata) {
   return {
     title: `Flights to ${cityOrIata} (${upper}) — origins, airlines, distance | FlightFinder`,
     description: `All non-stop flights arriving at ${cityOrIata} ${upper}: origins, airlines, distance, duration. Backed by FlightFinder's reference dataset.`,
-    canonical: `${BASE}/flights-to/${upper}`,
+    canonical: `${BASE}/flights-to/${upper.toLowerCase()}`,
     h1: `Flights to ${h1Loc} (${upper})`,
     subtitle: `Non-stop origins arriving at ${cityOrIata} airport (${upper}).`,
     robots: 'index, follow',
@@ -721,7 +721,7 @@ function airlineAirportMeta(airlineIata, airportIata) {
   return {
     title: `${carrierOrIata} flights from ${cityOrIata} (${upperAirport}) | FlightFinder`,
     description: `${carrierOrIata} non-stop destinations from ${cityOrIata} ${upperAirport}: routes, distance and duration.`,
-    canonical: `${BASE}/airline/${upperAirline}/from/${upperAirport}`,
+    canonical: `${BASE}/airline/${upperAirline.toLowerCase()}/from/${upperAirport.toLowerCase()}`,
     h1: `${carrierOrIata} flights from ${cityOrIata} (${upperAirport})`,
     subtitle: `${carrierOrIata} non-stop routes from ${cityOrIata} airport (${upperAirport}).`,
     robots: 'index, follow',
@@ -790,7 +790,7 @@ function countryMeta(cc) {
   return {
     title: `Flights from ${name} — airports, airlines, popular routes | FlightFinder`,
     description: `Aviation overview for ${name}: top airports by route count, airlines operating, and popular non-stop routes. Updated weekly.`,
-    canonical: `${BASE}/country/${upper}`,
+    canonical: `${BASE}/country/${upper.toLowerCase()}`,
     h1: `${name} — aviation overview`,
     subtitle: `Airports, airlines, and popular routes for ${name} (${upper}).`,
     robots: 'index, follow',
